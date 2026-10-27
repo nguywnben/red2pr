@@ -93,14 +93,20 @@ from py_contracts.repairs import (
 from py_contracts.schema_export import render_canonical_json_schemas
 from py_contracts.tools import ToolCallRequest, ToolCallResponse
 from py_contracts.worker import (
+    DeadLetterJobSummary,
     IsolationCheckResult,
     ResultArtifactRef,
     ResultV1,
     SandboxJobV1,
     SandboxResourceLimits,
     SandboxResourceUsage,
+    TaskAttemptSummary,
     TaskJob,
+    TaskJobActionRequest,
+    TaskJobDetail,
+    TaskJobPage,
     Worker,
+    WorkspaceQueueFairnessSummary,
 )
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -1207,3 +1213,140 @@ def test_u07_consent_and_endpoint_registration_contracts_reject_ssrf_and_secrets
         tls_mode="loopback_http",
     )
     assert step_req.expected_checkpoint == "ckpt_1"
+
+
+def test_u08_task_job_queue_and_dlq_contracts() -> None:
+    ws_id = new_uuid7()
+    repo_id = new_uuid7()
+    repair_id = new_uuid7()
+    job_id = new_uuid7()
+    worker_id = new_uuid7()
+
+    attempt = TaskAttemptSummary(
+        id=new_uuid7(),
+        job_id=job_id,
+        attempt_number=1,
+        lease_epoch=1,
+        worker_id=worker_id,
+        state="orphaned",
+        started_at=FIXED_NOW,
+        heartbeat_at=FIXED_NOW + timedelta(seconds=15),
+        lease_expires_at=FIXED_NOW + timedelta(seconds=75),
+        ended_at=FIXED_NOW + timedelta(seconds=90),
+        error_code="lease_expired",
+        error_detail="Worker missed heartbeat past lease_expires_at.",
+    )
+    dlq = DeadLetterJobSummary(
+        id=new_uuid7(),
+        workspace_id=ws_id,
+        repository_id=repo_id,
+        version=1,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        original_job_id=job_id,
+        kind="repair.verify",
+        resource_id=repair_id,
+        logical_effect_key="eff:repair:verify:01",
+        budget_key="budget:repair:01",
+        error_code="lease_expired_reconcile_required",
+        error_detail="Orphaned lease had ambiguous side effects requiring reconciliation.",
+        attempts=2,
+        recoverable=True,
+        reconcile_required=True,
+        status="open",
+    )
+    detail = TaskJobDetail(
+        id=job_id,
+        workspace_id=ws_id,
+        repository_id=repo_id,
+        repair_id=repair_id,
+        version=3,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW + timedelta(seconds=90),
+        kind="repair.verify",
+        resource_id=repair_id,
+        state="dead_letter",
+        lease_epoch=1,
+        attempt=2,
+        not_before=FIXED_NOW,
+        deadline=FIXED_NOW + timedelta(minutes=30),
+        priority=50,
+        max_attempts=3,
+        logical_effect_key="eff:repair:verify:01",
+        budget_key="budget:repair:01",
+        correlation_id="corr-u08-01",
+        recoverable=True,
+        reconcile_required=True,
+        attempts_history=[attempt],
+        dead_letter_entry=dlq,
+    )
+    assert detail.dead_letter_entry is not None
+    assert detail.dead_letter_entry.logical_effect_key == "eff:repair:verify:01"
+    assert detail.attempts_history[0].state == "orphaned"
+
+    page = TaskJobPage(
+        items=[
+            TaskJob.model_validate(
+                detail.model_dump(exclude={"attempts_history", "dead_letter_entry"})
+            )
+        ],
+        next_cursor=None,
+        snapshot_at=FIXED_NOW,
+        summary=WorkspaceQueueFairnessSummary(
+            max_running_repairs=2,
+            active_running_repairs=2,
+            queued_count=12,
+            leased_count=1,
+            running_count=1,
+            cancel_requested_count=0,
+            dead_letter_count=1,
+            workspace_paused=False,
+            backpressure_active=True,
+            transport_status="healthy",
+            transport_detail="Redis 7 wakeup broker reachable.",
+        ),
+    )
+    assert page.summary is not None
+    assert page.summary.backpressure_active is True
+
+    # Deadline preceding not_before fails validation
+    with pytest.raises(ValidationError):
+        TaskJob(
+            id=new_uuid7(),
+            workspace_id=ws_id,
+            version=1,
+            created_at=FIXED_NOW,
+            updated_at=FIXED_NOW,
+            kind="repair.diagnose",
+            resource_id=repair_id,
+            state="queued",
+            lease_epoch=0,
+            attempt=1,
+            not_before=FIXED_NOW + timedelta(minutes=10),
+            deadline=FIXED_NOW + timedelta(minutes=5),
+        )
+
+    # TaskJobActionRequest enforces reconciled_outcome only on action='reconcile' and forbids extra
+    valid_reconcile = TaskJobActionRequest(
+        action="reconcile",
+        reason="Verified draft PR was not created upstream.",
+        expected_version=3,
+        reconciled_outcome="confirmed_absent",
+    )
+    assert valid_reconcile.reconciled_outcome == "confirmed_absent"
+
+    with pytest.raises(ValidationError):
+        TaskJobActionRequest(
+            action="requeue",
+            reason="Should reject reconciled_outcome when action != reconcile.",
+            reconciled_outcome="confirmed_absent",
+        )
+
+    with pytest.raises(ValidationError):
+        TaskJobActionRequest.model_validate(
+            {
+                "action": "cancel",
+                "reason": "Stop run",
+                "unexpected_extra": True,
+            }
+        )

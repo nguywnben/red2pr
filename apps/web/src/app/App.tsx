@@ -19,6 +19,7 @@ import {
   type AuthProblemSummary,
 } from "../features/auth";
 import { AcceptInviteDialog, MembersPage } from "../features/members";
+import { QueuesPage } from "../features/queues";
 import { SetupWizardPage } from "../features/setup";
 import {
   ApiClientProvider,
@@ -63,6 +64,7 @@ function WorkspaceSectionOutlet({
   return (
     <Routes>
       <Route path="members" element={<MembersPage workspace={workspace} me={meData} />} />
+      <Route path="queues" element={<QueuesPage workspace={workspace} me={meData} />} />
       <Route
         path="*"
         element={

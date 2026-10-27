@@ -133,6 +133,7 @@ function buildDefaultNavItems(workspaceSlug: string | undefined): readonly Shell
       href: `${prefix}/connections`,
     },
     { id: "workers", labelKey: "app.nav.workers", href: `${prefix}/workers` },
+    { id: "queues", labelKey: "app.nav.queues", href: `${prefix}/queues` },
     {
       id: "notifications",
       labelKey: "app.nav.notifications",

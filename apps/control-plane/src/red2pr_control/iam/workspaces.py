@@ -59,6 +59,7 @@ from red2pr_control.db.base import (
 from red2pr_control.db.idempotency import (
     claim_idempotent_operation,
     complete_idempotent_operation,
+    upsert_operation_receipt,
 )
 from red2pr_control.db.outbox import enqueue_outbox_event
 from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
@@ -638,7 +639,7 @@ class WorkspaceService:
                     request_payload=payload.model_dump(mode="json"),
                     logical_effect_key=f"workspace.delete:{target_ws_id}",
                     resource_id=target_ws_id,
-                    status_url=f"/api/v1/operations/{target_ws_id}",
+                    status_url=None,
                     correlation_id=correlation_id,
                     now=ref_now,
                 )
@@ -745,6 +746,22 @@ class WorkspaceService:
                     operation_id=claim.receipt.operation_id,
                     state="succeeded",
                     status_code=202,
+                    now=ref_now,
+                )
+                await upsert_operation_receipt(
+                    ws_db,
+                    operation_id=final_receipt.operation_id,
+                    scope="workspace",
+                    workspace_id=target_ws_id,
+                    repository_id=None,
+                    principal_id=auth.user.id,
+                    required_role="instance_owner",
+                    operation_kind="workspace.delete",
+                    resource_id=target_ws_id,
+                    state="succeeded",
+                    correlation_id=final_receipt.correlation_id,
+                    status_url=final_receipt.status_url,
+                    logical_effect_key=f"workspace.delete:{target_ws_id}",
                     now=ref_now,
                 )
                 return final_receipt

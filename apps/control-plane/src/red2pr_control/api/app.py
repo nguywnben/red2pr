@@ -41,6 +41,7 @@ from py_contracts import (
     ConsentRecordPage,
     ConsentRevokeRequest,
     CsrfBootstrapResponse,
+    DeadLetterJobSummary,
     Diagnosis,
     EndpointRegistration,
     EndpointRegistrationCreateRequest,
@@ -95,7 +96,11 @@ from py_contracts import (
     StepUpResponse,
     StrictContractModel,
     SystemHealthResponse,
+    TaskAttemptSummary,
     TaskJob,
+    TaskJobActionRequest,
+    TaskJobDetail,
+    TaskJobPage,
     TelegramLinkSummary,
     ToolCallRequest,
     ToolCallResponse,
@@ -106,6 +111,7 @@ from py_contracts import (
     WorkspaceCreateRequest,
     WorkspaceDeleteRequest,
     WorkspacePage,
+    WorkspaceQueueFairnessSummary,
     WorkspaceUpdateRequest,
     new_uuid7,
 )
@@ -127,6 +133,11 @@ from red2pr_control.operations.setup_wizard import (
     SetupStepRegistry,
     SetupWizardService,
     build_setup_router,
+)
+from red2pr_control.orchestrator import (
+    DurableTaskQueueService,
+    OperationReceiptService,
+    build_orchestrator_router,
 )
 
 CORRELATION_HEADER = "X-Correlation-Id"
@@ -190,6 +201,12 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     Artifact,
     Worker,
     TaskJob,
+    TaskAttemptSummary,
+    DeadLetterJobSummary,
+    WorkspaceQueueFairnessSummary,
+    TaskJobDetail,
+    TaskJobPage,
+    TaskJobActionRequest,
     NotificationDestination,
     NotificationDelivery,
     NotificationPreference,
@@ -351,6 +368,8 @@ def create_app(
     iam_service: IamService | None = None,
     setup_wizard_service: SetupWizardService | None = None,
     setup_step_registry: SetupStepRegistry | None = None,
+    task_queue_service: DurableTaskQueueService | None = None,
+    operation_receipt_service: OperationReceiptService | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     app = FastAPI(
@@ -367,6 +386,8 @@ def create_app(
     app.state.iam_service = iam_service
     app.state.setup_wizard_service = setup_wizard_service
     app.state.setup_step_registry = setup_step_registry
+    app.state.task_queue_service = task_queue_service
+    app.state.operation_receipt_service = operation_receipt_service
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -386,6 +407,7 @@ def create_app(
     app.include_router(system_router)
     app.include_router(build_iam_router())
     app.include_router(build_setup_router())
+    app.include_router(build_orchestrator_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:

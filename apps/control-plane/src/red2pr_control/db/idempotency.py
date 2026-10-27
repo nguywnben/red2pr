@@ -32,7 +32,11 @@ from py_contracts.primitives import (
     validate_idempotency_key_window,
 )
 from red2pr_control.core.errors import BadRequestError, ConflictError, NotFoundError
-from red2pr_control.db.base import EffectTombstoneModel, IdempotencyRecordModel
+from red2pr_control.db.base import (
+    EffectTombstoneModel,
+    IdempotencyRecordModel,
+    OperationReceiptModel,
+)
 
 CompletedActionState = Literal["succeeded", "failed", "unknown"]
 
@@ -101,8 +105,8 @@ async def claim_idempotent_operation(
     request_payload: Mapping[str, Any],
     logical_effect_key: str,
     resource_id: str,
-    status_url: str,
-    correlation_id: str,
+    status_url: str | None = None,
+    correlation_id: str = "",
     now: datetime | None = None,
     record_ttl: timedelta = timedelta(days=7),
     tombstone_ttl: timedelta = timedelta(days=90),
@@ -149,6 +153,7 @@ async def claim_idempotent_operation(
         raise BadRequestError(code="invalid_idempotency_key", detail=msg) from exc
 
     operation_id = new_uuid7(now=ref_now)
+    effective_status_url = status_url or f"/api/v1/operations/{operation_id}"
     expires_at = ref_now + record_ttl
 
     insert_record_stmt = (
@@ -164,7 +169,7 @@ async def claim_idempotent_operation(
             resource_id=resource_id,
             state="running",
             status_code=202,
-            status_url=status_url,
+            status_url=effective_status_url,
             correlation_id=correlation_id,
             result_id=None,
             response_payload=None,
@@ -235,7 +240,7 @@ async def claim_idempotent_operation(
         resource_id=resource_id,
         state="running",
         correlation_id=correlation_id,
-        status_url=status_url,
+        status_url=effective_status_url,
     )
     return IdempotencyClaimOutcome(
         is_new_claim=True,
@@ -303,3 +308,79 @@ async def purge_expired_idempotency_records(
         )
     ).all()
     return len(deleted_ids)
+
+
+async def upsert_operation_receipt(
+    session: AsyncSession,
+    *,
+    operation_id: str,
+    scope: Literal["workspace", "instance"],
+    workspace_id: str | None,
+    repository_id: str | None = None,
+    principal_id: str,
+    required_role: Literal[
+        "instance_owner",
+        "admin",
+        "maintainer",
+        "reviewer",
+        "viewer",
+        "auditor",
+        "self",
+    ],
+    operation_kind: str,
+    resource_id: str,
+    state: ActionState,
+    correlation_id: str,
+    status_url: str,
+    logical_effect_key: str,
+    result_id: str | None = None,
+    problem: Problem | None = None,
+    now: datetime | None = None,
+) -> ActionReceipt:
+    """Create or update an A-24 durable `operation_receipts` row inside the active transaction."""
+    ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+    existing = await session.scalar(
+        select(OperationReceiptModel)
+        .where(OperationReceiptModel.id == operation_id)
+        .with_for_update()
+    )
+    prob_json = problem.model_dump(mode="json") if problem is not None else None
+    if existing is None:
+        row = OperationReceiptModel(
+            id=operation_id,
+            scope=scope,
+            workspace_id=workspace_id,
+            repository_id=repository_id,
+            principal_id=principal_id,
+            required_role=required_role,
+            operation_kind=operation_kind,
+            resource_id=resource_id,
+            state=state,
+            correlation_id=correlation_id,
+            status_url=status_url,
+            result_id=result_id,
+            problem_payload=prob_json,
+            logical_effect_key=logical_effect_key,
+            version=1,
+            created_at=ref_now,
+            updated_at=ref_now,
+        )
+        session.add(row)
+        await session.flush()
+    else:
+        existing.state = state
+        existing.result_id = result_id
+        existing.problem_payload = prob_json
+        existing.version += 1
+        existing.updated_at = ref_now
+        await session.flush()
+
+    return ActionReceipt(
+        operation_id=operation_id,
+        resource_id=resource_id,
+        state=state,
+        correlation_id=correlation_id,
+        status_url=status_url,
+        result_id=result_id,
+        problem=problem,
+    )

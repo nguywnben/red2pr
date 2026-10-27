@@ -1,7 +1,7 @@
 """Canonical worker registry, task jobs, and sandbox execution contracts (S-15, S-21).
 
 Enforces:
-- S-15: Worker and TaskJob status/fencing schemas.
+- S-15: Worker, TaskJob, TaskAttemptSummary, DeadLetterJobSummary, and queue action schemas.
 - S-21: SandboxJobV1 (immutable profile command_ids, bounded resource quotas) and
   ResultV1 (missing exit_code, timeout, or infrastructure_error never passes tests).
 """
@@ -15,10 +15,12 @@ from pydantic import Field, StrictBool, StrictInt, model_validator
 from py_contracts.integrations import GitSha
 from py_contracts.primitives import (
     BoundedName,
+    BoundedReason,
     BoundedText,
     DurationMs,
     InstanceResourceBase,
     InternalId,
+    Page,
     PositiveVersion,
     Sha256Digest,
     StrictContractModel,
@@ -38,6 +40,18 @@ TaskJobState = Literal[
     "cancelled",
     "dead_letter",
 ]
+TaskAttemptState = Literal[
+    "leased",
+    "running",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "orphaned",
+]
+DeadLetterStatus = Literal["open", "requeued", "reconciled", "discarded"]
+QueueTransportStatus = Literal["healthy", "degraded", "unconfigured"]
+TaskJobAction = Literal["cancel", "requeue", "reconcile"]
+TaskJobReconcileOutcome = Literal["confirmed_absent", "confirmed_applied"]
 
 
 class Worker(InstanceResourceBase):
@@ -60,11 +74,104 @@ class TaskJob(WorkspaceResourceBase):
     attempt: PositiveVersion
     not_before: UtcTimestamp
     deadline: UtcTimestamp
+    repair_id: InternalId | None = None
+    priority: Annotated[StrictInt, Field(ge=0, le=1000)] = 100
+    max_attempts: PositiveVersion = 3
+    logical_effect_key: BoundedText | None = None
+    budget_key: BoundedText | None = None
+    correlation_id: BoundedName | None = None
+    leased_by_worker_id: InternalId | None = None
+    heartbeat_at: UtcTimestamp | None = None
+    lease_expires_at: UtcTimestamp | None = None
+    last_error_code: BoundedName | None = None
+    last_error_detail: BoundedText | None = None
+    cancel_reason: BoundedText | None = None
+    recoverable: StrictBool = True
+    reconcile_required: StrictBool = False
 
     @model_validator(mode="after")
     def _validate_deadline(self) -> Self:
         if self.deadline < self.not_before:
             raise ValueError("TaskJob deadline must not precede not_before")
+        return self
+
+
+class TaskAttemptSummary(StrictContractModel):
+    """S-15 immutable per-attempt worker lease execution record."""
+
+    id: InternalId
+    job_id: InternalId
+    attempt_number: PositiveVersion
+    lease_epoch: PositiveVersion
+    worker_id: InternalId
+    state: TaskAttemptState
+    started_at: UtcTimestamp
+    heartbeat_at: UtcTimestamp
+    lease_expires_at: UtcTimestamp
+    ended_at: UtcTimestamp | None = None
+    error_code: BoundedName | None = None
+    error_detail: BoundedText | None = None
+
+
+class DeadLetterJobSummary(WorkspaceResourceBase):
+    """S-15 dead-letter queue record preserving original effect & spend budget keys."""
+
+    original_job_id: InternalId
+    kind: BoundedName
+    resource_id: InternalId
+    logical_effect_key: BoundedText
+    budget_key: BoundedText | None = None
+    error_code: BoundedName
+    error_detail: BoundedText
+    attempts: PositiveVersion
+    recoverable: StrictBool
+    reconcile_required: StrictBool
+    status: DeadLetterStatus
+    requeued_at: UtcTimestamp | None = None
+    requeued_by_user_id: InternalId | None = None
+
+
+class WorkspaceQueueFairnessSummary(StrictContractModel):
+    """UI-S14 / NFR-05 per-workspace concurrency cap, fairness, and transport health summary."""
+
+    max_running_repairs: PositiveVersion
+    active_running_repairs: Annotated[StrictInt, Field(ge=0)]
+    queued_count: Annotated[StrictInt, Field(ge=0)]
+    leased_count: Annotated[StrictInt, Field(ge=0)]
+    running_count: Annotated[StrictInt, Field(ge=0)]
+    cancel_requested_count: Annotated[StrictInt, Field(ge=0)]
+    dead_letter_count: Annotated[StrictInt, Field(ge=0)]
+    workspace_paused: StrictBool
+    backpressure_active: StrictBool
+    transport_status: QueueTransportStatus
+    transport_detail: BoundedText | None = None
+
+
+class TaskJobDetail(TaskJob):
+    """A-14 detailed task-job view including attempt history and DLQ entry."""
+
+    attempts_history: list[TaskAttemptSummary] = Field(default_factory=list)
+    dead_letter_entry: DeadLetterJobSummary | None = None
+
+
+class TaskJobPage(Page[TaskJob]):
+    """A-14 S-04 cursor-paginated task-job listing with scoped fairness summary."""
+
+    summary: WorkspaceQueueFairnessSummary | None = None
+
+
+class TaskJobActionRequest(StrictContractModel):
+    """A-14 operator queue control action input (`cancel | requeue | reconcile`)."""
+
+    action: TaskJobAction
+    reason: BoundedReason
+    expected_version: PositiveVersion | None = None
+    reconciled_outcome: TaskJobReconcileOutcome | None = None
+
+    @model_validator(mode="after")
+    def _validate_reconcile_fields(self) -> Self:
+        if self.reconciled_outcome is not None and self.action != "reconcile":
+            raise ValueError("reconciled_outcome is only permitted when action is 'reconcile'")
         return self
 
 

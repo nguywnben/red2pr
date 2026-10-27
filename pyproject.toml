@@ -13,6 +13,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "fakeredis[lua]>=2.26.0,<3.0.0",
     "httpx>=0.28.0,<1.0.0",
     "httpx2>=0.1.0",
     "hypothesis>=6.115.0,<7.0.0",

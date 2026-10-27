@@ -314,4 +314,139 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(epRes.data.host, "gitlab.corp.internal");
     assert.equal(seenRequests[0]?.idemKey, "idem-step-06");
   });
+
+  it("handles U08 task-jobs listing, detail ETag, idempotent actions, and operation receipts", async () => {
+    const seenHeaders: Array<{ url: string; idemKey: string | null; ifMatch: string | null }> = [];
+    const jobId = "019a2400-0000-7000-8000-000000000101";
+    const opId = "019a2400-0000-7000-8000-000000000202";
+
+    const client = createRed2PrClient({
+      baseUrl: "https://red2pr.example.test",
+      getCsrfToken: () => "csrf-queue-token",
+      fetch: async (input) => {
+        const req = input instanceof Request ? input : new Request(input);
+        const url = new URL(req.url);
+        seenHeaders.push({
+          url: `${req.method} ${url.pathname}${url.search}`,
+          idemKey: req.headers.get("Idempotency-Key"),
+          ifMatch: req.headers.get("If-Match"),
+        });
+
+        if (req.method === "GET" && url.pathname === "/api/v1/workspaces/core/task-jobs") {
+          return new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: jobId,
+                  workspace_id: "019a2400-0000-7000-8000-000000000001",
+                  version: 2,
+                  created_at: "2026-10-27T06:00:00Z",
+                  updated_at: "2026-10-27T06:01:00Z",
+                  kind: "repair.reproduce",
+                  resource_id: "019a2400-0000-7000-8000-000000000050",
+                  state: "dead_letter",
+                  lease_epoch: 3,
+                  attempt: 3,
+                  not_before: "2026-10-27T06:00:00Z",
+                  deadline: "2026-10-27T06:30:00Z",
+                  logical_effect_key: "repair.reproduce:run-1",
+                  budget_key: "budget:session-1",
+                  correlation_id: "corr-queue-01",
+                  recoverable: true,
+                  reconcile_required: false,
+                },
+              ],
+              next_cursor: null,
+              snapshot_at: "2026-10-27T06:02:00Z",
+              summary: {
+                max_running_repairs: 2,
+                active_running_repairs: 1,
+                queued_count: 3,
+                leased_count: 0,
+                running_count: 1,
+                cancel_requested_count: 0,
+                dead_letter_count: 1,
+                workspace_paused: false,
+                backpressure_active: false,
+                transport_status: "healthy",
+                transport_detail: null,
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        if (req.method === "GET" && url.pathname.endsWith(`/task-jobs/${jobId}`)) {
+          return new Response(
+            JSON.stringify({
+              id: jobId,
+              workspace_id: "019a2400-0000-7000-8000-000000000001",
+              version: 2,
+              created_at: "2026-10-27T06:00:00Z",
+              updated_at: "2026-10-27T06:01:00Z",
+              kind: "repair.reproduce",
+              resource_id: "019a2400-0000-7000-8000-000000000050",
+              state: "dead_letter",
+              lease_epoch: 3,
+              attempt: 3,
+              not_before: "2026-10-27T06:00:00Z",
+              deadline: "2026-10-27T06:30:00Z",
+              attempts_history: [],
+              dead_letter_entry: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json", ETag: '"v2"' },
+            },
+          );
+        }
+
+        if (req.method === "POST" && url.pathname.endsWith(`/task-jobs/${jobId}/actions`)) {
+          return new Response(
+            JSON.stringify({
+              operation_id: opId,
+              resource_id: jobId,
+              state: "succeeded",
+              correlation_id: "corr-action-01",
+              status_url: `/api/v1/operations/${opId}`,
+              result_id: jobId,
+            }),
+            { status: 202, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            operation_id: opId,
+            resource_id: jobId,
+            state: "succeeded",
+            correlation_id: "corr-action-01",
+            status_url: `/api/v1/operations/${opId}`,
+            result_id: jobId,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      },
+    });
+
+    const page = await client.listTaskJobs("core", { state: "dead_letter", limit: 25 });
+    assert.equal(page.data.items.length, 1);
+    assert.equal(page.data.summary?.dead_letter_count, 1);
+
+    const detail = await client.getTaskJob("core", jobId);
+    assert.equal(detail.etag, '"v2"');
+
+    const receipt = await client.performTaskJobAction(
+      "core",
+      jobId,
+      { action: "requeue", reason: "Transient worker node reboot", expected_version: 2 },
+      { idempotencyKey: "019a2400-0000-7000-8000-000000000999", ifMatch: '"v2"' },
+    );
+    assert.equal(receipt.data.operation_id, opId);
+    assert.equal(seenHeaders[2]?.idemKey, "019a2400-0000-7000-8000-000000000999");
+    assert.equal(seenHeaders[2]?.ifMatch, '"v2"');
+
+    const polled = await client.getOperationReceipt(opId);
+    assert.equal(polled.data.state, "succeeded");
+  });
 });

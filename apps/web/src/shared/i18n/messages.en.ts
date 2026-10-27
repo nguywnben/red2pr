@@ -14,6 +14,7 @@ export const EN_MESSAGES = {
   "app.nav.repositories": "Repositories",
   "app.nav.connections": "Connections",
   "app.nav.workers": "Workers",
+  "app.nav.queues": "Task Queues",
   "app.nav.notifications": "Notifications",
   "app.nav.analytics": "Analytics & Cost",
   "app.nav.audit": "Audit Log",
@@ -378,6 +379,23 @@ export const EN_MESSAGES = {
     "Owner 5-minute step-up required. Pins validated private CIDRs and custom CA bundles per adapter without disabling TLS verification.",
   "setup.registerEndpointAction": "Register private endpoint",
   "setup.revokeEndpointAction": "Revoke endpoint",
+
+  "queues.pageTitle": "Durable Task Queue & Leases",
+  "queues.pageSubtitle":
+    "PostgreSQL-authoritative task queue with monotonic lease_epoch fencing, per-workspace concurrency caps, and scoped dead-letter replay.",
+  "queues.tableLabel": "Workspace task jobs",
+  "queues.colJob": "Job / Kind",
+  "queues.colState": "State",
+  "queues.colLease": "Attempt & Lease Fence",
+  "queues.colCorrelation": "Correlation ID",
+  "queues.colTiming": "Timing (UTC)",
+  "queues.colActions": "Actions",
+  "queues.filterStateLabel": "Filter by state",
+  "queues.filterKindLabel": "Filter by job kind",
+  "queues.inspectAction": "Inspect",
+  "queues.cancelAction": "Cancel",
+  "queues.requeueAction": "Requeue",
+  "queues.reconcileAction": "Reconcile",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

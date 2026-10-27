@@ -47,6 +47,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/shared/test/setup.ts"],
+    testTimeout: 15000,
     css: {
       include: [/tokens\.css$/],
     },

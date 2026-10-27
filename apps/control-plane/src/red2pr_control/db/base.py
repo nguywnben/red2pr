@@ -1,12 +1,13 @@
-"""SQLAlchemy 2.0 declarative base and U03..U07 persistence ORM models (docs/06_DATA_MODEL.md).
+"""SQLAlchemy 2.0 declarative base and U03..U08 persistence ORM models (docs/06_DATA_MODEL.md).
 
-Defines the authoritative relational persistence models for Migrations 0001..0004:
+Defines the authoritative relational persistence models for Migrations 0001..0005:
 - instances, workspaces, secret_entries, idempotency_records, effect_tombstones,
   outbox_events, outbox_claims, audit_log, audit_checkpoints, schema_migrations (0001)
 - users, bootstrap_tokens, sessions, mfa_credentials, recovery_codes, auth_challenges,
   auth_rate_limits (0002)
 - memberships, invitations, repo_grants, break_glass_grants (0003)
 - setup_checkpoints, consents, endpoint_registrations (0004)
+- task_jobs, task_attempts, dead_letter_jobs, operation_receipts (0005)
 """
 
 from __future__ import annotations
@@ -1043,6 +1044,269 @@ class EndpointRegistrationModel(Base):
     created_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
     revoked_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class TaskJobModel(Base):
+    """S-15 / JOB-01 authoritative PostgreSQL durable task queue job with lease_epoch fencing."""
+
+    __tablename__ = "task_jobs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_task_jobs_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_task_jobs_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["cancelled_by_user_id"],
+            ["users.id"],
+            name="fk_task_jobs_cancelled_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "state IN ("
+            "'queued', 'leased', 'running', 'succeeded', 'failed', "
+            "'cancel_requested', 'cancelled', 'dead_letter'"
+            ")",
+            name="task_job_state_valid",
+        ),
+        CheckConstraint("priority >= 0 AND priority <= 1000", name="task_job_priority_bounds"),
+        CheckConstraint("attempt >= 1", name="task_job_attempt_pos"),
+        CheckConstraint("max_attempts >= 1", name="task_job_max_attempts_pos"),
+        CheckConstraint("lease_epoch >= 0", name="task_job_lease_epoch_nonneg"),
+        CheckConstraint("deadline >= not_before", name="task_job_deadline_after_not_before"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_task_jobs_ready_queue",
+            "state",
+            "not_before",
+            "priority",
+            "created_at",
+            "id",
+        ),
+        Index("ix_task_jobs_workspace_state", "workspace_id", "state", "created_at", "id"),
+        Index("ix_task_jobs_lease_sweeper", "state", "lease_expires_at"),
+        Index("ix_task_jobs_workspace_dispatch_seq", "workspace_id", "last_dispatch_seq"),
+        Index(
+            "uq_task_jobs_active_dedup",
+            "workspace_id",
+            "dedup_key",
+            unique=True,
+            postgresql_where=text(
+                "dedup_key IS NOT NULL AND state IN "
+                "('queued', 'leased', 'running', 'cancel_requested')"
+            ),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    repair_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    kind: Mapped[str] = mapped_column(String(120), nullable=False)
+    is_repair_job: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    resource_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
+    dedup_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    logical_effect_key: Mapped[str] = mapped_column(String(256), nullable=False)
+    budget_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    lease_epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_dispatch_seq: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    leased_by_worker_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    not_before: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    deadline: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_error_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_error_detail: Mapped[str | None] = mapped_column(String(4096), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    cancelled_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    recoverable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    reconcile_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class TaskAttemptModel(Base):
+    """S-15 / NFR-02 per-attempt lease execution history bound to (workspace_id, job_id)."""
+
+    __tablename__ = "task_attempts"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_task_attempts_workspace_id_id"),
+        UniqueConstraint("job_id", "lease_epoch", name="uq_task_attempts_job_lease_epoch"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_task_attempts_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "job_id"],
+            ["task_jobs.workspace_id", "task_jobs.id"],
+            name="fk_task_attempts_workspace_job_task_jobs",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "state IN ('leased', 'running', 'succeeded', 'failed', 'cancelled', 'orphaned')",
+            name="task_attempt_state_valid",
+        ),
+        CheckConstraint("attempt_number >= 1", name="task_attempt_number_pos"),
+        CheckConstraint("lease_epoch >= 1", name="task_attempt_lease_epoch_pos"),
+        Index("ix_task_attempts_job_epoch", "workspace_id", "job_id", "lease_epoch"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    lease_epoch: Mapped[int] = mapped_column(Integer, nullable=False)
+    worker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="leased")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    heartbeat_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    lease_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    error_detail: Mapped[str | None] = mapped_column(String(4096), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class DeadLetterJobModel(Base):
+    """JOB-02 / W-08 dead-letter queue entry preserving logical_effect_key and budget_key."""
+
+    __tablename__ = "dead_letter_jobs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_dead_letter_jobs_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_dead_letter_jobs_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "original_job_id"],
+            ["task_jobs.workspace_id", "task_jobs.id"],
+            name="fk_dead_letter_jobs_workspace_job_task_jobs",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["requeued_by_user_id"],
+            ["users.id"],
+            name="fk_dead_letter_jobs_requeued_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "status IN ('open', 'requeued', 'reconciled', 'discarded')",
+            name="dlq_status_valid",
+        ),
+        CheckConstraint("attempts >= 1", name="dlq_attempts_pos"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_dead_letter_jobs_workspace_status", "workspace_id", "status", "created_at", "id"),
+        Index(
+            "uq_dead_letter_jobs_open_per_job",
+            "workspace_id",
+            "original_job_id",
+            unique=True,
+            postgresql_where=text("status = 'open'"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    original_job_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    kind: Mapped[str] = mapped_column(String(120), nullable=False)
+    resource_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    logical_effect_key: Mapped[str] = mapped_column(String(256), nullable=False)
+    budget_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    error_code: Mapped[str] = mapped_column(String(120), nullable=False)
+    error_detail: Mapped[str] = mapped_column(String(4096), nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False)
+    recoverable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    reconcile_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    requeued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    requeued_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class OperationReceiptModel(Base):
+    """A-24 / S-05 durable asynchronous operation receipt enforcing originating scope."""
+
+    __tablename__ = "operation_receipts"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_operation_receipts_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_operation_receipts_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "scope IN ('workspace', 'instance')",
+            name="operation_receipt_scope_valid",
+        ),
+        CheckConstraint(
+            "(scope = 'instance' AND workspace_id IS NULL AND repository_id IS NULL) OR "
+            "(scope = 'workspace' AND workspace_id IS NOT NULL)",
+            name="operation_receipt_scope_binding_valid",
+        ),
+        CheckConstraint(
+            "required_role IN ("
+            "'instance_owner', 'admin', 'maintainer', 'reviewer', 'viewer', 'auditor', 'self'"
+            ")",
+            name="operation_receipt_required_role_valid",
+        ),
+        CheckConstraint(
+            "state IN ('accepted', 'running', 'succeeded', 'failed', 'unknown')",
+            name="operation_receipt_state_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_operation_receipts_workspace_created", "workspace_id", "created_at", "id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    scope: Mapped[str] = mapped_column(String(32), nullable=False, default="workspace")
+    workspace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    principal_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    required_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    operation_kind: Mapped[str] = mapped_column(String(120), nullable=False)
+    resource_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="running")
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    status_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    result_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    problem_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    logical_effect_key: Mapped[str] = mapped_column(String(256), nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now

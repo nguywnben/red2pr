@@ -175,6 +175,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operations/{operation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get asynchronous operation receipt enforcing originating scope (A-24) */
+        get: operations["getOperationReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/setup": {
         parameters: {
             query?: never;
@@ -470,6 +487,57 @@ export interface paths {
         head?: never;
         /** Update member role & repository grants (`admin` only, `409 last_admin`) (A-05) */
         patch: operations["updateWorkspaceMember"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/task-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List workspace task queue jobs with fairness & cap summary (A-14) */
+        get: operations["listWorkspaceTaskJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/task-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get workspace task job detail, attempts, and DLQ state (A-14) */
+        get: operations["getWorkspaceTaskJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/task-jobs/{job_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel, requeue, or reconcile a workspace task job (A-14) */
+        post: operations["performWorkspaceTaskJobAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -984,6 +1052,53 @@ export interface components {
             bootstrap_claim_required: boolean;
             /** Csrf Token */
             csrf_token: string;
+        };
+        /**
+         * DeadLetterJobSummary
+         * @description S-15 dead-letter queue record preserving original effect & spend budget keys.
+         */
+        DeadLetterJobSummary: {
+            /** Attempts */
+            attempts: number;
+            /** Budget Key */
+            budget_key?: string | null;
+            /** Created At */
+            created_at: string;
+            /** Error Code */
+            error_code: string;
+            /** Error Detail */
+            error_detail: string;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Logical Effect Key */
+            logical_effect_key: string;
+            /** Original Job Id */
+            original_job_id: string;
+            /** Reconcile Required */
+            reconcile_required: boolean;
+            /** Recoverable */
+            recoverable: boolean;
+            /** Repository Id */
+            repository_id?: string | null;
+            /** Requeued At */
+            requeued_at?: string | null;
+            /** Requeued By User Id */
+            requeued_by_user_id?: string | null;
+            /** Resource Id */
+            resource_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "requeued" | "reconciled" | "discarded";
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
         };
         /** DeliveryEventPayload */
         DeliveryEventPayload: {
@@ -2874,29 +2989,99 @@ export interface components {
             timestamp: string;
         };
         /**
+         * TaskAttemptSummary
+         * @description S-15 immutable per-attempt worker lease execution record.
+         */
+        TaskAttemptSummary: {
+            /** Attempt Number */
+            attempt_number: number;
+            /** Ended At */
+            ended_at?: string | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Detail */
+            error_detail?: string | null;
+            /** Heartbeat At */
+            heartbeat_at: string;
+            /** Id */
+            id: string;
+            /** Job Id */
+            job_id: string;
+            /** Lease Epoch */
+            lease_epoch: number;
+            /** Lease Expires At */
+            lease_expires_at: string;
+            /** Started At */
+            started_at: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "leased" | "running" | "succeeded" | "failed" | "cancelled" | "orphaned";
+            /** Worker Id */
+            worker_id: string;
+        };
+        /**
          * TaskJob
          * @description S-15 durable PostgreSQL-backed task queue job with lease_epoch fencing.
          */
         TaskJob: {
             /** Attempt */
             attempt: number;
+            /** Budget Key */
+            budget_key?: string | null;
+            /** Cancel Reason */
+            cancel_reason?: string | null;
+            /** Correlation Id */
+            correlation_id?: string | null;
             /** Created At */
             created_at: string;
             /** Deadline */
             deadline: string;
+            /** Heartbeat At */
+            heartbeat_at?: string | null;
             /** Id */
             id: string;
             /** Kind */
             kind: string;
+            /** Last Error Code */
+            last_error_code?: string | null;
+            /** Last Error Detail */
+            last_error_detail?: string | null;
             /** Lease Epoch */
             lease_epoch: number;
+            /** Lease Expires At */
+            lease_expires_at?: string | null;
+            /** Leased By Worker Id */
+            leased_by_worker_id?: string | null;
+            /** Logical Effect Key */
+            logical_effect_key?: string | null;
+            /**
+             * Max Attempts
+             * @default 3
+             */
+            max_attempts: number;
             /** Not Before */
             not_before: string;
             /**
-             * Repository Id
-             * @default null
+             * Priority
+             * @default 100
              */
-            repository_id: string | null;
+            priority: number;
+            /**
+             * Reconcile Required
+             * @default false
+             */
+            reconcile_required: boolean;
+            /**
+             * Recoverable
+             * @default true
+             */
+            recoverable: boolean;
+            /** Repair Id */
+            repair_id?: string | null;
+            /** Repository Id */
+            repository_id?: string | null;
             /** Resource Id */
             resource_id: string;
             /**
@@ -2910,6 +3095,114 @@ export interface components {
             version: number;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /**
+         * TaskJobActionRequest
+         * @description A-14 operator queue control action input (`cancel | requeue | reconcile`).
+         */
+        TaskJobActionRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "cancel" | "requeue" | "reconcile";
+            /** Expected Version */
+            expected_version?: number | null;
+            /** Reason */
+            reason: string;
+            /** Reconciled Outcome */
+            reconciled_outcome?: ("confirmed_absent" | "confirmed_applied") | null;
+        };
+        /**
+         * TaskJobDetail
+         * @description A-14 detailed task-job view including attempt history and DLQ entry.
+         */
+        TaskJobDetail: {
+            /** Attempt */
+            attempt: number;
+            /** Attempts History */
+            attempts_history?: components["schemas"]["TaskAttemptSummary"][];
+            /** Budget Key */
+            budget_key?: string | null;
+            /** Cancel Reason */
+            cancel_reason?: string | null;
+            /** Correlation Id */
+            correlation_id?: string | null;
+            /** Created At */
+            created_at: string;
+            dead_letter_entry?: components["schemas"]["DeadLetterJobSummary"] | null;
+            /** Deadline */
+            deadline: string;
+            /** Heartbeat At */
+            heartbeat_at?: string | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Last Error Code */
+            last_error_code?: string | null;
+            /** Last Error Detail */
+            last_error_detail?: string | null;
+            /** Lease Epoch */
+            lease_epoch: number;
+            /** Lease Expires At */
+            lease_expires_at?: string | null;
+            /** Leased By Worker Id */
+            leased_by_worker_id?: string | null;
+            /** Logical Effect Key */
+            logical_effect_key?: string | null;
+            /**
+             * Max Attempts
+             * @default 3
+             */
+            max_attempts: number;
+            /** Not Before */
+            not_before: string;
+            /**
+             * Priority
+             * @default 100
+             */
+            priority: number;
+            /**
+             * Reconcile Required
+             * @default false
+             */
+            reconcile_required: boolean;
+            /**
+             * Recoverable
+             * @default true
+             */
+            recoverable: boolean;
+            /** Repair Id */
+            repair_id?: string | null;
+            /** Repository Id */
+            repository_id?: string | null;
+            /** Resource Id */
+            resource_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "leased" | "running" | "succeeded" | "failed" | "cancel_requested" | "cancelled" | "dead_letter";
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * TaskJobPage
+         * @description A-14 S-04 cursor-paginated task-job listing with scoped fairness summary.
+         */
+        TaskJobPage: {
+            /** Items */
+            items: components["schemas"]["TaskJob"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+            summary?: components["schemas"]["WorkspaceQueueFairnessSummary"] | null;
         };
         /**
          * TelegramLinkSummary
@@ -3133,6 +3426,37 @@ export interface components {
         WorkspaceDeleteRequest: {
             /** Confirm Name */
             confirm_name: string;
+        };
+        /**
+         * WorkspaceQueueFairnessSummary
+         * @description UI-S14 / NFR-05 per-workspace concurrency cap, fairness, and transport health summary.
+         */
+        WorkspaceQueueFairnessSummary: {
+            /** Active Running Repairs */
+            active_running_repairs: number;
+            /** Backpressure Active */
+            backpressure_active: boolean;
+            /** Cancel Requested Count */
+            cancel_requested_count: number;
+            /** Dead Letter Count */
+            dead_letter_count: number;
+            /** Leased Count */
+            leased_count: number;
+            /** Max Running Repairs */
+            max_running_repairs: number;
+            /** Queued Count */
+            queued_count: number;
+            /** Running Count */
+            running_count: number;
+            /** Transport Detail */
+            transport_detail?: string | null;
+            /**
+             * Transport Status
+             * @enum {string}
+             */
+            transport_status: "healthy" | "degraded" | "unconfigured";
+            /** Workspace Paused */
+            workspace_paused: boolean;
         };
         /**
          * WorkspaceUpdateRequest
@@ -4396,6 +4720,128 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getOperationReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt"];
+                };
             };
             /** @description Bad Request */
             400: {
@@ -7338,6 +7784,387 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Membership"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    listWorkspaceTaskJobs: {
+        parameters: {
+            query?: {
+                state?: ("queued" | "leased" | "running" | "succeeded" | "failed" | "cancel_requested" | "cancelled" | "dead_letter") | null;
+                kind?: string | null;
+                repository_id?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskJobPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getWorkspaceTaskJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskJobDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    performWorkspaceTaskJobAction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "If-Match"?: string | null;
+            };
+            path: {
+                job_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskJobActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt"];
                 };
             };
             /** @description Bad Request */

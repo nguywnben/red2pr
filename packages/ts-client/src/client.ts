@@ -63,6 +63,18 @@ export type RemoteCheck = SchemaOf<"RemoteCheck">;
 export type Artifact = SchemaOf<"Artifact">;
 export type Worker = SchemaOf<"Worker">;
 export type TaskJob = SchemaOf<"TaskJob">;
+export type TaskJobState = TaskJob["state"];
+export type TaskAttemptSummary = SchemaOf<"TaskAttemptSummary">;
+export type TaskAttemptState = TaskAttemptSummary["state"];
+export type DeadLetterJobSummary = SchemaOf<"DeadLetterJobSummary">;
+export type DeadLetterStatus = DeadLetterJobSummary["status"];
+export type WorkspaceQueueFairnessSummary = SchemaOf<"WorkspaceQueueFairnessSummary">;
+export type QueueTransportStatus = WorkspaceQueueFairnessSummary["transport_status"];
+export type TaskJobDetail = SchemaOf<"TaskJobDetail">;
+export type TaskJobPage = SchemaOf<"TaskJobPage">;
+export type TaskJobActionRequest = SchemaOf<"TaskJobActionRequest">;
+export type TaskJobAction = TaskJobActionRequest["action"];
+export type TaskJobReconcileOutcome = NonNullable<TaskJobActionRequest["reconciled_outcome"]>;
 export type NotificationDestination = SchemaOf<"NotificationDestination">;
 export type NotificationDelivery = SchemaOf<"NotificationDelivery">;
 export type NotificationPreference = SchemaOf<"NotificationPreference">;
@@ -114,6 +126,10 @@ export interface IdempotentMutationOptions extends RequestCallOptions {
   readonly idempotencyKey: string;
 }
 
+export interface IdempotentOptimisticMutationOptions extends IdempotentMutationOptions {
+  readonly ifMatch?: string;
+}
+
 export interface OptionalIdempotentMutationOptions extends RequestCallOptions {
   readonly idempotencyKey?: string;
 }
@@ -143,6 +159,14 @@ export interface ListSetupConsentsQuery {
 export interface ListEndpointRegistrationsQuery {
   readonly adapter?: EgressAdapterKind | null;
   readonly include_revoked?: boolean;
+}
+
+export interface ListWorkspaceTaskJobsQuery {
+  readonly state?: TaskJobState | null;
+  readonly kind?: string | null;
+  readonly repository_id?: string | null;
+  readonly cursor?: string | null;
+  readonly limit?: number;
 }
 
 export interface ApiEnvelope<TData> {
@@ -298,6 +322,26 @@ export interface Red2PrClient {
     body: InviteAcceptRequest,
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<Membership>>;
+  listTaskJobs(
+    ws: string,
+    query?: ListWorkspaceTaskJobsQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<TaskJobPage>>;
+  getTaskJob(
+    ws: string,
+    jobId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<TaskJobDetail>>;
+  performTaskJobAction(
+    ws: string,
+    jobId: string,
+    body: TaskJobActionRequest,
+    options: IdempotentOptimisticMutationOptions,
+  ): Promise<ApiEnvelope<ActionReceipt>>;
+  getOperationReceipt(
+    operationId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<ActionReceipt>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -857,6 +901,63 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
     async acceptWorkspaceInvitation(body, reqOptions) {
       const { data, error, response } = await raw.POST("/api/v1/invitations/accept", {
         body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async listTaskJobs(ws, query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/task-jobs", {
+        params: { path: { ws }, query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async getTaskJob(ws, jobId, reqOptions) {
+      const { data, error, response } = await raw.GET(
+        "/api/v1/workspaces/{ws}/task-jobs/{job_id}",
+        {
+          params: { path: { ws, job_id: jobId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async performTaskJobAction(ws, jobId, body, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/workspaces/{ws}/task-jobs/{job_id}/actions",
+        {
+          params: {
+            path: { ws, job_id: jobId },
+            header: {
+              "Idempotency-Key": reqOptions.idempotencyKey,
+              ...(reqOptions.ifMatch ? { "If-Match": reqOptions.ifMatch } : {}),
+            },
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async getOperationReceipt(operationId, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/operations/{operation_id}", {
+        params: { path: { operation_id: operationId } },
         headers: buildOptionalHeaders(reqOptions),
         signal: reqOptions?.signal,
       });
