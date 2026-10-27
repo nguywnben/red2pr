@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Red2PR canonical wire schemas and cryptographic contract primitives (S-01..S-22)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "cryptography>=44.0.0,<48.0.0",
     "pydantic>=2.10.0,<3.0.0",
 ]
 

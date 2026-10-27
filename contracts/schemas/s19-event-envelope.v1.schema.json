@@ -1,0 +1,473 @@
+{
+  "$defs": {
+    "ApprovalEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_id": {
+          "title": "Approval Id",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "status": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "approval_id",
+        "status"
+      ],
+      "title": "ApprovalEventPayload",
+      "type": "object"
+    },
+    "BudgetEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "budget_id": {
+          "title": "Budget Id",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "budget_id",
+        "reason_code"
+      ],
+      "title": "BudgetEventPayload",
+      "type": "object"
+    },
+    "DeliveryEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "delivery_id": {
+          "title": "Delivery Id",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "delivery_id",
+        "reason_code"
+      ],
+      "title": "DeliveryEventPayload",
+      "type": "object"
+    },
+    "OperationsEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": {
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "status": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "status"
+      ],
+      "title": "OperationsEventPayload",
+      "type": "object"
+    },
+    "ProviderConnectionEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "connection_id": {
+          "title": "Connection Id",
+          "type": "string"
+        },
+        "status": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "connection_id",
+        "status"
+      ],
+      "title": "ProviderConnectionEventPayload",
+      "type": "object"
+    },
+    "PublicationEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "publication_id": {
+          "title": "Publication Id",
+          "type": "string"
+        },
+        "status": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "publication_id",
+        "status"
+      ],
+      "title": "PublicationEventPayload",
+      "type": "object"
+    },
+    "RemoteCiEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "head_sha": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Head Sha",
+          "type": "string"
+        },
+        "outcome": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Outcome",
+          "type": "string"
+        },
+        "publication_id": {
+          "title": "Publication Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "publication_id",
+        "head_sha",
+        "outcome"
+      ],
+      "title": "RemoteCiEventPayload",
+      "type": "object"
+    },
+    "RepairPhaseEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "reason_code": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Code"
+        },
+        "repair_id": {
+          "title": "Repair Id",
+          "type": "string"
+        },
+        "state": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repair_id",
+        "state"
+      ],
+      "title": "RepairPhaseEventPayload",
+      "type": "object"
+    },
+    "ReproVerificationEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "manifest_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Manifest Id"
+        },
+        "outcome": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Outcome",
+          "type": "string"
+        },
+        "repair_id": {
+          "title": "Repair Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repair_id",
+        "outcome"
+      ],
+      "title": "ReproVerificationEventPayload",
+      "type": "object"
+    },
+    "RunEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt_key": {
+          "title": "Attempt Key",
+          "type": "string"
+        },
+        "head_sha": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Head Sha",
+          "type": "string"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "attempt_key",
+        "head_sha"
+      ],
+      "title": "RunEventPayload",
+      "type": "object"
+    },
+    "SecurityIdentityEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "reason_code": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "target_id": {
+          "title": "Target Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target_id",
+        "reason_code"
+      ],
+      "title": "SecurityIdentityEventPayload",
+      "type": "object"
+    },
+    "WorkerEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        },
+        "worker_id": {
+          "title": "Worker Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "worker_id",
+        "status"
+      ],
+      "title": "WorkerEventPayload",
+      "type": "object"
+    }
+  },
+  "$id": "https://red2pr.local/schemas/s19-event-envelope.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "S-19 canonical domain event and SSE frame payload.",
+  "properties": {
+    "aggregate_id": {
+      "title": "Aggregate Id",
+      "type": "string"
+    },
+    "aggregate_version": {
+      "minimum": 1,
+      "title": "Aggregate Version",
+      "type": "integer"
+    },
+    "causation_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Causation Id"
+    },
+    "correlation_id": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Correlation Id",
+      "type": "string"
+    },
+    "event_id": {
+      "title": "Event Id",
+      "type": "string"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "payload": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProviderConnectionEventPayload"
+        },
+        {
+          "$ref": "#/$defs/RunEventPayload"
+        },
+        {
+          "$ref": "#/$defs/RepairPhaseEventPayload"
+        },
+        {
+          "$ref": "#/$defs/ReproVerificationEventPayload"
+        },
+        {
+          "$ref": "#/$defs/ApprovalEventPayload"
+        },
+        {
+          "$ref": "#/$defs/PublicationEventPayload"
+        },
+        {
+          "$ref": "#/$defs/RemoteCiEventPayload"
+        },
+        {
+          "$ref": "#/$defs/WorkerEventPayload"
+        },
+        {
+          "$ref": "#/$defs/BudgetEventPayload"
+        },
+        {
+          "$ref": "#/$defs/SecurityIdentityEventPayload"
+        },
+        {
+          "$ref": "#/$defs/OperationsEventPayload"
+        },
+        {
+          "$ref": "#/$defs/DeliveryEventPayload"
+        }
+      ],
+      "title": "Payload"
+    },
+    "repository_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Repository Id"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "session_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Session Id"
+    },
+    "type": {
+      "enum": [
+        "provider.connection.created",
+        "provider.run.failed",
+        "provider.run.retried",
+        "repair.session.created",
+        "repair.diagnosed",
+        "repair.reproduction.completed",
+        "repair.patch.proposed",
+        "repair.verification.completed",
+        "repair.approval.requested",
+        "repair.approval.decided",
+        "repair.publication.created",
+        "repair.remote_ci.completed",
+        "repair.blocked",
+        "repair.cancelled",
+        "worker.offline",
+        "worker.quarantined",
+        "integration.disconnected",
+        "usage.budget.exceeded",
+        "security.policy.denied",
+        "backup.failed",
+        "release.update_available",
+        "identity.permission_revoked",
+        "notification.delivery.failed",
+        "operations.restore.completed"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "workspace_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Workspace Id"
+    }
+  },
+  "required": [
+    "event_id",
+    "type",
+    "occurred_at",
+    "aggregate_id",
+    "aggregate_version",
+    "correlation_id",
+    "payload"
+  ],
+  "title": "EventEnvelope",
+  "type": "object"
+}

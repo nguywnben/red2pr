@@ -1,0 +1,458 @@
+{
+  "$defs": {
+    "IsolationCheckResult": {
+      "additionalProperties": false,
+      "description": "S-21 supervisor-attested confinement/cleanup check result.",
+      "properties": {
+        "check_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Check Id",
+          "type": "string"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "check_id",
+        "passed"
+      ],
+      "title": "IsolationCheckResult",
+      "type": "object"
+    },
+    "ResultArtifactRef": {
+      "additionalProperties": false,
+      "description": "S-21 content-addressed execution output artifact descriptor.",
+      "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "digest",
+        "size"
+      ],
+      "title": "ResultArtifactRef",
+      "type": "object"
+    },
+    "ResultV1": {
+      "additionalProperties": false,
+      "description": "S-21 supervisor-signed sandbox execution outcome (never signed inside guest).",
+      "properties": {
+        "artifact_refs": {
+          "items": {
+            "$ref": "#/$defs/ResultArtifactRef"
+          },
+          "title": "Artifact Refs",
+          "type": "array"
+        },
+        "capability_nonce": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Capability Nonce",
+          "type": "string"
+        },
+        "command_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Command Digest",
+          "type": "string"
+        },
+        "ended_at": {
+          "format": "date-time",
+          "title": "Ended At",
+          "type": "string"
+        },
+        "environment_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Environment Digest",
+          "type": "string"
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Code"
+        },
+        "image_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Image Digest",
+          "type": "string"
+        },
+        "isolation_checks": {
+          "items": {
+            "$ref": "#/$defs/IsolationCheckResult"
+          },
+          "minItems": 1,
+          "title": "Isolation Checks",
+          "type": "array"
+        },
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        },
+        "patch_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Patch Digest"
+        },
+        "resource_usage": {
+          "$ref": "#/$defs/SandboxResourceUsage"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "signature": {
+          "maxLength": 4096,
+          "title": "Signature",
+          "type": "string"
+        },
+        "signer_key_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Signer Key Id",
+          "type": "string"
+        },
+        "source_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Digest",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "termination": {
+          "enum": [
+            "exited",
+            "timeout",
+            "oom",
+            "cancelled",
+            "infrastructure_error"
+          ],
+          "title": "Termination",
+          "type": "string"
+        },
+        "worker_id": {
+          "title": "Worker Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id",
+        "lease_epoch",
+        "capability_nonce",
+        "worker_id",
+        "started_at",
+        "ended_at",
+        "termination",
+        "command_digest",
+        "image_digest",
+        "environment_digest",
+        "source_digest",
+        "resource_usage",
+        "isolation_checks",
+        "signer_key_id",
+        "signature"
+      ],
+      "title": "ResultV1",
+      "type": "object"
+    },
+    "SandboxJobV1": {
+      "additionalProperties": false,
+      "description": "S-21 lease-fenced immutable execution directive dispatched to worker supervisor.",
+      "properties": {
+        "artifact_upload_capability": {
+          "maxLength": 4096,
+          "title": "Artifact Upload Capability",
+          "type": "string"
+        },
+        "base_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Base Sha",
+          "type": "string"
+        },
+        "capability_nonce": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Capability Nonce",
+          "type": "string"
+        },
+        "command_ids": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Command Ids",
+          "type": "array"
+        },
+        "expected_worker_trust_domain": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Expected Worker Trust Domain",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "image_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Image Digest",
+          "type": "string"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        },
+        "network_policy_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Network Policy Digest",
+          "type": "string"
+        },
+        "patch_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Patch Digest"
+        },
+        "profile_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "profile_revision": {
+          "minimum": 1,
+          "title": "Profile Revision",
+          "type": "integer"
+        },
+        "repair_id": {
+          "title": "Repair Id",
+          "type": "string"
+        },
+        "repository_id": {
+          "title": "Repository Id",
+          "type": "string"
+        },
+        "resource_limits": {
+          "$ref": "#/$defs/SandboxResourceLimits"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "source_archive_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Archive Digest",
+          "type": "string"
+        },
+        "supervisor_policy_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Supervisor Policy Digest",
+          "type": "string"
+        },
+        "workspace_id": {
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id",
+        "workspace_id",
+        "repository_id",
+        "repair_id",
+        "lease_epoch",
+        "capability_nonce",
+        "issued_at",
+        "expires_at",
+        "base_sha",
+        "source_archive_digest",
+        "profile_id",
+        "profile_revision",
+        "image_digest",
+        "command_ids",
+        "resource_limits",
+        "network_policy_digest",
+        "artifact_upload_capability",
+        "expected_worker_trust_domain",
+        "supervisor_policy_digest"
+      ],
+      "title": "SandboxJobV1",
+      "type": "object"
+    },
+    "SandboxResourceLimits": {
+      "additionalProperties": false,
+      "description": "S-21 hard execution quotas enforced by isolated worker supervisor.",
+      "properties": {
+        "cpu": {
+          "maximum": 64,
+          "minimum": 1,
+          "title": "Cpu",
+          "type": "integer"
+        },
+        "disk_bytes": {
+          "minimum": 1,
+          "title": "Disk Bytes",
+          "type": "integer"
+        },
+        "memory_bytes": {
+          "minimum": 1,
+          "title": "Memory Bytes",
+          "type": "integer"
+        },
+        "output_bytes": {
+          "minimum": 1,
+          "title": "Output Bytes",
+          "type": "integer"
+        },
+        "pids": {
+          "maximum": 65536,
+          "minimum": 1,
+          "title": "Pids",
+          "type": "integer"
+        },
+        "wall_seconds": {
+          "maximum": 7200,
+          "minimum": 1,
+          "title": "Wall Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cpu",
+        "memory_bytes",
+        "disk_bytes",
+        "pids",
+        "wall_seconds",
+        "output_bytes"
+      ],
+      "title": "SandboxResourceLimits",
+      "type": "object"
+    },
+    "SandboxResourceUsage": {
+      "additionalProperties": false,
+      "description": "S-21 measured guest resource consumption.",
+      "properties": {
+        "disk_written_bytes": {
+          "minimum": 0,
+          "title": "Disk Written Bytes",
+          "type": "integer"
+        },
+        "max_memory_bytes": {
+          "minimum": 0,
+          "title": "Max Memory Bytes",
+          "type": "integer"
+        },
+        "output_bytes": {
+          "minimum": 0,
+          "title": "Output Bytes",
+          "type": "integer"
+        },
+        "wall_ms": {
+          "minimum": 0,
+          "title": "Wall Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "wall_ms",
+        "max_memory_bytes",
+        "disk_written_bytes",
+        "output_bytes"
+      ],
+      "title": "SandboxResourceUsage",
+      "type": "object"
+    }
+  },
+  "$id": "https://red2pr.local/schemas/s21-sandbox-worker.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Combined JSON Schema root for S-21 SandboxJobV1 and ResultV1.",
+  "properties": {
+    "job": {
+      "$ref": "#/$defs/SandboxJobV1"
+    },
+    "result": {
+      "$ref": "#/$defs/ResultV1"
+    }
+  },
+  "required": [
+    "job",
+    "result"
+  ],
+  "title": "SandboxWorkerSchemaBundle",
+  "type": "object"
+}

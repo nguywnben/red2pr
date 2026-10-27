@@ -1,0 +1,33 @@
+{
+  "name": "@red2pr/ts-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Generated Red2PR OpenAPI v1 TypeScript contracts and typed fetch client",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "codegen": "openapi-typescript ../../contracts/openapi/openapi.v1.json -o src/schema.d.ts",
+    "build": "tsc -p tsconfig.build.json && node -e \"import('node:fs').then(fs => fs.copyFileSync('src/schema.d.ts', 'dist/schema.d.ts'))\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node -e \"import('node:fs').then(fs => fs.copyFileSync('src/schema.d.ts', 'dist-test/src/schema.d.ts'))\" && node --test dist-test/tests/client.test.js"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.13.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "openapi-typescript": "^7.4.4",
+    "typescript": "^5.7.2"
+  }
+}

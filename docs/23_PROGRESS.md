@@ -1,19 +1,19 @@
 # Development progress — authoritative truth
 
-**As of 2026-10-27:** Phase `P4` Wave `W0` started under [ADR-039](20_DECISIONS_ADR.md): **1 of 36 execution units completed (`U01` — `LOCALLY_VERIFIED`)**. Foundation monorepo manifests (`uv` + `pnpm`), `Z1`/`Z2`/`Z3` import-boundary linters, `AGENTS.md` SHA-256 guard, canonical wire primitives `S-01`..`S-05`, configuration schema validator ([25_CONFIG_SCHEMA.md](25_CONFIG_SCHEMA.md)), deterministic redaction engine v1, and structured JSON/OpenTelemetry ingress scrubbing are implemented and locally unit/property tested (`30 passed`). **0 end-to-end product features, 0 database migrations, 0 UI screens, 0 live provider integrations, 0 production deployments, and 0 release gates (`R-01`..`R-15` all `NOT RUN`) are completed.**
+**As of 2026-10-27:** Phase `P4` Wave `W0` active under [ADR-039](20_DECISIONS_ADR.md): **2 of 36 execution units completed (`U01`, `U02` — `LOCALLY_VERIFIED`)**. Monorepo manifests, `Z1`/`Z2`/`Z3` import-boundary linters, `AGENTS.md` SHA-256 guard, canonical contracts `S-01`..`S-22`, cryptographic primitives (AES-256-GCM envelope encryption, domain-separated Ed25519 manifest/result signing, constant-time HMAC-SHA256), FastAPI `/api/v1` shell (`GET /api/v1/system/health` `A-18` + `S-03` `Problem` handlers + `1 MiB` body guard), exported `contracts/schemas/*.json` & `contracts/openapi/openapi.v1.json`, and generated `@red2pr/ts-client` are implemented and locally tested (`52` Python + `3` TypeScript tests passed). **0 end-to-end product features, 0 database migrations, 0 UI screens, 0 live provider integrations, 0 production deployments, and 0 release gates (`R-01`..`R-15` all `NOT RUN`) are completed.**
 
 | Area | Designed | Implemented | Tested | Production validated |
 |---|---|---|---|---|
 | Product and feature specifications | yes | no | no | no |
-| User flows/UI | yes | no | no | no |
-| GitHub/GitLab integrations | yes | no | no | no |
-| Meta agent runtime | yes | no | no | no |
-| Worker sandbox / reproduction | yes | no | no | no |
-| Patch verification and PR/MR | yes | no | no | no |
-| Telegram and notifications | yes | no | no | no |
-| Auth/RBAC/security | yes | partial (`U01` redaction v1 & `Z1`/`Z2`/`Z3` import guards only) | partial (`locally_verified` unit/property) | no |
-| Installers/setup/CLI/operations | yes | partial (`U01` monorepo workspace & config schema parser only) | partial (`locally_verified` unit/property) | no |
-| Metrics, backups, release process | yes | partial (`U01` JSON/OTel ingress scrubbing only; `R-01`..`R-15` `NOT RUN`) | partial (`locally_verified` unit/property) | no |
+| User flows/UI | yes | partial (`U02` `@red2pr/ts-client` generated types/fetch only; `0` screens) | partial (`locally_verified` contract/unit) | no |
+| GitHub/GitLab integrations | yes | partial (`U02` `S-08..S-10` DTO schemas only; `0` adapters) | partial (`locally_verified` contract/unit) | no |
+| Meta agent runtime | yes | partial (`U02` `S-20` typed 8-tool schemas only; `0` broker/loops) | partial (`locally_verified` contract/unit) | no |
+| Worker sandbox / reproduction | yes | partial (`U02` `S-15`, `S-21` `SandboxJobV1`/`ResultV1` schemas & Ed25519 signing only) | partial (`locally_verified` contract/unit) | no |
+| Patch verification and PR/MR | yes | partial (`U02` `S-12..S-14`, `S-22` `EvidenceManifestV1` & `SEC-030` signature verifier only) | partial (`locally_verified` contract/unit) | no |
+| Telegram and notifications | yes | partial (`U02` `S-16` DTO schemas & `v1` webhook HMAC primitive only) | partial (`locally_verified` contract/unit) | no |
+| Auth/RBAC/security | yes | partial (`U01`–`U02` redaction v1, `Z1`/`Z2`/`Z3` linters, `S-06/07` DTOs & AES-GCM/Ed25519/HMAC crypto only) | partial (`locally_verified` unit/property/contract) | no |
+| Installers/setup/CLI/operations | yes | partial (`U01`–`U02` config schema, `S-18` DTOs & `A-18` `/api/v1/system/health` only) | partial (`locally_verified` unit/property/contract) | no |
+| Metrics, backups, release process | yes | partial (`U01`–`U02` JSON/OTel ingress scrubbing & `S-17` DTOs only; `R-01`..`R-15` `NOT RUN`) | partial (`locally_verified` unit/property/contract) | no |
 
 ## Change log template after approved coding
 `Date/time | milestone/feature IDs | code paths | actual commands executed | exit codes & test summaries | changed contracts/migrations | evidence artifact | known gaps/security risks | owner approval | next step`.
@@ -101,5 +101,34 @@ Validation result: Python check exit0 with 42 documents, 273 valid internal link
 - **Artifacts Produced:** Committed deterministic lockfiles `uv.lock` and `pnpm-lock.yaml`.
 - **Known Limitations & Security Risks:** `U01` provides library primitives, configuration validation, boundary linters, and log/span ingress scrubbing only. No HTTP API server (`U02`), cryptographic secret broker (`U02`/`U04`), PostgreSQL schema (`U03`), isolated sandbox execution (`U10`), or Astryx frontend (`U05`) exists yet.
 - **Blockers & Decision Changes:** Blockers for `U01`: `NONE`. Decision changes: `NONE` (no ADR conflicts encountered). Execution halted cleanly after `U01` awaiting owner dispatch of `U02`.
+
+## P4 execution log — U02 completed (`LOCALLY_VERIFIED`) — 2026-10-27
+
+- **Unit ID & Title:** `U02` — Canonical Domain Contracts (`S-06`..`S-22`), Crypto Primitives & OpenAPI/TS Codegen ([40_EXECUTION_MASTER_PLAN.md](40_EXECUTION_MASTER_PLAN.md)).
+- **Owner Approval & Authorization:** Master Plan `PLAN-2026-10-27-v1` approved under [ADR-039](20_DECISIONS_ADR.md); explicit owner authorization granted for `U02` execution only.
+- **Requirement, Contract & Test IDs Covered:** Full canonical contract suite `S-01`..`S-22` ([36_CANONICAL_CONTRACTS.md](36_CANONICAL_CONTRACTS.md)), including `auditor` in `S-07` `Membership.role` and the 10-phase `S-18` setup wizard enum (`ADR-038`), `require_baseline=true` invariant (`ADR-031`), `A-18` public minimal liveness (`GET /api/v1/system/health`), `S-03` `application/problem+json` error handlers (`400/401/403/404/409/410/412/413/422/429/500/503`), `1 MiB` request body ceiling (`S-01`), cryptographic foundation for `OPS-03` (versioned AES-256-GCM envelope encryption), `FIX-02` / `SEC-030` (domain-separated Ed25519 signing/verification over canonical JSON with key-ring revocation and trust-domain checks), and `SEC-028` (strict 8-tool `S-20` protocol rejecting retired/privileged tools and path traversal). Release gates `R-01`..`R-15` remain `NOT RUN`.
+- **Files Changed / Created / Deleted:**
+  - Modified: `.gitignore`, `pyproject.toml`, `uv.lock`, `pnpm-lock.yaml`, `packages/py-contracts/pyproject.toml`, `packages/py-contracts/src/py_contracts/__init__.py`, `apps/control-plane/pyproject.toml`, `apps/control-plane/src/red2pr_control/core/errors.py`, `docs/23_PROGRESS.md`.
+  - Deleted superseded placeholder: `packages/py-contracts/tests/.gitkeep`.
+  - Created `packages/py-contracts` modules & tests: `packages/py-contracts/src/py_contracts/{iam.py,integrations.py,repairs.py,events.py,tools.py,worker.py,evidence.py,crypto.py,schema_export.py}`, `packages/py-contracts/tests/test_schemas_and_crypto.py`.
+  - Created exported JSON Schemas & OpenAPI v1 contract: `contracts/schemas/{s19-event-envelope.v1.schema.json,s20-agent-tool-protocol.v1.schema.json,s21-sandbox-worker.v1.schema.json,s22-evidence-manifest.v1.schema.json}`, `contracts/openapi/openapi.v1.json`.
+  - Created FastAPI `/api/v1` shell & contract tests: `apps/control-plane/src/red2pr_control/api/{__init__.py,app.py}`, `apps/control-plane/tests/contract/test_openapi_roundtrip.py`.
+  - Created `@red2pr/ts-client` generated TypeScript package & tests: `packages/ts-client/{package.json,tsconfig.json,tsconfig.build.json}`, `packages/ts-client/src/{schema.d.ts,client.ts,index.ts}`, `packages/ts-client/tests/client.test.ts`.
+- **Executed Verification Commands & Measured Results:**
+
+| Command executed | Actual exit code | Measured result & evidence |
+|---|---|---|
+| `uv lock --check` | `0` | `Resolved 51 packages in 2ms`; `uv.lock` synchronized across all workspace members |
+| `uv run ruff check .` | `0` | `All checks passed!` across all `packages/` and `apps/` files |
+| `uv run mypy --strict packages/ apps/` | `0` | `Success: no issues found in 30 source files` (`pydantic.mypy` strict plugin enabled) |
+| `uv run lint-imports` | `0` | `Analyzed 53 files, 130 dependencies. Contracts: 4 kept, 0 broken` |
+| `uv run pytest packages/py-contracts/tests/ apps/control-plane/tests/contract/test_openapi_roundtrip.py apps/control-plane/tests/unit/test_config_and_redaction.py -v` | `0` | `52 passed in 1.80s` (`8` `py-contracts` schema/crypto/property/drift suites + `14` FastAPI/OpenAPI/Problem/size-limit contract tests + `30` `U01` regression tests) |
+| `pnpm --filter @red2pr/ts-client run codegen && pnpm --filter @red2pr/ts-client build && pnpm --filter @red2pr/ts-client typecheck && pnpm --filter @red2pr/ts-client test` | `0` | `openapi-typescript 7.13.0` generated `src/schema.d.ts` (`0` drift); strict `tsc` build/typecheck exit `0`; `node --test` `3/3 passed` (`125ms`) |
+| `pnpm build && pnpm typecheck && pnpm lint && pnpm test` | `0` | Monorepo recursive TypeScript build, strict typecheck, lint, and test gates all exit `0` |
+| `git diff HEAD -- AGENTS.md` | `0` | Empty diff; `AGENTS.md` LF-normalized SHA-256 remains `1fe195214a28f40d3b621a75da55390d8033aadeace35e9aefa4599146b97509` |
+
+- **Artifacts Produced:** `contracts/openapi/openapi.v1.json`, `contracts/schemas/s19-event-envelope.v1.schema.json`, `contracts/schemas/s20-agent-tool-protocol.v1.schema.json`, `contracts/schemas/s21-sandbox-worker.v1.schema.json`, `contracts/schemas/s22-evidence-manifest.v1.schema.json`, `packages/ts-client/src/schema.d.ts`, updated `uv.lock` and `pnpm-lock.yaml`.
+- **Known Limitations & Security Risks:** `U02` establishes canonical wire schemas, cryptographic primitives, OpenAPI/TypeScript codegen, and `/api/v1/system/health` minimal liveness only. Persistent database tables, RLS policies, transactional outbox, idempotency store, and hash-chained `audit_log` await `U03`; React 19 + Astryx frontend wrappers and SSE cursor reconciler await `U04`; authentication/RBAC/CSRF enforcement awaits `U05`–`U06`.
+- **Blockers & Decision Changes:** Blockers for `U02`: `NONE`. Decision changes: `NONE` (all `ADR-031`, `ADR-033`, `ADR-038`, `ADR-039` contracts enforced verbatim). Execution halted cleanly after `U02` awaiting owner dispatch of the next unit.
 
 [← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

@@ -1,0 +1,749 @@
+{
+  "$defs": {
+    "ActionReceipt": {
+      "additionalProperties": false,
+      "description": "S-05 durable asynchronous operation receipt.",
+      "properties": {
+        "correlation_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Correlation Id",
+          "type": "string"
+        },
+        "operation_id": {
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Problem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "resource_id": {
+          "title": "Resource Id",
+          "type": "string"
+        },
+        "result_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Id"
+        },
+        "state": {
+          "enum": [
+            "accepted",
+            "running",
+            "succeeded",
+            "failed",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "status_url": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Status Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "resource_id",
+        "state",
+        "correlation_id",
+        "status_url"
+      ],
+      "title": "ActionReceipt",
+      "type": "object"
+    },
+    "ApplyPatchArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "base_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Base Sha",
+          "type": "string"
+        },
+        "expected_worktree_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Expected Worktree Digest",
+          "type": "string"
+        },
+        "patch_artifact_id": {
+          "title": "Patch Artifact Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_sha",
+        "patch_artifact_id",
+        "expected_worktree_digest"
+      ],
+      "title": "ApplyPatchArgs",
+      "type": "object"
+    },
+    "ApplyPatchResult": {
+      "additionalProperties": false,
+      "properties": {
+        "changed_paths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Changed Paths",
+          "type": "array"
+        },
+        "integrity_outcome": {
+          "enum": [
+            "accepted",
+            "rejected_policy",
+            "rejected_integrity"
+          ],
+          "title": "Integrity Outcome",
+          "type": "string"
+        },
+        "patch_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Patch Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "patch_digest",
+        "changed_paths",
+        "integrity_outcome"
+      ],
+      "title": "ApplyPatchResult",
+      "type": "object"
+    },
+    "GetExecutionResultArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": {
+          "title": "Operation Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id"
+      ],
+      "title": "GetExecutionResultArgs",
+      "type": "object"
+    },
+    "Problem": {
+      "additionalProperties": false,
+      "description": "S-03 safe RFC 9457 / application/problem+json error envelope.",
+      "properties": {
+        "code": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "correlation_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Correlation Id",
+          "type": "string"
+        },
+        "detail": {
+          "maxLength": 4096,
+          "title": "Detail",
+          "type": "string"
+        },
+        "errors": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ProblemFieldError"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Errors"
+        },
+        "status": {
+          "maximum": 599,
+          "minimum": 400,
+          "title": "Status",
+          "type": "integer"
+        },
+        "title": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "status",
+        "code",
+        "detail",
+        "correlation_id"
+      ],
+      "title": "Problem",
+      "type": "object"
+    },
+    "ProblemFieldError": {
+      "additionalProperties": false,
+      "description": "S-03 structured per-field validation failure descriptor.",
+      "properties": {
+        "code": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "field": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Field",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "code"
+      ],
+      "title": "ProblemFieldError",
+      "type": "object"
+    },
+    "ReadCommitDiffArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "base_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Base Sha",
+          "type": "string"
+        },
+        "head_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Head Sha",
+          "type": "string"
+        },
+        "max_bytes": {
+          "default": 65536,
+          "maximum": 262144,
+          "minimum": 1,
+          "title": "Max Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_sha",
+        "head_sha"
+      ],
+      "title": "ReadCommitDiffArgs",
+      "type": "object"
+    },
+    "ReadCommitDiffResult": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 4096,
+          "title": "Summary",
+          "type": "string"
+        },
+        "truncated": {
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "summary",
+        "truncated"
+      ],
+      "title": "ReadCommitDiffResult",
+      "type": "object"
+    },
+    "ReadFileArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "length": {
+          "default": 16384,
+          "maximum": 65536,
+          "minimum": 1,
+          "title": "Length",
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "ReadFileArgs",
+      "type": "object"
+    },
+    "ReadFileResult": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 65536,
+          "title": "Text",
+          "type": "string"
+        },
+        "truncated": {
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "text",
+        "digest",
+        "truncated"
+      ],
+      "title": "ReadFileResult",
+      "type": "object"
+    },
+    "ReadLogExcerptArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "length": {
+          "default": 16384,
+          "maximum": 65536,
+          "minimum": 1,
+          "title": "Length",
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "artifact_id"
+      ],
+      "title": "ReadLogExcerptArgs",
+      "type": "object"
+    },
+    "ReadLogExcerptResult": {
+      "additionalProperties": false,
+      "properties": {
+        "next_offset": {
+          "minimum": 0,
+          "title": "Next Offset",
+          "type": "integer"
+        },
+        "redaction_version": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Redaction Version",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 65536,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "redaction_version",
+        "next_offset"
+      ],
+      "title": "ReadLogExcerptResult",
+      "type": "object"
+    },
+    "RequestReproductionArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "command_ids": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Command Ids",
+          "type": "array"
+        },
+        "profile_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "command_ids"
+      ],
+      "title": "RequestReproductionArgs",
+      "type": "object"
+    },
+    "RunTargetedTestArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "patch_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Patch Digest",
+          "type": "string"
+        },
+        "profile_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "test_selection_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Test Selection Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "test_selection_id",
+        "patch_digest"
+      ],
+      "title": "RunTargetedTestArgs",
+      "type": "object"
+    },
+    "SearchMatch": {
+      "additionalProperties": false,
+      "properties": {
+        "excerpt": {
+          "maxLength": 4096,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "line": {
+          "minimum": 1,
+          "title": "Line",
+          "type": "integer"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "line",
+        "excerpt"
+      ],
+      "title": "SearchMatch",
+      "type": "object"
+    },
+    "SearchRepoArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "max_results": {
+          "default": 25,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Max Results",
+          "type": "integer"
+        },
+        "path_prefix": {
+          "default": "",
+          "title": "Path Prefix",
+          "type": "string"
+        },
+        "query": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "SearchRepoArgs",
+      "type": "object"
+    },
+    "SearchRepoResult": {
+      "additionalProperties": false,
+      "properties": {
+        "matches": {
+          "items": {
+            "$ref": "#/$defs/SearchMatch"
+          },
+          "title": "Matches",
+          "type": "array"
+        },
+        "truncated": {
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "matches",
+        "truncated"
+      ],
+      "title": "SearchRepoResult",
+      "type": "object"
+    },
+    "ToolCallRequest": {
+      "additionalProperties": false,
+      "description": "S-20 typed agent tool invocation envelope.",
+      "properties": {
+        "arguments": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadFileArgs"
+            },
+            {
+              "$ref": "#/$defs/SearchRepoArgs"
+            },
+            {
+              "$ref": "#/$defs/ReadLogExcerptArgs"
+            },
+            {
+              "$ref": "#/$defs/ReadCommitDiffArgs"
+            },
+            {
+              "$ref": "#/$defs/RequestReproductionArgs"
+            },
+            {
+              "$ref": "#/$defs/ApplyPatchArgs"
+            },
+            {
+              "$ref": "#/$defs/RunTargetedTestArgs"
+            },
+            {
+              "$ref": "#/$defs/GetExecutionResultArgs"
+            }
+          ],
+          "title": "Arguments"
+        },
+        "context_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Context Digest",
+          "type": "string"
+        },
+        "repair_id": {
+          "title": "Repair Id",
+          "type": "string"
+        },
+        "step_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Step Id",
+          "type": "string"
+        },
+        "tool_call_id": {
+          "title": "Tool Call Id",
+          "type": "string"
+        },
+        "tool_name": {
+          "enum": [
+            "read_file",
+            "search_repo",
+            "read_log_excerpt",
+            "read_commit_diff",
+            "request_reproduction",
+            "apply_patch",
+            "run_targeted_test",
+            "get_execution_result"
+          ],
+          "title": "Tool Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_call_id",
+        "repair_id",
+        "step_id",
+        "tool_name",
+        "arguments",
+        "context_digest"
+      ],
+      "title": "ToolCallRequest",
+      "type": "object"
+    },
+    "ToolCallResponse": {
+      "additionalProperties": false,
+      "description": "S-20 typed agent tool response envelope.",
+      "properties": {
+        "operation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation Id"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Problem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadFileResult"
+            },
+            {
+              "$ref": "#/$defs/SearchRepoResult"
+            },
+            {
+              "$ref": "#/$defs/ReadLogExcerptResult"
+            },
+            {
+              "$ref": "#/$defs/ReadCommitDiffResult"
+            },
+            {
+              "$ref": "#/$defs/ApplyPatchResult"
+            },
+            {
+              "$ref": "#/$defs/ActionReceipt"
+            },
+            {
+              "$ref": "#/$defs/TrustedExecutionResultRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "denied",
+            "failed",
+            "pending"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tool_call_id": {
+          "title": "Tool Call Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_call_id",
+        "status"
+      ],
+      "title": "ToolCallResponse",
+      "type": "object"
+    },
+    "TrustedExecutionResultRef": {
+      "additionalProperties": false,
+      "properties": {
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Code"
+        },
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "operation_id": {
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "result_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Result Digest",
+          "type": "string"
+        },
+        "termination": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Termination",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "job_id",
+        "termination",
+        "result_digest"
+      ],
+      "title": "TrustedExecutionResultRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://red2pr.local/schemas/s20-agent-tool-protocol.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Combined JSON Schema root for S-20 ToolCallRequest and ToolCallResponse.",
+  "properties": {
+    "request": {
+      "$ref": "#/$defs/ToolCallRequest"
+    },
+    "response": {
+      "$ref": "#/$defs/ToolCallResponse"
+    }
+  },
+  "required": [
+    "request",
+    "response"
+  ],
+  "title": "AgentToolProtocolSchemaBundle",
+  "type": "object"
+}

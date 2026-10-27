@@ -1,0 +1,350 @@
+{
+  "$defs": {
+    "ModelToolProvenance": {
+      "additionalProperties": false,
+      "description": "S-22 redacted model/tool provenance record (no raw chain-of-thought or secrets).",
+      "properties": {
+        "adapter_version": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Adapter Version",
+          "type": "string"
+        },
+        "model_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Model Id",
+          "type": "string"
+        },
+        "provider_request_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Request Id"
+        },
+        "redacted_context_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Redacted Context Hashes",
+          "type": "array"
+        },
+        "tool_call_digests": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Tool Call Digests",
+          "type": "array"
+        },
+        "usage_record_id": {
+          "title": "Usage Record Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model_id",
+        "adapter_version",
+        "redacted_context_hashes",
+        "usage_record_id"
+      ],
+      "title": "ModelToolProvenance",
+      "type": "object"
+    },
+    "RegressionSuiteSummary": {
+      "additionalProperties": false,
+      "description": "S-22 deterministic regression test suite summary.",
+      "properties": {
+        "failed_count": {
+          "minimum": 0,
+          "title": "Failed Count",
+          "type": "integer"
+        },
+        "passed_count": {
+          "minimum": 0,
+          "title": "Passed Count",
+          "type": "integer"
+        },
+        "result_job_id": {
+          "title": "Result Job Id",
+          "type": "string"
+        },
+        "selection_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Selection Digest",
+          "type": "string"
+        },
+        "selection_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Selection Id",
+          "type": "string"
+        },
+        "skipped_count": {
+          "minimum": 0,
+          "title": "Skipped Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "selection_id",
+        "selection_digest",
+        "passed_count",
+        "failed_count",
+        "skipped_count",
+        "result_job_id"
+      ],
+      "title": "RegressionSuiteSummary",
+      "type": "object"
+    }
+  },
+  "$id": "https://red2pr.local/schemas/s22-evidence-manifest.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "S-22 canonical domain-separated Ed25519-signed local proof manifest.",
+  "properties": {
+    "artifact_digests": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Artifact Digests",
+      "type": "object"
+    },
+    "base_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Base Sha",
+      "type": "string"
+    },
+    "baseline_result_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Baseline Result Digest",
+      "type": "string"
+    },
+    "baseline_result_job_id": {
+      "title": "Baseline Result Job Id",
+      "type": "string"
+    },
+    "ci_attempt_key": {
+      "title": "Ci Attempt Key",
+      "type": "string"
+    },
+    "ci_job_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Ci Job Ids",
+      "type": "array"
+    },
+    "ci_run_id": {
+      "title": "Ci Run Id",
+      "type": "string"
+    },
+    "commands_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Commands Digest",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "dependency_lock_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Dependency Lock Digest",
+      "type": "string"
+    },
+    "diff_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Diff Digest",
+      "type": "string"
+    },
+    "environment_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Environment Digest",
+      "type": "string"
+    },
+    "failure_fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Failure Fingerprint",
+      "type": "string"
+    },
+    "fidelity_differences": {
+      "items": {
+        "maxLength": 4096,
+        "type": "string"
+      },
+      "title": "Fidelity Differences",
+      "type": "array"
+    },
+    "fidelity_grade": {
+      "enum": [
+        "F1",
+        "F2",
+        "F3",
+        "FX"
+      ],
+      "title": "Fidelity Grade",
+      "type": "string"
+    },
+    "image_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Image Digest",
+      "type": "string"
+    },
+    "integrity_outcome": {
+      "enum": [
+        "pass",
+        "fail",
+        "unknown",
+        "not_applicable"
+      ],
+      "title": "Integrity Outcome",
+      "type": "string"
+    },
+    "manifest_id": {
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "patched_result_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Patched Result Digest",
+      "type": "string"
+    },
+    "patched_result_job_id": {
+      "title": "Patched Result Job Id",
+      "type": "string"
+    },
+    "patched_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Patched Sha",
+      "type": "string"
+    },
+    "policy_outcome": {
+      "enum": [
+        "pass",
+        "fail",
+        "unknown",
+        "not_applicable"
+      ],
+      "title": "Policy Outcome",
+      "type": "string"
+    },
+    "profile_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Profile Digest",
+      "type": "string"
+    },
+    "profile_id": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "provenance": {
+      "items": {
+        "$ref": "#/$defs/ModelToolProvenance"
+      },
+      "title": "Provenance",
+      "type": "array"
+    },
+    "redaction_revision": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Redaction Revision",
+      "type": "string"
+    },
+    "regression": {
+      "$ref": "#/$defs/RegressionSuiteSummary"
+    },
+    "repair_id": {
+      "title": "Repair Id",
+      "type": "string"
+    },
+    "repository_id": {
+      "title": "Repository Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "security_outcome": {
+      "enum": [
+        "pass",
+        "fail",
+        "unknown",
+        "not_applicable"
+      ],
+      "title": "Security Outcome",
+      "type": "string"
+    },
+    "signature": {
+      "maxLength": 4096,
+      "title": "Signature",
+      "type": "string"
+    },
+    "signer_key_id": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Signer Key Id",
+      "type": "string"
+    },
+    "source_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Source Sha",
+      "type": "string"
+    },
+    "workspace_id": {
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "manifest_id",
+    "workspace_id",
+    "repository_id",
+    "repair_id",
+    "source_sha",
+    "base_sha",
+    "patched_sha",
+    "diff_digest",
+    "ci_run_id",
+    "ci_job_ids",
+    "ci_attempt_key",
+    "profile_id",
+    "profile_digest",
+    "image_digest",
+    "dependency_lock_digest",
+    "commands_digest",
+    "environment_digest",
+    "baseline_result_job_id",
+    "baseline_result_digest",
+    "patched_result_job_id",
+    "patched_result_digest",
+    "failure_fingerprint",
+    "fidelity_grade",
+    "regression",
+    "integrity_outcome",
+    "security_outcome",
+    "policy_outcome",
+    "redaction_revision",
+    "artifact_digests",
+    "created_at",
+    "signer_key_id",
+    "signature"
+  ],
+  "title": "EvidenceManifestV1",
+  "type": "object"
+}

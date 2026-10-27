@@ -1,0 +1,5130 @@
+{
+  "components": {
+    "schemas": {
+      "ActionReceipt": {
+        "additionalProperties": false,
+        "description": "S-05 durable asynchronous operation receipt.",
+        "properties": {
+          "correlation_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Problem"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "resource_id": {
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "result_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Id"
+          },
+          "state": {
+            "enum": [
+              "accepted",
+              "running",
+              "succeeded",
+              "failed",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "status_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Status Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id",
+          "resource_id",
+          "state",
+          "correlation_id",
+          "status_url"
+        ],
+        "title": "ActionReceipt",
+        "type": "object"
+      },
+      "ApplyPatchArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "expected_worktree_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Worktree Digest",
+            "type": "string"
+          },
+          "patch_artifact_id": {
+            "title": "Patch Artifact Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "base_sha",
+          "patch_artifact_id",
+          "expected_worktree_digest"
+        ],
+        "title": "ApplyPatchArgs",
+        "type": "object"
+      },
+      "ApplyPatchResult": {
+        "additionalProperties": false,
+        "properties": {
+          "changed_paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed Paths",
+            "type": "array"
+          },
+          "integrity_outcome": {
+            "enum": [
+              "accepted",
+              "rejected_policy",
+              "rejected_integrity"
+            ],
+            "title": "Integrity Outcome",
+            "type": "string"
+          },
+          "patch_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Patch Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patch_digest",
+          "changed_paths",
+          "integrity_outcome"
+        ],
+        "title": "ApplyPatchResult",
+        "type": "object"
+      },
+      "Approval": {
+        "additionalProperties": false,
+        "description": "S-12 human approval bound to exact patch digest, base SHA, and policy revision.",
+        "properties": {
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "decision_actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Decision Actor"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "intent_type": {
+            "enum": [
+              "publish_draft_pr",
+              "sensitive_path_change",
+              "test_modification"
+            ],
+            "title": "Intent Type",
+            "type": "string"
+          },
+          "patch_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Patch Digest",
+            "type": "string"
+          },
+          "policy_revision": {
+            "minimum": 1,
+            "title": "Policy Revision",
+            "type": "integer"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "expired",
+              "revoked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_ref": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Target Ref",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "intent_type",
+          "patch_digest",
+          "base_sha",
+          "target_ref",
+          "policy_revision",
+          "expires_at",
+          "status"
+        ],
+        "title": "Approval",
+        "type": "object"
+      },
+      "ApprovalEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "approval_id": {
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expires At"
+          },
+          "status": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "approval_id",
+          "status"
+        ],
+        "title": "ApprovalEventPayload",
+        "type": "object"
+      },
+      "Artifact": {
+        "additionalProperties": false,
+        "description": "S-14 public artifact metadata DTO (never exposes internal storage_ref or bucket keys).",
+        "properties": {
+          "access_class": {
+            "enum": [
+              "public",
+              "workspace_internal",
+              "restricted"
+            ],
+            "title": "Access Class",
+            "type": "string"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Kind",
+            "type": "string"
+          },
+          "manifest_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Manifest Id"
+          },
+          "mime": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Mime",
+            "type": "string"
+          },
+          "purge_reason": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Purge Reason"
+          },
+          "redaction_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Redaction Version",
+            "type": "string"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "retention_until": {
+            "title": "Retention Until",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "kind",
+          "mime",
+          "size_bytes",
+          "digest",
+          "redaction_version",
+          "retention_until",
+          "access_class",
+          "available"
+        ],
+        "title": "Artifact",
+        "type": "object"
+      },
+      "AuditRecord": {
+        "additionalProperties": false,
+        "description": "S-17 tamper-evident append-only hash-chained audit entry.",
+        "properties": {
+          "action": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Actor",
+            "type": "string"
+          },
+          "checkpoint_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Checkpoint Id"
+          },
+          "correlation_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "allow",
+              "deny",
+              "error",
+              "reconcile"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "entry_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Entry Hash",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "prev_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Prev Hash",
+            "type": "string"
+          },
+          "reason_code": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "target": {
+            "maxLength": 4096,
+            "title": "Target",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "actor",
+          "action",
+          "target",
+          "decision",
+          "reason_code",
+          "correlation_id",
+          "prev_hash",
+          "entry_hash"
+        ],
+        "title": "AuditRecord",
+        "type": "object"
+      },
+      "BudgetEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "budget_id": {
+            "title": "Budget Id",
+            "type": "string"
+          },
+          "reason_code": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Reason Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "budget_id",
+          "reason_code"
+        ],
+        "title": "BudgetEventPayload",
+        "type": "object"
+      },
+      "CiJob": {
+        "additionalProperties": false,
+        "description": "S-10 normalized CI job with matrix dimensions and retry lineage.",
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Completed At"
+          },
+          "conclusion": {
+            "anyOf": [
+              {
+                "enum": [
+                  "success",
+                  "failure",
+                  "cancelled",
+                  "timed_out",
+                  "skipped",
+                  "neutral",
+                  "action_required",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Conclusion"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "matrix_dimensions": {
+            "additionalProperties": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "propertyNames": {
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "title": "Matrix Dimensions",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "retry_of_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry Of Id"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Started At"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "external_id",
+          "run_id",
+          "name"
+        ],
+        "title": "CiJob",
+        "type": "object"
+      },
+      "CiRun": {
+        "additionalProperties": false,
+        "description": "S-10 normalized CI pipeline/workflow run attempt.",
+        "properties": {
+          "attempt_key": {
+            "title": "Attempt Key",
+            "type": "string"
+          },
+          "conclusion": {
+            "anyOf": [
+              {
+                "enum": [
+                  "success",
+                  "failure",
+                  "cancelled",
+                  "timed_out",
+                  "skipped",
+                  "neutral",
+                  "action_required",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Conclusion"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_type": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Event Type",
+            "type": "string"
+          },
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "head_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Head Sha",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "jobs_complete": {
+            "title": "Jobs Complete",
+            "type": "boolean"
+          },
+          "raw_vendor_status": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Raw Vendor Status"
+          },
+          "ref": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "in_progress",
+              "completed",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "external_id",
+          "attempt_key",
+          "head_sha",
+          "ref",
+          "event_type",
+          "status",
+          "jobs_complete"
+        ],
+        "title": "CiRun",
+        "type": "object"
+      },
+      "Connection": {
+        "additionalProperties": false,
+        "description": "S-08 provider connection & capability snapshot read DTO.",
+        "properties": {
+          "api_version": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Api Version"
+          },
+          "auth_mode": {
+            "enum": [
+              "github_app",
+              "signed_webhook",
+              "secret_token"
+            ],
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "base_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "capabilities": {
+            "additionalProperties": {
+              "enum": [
+                "available",
+                "unavailable",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "propertyNames": {
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "title": "Capabilities",
+            "type": "object"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Checked At"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "github",
+              "gitlab"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "secret_presence": {
+            "$ref": "#/components/schemas/SecretPresence"
+          },
+          "status": {
+            "enum": [
+              "not_configured",
+              "checking",
+              "ready",
+              "degraded",
+              "revoked",
+              "unsupported"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "vendor_version": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Vendor Version"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "provider",
+          "base_url",
+          "auth_mode",
+          "secret_presence",
+          "status"
+        ],
+        "title": "Connection",
+        "type": "object"
+      },
+      "ConnectionWrite": {
+        "additionalProperties": false,
+        "description": "S-08 write input accepting an opaque secret_ref.",
+        "properties": {
+          "auth_mode": {
+            "enum": [
+              "github_app",
+              "signed_webhook",
+              "secret_token"
+            ],
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "base_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "github",
+              "gitlab"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "secret_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Secret Ref"
+          }
+        },
+        "required": [
+          "provider",
+          "base_url",
+          "auth_mode"
+        ],
+        "title": "ConnectionWrite",
+        "type": "object"
+      },
+      "DeliveryEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery_id": {
+            "title": "Delivery Id",
+            "type": "string"
+          },
+          "reason_code": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Reason Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "delivery_id",
+          "reason_code"
+        ],
+        "title": "DeliveryEventPayload",
+        "type": "object"
+      },
+      "Diagnosis": {
+        "additionalProperties": false,
+        "description": "S-11 evidence-backed failure classification and triage decision.",
+        "properties": {
+          "class": {
+            "enum": [
+              "code_regression",
+              "test_defect",
+              "config",
+              "dependency",
+              "flaky",
+              "infra",
+              "network",
+              "auth",
+              "unsupported",
+              "unknown"
+            ],
+            "title": "Class",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "continue",
+              "abstain",
+              "human"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "proposed_profile": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Proposed Profile"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 4096,
+            "title": "Summary",
+            "type": "string"
+          },
+          "uncertainties": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "title": "Uncertainties",
+            "type": "array"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "class",
+          "summary",
+          "evidence_refs",
+          "decision"
+        ],
+        "title": "Diagnosis",
+        "type": "object"
+      },
+      "EventEnvelope": {
+        "additionalProperties": false,
+        "description": "S-19 canonical domain event and SSE frame payload.",
+        "properties": {
+          "aggregate_id": {
+            "title": "Aggregate Id",
+            "type": "string"
+          },
+          "aggregate_version": {
+            "minimum": 1,
+            "title": "Aggregate Version",
+            "type": "integer"
+          },
+          "causation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Causation Id"
+          },
+          "correlation_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderConnectionEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/RunEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/RepairPhaseEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/ReproVerificationEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/ApprovalEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/PublicationEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/RemoteCiEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/WorkerEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/BudgetEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/SecurityIdentityEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/OperationsEventPayload"
+              },
+              {
+                "$ref": "#/components/schemas/DeliveryEventPayload"
+              }
+            ],
+            "title": "Payload"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          },
+          "type": {
+            "enum": [
+              "provider.connection.created",
+              "provider.run.failed",
+              "provider.run.retried",
+              "repair.session.created",
+              "repair.diagnosed",
+              "repair.reproduction.completed",
+              "repair.patch.proposed",
+              "repair.verification.completed",
+              "repair.approval.requested",
+              "repair.approval.decided",
+              "repair.publication.created",
+              "repair.remote_ci.completed",
+              "repair.blocked",
+              "repair.cancelled",
+              "worker.offline",
+              "worker.quarantined",
+              "integration.disconnected",
+              "usage.budget.exceeded",
+              "security.policy.denied",
+              "backup.failed",
+              "release.update_available",
+              "identity.permission_revoked",
+              "notification.delivery.failed",
+              "operations.restore.completed"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "event_id",
+          "type",
+          "occurred_at",
+          "aggregate_id",
+          "aggregate_version",
+          "correlation_id",
+          "payload"
+        ],
+        "title": "EventEnvelope",
+        "type": "object"
+      },
+      "EvidenceManifestV1": {
+        "additionalProperties": false,
+        "description": "S-22 canonical domain-separated Ed25519-signed local proof manifest.",
+        "properties": {
+          "artifact_digests": {
+            "additionalProperties": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "title": "Artifact Digests",
+            "type": "object"
+          },
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "baseline_result_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Baseline Result Digest",
+            "type": "string"
+          },
+          "baseline_result_job_id": {
+            "title": "Baseline Result Job Id",
+            "type": "string"
+          },
+          "ci_attempt_key": {
+            "title": "Ci Attempt Key",
+            "type": "string"
+          },
+          "ci_job_ids": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Ci Job Ids",
+            "type": "array"
+          },
+          "ci_run_id": {
+            "title": "Ci Run Id",
+            "type": "string"
+          },
+          "commands_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Commands Digest",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "dependency_lock_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Dependency Lock Digest",
+            "type": "string"
+          },
+          "diff_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Diff Digest",
+            "type": "string"
+          },
+          "environment_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Environment Digest",
+            "type": "string"
+          },
+          "failure_fingerprint": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Failure Fingerprint",
+            "type": "string"
+          },
+          "fidelity_differences": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "title": "Fidelity Differences",
+            "type": "array"
+          },
+          "fidelity_grade": {
+            "enum": [
+              "F1",
+              "F2",
+              "F3",
+              "FX"
+            ],
+            "title": "Fidelity Grade",
+            "type": "string"
+          },
+          "image_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Image Digest",
+            "type": "string"
+          },
+          "integrity_outcome": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Integrity Outcome",
+            "type": "string"
+          },
+          "manifest_id": {
+            "title": "Manifest Id",
+            "type": "string"
+          },
+          "patched_result_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Patched Result Digest",
+            "type": "string"
+          },
+          "patched_result_job_id": {
+            "title": "Patched Result Job Id",
+            "type": "string"
+          },
+          "patched_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Patched Sha",
+            "type": "string"
+          },
+          "policy_outcome": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Policy Outcome",
+            "type": "string"
+          },
+          "profile_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Profile Digest",
+            "type": "string"
+          },
+          "profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/ModelToolProvenance"
+            },
+            "title": "Provenance",
+            "type": "array"
+          },
+          "redaction_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Redaction Revision",
+            "type": "string"
+          },
+          "regression": {
+            "$ref": "#/components/schemas/RegressionSuiteSummary"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "security_outcome": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Security Outcome",
+            "type": "string"
+          },
+          "signature": {
+            "maxLength": 4096,
+            "title": "Signature",
+            "type": "string"
+          },
+          "signer_key_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Signer Key Id",
+            "type": "string"
+          },
+          "source_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Source Sha",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "manifest_id",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "source_sha",
+          "base_sha",
+          "patched_sha",
+          "diff_digest",
+          "ci_run_id",
+          "ci_job_ids",
+          "ci_attempt_key",
+          "profile_id",
+          "profile_digest",
+          "image_digest",
+          "dependency_lock_digest",
+          "commands_digest",
+          "environment_digest",
+          "baseline_result_job_id",
+          "baseline_result_digest",
+          "patched_result_job_id",
+          "patched_result_digest",
+          "failure_fingerprint",
+          "fidelity_grade",
+          "regression",
+          "integrity_outcome",
+          "security_outcome",
+          "policy_outcome",
+          "redaction_revision",
+          "artifact_digests",
+          "created_at",
+          "signer_key_id",
+          "signature"
+        ],
+        "title": "EvidenceManifestV1",
+        "type": "object"
+      },
+      "GetExecutionResultArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id"
+        ],
+        "title": "GetExecutionResultArgs",
+        "type": "object"
+      },
+      "Invite": {
+        "additionalProperties": false,
+        "description": "S-07 identity-bound workspace invitation metadata (never exposes raw invite token).",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "maintainer",
+              "reviewer",
+              "viewer",
+              "auditor"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "accepted",
+              "expired",
+              "revoked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "email",
+          "role",
+          "expires_at",
+          "status"
+        ],
+        "title": "Invite",
+        "type": "object"
+      },
+      "IsolationCheckResult": {
+        "additionalProperties": false,
+        "description": "S-21 supervisor-attested confinement/cleanup check result.",
+        "properties": {
+          "check_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Check Id",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "check_id",
+          "passed"
+        ],
+        "title": "IsolationCheckResult",
+        "type": "object"
+      },
+      "LifecycleOperation": {
+        "additionalProperties": false,
+        "description": "S-18 instance lifecycle/maintenance operation record.",
+        "properties": {
+          "approved_manifest_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approved Manifest Digest"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "status",
+              "doctor",
+              "backup",
+              "restore",
+              "update",
+              "uninstall"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "result_artifact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Artifact Id"
+          },
+          "scope": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "accepted",
+              "running",
+              "succeeded",
+              "failed",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "kind",
+          "status",
+          "dry_run",
+          "scope"
+        ],
+        "title": "LifecycleOperation",
+        "type": "object"
+      },
+      "Membership": {
+        "additionalProperties": false,
+        "description": "S-07 workspace role assignment with scoped repository grants (ADR-038).",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "repository_grants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Repository Grants",
+            "type": "array"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "maintainer",
+              "reviewer",
+              "viewer",
+              "auditor"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "user_id",
+          "role"
+        ],
+        "title": "Membership",
+        "type": "object"
+      },
+      "ModelToolProvenance": {
+        "additionalProperties": false,
+        "description": "S-22 redacted model/tool provenance record (no raw chain-of-thought or secrets).",
+        "properties": {
+          "adapter_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Adapter Version",
+            "type": "string"
+          },
+          "model_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Model Id",
+            "type": "string"
+          },
+          "provider_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Provider Request Id"
+          },
+          "redacted_context_hashes": {
+            "items": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "title": "Redacted Context Hashes",
+            "type": "array"
+          },
+          "tool_call_digests": {
+            "items": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "title": "Tool Call Digests",
+            "type": "array"
+          },
+          "usage_record_id": {
+            "title": "Usage Record Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "adapter_version",
+          "redacted_context_hashes",
+          "usage_record_id"
+        ],
+        "title": "ModelToolProvenance",
+        "type": "object"
+      },
+      "ModelUsageRecord": {
+        "additionalProperties": false,
+        "description": "S-17 AI token & cost accounting record (unknown usage remains None, never coerced to 0).",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "estimated_cost": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Input Tokens"
+          },
+          "model_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Model Id",
+            "type": "string"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Output Tokens"
+          },
+          "pricing_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Pricing Revision",
+            "type": "string"
+          },
+          "provider_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Provider Request Id"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "reservation_id": {
+            "title": "Reservation Id",
+            "type": "string"
+          },
+          "settled_cost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "status": {
+            "enum": [
+              "reserved",
+              "settled",
+              "released",
+              "failed",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "reservation_id",
+          "model_id",
+          "estimated_cost",
+          "currency",
+          "pricing_revision",
+          "status"
+        ],
+        "title": "ModelUsageRecord",
+        "type": "object"
+      },
+      "Money": {
+        "additionalProperties": false,
+        "description": "S-01 exact decimal monetary representation (never binary floating point).",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "title": "Money",
+        "type": "object"
+      },
+      "NotificationDelivery": {
+        "additionalProperties": false,
+        "description": "S-16 durable outbox delivery attempt record (docs/32).",
+        "properties": {
+          "attempt": {
+            "minimum": 0,
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "destination_id": {
+            "title": "Destination Id",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_error_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Error Code"
+          },
+          "next_retry_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Retry At"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Provider Id"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "sending",
+              "accepted",
+              "delivered",
+              "bounced",
+              "retry_wait",
+              "unknown",
+              "possible_duplicate",
+              "failed_final",
+              "suppressed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "template_revision": {
+            "minimum": 1,
+            "title": "Template Revision",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "event_id",
+          "destination_id",
+          "template_revision",
+          "state",
+          "attempt"
+        ],
+        "title": "NotificationDelivery",
+        "type": "object"
+      },
+      "NotificationDestination": {
+        "additionalProperties": false,
+        "description": "S-16 configured notification target (credentials remain write-only).",
+        "properties": {
+          "channel": {
+            "enum": [
+              "in_app",
+              "telegram",
+              "email",
+              "slack",
+              "discord",
+              "webhook"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Consent Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "scope": {
+            "enum": [
+              "user",
+              "workspace"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "secret_presence": {
+            "$ref": "#/components/schemas/SecretPresence"
+          },
+          "status": {
+            "enum": [
+              "not_configured",
+              "pending_verification",
+              "ready",
+              "degraded",
+              "suppressed",
+              "quarantined",
+              "disabled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Verified At"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "channel",
+          "scope",
+          "status",
+          "secret_presence"
+        ],
+        "title": "NotificationDestination",
+        "type": "object"
+      },
+      "NotificationPreference": {
+        "additionalProperties": false,
+        "description": "S-16 user or workspace notification routing preferences.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_types": {
+            "items": {
+              "enum": [
+                "provider.connection.created",
+                "provider.run.failed",
+                "provider.run.retried",
+                "repair.session.created",
+                "repair.diagnosed",
+                "repair.reproduction.completed",
+                "repair.patch.proposed",
+                "repair.verification.completed",
+                "repair.approval.requested",
+                "repair.approval.decided",
+                "repair.publication.created",
+                "repair.remote_ci.completed",
+                "repair.blocked",
+                "repair.cancelled",
+                "worker.offline",
+                "worker.quarantined",
+                "integration.disconnected",
+                "usage.budget.exceeded",
+                "security.policy.denied",
+                "backup.failed",
+                "release.update_available",
+                "identity.permission_revoked",
+                "notification.delivery.failed",
+                "operations.restore.completed"
+              ],
+              "type": "string"
+            },
+            "title": "Event Types",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "min_severity": {
+            "default": "info",
+            "enum": [
+              "info",
+              "warning",
+              "action",
+              "success",
+              "error",
+              "high",
+              "critical"
+            ],
+            "title": "Min Severity",
+            "type": "string"
+          },
+          "quiet_hours": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuietHoursWindow"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "timezone": {
+            "default": "UTC",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "NotificationPreference",
+        "type": "object"
+      },
+      "OperationsEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id",
+          "status"
+        ],
+        "title": "OperationsEventPayload",
+        "type": "object"
+      },
+      "PageParams": {
+        "additionalProperties": false,
+        "description": "S-04 bounded cursor-pagination query parameters.",
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cursor"
+          },
+          "limit": {
+            "default": 25,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "q": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Q"
+          }
+        },
+        "title": "PageParams",
+        "type": "object"
+      },
+      "Patch": {
+        "additionalProperties": false,
+        "description": "S-12 candidate patch diff metadata.",
+        "properties": {
+          "attempt": {
+            "maximum": 5,
+            "minimum": 1,
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "changed_paths": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "title": "Changed Paths",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "diff_artifact_id": {
+            "title": "Diff Artifact Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "patch_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Patch Digest",
+            "type": "string"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "base_sha",
+          "patch_digest",
+          "changed_paths",
+          "diff_artifact_id",
+          "attempt"
+        ],
+        "title": "Patch",
+        "type": "object"
+      },
+      "Problem": {
+        "additionalProperties": false,
+        "description": "S-03 safe RFC 9457 / application/problem+json error envelope.",
+        "properties": {
+          "code": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "correlation_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "detail": {
+            "maxLength": 4096,
+            "title": "Detail",
+            "type": "string"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProblemFieldError"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Errors"
+          },
+          "status": {
+            "maximum": 599,
+            "minimum": 400,
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "detail",
+          "correlation_id"
+        ],
+        "title": "Problem",
+        "type": "object"
+      },
+      "ProblemFieldError": {
+        "additionalProperties": false,
+        "description": "S-03 structured per-field validation failure descriptor.",
+        "properties": {
+          "code": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "field": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "code"
+        ],
+        "title": "ProblemFieldError",
+        "type": "object"
+      },
+      "ProviderConnectionEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "connection_id": {
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection_id",
+          "status"
+        ],
+        "title": "ProviderConnectionEventPayload",
+        "type": "object"
+      },
+      "Publication": {
+        "additionalProperties": false,
+        "description": "S-13 draft PR/MR publication saga record.",
+        "properties": {
+          "branch": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Branch",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "expected_commit_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Expected Commit Sha",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "intent_id": {
+            "title": "Intent Id",
+            "type": "string"
+          },
+          "provider_object_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Provider Object Id"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "intent",
+              "pushing",
+              "creating",
+              "published",
+              "reconciling",
+              "failed",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "intent_id",
+          "repair_id",
+          "branch",
+          "expected_commit_sha",
+          "status"
+        ],
+        "title": "Publication",
+        "type": "object"
+      },
+      "PublicationEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publication_id",
+          "status"
+        ],
+        "title": "PublicationEventPayload",
+        "type": "object"
+      },
+      "QuietHoursWindow": {
+        "additionalProperties": false,
+        "description": "Daily local quiet-hours window in HH:MM 24-hour format.",
+        "properties": {
+          "end_hhmm": {
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "End Hhmm",
+            "type": "string"
+          },
+          "start_hhmm": {
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Start Hhmm",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_hhmm",
+          "end_hhmm"
+        ],
+        "title": "QuietHoursWindow",
+        "type": "object"
+      },
+      "ReadCommitDiffArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "head_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Head Sha",
+            "type": "string"
+          },
+          "max_bytes": {
+            "default": 65536,
+            "maximum": 262144,
+            "minimum": 1,
+            "title": "Max Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "base_sha",
+          "head_sha"
+        ],
+        "title": "ReadCommitDiffArgs",
+        "type": "object"
+      },
+      "ReadCommitDiffResult": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 4096,
+            "title": "Summary",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "summary",
+          "truncated"
+        ],
+        "title": "ReadCommitDiffResult",
+        "type": "object"
+      },
+      "ReadFileArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "length": {
+            "default": 16384,
+            "maximum": 65536,
+            "minimum": 1,
+            "title": "Length",
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "ReadFileArgs",
+        "type": "object"
+      },
+      "ReadFileResult": {
+        "additionalProperties": false,
+        "properties": {
+          "digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 65536,
+            "title": "Text",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "digest",
+          "truncated"
+        ],
+        "title": "ReadFileResult",
+        "type": "object"
+      },
+      "ReadLogExcerptArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "length": {
+            "default": 16384,
+            "maximum": 65536,
+            "minimum": 1,
+            "title": "Length",
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "artifact_id"
+        ],
+        "title": "ReadLogExcerptArgs",
+        "type": "object"
+      },
+      "ReadLogExcerptResult": {
+        "additionalProperties": false,
+        "properties": {
+          "next_offset": {
+            "minimum": 0,
+            "title": "Next Offset",
+            "type": "integer"
+          },
+          "redaction_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Redaction Version",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 65536,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "redaction_version",
+          "next_offset"
+        ],
+        "title": "ReadLogExcerptResult",
+        "type": "object"
+      },
+      "RegressionSuiteSummary": {
+        "additionalProperties": false,
+        "description": "S-22 deterministic regression test suite summary.",
+        "properties": {
+          "failed_count": {
+            "minimum": 0,
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "passed_count": {
+            "minimum": 0,
+            "title": "Passed Count",
+            "type": "integer"
+          },
+          "result_job_id": {
+            "title": "Result Job Id",
+            "type": "string"
+          },
+          "selection_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Selection Digest",
+            "type": "string"
+          },
+          "selection_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Selection Id",
+            "type": "string"
+          },
+          "skipped_count": {
+            "minimum": 0,
+            "title": "Skipped Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "selection_id",
+          "selection_digest",
+          "passed_count",
+          "failed_count",
+          "skipped_count",
+          "result_job_id"
+        ],
+        "title": "RegressionSuiteSummary",
+        "type": "object"
+      },
+      "RemoteCheck": {
+        "additionalProperties": false,
+        "description": "S-13 remote CI check-suite verification state on published SHA.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "expected_check_set_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Check Set Digest",
+            "type": "string"
+          },
+          "head_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Head Sha",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/RemoteCheckObservation"
+            },
+            "title": "Observations",
+            "type": "array"
+          },
+          "outcome": {
+            "enum": [
+              "pending",
+              "passed",
+              "failed",
+              "unknown"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "publication_id",
+          "head_sha",
+          "expected_check_set_digest",
+          "outcome"
+        ],
+        "title": "RemoteCheck",
+        "type": "object"
+      },
+      "RemoteCheckObservation": {
+        "additionalProperties": false,
+        "description": "Individual provider CI check observation for V-08.",
+        "properties": {
+          "check_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Check Name",
+            "type": "string"
+          },
+          "conclusion": {
+            "anyOf": [
+              {
+                "enum": [
+                  "success",
+                  "failure",
+                  "cancelled",
+                  "timed_out",
+                  "skipped",
+                  "neutral",
+                  "action_required",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Conclusion"
+          },
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "title": "Observed At",
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check_name",
+          "external_id",
+          "status",
+          "observed_at"
+        ],
+        "title": "RemoteCheckObservation",
+        "type": "object"
+      },
+      "RemoteCiEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "head_sha": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Head Sha",
+            "type": "string"
+          },
+          "outcome": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Outcome",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publication_id",
+          "head_sha",
+          "outcome"
+        ],
+        "title": "RemoteCiEventPayload",
+        "type": "object"
+      },
+      "Repair": {
+        "additionalProperties": false,
+        "description": "S-11 autonomous CI repair session resource.",
+        "properties": {
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "budget_id": {
+            "title": "Budget Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Parent Id"
+          },
+          "policy_revision": {
+            "minimum": 1,
+            "title": "Policy Revision",
+            "type": "integer"
+          },
+          "proof_grade": {
+            "enum": [
+              "none",
+              "baseline_confirmed",
+              "locally_verified",
+              "remotely_verified"
+            ],
+            "title": "Proof Grade",
+            "type": "string"
+          },
+          "remote_status": {
+            "enum": [
+              "not_published",
+              "pending",
+              "passed",
+              "failed",
+              "unknown"
+            ],
+            "title": "Remote Status",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "received",
+              "authorized",
+              "collecting",
+              "triaging",
+              "diagnosed_only",
+              "unsupported",
+              "reproducing",
+              "repro_confirmed",
+              "repro_unconfirmed",
+              "blocked",
+              "patching",
+              "verifying",
+              "rejected",
+              "policy_gate",
+              "awaiting_approval",
+              "expired",
+              "publishing",
+              "publish_reconcile",
+              "needs_human",
+              "remote_validating",
+              "remote_verified",
+              "remote_failed",
+              "remote_unknown",
+              "cancel_requested",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "suspension": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepairSuspension"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "run_id",
+          "state",
+          "proof_grade",
+          "remote_status",
+          "policy_revision",
+          "base_sha",
+          "budget_id"
+        ],
+        "title": "Repair",
+        "type": "object"
+      },
+      "RepairPhaseEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "reason_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason Code"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "state": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repair_id",
+          "state"
+        ],
+        "title": "RepairPhaseEventPayload",
+        "type": "object"
+      },
+      "RepairSuspension": {
+        "additionalProperties": false,
+        "description": "Pause/suspension metadata on a nonterminal repair session (docs/08).",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "checkpoint_state": {
+            "enum": [
+              "received",
+              "authorized",
+              "collecting",
+              "triaging",
+              "diagnosed_only",
+              "unsupported",
+              "reproducing",
+              "repro_confirmed",
+              "repro_unconfirmed",
+              "blocked",
+              "patching",
+              "verifying",
+              "rejected",
+              "policy_gate",
+              "awaiting_approval",
+              "expired",
+              "publishing",
+              "publish_reconcile",
+              "needs_human",
+              "remote_validating",
+              "remote_verified",
+              "remote_failed",
+              "remote_unknown",
+              "cancel_requested",
+              "cancelled"
+            ],
+            "title": "Checkpoint State",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "maintenance",
+              "model_unavailable",
+              "quota",
+              "worker_unavailable",
+              "operator_pause"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "requested_by": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Requested By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "checkpoint_state",
+          "requested_by",
+          "at"
+        ],
+        "title": "RepairSuspension",
+        "type": "object"
+      },
+      "ReportExportRequest": {
+        "additionalProperties": false,
+        "description": "S-17 / A-17 bounded analytics, usage, or audit export request (<= 366 days).",
+        "properties": {
+          "filters": {
+            "additionalProperties": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "propertyNames": {
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "title": "Filters",
+            "type": "object"
+          },
+          "format": {
+            "enum": [
+              "csv",
+              "json"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "funnel",
+              "usage",
+              "audit",
+              "proof_summary"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "range_end": {
+            "title": "Range End",
+            "type": "string"
+          },
+          "range_start": {
+            "title": "Range Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "range_start",
+          "range_end",
+          "format"
+        ],
+        "title": "ReportExportRequest",
+        "type": "object"
+      },
+      "Repository": {
+        "additionalProperties": false,
+        "description": "S-09 workspace-scoped repository catalog entry.",
+        "properties": {
+          "connection_id": {
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "default_branch": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Default Branch",
+            "type": "string"
+          },
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "monitor",
+              "approval",
+              "auto_repair"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "paused": {
+            "default": false,
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "policy_revision": {
+            "minimum": 1,
+            "title": "Policy Revision",
+            "type": "integer"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "visibility": {
+            "enum": [
+              "public",
+              "private",
+              "internal",
+              "unknown"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "external_id",
+          "connection_id",
+          "name",
+          "default_branch",
+          "visibility",
+          "mode",
+          "policy_revision"
+        ],
+        "title": "Repository",
+        "type": "object"
+      },
+      "RepositoryPolicy": {
+        "additionalProperties": false,
+        "description": "S-09 repository repair automation policy (require_baseline=True invariant per ADR-031).",
+        "properties": {
+          "branch_allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branch Allowlist",
+            "type": "array"
+          },
+          "file_denylist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "File Denylist",
+            "type": "array"
+          },
+          "inference_consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Inference Consent Id"
+          },
+          "max_attempts": {
+            "default": 2,
+            "maximum": 5,
+            "minimum": 1,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "max_diff_lines": {
+            "default": 500,
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Max Diff Lines",
+            "type": "integer"
+          },
+          "require_baseline": {
+            "const": true,
+            "default": true,
+            "title": "Require Baseline",
+            "type": "boolean"
+          },
+          "runtime_profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Runtime Profile Id",
+            "type": "string"
+          },
+          "sensitive_rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sensitive Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "runtime_profile_id"
+        ],
+        "title": "RepositoryPolicy",
+        "type": "object"
+      },
+      "ReproVerificationEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "manifest_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Manifest Id"
+          },
+          "outcome": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Outcome",
+            "type": "string"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repair_id",
+          "outcome"
+        ],
+        "title": "ReproVerificationEventPayload",
+        "type": "object"
+      },
+      "RequestReproductionArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "command_ids": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Command Ids",
+            "type": "array"
+          },
+          "profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "command_ids"
+        ],
+        "title": "RequestReproductionArgs",
+        "type": "object"
+      },
+      "ResultArtifactRef": {
+        "additionalProperties": false,
+        "description": "S-21 content-addressed execution output artifact descriptor.",
+        "properties": {
+          "digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "size": {
+            "minimum": 0,
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "digest",
+          "size"
+        ],
+        "title": "ResultArtifactRef",
+        "type": "object"
+      },
+      "ResultV1": {
+        "additionalProperties": false,
+        "description": "S-21 supervisor-signed sandbox execution outcome (never signed inside guest).",
+        "properties": {
+          "artifact_refs": {
+            "items": {
+              "$ref": "#/components/schemas/ResultArtifactRef"
+            },
+            "title": "Artifact Refs",
+            "type": "array"
+          },
+          "capability_nonce": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Capability Nonce",
+            "type": "string"
+          },
+          "command_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Command Digest",
+            "type": "string"
+          },
+          "ended_at": {
+            "title": "Ended At",
+            "type": "string"
+          },
+          "environment_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Environment Digest",
+            "type": "string"
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Exit Code"
+          },
+          "image_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Image Digest",
+            "type": "string"
+          },
+          "isolation_checks": {
+            "items": {
+              "$ref": "#/components/schemas/IsolationCheckResult"
+            },
+            "minItems": 1,
+            "title": "Isolation Checks",
+            "type": "array"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "lease_epoch": {
+            "minimum": 1,
+            "title": "Lease Epoch",
+            "type": "integer"
+          },
+          "patch_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Patch Digest"
+          },
+          "resource_usage": {
+            "$ref": "#/components/schemas/SandboxResourceUsage"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "signature": {
+            "maxLength": 4096,
+            "title": "Signature",
+            "type": "string"
+          },
+          "signer_key_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Signer Key Id",
+            "type": "string"
+          },
+          "source_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Digest",
+            "type": "string"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          },
+          "termination": {
+            "enum": [
+              "exited",
+              "timeout",
+              "oom",
+              "cancelled",
+              "infrastructure_error"
+            ],
+            "title": "Termination",
+            "type": "string"
+          },
+          "worker_id": {
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "lease_epoch",
+          "capability_nonce",
+          "worker_id",
+          "started_at",
+          "ended_at",
+          "termination",
+          "command_digest",
+          "image_digest",
+          "environment_digest",
+          "source_digest",
+          "resource_usage",
+          "isolation_checks",
+          "signer_key_id",
+          "signature"
+        ],
+        "title": "ResultV1",
+        "type": "object"
+      },
+      "RunEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_key": {
+            "title": "Attempt Key",
+            "type": "string"
+          },
+          "head_sha": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Head Sha",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "attempt_key",
+          "head_sha"
+        ],
+        "title": "RunEventPayload",
+        "type": "object"
+      },
+      "RunTargetedTestArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "patch_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Patch Digest",
+            "type": "string"
+          },
+          "profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "test_selection_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Test Selection Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "test_selection_id",
+          "patch_digest"
+        ],
+        "title": "RunTargetedTestArgs",
+        "type": "object"
+      },
+      "SandboxJobV1": {
+        "additionalProperties": false,
+        "description": "S-21 lease-fenced immutable execution directive dispatched to worker supervisor.",
+        "properties": {
+          "artifact_upload_capability": {
+            "maxLength": 4096,
+            "title": "Artifact Upload Capability",
+            "type": "string"
+          },
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "capability_nonce": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Capability Nonce",
+            "type": "string"
+          },
+          "command_ids": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Command Ids",
+            "type": "array"
+          },
+          "expected_worker_trust_domain": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Expected Worker Trust Domain",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "image_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Image Digest",
+            "type": "string"
+          },
+          "issued_at": {
+            "title": "Issued At",
+            "type": "string"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "lease_epoch": {
+            "minimum": 1,
+            "title": "Lease Epoch",
+            "type": "integer"
+          },
+          "network_policy_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Network Policy Digest",
+            "type": "string"
+          },
+          "patch_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Patch Digest"
+          },
+          "profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "profile_revision": {
+            "minimum": 1,
+            "title": "Profile Revision",
+            "type": "integer"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "resource_limits": {
+            "$ref": "#/components/schemas/SandboxResourceLimits"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "source_archive_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Archive Digest",
+            "type": "string"
+          },
+          "supervisor_policy_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Supervisor Policy Digest",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "lease_epoch",
+          "capability_nonce",
+          "issued_at",
+          "expires_at",
+          "base_sha",
+          "source_archive_digest",
+          "profile_id",
+          "profile_revision",
+          "image_digest",
+          "command_ids",
+          "resource_limits",
+          "network_policy_digest",
+          "artifact_upload_capability",
+          "expected_worker_trust_domain",
+          "supervisor_policy_digest"
+        ],
+        "title": "SandboxJobV1",
+        "type": "object"
+      },
+      "SandboxResourceLimits": {
+        "additionalProperties": false,
+        "description": "S-21 hard execution quotas enforced by isolated worker supervisor.",
+        "properties": {
+          "cpu": {
+            "maximum": 64,
+            "minimum": 1,
+            "title": "Cpu",
+            "type": "integer"
+          },
+          "disk_bytes": {
+            "minimum": 1,
+            "title": "Disk Bytes",
+            "type": "integer"
+          },
+          "memory_bytes": {
+            "minimum": 1,
+            "title": "Memory Bytes",
+            "type": "integer"
+          },
+          "output_bytes": {
+            "minimum": 1,
+            "title": "Output Bytes",
+            "type": "integer"
+          },
+          "pids": {
+            "maximum": 65536,
+            "minimum": 1,
+            "title": "Pids",
+            "type": "integer"
+          },
+          "wall_seconds": {
+            "maximum": 7200,
+            "minimum": 1,
+            "title": "Wall Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cpu",
+          "memory_bytes",
+          "disk_bytes",
+          "pids",
+          "wall_seconds",
+          "output_bytes"
+        ],
+        "title": "SandboxResourceLimits",
+        "type": "object"
+      },
+      "SandboxResourceUsage": {
+        "additionalProperties": false,
+        "description": "S-21 measured guest resource consumption.",
+        "properties": {
+          "disk_written_bytes": {
+            "minimum": 0,
+            "title": "Disk Written Bytes",
+            "type": "integer"
+          },
+          "max_memory_bytes": {
+            "minimum": 0,
+            "title": "Max Memory Bytes",
+            "type": "integer"
+          },
+          "output_bytes": {
+            "minimum": 0,
+            "title": "Output Bytes",
+            "type": "integer"
+          },
+          "wall_ms": {
+            "minimum": 0,
+            "title": "Wall Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "wall_ms",
+          "max_memory_bytes",
+          "disk_written_bytes",
+          "output_bytes"
+        ],
+        "title": "SandboxResourceUsage",
+        "type": "object"
+      },
+      "SearchMatch": {
+        "additionalProperties": false,
+        "properties": {
+          "excerpt": {
+            "maxLength": 4096,
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "line": {
+            "minimum": 1,
+            "title": "Line",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "line",
+          "excerpt"
+        ],
+        "title": "SearchMatch",
+        "type": "object"
+      },
+      "SearchRepoArgs": {
+        "additionalProperties": false,
+        "properties": {
+          "max_results": {
+            "default": 25,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Max Results",
+            "type": "integer"
+          },
+          "path_prefix": {
+            "default": "",
+            "title": "Path Prefix",
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "SearchRepoArgs",
+        "type": "object"
+      },
+      "SearchRepoResult": {
+        "additionalProperties": false,
+        "properties": {
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/SearchMatch"
+            },
+            "title": "Matches",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "matches",
+          "truncated"
+        ],
+        "title": "SearchRepoResult",
+        "type": "object"
+      },
+      "SecretPresence": {
+        "additionalProperties": false,
+        "description": "Safe read-only secret metadata (never exposes secret values or internal refs).",
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "secret_version": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Secret Version"
+          }
+        },
+        "required": [
+          "configured"
+        ],
+        "title": "SecretPresence",
+        "type": "object"
+      },
+      "SecurityIdentityEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "reason_code": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id",
+          "reason_code"
+        ],
+        "title": "SecurityIdentityEventPayload",
+        "type": "object"
+      },
+      "Session": {
+        "additionalProperties": false,
+        "description": "S-06 authenticated session metadata DTO (never exposes raw session cookie token).",
+        "properties": {
+          "auth_strength": {
+            "enum": [
+              "password",
+              "mfa"
+            ],
+            "title": "Auth Strength",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "grant_epoch": {
+            "minimum": 1,
+            "title": "Grant Epoch",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "step_up_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Step Up At"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "user_id",
+          "expires_at",
+          "auth_strength",
+          "grant_epoch"
+        ],
+        "title": "Session",
+        "type": "object"
+      },
+      "SetupPrerequisite": {
+        "additionalProperties": false,
+        "description": "S-18 onboarding prerequisite check item.",
+        "properties": {
+          "id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "remediation": {
+            "maxLength": 4096,
+            "title": "Remediation",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "needs_admin",
+              "needs_restart",
+              "not_configured",
+              "blocked",
+              "unsupported"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "remediation"
+        ],
+        "title": "SetupPrerequisite",
+        "type": "object"
+      },
+      "SetupState": {
+        "additionalProperties": false,
+        "description": "S-18 resumable 10-phase setup wizard checkpoint and readiness state (ADR-038).",
+        "properties": {
+          "checkpoint": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Checkpoint",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "phase": {
+            "enum": [
+              "owner_claim",
+              "topology_tls",
+              "storage_recovery",
+              "workspace_membership",
+              "provider_connection",
+              "inference_consent",
+              "worker_validation",
+              "repository_policy",
+              "notification_setup",
+              "readiness_review"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "prerequisites": {
+            "items": {
+              "$ref": "#/components/schemas/SetupPrerequisite"
+            },
+            "title": "Prerequisites",
+            "type": "array"
+          },
+          "readiness": {
+            "enum": [
+              "not_ready",
+              "ready_monitor",
+              "ready_repair"
+            ],
+            "title": "Readiness",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "phase",
+          "checkpoint",
+          "prerequisites",
+          "readiness"
+        ],
+        "title": "SetupState",
+        "type": "object"
+      },
+      "SystemHealthResponse": {
+        "additionalProperties": false,
+        "description": "A-18 public minimal liveness response (zero host/secret/tenant disclosure).",
+        "properties": {
+          "api_version": {
+            "const": "v1",
+            "default": "v1",
+            "title": "Api Version",
+            "type": "string"
+          },
+          "service": {
+            "const": "red2pr-control-plane",
+            "default": "red2pr-control-plane",
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "timestamp"
+        ],
+        "title": "SystemHealthResponse",
+        "type": "object"
+      },
+      "TaskJob": {
+        "additionalProperties": false,
+        "description": "S-15 durable PostgreSQL-backed task queue job with lease_epoch fencing.",
+        "properties": {
+          "attempt": {
+            "minimum": 1,
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "deadline": {
+            "title": "Deadline",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Kind",
+            "type": "string"
+          },
+          "lease_epoch": {
+            "minimum": 0,
+            "title": "Lease Epoch",
+            "type": "integer"
+          },
+          "not_before": {
+            "title": "Not Before",
+            "type": "string"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "resource_id": {
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "leased",
+              "running",
+              "succeeded",
+              "failed",
+              "cancel_requested",
+              "cancelled",
+              "dead_letter"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "kind",
+          "resource_id",
+          "state",
+          "lease_epoch",
+          "attempt",
+          "not_before",
+          "deadline"
+        ],
+        "title": "TaskJob",
+        "type": "object"
+      },
+      "ToolCallRequest": {
+        "additionalProperties": false,
+        "description": "S-20 typed agent tool invocation envelope.",
+        "properties": {
+          "arguments": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReadFileArgs"
+              },
+              {
+                "$ref": "#/components/schemas/SearchRepoArgs"
+              },
+              {
+                "$ref": "#/components/schemas/ReadLogExcerptArgs"
+              },
+              {
+                "$ref": "#/components/schemas/ReadCommitDiffArgs"
+              },
+              {
+                "$ref": "#/components/schemas/RequestReproductionArgs"
+              },
+              {
+                "$ref": "#/components/schemas/ApplyPatchArgs"
+              },
+              {
+                "$ref": "#/components/schemas/RunTargetedTestArgs"
+              },
+              {
+                "$ref": "#/components/schemas/GetExecutionResultArgs"
+              }
+            ],
+            "title": "Arguments"
+          },
+          "context_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Context Digest",
+            "type": "string"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "step_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Step Id",
+            "type": "string"
+          },
+          "tool_call_id": {
+            "title": "Tool Call Id",
+            "type": "string"
+          },
+          "tool_name": {
+            "enum": [
+              "read_file",
+              "search_repo",
+              "read_log_excerpt",
+              "read_commit_diff",
+              "request_reproduction",
+              "apply_patch",
+              "run_targeted_test",
+              "get_execution_result"
+            ],
+            "title": "Tool Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_call_id",
+          "repair_id",
+          "step_id",
+          "tool_name",
+          "arguments",
+          "context_digest"
+        ],
+        "title": "ToolCallRequest",
+        "type": "object"
+      },
+      "ToolCallResponse": {
+        "additionalProperties": false,
+        "description": "S-20 typed agent tool response envelope.",
+        "properties": {
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Operation Id"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Problem"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReadFileResult"
+              },
+              {
+                "$ref": "#/components/schemas/SearchRepoResult"
+              },
+              {
+                "$ref": "#/components/schemas/ReadLogExcerptResult"
+              },
+              {
+                "$ref": "#/components/schemas/ReadCommitDiffResult"
+              },
+              {
+                "$ref": "#/components/schemas/ApplyPatchResult"
+              },
+              {
+                "$ref": "#/components/schemas/ActionReceipt"
+              },
+              {
+                "$ref": "#/components/schemas/TrustedExecutionResultRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "denied",
+              "failed",
+              "pending"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tool_call_id": {
+            "title": "Tool Call Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_call_id",
+          "status"
+        ],
+        "title": "ToolCallResponse",
+        "type": "object"
+      },
+      "TrustedExecutionResultRef": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Exit Code"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "result_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Result Digest",
+            "type": "string"
+          },
+          "termination": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Termination",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id",
+          "job_id",
+          "termination",
+          "result_digest"
+        ],
+        "title": "TrustedExecutionResultRef",
+        "type": "object"
+      },
+      "User": {
+        "additionalProperties": false,
+        "description": "S-06 user profile DTO (never exposes password hashes or secret credentials).",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Email"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "disabled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "display_name",
+          "status"
+        ],
+        "title": "User",
+        "type": "object"
+      },
+      "Verification": {
+        "additionalProperties": false,
+        "description": "S-12 deterministic local/remote verification verdict.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/components/schemas/VerificationGateResult"
+            },
+            "title": "Gates",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "manifest_id": {
+            "title": "Manifest Id",
+            "type": "string"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "gates",
+          "manifest_id"
+        ],
+        "title": "Verification",
+        "type": "object"
+      },
+      "VerificationGateResult": {
+        "additionalProperties": false,
+        "description": "S-12 deterministic verification gate evaluation entry.",
+        "properties": {
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "id": {
+            "enum": [
+              "V-01",
+              "V-02",
+              "V-03",
+              "V-04",
+              "V-05",
+              "V-06",
+              "V-07",
+              "V-08"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "outcome"
+        ],
+        "title": "VerificationGateResult",
+        "type": "object"
+      },
+      "Worker": {
+        "additionalProperties": false,
+        "description": "S-15 enrolled isolated sandbox worker supervisor node.",
+        "properties": {
+          "capabilities": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "propertyNames": {
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "title": "Capabilities",
+            "type": "object"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "heartbeat_at": {
+            "title": "Heartbeat At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_ids": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Profile Ids",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "online",
+              "offline",
+              "draining",
+              "quarantined"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trust_domain": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Trust Domain",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "trust_domain",
+          "profile_ids",
+          "heartbeat_at",
+          "status"
+        ],
+        "title": "Worker",
+        "type": "object"
+      },
+      "WorkerEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          },
+          "worker_id": {
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id",
+          "status"
+        ],
+        "title": "WorkerEventPayload",
+        "type": "object"
+      },
+      "Workspace": {
+        "additionalProperties": false,
+        "description": "S-07 multi-workspace tenant resource (ADR-030).",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "paused": {
+            "default": false,
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "suspended",
+              "deleting"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "name",
+          "status"
+        ],
+        "title": "Workspace",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Canonical /api/v1 HTTP boundary for Red2PR self-hosted autonomous CI/CD repair with deterministic proof.",
+    "title": "Red2PR Control Plane API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/system/health": {
+      "get": {
+        "operationId": "getSystemHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Public minimal instance liveness probe (A-18)",
+        "tags": [
+          "system"
+        ]
+      }
+    }
+  }
+}

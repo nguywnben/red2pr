@@ -17,6 +17,8 @@
 # Dependencies and generated output
 node_modules/
 dist/
+dist-test/
+*.tsbuildinfo
 build/
 .venv/
 venv/
