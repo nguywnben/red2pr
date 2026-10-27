@@ -126,4 +126,79 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
       { path: "/api/v1/auth/logout", csrf: null },
     ]);
   });
+
+  it("propagates If-Match, Idempotency-Key, and ETag across U06 workspace & member routes", async () => {
+    let seenIfMatch: string | null = null;
+    let seenIdemKey: string | null = null;
+
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "sess-csrf-01",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        if (request.method === "PATCH" && url.pathname === "/api/v1/workspaces/acme") {
+          seenIfMatch = request.headers.get("If-Match");
+          return new Response(
+            JSON.stringify({
+              id: "0196ed00-0000-7000-8000-000000000101",
+              version: 2,
+              created_at: "2026-10-27T08:00:00Z",
+              updated_at: "2026-10-27T08:01:00Z",
+              name: "Acme Core",
+              slug: "acme",
+              status: "active",
+              paused: true,
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                ETag: '"v2"',
+                "X-Correlation-Id": "corr-ws-patch",
+              },
+            },
+          );
+        }
+        if (request.method === "DELETE" && url.pathname === "/api/v1/workspaces/acme") {
+          seenIdemKey = request.headers.get("Idempotency-Key");
+          return new Response(
+            JSON.stringify({
+              operation_id: "0196ed00-0000-7000-8000-000000000102",
+              state: "succeeded",
+              resource_id: "0196ed00-0000-7000-8000-000000000101",
+              idempotency_key: "idem-ws-del-01",
+              status_url: "/api/v1/operations/0196ed00-0000-7000-8000-000000000101",
+              correlation_id: "corr-ws-del",
+              replayed: false,
+            }),
+            {
+              status: 202,
+              headers: {
+                "Content-Type": "application/json",
+                "X-Correlation-Id": "corr-ws-del",
+              },
+            },
+          );
+        }
+        throw new Error(`Unexpected ${request.method} ${url.pathname}`);
+      },
+    });
+
+    const patched = await client.updateWorkspace(
+      "acme",
+      { paused: true },
+      { ifMatch: '"v1"' },
+    );
+    assert.equal(seenIfMatch, '"v1"');
+    assert.equal(patched.etag, '"v2"');
+    assert.equal(patched.data.paused, true);
+
+    const receipt = await client.deleteWorkspace(
+      "acme",
+      { confirm_name: "Acme Core" },
+      { idempotencyKey: "idem-ws-del-01" },
+    );
+    assert.equal(seenIdemKey, "idem-ws-del-01");
+    assert.equal(receipt.data.state, "succeeded");
+  });
 });

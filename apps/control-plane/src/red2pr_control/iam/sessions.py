@@ -257,6 +257,9 @@ class IamService:
         deployment_mode: Literal["local", "server", "distributed"] = "local",
         clock: Callable[[], datetime] = _default_utc_clock,
         password_hasher: PasswordHasher = _DEFAULT_HASHER,
+        sse_cursor_ttl: timedelta = timedelta(hours=24),
+        sse_poll_interval_seconds: float = 0.20,
+        sse_heartbeat_interval_seconds: float = 15.0,
     ) -> None:
         if len(iam_seed_key) < 32:
             raise ValueError("iam_seed_key must be at least 32 bytes")
@@ -274,8 +277,15 @@ class IamService:
         self._deployment_mode = deployment_mode
         self._clock = clock
         self._password_hasher = password_hasher
+        self._sse_cursor_ttl = sse_cursor_ttl
+        self._sse_poll_interval_seconds = sse_poll_interval_seconds
+        self._sse_heartbeat_interval_seconds = sse_heartbeat_interval_seconds
         parsed = urlparse(public_base_url)
         self._secure_cookies = parsed.scheme.lower() == "https"
+
+    @property
+    def session_factory(self) -> async_sessionmaker[AsyncSession]:
+        return self._session_factory
 
     @property
     def public_base_url(self) -> str:
@@ -289,8 +299,83 @@ class IamService:
     def csrf_signing_key(self) -> bytes:
         return self._csrf_signing_key
 
+    @property
+    def sse_cursor_ttl(self) -> timedelta:
+        return self._sse_cursor_ttl
+
+    @property
+    def sse_poll_interval_seconds(self) -> float:
+        return self._sse_poll_interval_seconds
+
+    @property
+    def sse_heartbeat_interval_seconds(self) -> float:
+        return self._sse_heartbeat_interval_seconds
+
     def now(self) -> datetime:
         return self._clock().astimezone(UTC)
+
+    async def provision_local_user(
+        self,
+        *,
+        display_name: str,
+        email: str | None,
+        password: str,
+        is_instance_owner: bool = False,
+        correlation_id: str = "system-provision",
+    ) -> User:
+        """Create a local user account with Argon2id password validation & audit record."""
+        ref_now = self.now()
+        clean_display = display_name.strip()
+        clean_email = email.strip().lower() if email is not None else None
+        disallowed = tuple(tok for tok in (clean_email, clean_display) if tok is not None and tok)
+        validate_new_password_policy(
+            password,
+            disallowed_substrings=disallowed,
+        )
+        normalized_username = (clean_email or clean_display.lower())[:120]
+        async with instance_rls_session(self._session_factory, mode="instance_admin") as db:
+            existing = await db.scalar(
+                select(UserModel.id).where(
+                    or_(
+                        UserModel.username == normalized_username,
+                        *([UserModel.email == clean_email] if clean_email is not None else []),
+                    )
+                )
+            )
+            if existing is not None:
+                raise ConflictError(
+                    code="user_already_exists",
+                    detail="A local user with that email or username already exists.",
+                )
+            user_row = UserModel(
+                id=new_uuid7(now=ref_now),
+                username=normalized_username,
+                email=clean_email,
+                display_name=clean_display,
+                password_hash=hash_password(password, hasher=self._password_hasher),
+                is_instance_owner=is_instance_owner,
+                status="active",
+                mfa_enabled=False,
+                grant_epoch=1,
+                disabled_at=None,
+                version=1,
+                created_at=ref_now,
+                updated_at=ref_now,
+            )
+            db.add(user_row)
+            await db.flush()
+            await append_audit_entry(
+                db,
+                actor_type="system",
+                actor_id="system",
+                action="iam.user_provisioned",
+                target=f"user:{user_row.id}",
+                decision="allow",
+                reason_code="local_user_created",
+                correlation_id=correlation_id,
+                occurred_at=ref_now,
+            )
+            return _to_user_dto(user_row)
 
     async def _check_rate_limits(
         self,
@@ -663,8 +748,7 @@ class IamService:
                     error_to_raise = GoneError(
                         code="bootstrap_expired",
                         detail=(
-                            "Bootstrap token has expired; generate a fresh bootstrap token "
-                            "via CLI."
+                            "Bootstrap token has expired; generate a fresh bootstrap token via CLI."
                         ),
                     )
                 elif (
@@ -1056,17 +1140,19 @@ class IamService:
                                         rec_epoch = (
                                             inst_row.recovery_epoch if inst_row is not None else 1
                                         )
-                                        session_row, raw_sess_tok, raw_csrf_tok = (
-                                            await self._mint_db_session(
-                                                db,
-                                                user=user_row,
-                                                recovery_epoch=rec_epoch,
-                                                auth_strength="mfa",
-                                                step_up_at=ref_now,
-                                                client_ip=client_ip,
-                                                user_agent=user_agent,
-                                                now=ref_now,
-                                            )
+                                        (
+                                            session_row,
+                                            raw_sess_tok,
+                                            raw_csrf_tok,
+                                        ) = await self._mint_db_session(
+                                            db,
+                                            user=user_row,
+                                            recovery_epoch=rec_epoch,
+                                            auth_strength="mfa",
+                                            step_up_at=ref_now,
+                                            client_ip=client_ip,
+                                            user_agent=user_agent,
+                                            now=ref_now,
                                         )
                                         await append_audit_entry(
                                             db,
@@ -1165,10 +1251,9 @@ class IamService:
                 inst_row = await db.scalar(select(InstanceModel))
                 expected_rec_epoch = inst_row.recovery_epoch if inst_row is not None else 1
 
-                if (
-                    ref_now >= session_row.expires_at.astimezone(UTC)
-                    or ref_now >= session_row.idle_expires_at.astimezone(UTC)
-                ):
+                if ref_now >= session_row.expires_at.astimezone(
+                    UTC
+                ) or ref_now >= session_row.idle_expires_at.astimezone(UTC):
                     session_row.revoked_at = ref_now
                     session_row.revoke_reason = "expired"
                     session_row.updated_at = ref_now
@@ -1179,7 +1264,6 @@ class IamService:
                 elif (
                     user_row is None
                     or user_row.status != "active"
-                    or session_row.grant_epoch != user_row.grant_epoch
                     or session_row.recovery_epoch != expected_rec_epoch
                 ):
                     session_row.revoked_at = ref_now
@@ -1214,6 +1298,8 @@ class IamService:
 
                 if raised_error is None:
                     assert user_row is not None
+                    if session_row.grant_epoch != user_row.grant_epoch:
+                        session_row.grant_epoch = user_row.grant_epoch
                     session_row.last_seen_at = ref_now
                     session_row.idle_expires_at = min(
                         session_row.expires_at.astimezone(UTC),
@@ -1703,7 +1789,9 @@ class IamService:
         raise raised_error
 
     async def get_me(self, ctx: AuthenticatedContext) -> MeResponse:
-        """Return A-03 current principal profile, session metadata & MFA posture."""
+        """Return A-03 current principal profile, session metadata, MFA posture & grants."""
+        from red2pr_control.iam.workspaces import load_principal_workspaces_and_memberships
+
         ref_now = self.now()
         async with instance_rls_session(self._session_factory, mode="instance_only") as db:
             remaining_codes = int(
@@ -1721,6 +1809,12 @@ class IamService:
                 or 0
             )
 
+        workspaces, memberships, has_admin_role = await load_principal_workspaces_and_memberships(
+            self._session_factory,
+            user_id=ctx.user.id,
+            now=ref_now,
+        )
+
         step_up_until: datetime | None = None
         if ctx.session.step_up_at is not None and is_step_up_fresh(ctx.session, now=ref_now):
             step_up_until = ctx.session.step_up_at.astimezone(UTC) + STEP_UP_VALIDITY_WINDOW
@@ -1730,11 +1824,11 @@ class IamService:
             session=_to_session_dto(ctx.session),
             is_instance_owner=ctx.user.is_instance_owner,
             mfa_enabled=ctx.user.mfa_enabled,
-            mfa_required_for_privileged=ctx.user.is_instance_owner,
+            mfa_required_for_privileged=bool(ctx.user.is_instance_owner or has_admin_role),
             step_up_valid_until=step_up_until,
             recovery_codes_remaining=min(20, remaining_codes),
-            workspaces=[],
-            memberships=[],
+            workspaces=workspaces,
+            memberships=memberships,
             telegram_link=TelegramLinkSummary(status="not_configured"),
             csrf_token=ctx.csrf_token,
         )
@@ -2173,7 +2267,14 @@ class IamService:
         correlation_id: str,
     ) -> tuple[str, str]:
         """Disable MFA for non-privileged accounts; deny mandatory-policy bypass (ADR-034)."""
+        from red2pr_control.iam.workspaces import load_principal_workspaces_and_memberships
+
         ref_now = self.now()
+        _, _, has_admin_role = await load_principal_workspaces_and_memberships(
+            self._session_factory,
+            user_id=ctx.user.id,
+            now=ref_now,
+        )
         rec_bucket = f"user_ip:{ctx.user.id}:{client_ip}"
         code_digest = hash_recovery_code(self._recovery_hmac_key, payload.recovery_authorization)
         raised_error: Exception | None = None
@@ -2189,7 +2290,7 @@ class IamService:
             )
             if step_err is not None:
                 raised_error = step_err
-            elif ctx.user.is_instance_owner:
+            elif ctx.user.is_instance_owner or has_admin_role:
                 await append_audit_entry(
                     db,
                     actor_type="user",

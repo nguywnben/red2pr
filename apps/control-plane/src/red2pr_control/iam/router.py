@@ -1,6 +1,6 @@
-"""FastAPI /api/v1 IAM, bootstrap claim, session, CSRF, MFA & recovery routes (A-01..A-03).
+"""FastAPI /api/v1 IAM, workspace RBAC, memberships, invitations & SSE routes (U05..U06).
 
-Mounted under `/api/v1` (`setup`, `auth`, `me`):
+Mounted under `/api/v1`:
 - `GET    /api/v1/auth/csrf`
 - `POST   /api/v1/setup/claim`
 - `POST   /api/v1/auth/login`
@@ -12,19 +12,48 @@ Mounted under `/api/v1` (`setup`, `auth`, `me`):
 - `DELETE /api/v1/me/sessions/{session_id}`
 - `POST   /api/v1/me/mfa`
 - `DELETE /api/v1/me/mfa`
+- `GET    /api/v1/workspaces`
+- `POST   /api/v1/workspaces`
+- `GET    /api/v1/workspaces/{ws}`
+- `PATCH  /api/v1/workspaces/{ws}`
+- `DELETE /api/v1/workspaces/{ws}`
+- `GET    /api/v1/workspaces/{ws}/break-glass`
+- `POST   /api/v1/workspaces/{ws}/break-glass`
+- `DELETE /api/v1/workspaces/{ws}/break-glass/{grant_id}`
+- `GET    /api/v1/workspaces/{ws}/members`
+- `PATCH  /api/v1/workspaces/{ws}/members/{member_id}`
+- `DELETE /api/v1/workspaces/{ws}/members/{member_id}`
+- `GET    /api/v1/workspaces/{ws}/invitations`
+- `POST   /api/v1/workspaces/{ws}/invitations`
+- `DELETE /api/v1/workspaces/{ws}/invitations/{invite_id}`
+- `POST   /api/v1/invitations/accept`
+- `GET    /api/v1/workspaces/{ws}/events`
 """
 
 from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Path, Request, Response, status
+from fastapi import APIRouter, Body, Depends, Header, Path, Query, Request, Response, status
+from fastapi.responses import StreamingResponse
 
+from py_contracts.events import EventType
 from py_contracts.iam import (
+    BreakGlassCreateRequest,
+    BreakGlassGrant,
+    BreakGlassGrantPage,
     CsrfBootstrapResponse,
+    InviteAcceptRequest,
+    InviteCreateRequest,
+    InviteCreateResponse,
+    InvitePage,
+    InviteStatus,
     LoginRequest,
     LoginResponse,
     LogoutRequest,
+    Membership,
+    MembershipPage,
+    MemberUpdateRequest,
     MeResponse,
     MfaDeleteRequest,
     MfaEnrollRequest,
@@ -36,8 +65,14 @@ from py_contracts.iam import (
     SetupClaimResponse,
     StepUpRequest,
     StepUpResponse,
+    Workspace,
+    WorkspaceCreateRequest,
+    WorkspaceDeleteRequest,
+    WorkspacePage,
+    WorkspaceRole,
+    WorkspaceUpdateRequest,
 )
-from py_contracts.primitives import InternalId, Problem
+from py_contracts.primitives import ActionReceipt, InternalId, Problem
 from red2pr_control.core.errors import (
     PROBLEM_JSON_MEDIA_TYPE,
     DependencyUnavailableError,
@@ -49,6 +84,16 @@ from red2pr_control.iam.csrf import (
     set_csrf_cookie,
     validate_double_submit_csrf,
 )
+from red2pr_control.iam.invitations import MemberInviteService
+from red2pr_control.iam.rbac import (
+    ADMIN_ONLY_ROLES,
+    ADMIN_OR_AUDITOR_ROLES,
+    ALL_WORKSPACE_ROLES,
+    WorkspaceAccessContext,
+    authorize_workspace_access,
+    format_version_etag,
+    make_workspace_rbac_dependency,
+)
 from red2pr_control.iam.sessions import (
     AuthenticatedContext,
     IamService,
@@ -58,6 +103,12 @@ from red2pr_control.iam.sessions import (
     set_session_cookie,
     summarize_user_agent,
 )
+from red2pr_control.iam.sse import (
+    SSE_MEDIA_TYPE,
+    WorkspaceSseService,
+    assert_no_bearer_token_on_sse,
+)
+from red2pr_control.iam.workspaces import WorkspaceService, to_workspace_dto
 
 _PROBLEM_RESPONSES: dict[int | str, dict[str, object]] = {
     400: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
@@ -66,6 +117,7 @@ _PROBLEM_RESPONSES: dict[int | str, dict[str, object]] = {
     404: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
     409: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
     410: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
+    412: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
     422: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
     429: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
     503: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
@@ -88,6 +140,16 @@ def _apply_no_store_headers(response: Response) -> None:
     response.headers["Pragma"] = "no-cache"
 
 
+def _maybe_refresh_csrf_cookie(
+    response: Response,
+    *,
+    ctx: AuthenticatedContext,
+    iam: IamService,
+) -> None:
+    if ctx.csrf_cookie_refreshed:
+        set_csrf_cookie(response, csrf_token=ctx.csrf_token, secure=iam.secure_cookies)
+
+
 def get_iam_service(request: Request) -> IamService:
     """Resolve `IamService` bound to `app.state.iam_service` or fail closed with 503."""
     svc = getattr(request.app.state, "iam_service", None)
@@ -97,6 +159,30 @@ def get_iam_service(request: Request) -> IamService:
             detail="IAM persistence service is not configured on this control-plane instance.",
         )
     return svc
+
+
+def _workspace_service(iam: IamService) -> WorkspaceService:
+    return WorkspaceService(
+        session_factory=iam.session_factory,
+        signing_key=iam.csrf_signing_key,
+    )
+
+
+def _member_invite_service(iam: IamService) -> MemberInviteService:
+    return MemberInviteService(
+        session_factory=iam.session_factory,
+        signing_key=iam.csrf_signing_key,
+    )
+
+
+def _workspace_sse_service(iam: IamService) -> WorkspaceSseService:
+    return WorkspaceSseService(
+        session_factory=iam.session_factory,
+        signing_key=iam.csrf_signing_key,
+        cursor_ttl=iam.sse_cursor_ttl,
+        poll_interval_seconds=iam.sse_poll_interval_seconds,
+        heartbeat_interval_seconds=iam.sse_heartbeat_interval_seconds,
+    )
 
 
 async def _enforce_preauth_csrf(request: Request, iam: IamService) -> None:
@@ -122,7 +208,7 @@ async def require_authenticated_read(
     request: Request,
     iam: Annotated[IamService, Depends(get_iam_service)],
 ) -> AuthenticatedContext:
-    """Authenticate opaque session cookie for read-only `/me` endpoints."""
+    """Authenticate opaque session cookie for read-only endpoints."""
     return await iam.authenticate_request(
         request,
         require_csrf=False,
@@ -142,8 +228,96 @@ async def require_authenticated_mutation(
     )
 
 
+_require_ws_read = make_workspace_rbac_dependency(
+    allowed_roles=ALL_WORKSPACE_ROLES,
+    require_csrf=False,
+    allow_break_glass=True,
+    action="workspace.read",
+)
+_require_ws_update = make_workspace_rbac_dependency(
+    allowed_roles=ADMIN_ONLY_ROLES,
+    require_csrf=True,
+    allow_break_glass=False,
+    action="workspace.update",
+)
+_require_ws_break_glass_list = make_workspace_rbac_dependency(
+    allowed_roles=ADMIN_OR_AUDITOR_ROLES,
+    require_csrf=False,
+    allow_break_glass=True,
+    action="workspace.break_glass_list",
+)
+_require_ws_break_glass_revoke = make_workspace_rbac_dependency(
+    allowed_roles=ADMIN_ONLY_ROLES,
+    require_csrf=True,
+    allow_break_glass=True,
+    action="workspace.break_glass_revoke",
+)
+_require_ws_members_list = make_workspace_rbac_dependency(
+    allowed_roles=ALL_WORKSPACE_ROLES,
+    require_csrf=False,
+    allow_break_glass=True,
+    action="workspace.members_list",
+)
+_require_ws_member_update = make_workspace_rbac_dependency(
+    allowed_roles=ADMIN_ONLY_ROLES,
+    require_csrf=True,
+    allow_break_glass=False,
+    action="workspace.member_update",
+)
+_require_ws_member_remove = make_workspace_rbac_dependency(
+    allowed_roles=ADMIN_ONLY_ROLES,
+    require_csrf=True,
+    allow_break_glass=False,
+    action="workspace.member_remove",
+)
+_require_ws_invitations_list = make_workspace_rbac_dependency(
+    allowed_roles=ADMIN_OR_AUDITOR_ROLES,
+    require_csrf=False,
+    allow_break_glass=True,
+    action="workspace.invitations_list",
+)
+_require_ws_invitation_create = make_workspace_rbac_dependency(
+    allowed_roles=ADMIN_ONLY_ROLES,
+    require_csrf=True,
+    allow_break_glass=False,
+    action="workspace.invitation_create",
+)
+_require_ws_invitation_revoke = make_workspace_rbac_dependency(
+    allowed_roles=ADMIN_ONLY_ROLES,
+    require_csrf=True,
+    allow_break_glass=False,
+    action="workspace.invitation_revoke",
+)
+
+
+async def _require_ws_sse_access(
+    ws: Annotated[str, Path(min_length=1, max_length=120)],
+    request: Request,
+    iam: Annotated[IamService, Depends(get_iam_service)],
+) -> WorkspaceAccessContext:
+    """Enforce cookie-only SSE rule (`400` on bearer token) before cookie auth + RBAC (`A-21`)."""
+    assert_no_bearer_token_on_sse(request)
+    corr_id = _correlation_id(request)
+    auth = await iam.authenticate_request(
+        request,
+        require_csrf=False,
+        correlation_id=corr_id,
+    )
+    return await authorize_workspace_access(
+        iam.session_factory,
+        auth=auth,
+        raw_ws=ws,
+        allowed_roles=ALL_WORKSPACE_ROLES,
+        allow_break_glass=True,
+        action="sse.subscribe",
+        client_ip=extract_client_ip(request),
+        correlation_id=corr_id,
+        now=iam.now(),
+    )
+
+
 def build_iam_router() -> APIRouter:
-    """Create the `/api/v1` IAM router covering A-01 (claim), A-02 (auth), and A-03 (me)."""
+    """Create the `/api/v1` IAM, Workspace, Membership, Invitation & SSE router."""
     router = APIRouter(prefix="/api/v1")
 
     @router.get(
@@ -335,8 +509,7 @@ def build_iam_router() -> APIRouter:
         ctx: Annotated[AuthenticatedContext, Depends(require_authenticated_read)],
     ) -> MeResponse:
         _apply_no_store_headers(response)
-        if ctx.csrf_cookie_refreshed:
-            set_csrf_cookie(response, csrf_token=ctx.csrf_token, secure=iam.secure_cookies)
+        _maybe_refresh_csrf_cookie(response, ctx=ctx, iam=iam)
         return await iam.get_me(ctx)
 
     @router.get(
@@ -353,8 +526,7 @@ def build_iam_router() -> APIRouter:
         ctx: Annotated[AuthenticatedContext, Depends(require_authenticated_read)],
     ) -> SessionPage:
         _apply_no_store_headers(response)
-        if ctx.csrf_cookie_refreshed:
-            set_csrf_cookie(response, csrf_token=ctx.csrf_token, secure=iam.secure_cookies)
+        _maybe_refresh_csrf_cookie(response, ctx=ctx, iam=iam)
         return await iam.list_my_sessions(ctx)
 
     @router.delete(
@@ -445,6 +617,457 @@ def build_iam_router() -> APIRouter:
             secure=iam.secure_cookies,
         )
         set_csrf_cookie(resp, csrf_token=raw_csrf_token, secure=iam.secure_cookies)
+        return resp
+
+    # ------------------------------------------------------------------
+    # U06 — Multi-Workspace Lifecycle & Break-Glass (A-04, ADR-030, ADR-034)
+    # ------------------------------------------------------------------
+
+    @router.get(
+        "/workspaces",
+        operation_id="listWorkspaces",
+        tags=["workspaces"],
+        response_model=WorkspacePage,
+        summary="List workspaces where caller holds membership or active break-glass grant (A-04)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def list_workspaces(
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ctx: Annotated[AuthenticatedContext, Depends(require_authenticated_read)],
+        cursor: Annotated[str | None, Query(max_length=1024)] = None,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    ) -> WorkspacePage:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ctx, iam=iam)
+        return await _workspace_service(iam).list_workspaces(
+            ctx,
+            cursor=cursor,
+            limit=limit,
+            now=iam.now(),
+        )
+
+    @router.post(
+        "/workspaces",
+        operation_id="createWorkspace",
+        tags=["workspaces"],
+        status_code=status.HTTP_201_CREATED,
+        response_model=Workspace,
+        summary="Create a new workspace (`instance_owner` only) with initial admin member (A-04)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def create_workspace(
+        payload: WorkspaceCreateRequest,
+        request: Request,
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ctx: Annotated[AuthenticatedContext, Depends(require_authenticated_mutation)],
+    ) -> Workspace:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ctx, iam=iam)
+        dto = await _workspace_service(iam).create_workspace(
+            ctx,
+            payload,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+        response.headers["ETag"] = format_version_etag(dto.version)
+        return dto
+
+    @router.get(
+        "/workspaces/{ws}",
+        operation_id="getWorkspace",
+        tags=["workspaces"],
+        response_model=Workspace,
+        summary="Get workspace metadata for authorized members or active break-glass (A-04)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def get_workspace(
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_read)],
+    ) -> Workspace:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ws_ctx.auth, iam=iam)
+        dto = to_workspace_dto(ws_ctx.workspace)
+        response.headers["ETag"] = format_version_etag(dto.version)
+        return dto
+
+    @router.patch(
+        "/workspaces/{ws}",
+        operation_id="updateWorkspace",
+        tags=["workspaces"],
+        response_model=Workspace,
+        summary="Update workspace settings (`admin` only) with If-Match concurrency (A-04)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def update_workspace(
+        payload: WorkspaceUpdateRequest,
+        request: Request,
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_update)],
+        if_match: Annotated[str | None, Header(alias="If-Match")] = None,
+    ) -> Workspace:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ws_ctx.auth, iam=iam)
+        dto = await _workspace_service(iam).update_workspace(
+            ws_ctx,
+            payload,
+            if_match_header=if_match,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+        response.headers["ETag"] = format_version_etag(dto.version)
+        return dto
+
+    @router.delete(
+        "/workspaces/{ws}",
+        operation_id="deleteWorkspace",
+        tags=["workspaces"],
+        status_code=status.HTTP_202_ACCEPTED,
+        response_model=ActionReceipt,
+        summary="Freeze, revoke grants & tombstone workspace (owner + step-up + Idempotency-Key)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def delete_workspace(
+        ws: Annotated[str, Path(min_length=1, max_length=120)],
+        payload: WorkspaceDeleteRequest,
+        request: Request,
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ctx: Annotated[AuthenticatedContext, Depends(require_authenticated_mutation)],
+        idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    ) -> ActionReceipt:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ctx, iam=iam)
+        return await _workspace_service(iam).delete_workspace(
+            ctx,
+            raw_ws=ws,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+
+    @router.get(
+        "/workspaces/{ws}/break-glass",
+        operation_id="listBreakGlassGrants",
+        tags=["workspaces"],
+        response_model=BreakGlassGrantPage,
+        summary="List temporary owner break-glass grants for workspace admin/auditor (ADR-034)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def list_break_glass_grants(
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_break_glass_list)],
+    ) -> BreakGlassGrantPage:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ws_ctx.auth, iam=iam)
+        return await _workspace_service(iam).list_break_glass_grants(
+            ws_ctx,
+            now=iam.now(),
+        )
+
+    @router.post(
+        "/workspaces/{ws}/break-glass",
+        operation_id="createBreakGlassGrant",
+        tags=["workspaces"],
+        status_code=status.HTTP_201_CREATED,
+        response_model=BreakGlassGrant,
+        summary="Issue temporary audited read-only break-glass grant (owner + step-up) (ADR-034)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def create_break_glass_grant(
+        ws: Annotated[str, Path(min_length=1, max_length=120)],
+        payload: BreakGlassCreateRequest,
+        request: Request,
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ctx: Annotated[AuthenticatedContext, Depends(require_authenticated_mutation)],
+    ) -> BreakGlassGrant:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ctx, iam=iam)
+        return await _workspace_service(iam).create_break_glass_grant(
+            ctx,
+            raw_ws=ws,
+            payload=payload,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+
+    @router.delete(
+        "/workspaces/{ws}/break-glass/{grant_id}",
+        operation_id="revokeBreakGlassGrant",
+        tags=["workspaces"],
+        status_code=status.HTTP_204_NO_CONTENT,
+        summary="Immediately revoke a workspace break-glass grant (ADR-034)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def revoke_break_glass_grant(
+        grant_id: Annotated[InternalId, Path()],
+        request: Request,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_break_glass_revoke)],
+    ) -> Response:
+        await _workspace_service(iam).revoke_break_glass_grant(
+            ws_ctx,
+            grant_id=grant_id,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+        resp = Response(status_code=status.HTTP_204_NO_CONTENT)
+        _apply_no_store_headers(resp)
+        _maybe_refresh_csrf_cookie(resp, ctx=ws_ctx.auth, iam=iam)
+        return resp
+
+    # ------------------------------------------------------------------
+    # U06 — Memberships, Repo Grants & Single-Use Invitations (A-05, SEC-038)
+    # ------------------------------------------------------------------
+
+    @router.get(
+        "/workspaces/{ws}/members",
+        operation_id="listWorkspaceMembers",
+        tags=["members"],
+        response_model=MembershipPage,
+        summary="List workspace members and scoped repository grants (A-05)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def list_workspace_members(
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_members_list)],
+        cursor: Annotated[str | None, Query(max_length=1024)] = None,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+        role: Annotated[WorkspaceRole | None, Query()] = None,
+    ) -> MembershipPage:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ws_ctx.auth, iam=iam)
+        return await _member_invite_service(iam).list_members(
+            ws_ctx,
+            cursor=cursor,
+            limit=limit,
+            role_filter=role,
+            now=iam.now(),
+        )
+
+    @router.patch(
+        "/workspaces/{ws}/members/{member_id}",
+        operation_id="updateWorkspaceMember",
+        tags=["members"],
+        response_model=Membership,
+        summary="Update member role & repository grants (`admin` only, `409 last_admin`) (A-05)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def update_workspace_member(
+        member_id: Annotated[InternalId, Path()],
+        payload: MemberUpdateRequest,
+        request: Request,
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_member_update)],
+        if_match: Annotated[str | None, Header(alias="If-Match")] = None,
+    ) -> Membership:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ws_ctx.auth, iam=iam)
+        dto = await _member_invite_service(iam).update_member(
+            ws_ctx,
+            member_id=member_id,
+            payload=payload,
+            if_match_header=if_match,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+        response.headers["ETag"] = format_version_etag(dto.version)
+        return dto
+
+    @router.delete(
+        "/workspaces/{ws}/members/{member_id}",
+        operation_id="removeWorkspaceMember",
+        tags=["members"],
+        status_code=status.HTTP_204_NO_CONTENT,
+        summary="Remove workspace member (`admin` only, `409 last_admin`) (A-05)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def remove_workspace_member(
+        member_id: Annotated[InternalId, Path()],
+        request: Request,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_member_remove)],
+    ) -> Response:
+        await _member_invite_service(iam).delete_member(
+            ws_ctx,
+            member_id=member_id,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+        resp = Response(status_code=status.HTTP_204_NO_CONTENT)
+        _apply_no_store_headers(resp)
+        _maybe_refresh_csrf_cookie(resp, ctx=ws_ctx.auth, iam=iam)
+        return resp
+
+    @router.get(
+        "/workspaces/{ws}/invitations",
+        operation_id="listWorkspaceInvitations",
+        tags=["invitations"],
+        response_model=InvitePage,
+        summary="List workspace invitations without raw tokens (`admin`/`auditor`) (A-05)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def list_workspace_invitations(
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_invitations_list)],
+        cursor: Annotated[str | None, Query(max_length=1024)] = None,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+        status_filter: Annotated[InviteStatus | None, Query(alias="status")] = None,
+    ) -> InvitePage:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ws_ctx.auth, iam=iam)
+        return await _member_invite_service(iam).list_invitations(
+            ws_ctx,
+            cursor=cursor,
+            limit=limit,
+            status_filter=status_filter,
+            now=iam.now(),
+        )
+
+    @router.post(
+        "/workspaces/{ws}/invitations",
+        operation_id="createWorkspaceInvitation",
+        tags=["invitations"],
+        status_code=status.HTTP_201_CREATED,
+        response_model=InviteCreateResponse,
+        summary="Create single-use email-bound workspace invitation (token returned once) (A-05)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def create_workspace_invitation(
+        payload: InviteCreateRequest,
+        request: Request,
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_invitation_create)],
+    ) -> InviteCreateResponse:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ws_ctx.auth, iam=iam)
+        return await _member_invite_service(iam).create_invitation(
+            ws_ctx,
+            payload,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+
+    @router.delete(
+        "/workspaces/{ws}/invitations/{invite_id}",
+        operation_id="revokeWorkspaceInvitation",
+        tags=["invitations"],
+        status_code=status.HTTP_204_NO_CONTENT,
+        summary="Revoke a pending workspace invitation (`admin` only) (A-05)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def revoke_workspace_invitation(
+        invite_id: Annotated[InternalId, Path()],
+        request: Request,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_invitation_revoke)],
+    ) -> Response:
+        await _member_invite_service(iam).revoke_invitation(
+            ws_ctx,
+            invite_id=invite_id,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+        resp = Response(status_code=status.HTTP_204_NO_CONTENT)
+        _apply_no_store_headers(resp)
+        _maybe_refresh_csrf_cookie(resp, ctx=ws_ctx.auth, iam=iam)
+        return resp
+
+    @router.post(
+        "/invitations/accept",
+        operation_id="acceptWorkspaceInvitation",
+        tags=["invitations"],
+        response_model=Membership,
+        summary="Redeem single-use email-bound workspace invitation token (A-05, SEC-038)",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def accept_workspace_invitation(
+        payload: InviteAcceptRequest,
+        request: Request,
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ctx: Annotated[AuthenticatedContext, Depends(require_authenticated_mutation)],
+    ) -> Membership:
+        _apply_no_store_headers(response)
+        _maybe_refresh_csrf_cookie(response, ctx=ctx, iam=iam)
+        dto = await _member_invite_service(iam).accept_invitation(
+            ctx,
+            payload,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now=iam.now(),
+        )
+        response.headers["ETag"] = format_version_etag(dto.version)
+        return dto
+
+    # ------------------------------------------------------------------
+    # U06 — Workspace Server-Sent Events Stream (A-21, S-19, NFR-04)
+    # ------------------------------------------------------------------
+
+    @router.get(
+        "/workspaces/{ws}/events",
+        operation_id="streamWorkspaceEvents",
+        tags=["events"],
+        response_class=StreamingResponse,
+        summary="Stream workspace-scoped S-19 events over cookie-authenticated SSE (A-21)",
+        responses={
+            200: {
+                "description": "Live text/event-stream of workspace S-19 EventEnvelope frames.",
+                "content": {SSE_MEDIA_TYPE: {"schema": {"type": "string"}}},
+            },
+            **_PROBLEM_RESPONSES,
+        },
+    )
+    async def stream_workspace_events(
+        request: Request,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_ws_sse_access)],
+        last_event_id_header: Annotated[str | None, Header(alias="Last-Event-ID")] = None,
+        last_event_id_query: Annotated[
+            str | None,
+            Query(alias="last_event_id", max_length=512),
+        ] = None,
+        repository_id: Annotated[InternalId | None, Query()] = None,
+        event_type: Annotated[EventType | None, Query()] = None,
+        max_events: Annotated[int | None, Query(ge=1, le=500, include_in_schema=False)] = None,
+        max_duration_seconds: Annotated[
+            float | None,
+            Query(ge=0.05, le=60.0, include_in_schema=False),
+        ] = None,
+    ) -> StreamingResponse:
+        effective_cursor = last_event_id_header or last_event_id_query
+        resp = await _workspace_sse_service(iam).open_workspace_stream(
+            request,
+            ws_ctx,
+            last_event_id=effective_cursor,
+            repository_id_filter=repository_id,
+            event_type_filter=event_type,
+            max_events=max_events,
+            max_duration_seconds=max_duration_seconds,
+            client_ip=extract_client_ip(request),
+            correlation_id=_correlation_id(request),
+            now_fn=iam.now,
+        )
+        _maybe_refresh_csrf_cookie(resp, ctx=ws_ctx.auth, iam=iam)
         return resp
 
     return router

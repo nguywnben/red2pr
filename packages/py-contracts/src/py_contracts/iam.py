@@ -1,9 +1,10 @@
-"""Canonical IAM, auth, MFA, workspace, membership & invite contracts (S-06, S-07, A-01..A-03).
+"""Canonical IAM, auth, MFA, workspace, membership & invite contracts (S-06, S-07, A-01..A-05).
 
 Implements:
 - S-06: User and Session DTOs (normalized email, no password hash or raw token fields).
-- S-07: Workspace, Membership (including 'auditor' per ADR-038), and Invite DTOs.
-- A-01 (claim), A-02 (login/logout/step-up/recovery), A-03 (/me, /me/sessions, /me/mfa) wire DTOs.
+- S-07: Workspace, Membership (including 'auditor' per ADR-038), Invite, and BreakGlassGrant DTOs.
+- A-01 (claim), A-02 (login/logout/step-up/recovery), A-03 (/me, /me/sessions, /me/mfa),
+  A-04 (/workspaces, /workspaces/{ws}, break-glass), and A-05 (members & invitations) wire DTOs.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from pydantic import BeforeValidator, Field, StrictBool, StrictInt, StrictStr, m
 
 from py_contracts.primitives import (
     BoundedName,
+    BoundedReason,
     InstanceResourceBase,
     InternalId,
     Page,
@@ -25,6 +27,7 @@ from py_contracts.primitives import (
 )
 
 _EMAIL_RE = re.compile(r"^[^@\s\x00-\x1f\x7f]+@[^@\s\x00-\x1f\x7f]+\.[^@\s\x00-\x1f\x7f]+$")
+_SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,118}[a-z0-9])?$")
 
 
 def _normalize_email(value: Any) -> str:
@@ -36,8 +39,21 @@ def _normalize_email(value: Any) -> str:
     return normalized
 
 
+def _validate_workspace_slug(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("Workspace slug must be a string")
+    cleaned = value.strip().lower()
+    if not cleaned or len(cleaned) > 120 or not _SLUG_RE.fullmatch(cleaned):
+        raise ValueError(
+            "Workspace slug must contain lowercase ASCII letters, digits, or internal hyphens"
+        )
+    return cleaned
+
+
 NormalizedEmail = Annotated[StrictStr, BeforeValidator(_normalize_email)]
+WorkspaceSlugStr = Annotated[StrictStr, BeforeValidator(_validate_workspace_slug)]
 CsrfTokenStr = Annotated[StrictStr, Field(min_length=16, max_length=256)]
+InviteTokenStr = Annotated[StrictStr, Field(min_length=16, max_length=256)]
 OtpCodeStr = Annotated[StrictStr, Field(pattern=r"^\d{6}$")]
 NewPasswordStr = Annotated[StrictStr, Field(min_length=12, max_length=256)]
 LoginPasswordStr = Annotated[StrictStr, Field(min_length=1, max_length=256)]
@@ -72,6 +88,7 @@ class Workspace(InstanceResourceBase):
     """S-07 multi-workspace tenant resource (ADR-030)."""
 
     name: BoundedName
+    slug: WorkspaceSlugStr | None = None
     status: WorkspaceStatus
     paused: StrictBool = False
 
@@ -82,6 +99,7 @@ class Membership(WorkspaceResourceBase):
     user_id: InternalId
     role: WorkspaceRole
     repository_grants: list[InternalId] = Field(default_factory=list)
+    user: User | None = None
 
 
 class Invite(WorkspaceResourceBase):
@@ -91,6 +109,7 @@ class Invite(WorkspaceResourceBase):
     role: WorkspaceRole
     expires_at: UtcTimestamp
     status: InviteStatus
+    repository_grants: list[InternalId] = Field(default_factory=list)
 
 
 class CsrfBootstrapResponse(StrictContractModel):
@@ -285,3 +304,92 @@ class MfaDeleteRequest(StrictContractModel):
     """A-03 MFA disable request requiring step-up + single-use recovery code authorization."""
 
     recovery_authorization: RecoveryCodeStr
+
+
+WorkspacePage = Page[Workspace]
+MembershipPage = Page[Membership]
+InvitePage = Page[Invite]
+
+
+class WorkspaceCreateRequest(StrictContractModel):
+    """A-04 owner-only workspace creation request."""
+
+    name: BoundedName
+    slug: WorkspaceSlugStr | None = None
+    initial_admin_user_id: InternalId | None = None
+
+
+class WorkspaceUpdateRequest(StrictContractModel):
+    """A-04 workspace admin settings patch request with optimistic concurrency."""
+
+    name: BoundedName | None = None
+    paused: StrictBool | None = None
+    expected_version: PositiveVersion | None = None
+
+    @model_validator(mode="after")
+    def _validate_non_empty_patch(self) -> Self:
+        if self.name is None and self.paused is None:
+            raise ValueError("WorkspaceUpdateRequest must specify at least name or paused")
+        return self
+
+
+class WorkspaceDeleteRequest(StrictContractModel):
+    """A-04 owner step-up workspace deletion confirmation body."""
+
+    confirm_name: BoundedName
+
+
+class InviteCreateRequest(StrictContractModel):
+    """A-05 email-bound single-use workspace invitation creation input."""
+
+    email: NormalizedEmail
+    role: WorkspaceRole
+    expires_at: UtcTimestamp | None = None
+    repository_grants: list[InternalId] = Field(default_factory=list)
+
+
+class InviteCreateResponse(StrictContractModel):
+    """A-05 invitation creation response revealing single-use invite_token ONCE ONLY."""
+
+    invite: Invite
+    invite_token: InviteTokenStr
+
+
+class InviteAcceptRequest(StrictContractModel):
+    """A-05 authenticated single-use email-bound invitation acceptance input (SEC-038)."""
+
+    token: InviteTokenStr
+
+
+class MemberUpdateRequest(StrictContractModel):
+    """A-05 workspace member role and/or repository_grants mutation input."""
+
+    role: WorkspaceRole | None = None
+    repository_grants: list[InternalId] | None = None
+    expected_version: PositiveVersion | None = None
+
+    @model_validator(mode="after")
+    def _validate_non_empty_member_patch(self) -> Self:
+        if self.role is None and self.repository_grants is None:
+            raise ValueError("MemberUpdateRequest must specify at least role or repository_grants")
+        return self
+
+
+class BreakGlassCreateRequest(StrictContractModel):
+    """ADR-034 owner step-up temporary workspace break-glass access request."""
+
+    reason: BoundedReason
+    duration_minutes: Annotated[StrictInt, Field(ge=5, le=240)] = 30
+
+
+class BreakGlassGrant(WorkspaceResourceBase):
+    """ADR-034 audited time-bounded owner break-glass read grant."""
+
+    user_id: InternalId
+    reason: BoundedReason
+    expires_at: UtcTimestamp
+    revoked_at: UtcTimestamp | None = None
+    active: StrictBool
+
+
+BreakGlassGrantPage = Page[BreakGlassGrant]

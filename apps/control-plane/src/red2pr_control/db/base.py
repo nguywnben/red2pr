@@ -1,16 +1,11 @@
-"""SQLAlchemy 2.0 declarative base and U03 foundation spine ORM models (docs/06_DATA_MODEL.md).
+"""SQLAlchemy 2.0 declarative base and U03/U05/U06 persistence ORM models (docs/06_DATA_MODEL.md).
 
-Defines the authoritative relational persistence models for Migration 0001_foundation_spine:
-- instances (singleton install metadata & recovery_epoch)
-- workspaces (multi-workspace tenant root + monotonic SSE last_event_seq)
-- secret_entries (Z2 AES-256-GCM envelope-encrypted secrets; zero plaintext columns)
-- idempotency_records (S-05 atomic Idempotency-Key receipts & 7-day response cache)
-- effect_tombstones (NFR-07 >=90-day logical side-effect anti-replay tombstones)
-- outbox_events (S-19 transactional domain event outbox)
-- outbox_claims (fenced consumer-group outbox delivery leases with composite tenant FK)
-- audit_log (S-17 append-only SHA-256 hash-chained audit ledger)
-- audit_checkpoints (Ed25519-signed chain checkpoints replicated to external storage)
-- schema_migrations (expand/backfill/validate/contract migration ledger)
+Defines the authoritative relational persistence models for Migrations 0001..0003:
+- instances, workspaces, secret_entries, idempotency_records, effect_tombstones,
+  outbox_events, outbox_claims, audit_log, audit_checkpoints, schema_migrations (0001)
+- users, bootstrap_tokens, sessions, mfa_credentials, recovery_codes, auth_challenges,
+  auth_rate_limits (0002)
+- memberships, invitations, repo_grants, break_glass_grants (0003)
 """
 
 from __future__ import annotations
@@ -107,9 +102,7 @@ class WorkspaceModel(Base):
     owner_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    retention_policy: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict
-    )
+    retention_policy: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     last_event_seq: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
@@ -645,7 +638,10 @@ class AuthRateLimitModel(Base):
     __tablename__ = "auth_rate_limits"
     __table_args__ = (
         CheckConstraint(
-            "action IN ('login', 'step_up', 'recovery', 'bootstrap_claim', 'mfa_verify')",
+            "action IN ("
+            "'login', 'step_up', 'recovery', 'bootstrap_claim', 'mfa_verify', "
+            "'invite_create', 'invite_accept'"
+            ")",
             name="auth_rate_action_valid",
         ),
         Index("ix_auth_rate_limits_lookup", "action", "bucket_key", "attempted_at"),
@@ -657,3 +653,190 @@ class AuthRateLimitModel(Base):
     bucket_key: Mapped[str] = mapped_column(String(256), nullable=False)
     attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class MembershipModel(Base):
+    """S-07 workspace-scoped RBAC role assignment (ADR-030, ADR-038, SEC-032)."""
+
+    __tablename__ = "memberships"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_memberships_workspace_id_id"),
+        UniqueConstraint("workspace_id", "user_id", name="uq_memberships_workspace_user"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_memberships_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name="fk_memberships_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["invited_by_user_id"],
+            ["users.id"],
+            name="fk_memberships_invited_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "role IN ('admin', 'maintainer', 'reviewer', 'viewer', 'auditor')",
+            name="membership_role_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_memberships_user_workspace", "user_id", "workspace_id"),
+        Index("ix_memberships_workspace_created", "workspace_id", "created_at", "id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    invited_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class InvitationModel(Base):
+    """S-07 email-bound single-use workspace invitation (SHA-256 hashed token, SEC-038)."""
+
+    __tablename__ = "invitations"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_invitations_workspace_id_id"),
+        UniqueConstraint("token_hash", name="uq_invitations_token_hash"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_invitations_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["invited_by_user_id"],
+            ["users.id"],
+            name="fk_invitations_invited_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["accepted_by_user_id"],
+            ["users.id"],
+            name="fk_invitations_accepted_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "role IN ('admin', 'maintainer', 'reviewer', 'viewer', 'auditor')",
+            name="invitation_role_valid",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'accepted', 'expired', 'revoked')",
+            name="invitation_status_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_invitations_workspace_status", "workspace_id", "status", "created_at", "id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    repository_grants_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    invited_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    accepted_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class RepoGrantModel(Base):
+    """Deny-by-default per-repository grant with composite tenant FK (SEC-010, SEC-032)."""
+
+    __tablename__ = "repo_grants"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_repo_grants_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "membership_id",
+            "repository_id",
+            name="uq_repo_grants_ws_member_repo",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_repo_grants_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "membership_id"],
+            ["memberships.workspace_id", "memberships.id"],
+            name="fk_repo_grants_tenant_membership_memberships",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["granted_by_user_id"],
+            ["users.id"],
+            name="fk_repo_grants_granted_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        Index("ix_repo_grants_ws_repo", "workspace_id", "repository_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    membership_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    granted_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class BreakGlassGrantModel(Base):
+    """ADR-034 time-bounded audited instance-owner break-glass read grant."""
+
+    __tablename__ = "break_glass_grants"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_break_glass_grants_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_break_glass_grants_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name="fk_break_glass_grants_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_break_glass_grants_ws_user_expires", "workspace_id", "user_id", "expires_at"),
+        Index("ix_break_glass_grants_user_expires", "user_id", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    reason: Mapped[str] = mapped_column(String(512), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

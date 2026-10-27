@@ -1,4 +1,4 @@
-"""FastAPI /api/v1 application shell, S-03 Problem handlers, and OpenAPI v1 exporter (U02).
+"""FastAPI /api/v1 application shell, S-03 Problem handlers, and OpenAPI v1 exporter (U02..U06).
 
 Provides:
 - Public minimal liveness route GET /api/v1/system/health (A-18).
@@ -29,6 +29,9 @@ from py_contracts import (
     Approval,
     Artifact,
     AuditRecord,
+    BreakGlassCreateRequest,
+    BreakGlassGrant,
+    BreakGlassGrantPage,
     CiJob,
     CiRun,
     Connection,
@@ -38,11 +41,17 @@ from py_contracts import (
     EventEnvelope,
     EvidenceManifestV1,
     Invite,
+    InviteAcceptRequest,
+    InviteCreateRequest,
+    InviteCreateResponse,
+    InvitePage,
     LifecycleOperation,
     LoginRequest,
     LoginResponse,
     LogoutRequest,
     Membership,
+    MembershipPage,
+    MemberUpdateRequest,
     MeResponse,
     MfaDeleteRequest,
     MfaEnrollRequest,
@@ -68,6 +77,7 @@ from py_contracts import (
     SandboxJobV1,
     Session,
     SessionListItem,
+    SessionPage,
     SetupClaimRequest,
     SetupClaimResponse,
     SetupState,
@@ -83,6 +93,10 @@ from py_contracts import (
     Verification,
     Worker,
     Workspace,
+    WorkspaceCreateRequest,
+    WorkspaceDeleteRequest,
+    WorkspacePage,
+    WorkspaceUpdateRequest,
     new_uuid7,
 )
 from red2pr_control.core.errors import (
@@ -113,6 +127,7 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     User,
     Session,
     SessionListItem,
+    SessionPage,
     CsrfBootstrapResponse,
     SetupClaimRequest,
     SetupClaimResponse,
@@ -129,8 +144,21 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     MfaEnrollResponse,
     MfaDeleteRequest,
     Workspace,
+    WorkspacePage,
+    WorkspaceCreateRequest,
+    WorkspaceUpdateRequest,
+    WorkspaceDeleteRequest,
     Membership,
+    MembershipPage,
+    MemberUpdateRequest,
     Invite,
+    InvitePage,
+    InviteCreateRequest,
+    InviteCreateResponse,
+    InviteAcceptRequest,
+    BreakGlassGrant,
+    BreakGlassGrantPage,
+    BreakGlassCreateRequest,
     Connection,
     ConnectionWrite,
     Repository,
@@ -227,8 +255,7 @@ class _CorrelationAndBodyLimitMiddleware:
                     if declared_len > self._max_body_bytes:
                         too_large = PayloadTooLargeError(
                             detail=(
-                                f"Request body exceeds maximum {self._max_body_bytes} "
-                                "bytes (S-01)."
+                                f"Request body exceeds maximum {self._max_body_bytes} bytes (S-01)."
                             )
                         )
                         prob = problem_from_exception(too_large, correlation_id=corr_id)
@@ -249,8 +276,7 @@ class _CorrelationAndBodyLimitMiddleware:
                     if seen_bytes > self._max_body_bytes:
                         too_large = PayloadTooLargeError(
                             detail=(
-                                f"Request body exceeds maximum {self._max_body_bytes} "
-                                "bytes (S-01)."
+                                f"Request body exceeds maximum {self._max_body_bytes} bytes (S-01)."
                             )
                         )
                         prob = problem_from_exception(too_large, correlation_id=corr_id)

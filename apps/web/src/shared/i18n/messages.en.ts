@@ -17,6 +17,7 @@ export const EN_MESSAGES = {
   "app.nav.notifications": "Notifications",
   "app.nav.analytics": "Analytics & Cost",
   "app.nav.audit": "Audit Log",
+  "app.nav.members": "Members & Access",
   "app.nav.settings": "Settings",
   "app.nav.operations": "Operations",
   "app.nav.account": "Account & Security",
@@ -118,7 +119,7 @@ export const EN_MESSAGES = {
   "diff.fileFilterLabel": "Jump to changed file",
   "diff.allFiles": "All files ({count})",
   "diff.switchToPaged": "Switch diff to paged keyboard view",
-  "diff.switchToVirtualized": "Switch diff to virtualized scroll",
+  "diff.switchToVirtualized": "Switch to virtualized scroll",
   "diff.rangeSummary": "Showing diff rows {start}–{end} of {total}",
   "diff.empty": "No patch diff lines available.",
   "diff.kind.added": "Added line",
@@ -255,6 +256,102 @@ export const EN_MESSAGES = {
   "account.currentSessionBadge": "Current session",
   "account.unknownDevice": "Browser session",
   "account.revokeSessionAction": "Revoke",
+
+  "workspaceGuard.notFoundOrForbiddenTitle": "Workspace unavailable or access not granted",
+  "workspaceGuard.notFoundOrForbiddenDesc":
+    "This workspace does not exist or your account does not hold an active membership. Instance Owners never receive implicit read access to workspace data.",
+  "workspaceGuard.revokedTitle": "Workspace permissions changed or revoked",
+  "workspaceGuard.revokedDesc":
+    "Your membership, role, or repository grant in this workspace was modified or revoked. Cached workspace state has been purged.",
+  "workspaceGuard.switchToAuthorized": "Open {name}",
+  "workspaceGuard.goToAccount": "Go to Account & Security",
+  "workspaceGuard.ownerBreakGlassTitle": "Instance Owner Audited Break-Glass Access",
+  "workspaceGuard.ownerBreakGlassDesc":
+    "Request temporary read-only access (5–240 minutes) with a mandatory audit reason and fresh 5-minute step-up verification. Every grant is recorded in both instance and workspace audit logs.",
+  "workspaceGuard.breakGlassReasonLabel": "Mandatory audit reason (minimum 8 characters)",
+  "workspaceGuard.breakGlassDurationLabel": "Break-glass duration (minutes)",
+  "workspaceGuard.breakGlassSubmit": "Activate audited break-glass read access",
+
+  "members.pageTitle": "Members & Access",
+  "members.pageSubtitle":
+    "Server-enforced workspace RBAC, scoped repository grants, and single-use email-bound invitations.",
+  "members.effectiveRoleLabel": "Effective access: {role}",
+  "members.breakGlassReadOnlyBanner":
+    "Temporary audited Instance Owner break-glass read access is active. Mutating actions remain blocked.",
+  "members.inviteMemberAction": "Invite member",
+  "members.redeemInviteAction": "Redeem invitation token",
+  "members.readOnlyNotice":
+    "Read-only view: only workspace admins can invite members, change roles, modify repository grants, or remove members.",
+  "members.membersSectionTitle": "Workspace Members",
+  "members.membersSectionSubtitle":
+    "Non-admin roles follow deny-by-default repository visibility and only access explicitly granted repository IDs.",
+  "members.membersTableLabel": "Workspace members and repository grants",
+  "members.colMember": "Member",
+  "members.colRole": "Workspace role",
+  "members.colRepoGrants": "Repository scope",
+  "members.colJoined": "Version & joined (UTC)",
+  "members.colActions": "Actions",
+  "members.allWorkspaceReposBadge": "All workspace repositories (admin)",
+  "members.noRepoGrantsBadge": "No repository grants (deny-by-default)",
+  "members.editAccessAction": "Edit access",
+  "members.removeMemberAction": "Remove",
+  "members.loadNextPage": "Load next page",
+  "members.resetFirstPage": "Back to first page",
+
+  "members.editDialogTitle": "Update member role & repository grants",
+  "members.editDialogSubtitle":
+    "Changes bump the member's grant_epoch and sever active SSE streams on privilege reduction.",
+  "members.roleFieldLabel": "Workspace role",
+  "members.repoGrantsFieldLabel": "Scoped repository IDs (comma or newline separated UUIDs)",
+  "members.repoGrantsFieldHint":
+    "Leave empty for zero repository access on non-admin roles. Workspace admins automatically have workspace-wide repository read access.",
+  "members.saveMemberAction": "Save access changes",
+  "members.cancelAction": "Cancel",
+
+  "members.removeDialogTitle": "Remove workspace member",
+  "members.removeDialogSubtitle":
+    "Removing a member immediately revokes all scoped repository grants and severs active workspace SSE streams.",
+  "members.removeConfirmBody": "Remove {memberLabel} ({role}) from this workspace?",
+  "members.confirmRemoveAction": "Confirm member removal",
+
+  "members.inviteDialogTitle": "Create single-use workspace invitation",
+  "members.inviteDialogSubtitle":
+    "Invitations are strictly bound to the normalized recipient email address and expire automatically.",
+  "members.inviteEmailLabel": "Recipient email address",
+  "members.inviteRoleLabel": "Initial workspace role",
+  "members.inviteSubmitAction": "Generate one-time invitation",
+  "members.inviteOnceWarning":
+    "Copy and share this one-time invitation token now. Only its SHA-256 hash is stored at rest; the control plane will never display this token again.",
+  "members.inviteOnceTokenLabel": "One-time invitation token (shown once)",
+  "members.inviteAcknowledgeAction": "I have copied this token",
+
+  "members.invitationsSectionTitle": "Workspace Invitations",
+  "members.invitationsSectionSubtitle":
+    "Pending, accepted, expired, and revoked invitation metadata (raw tokens are never stored or returned).",
+  "members.invitationsTableLabel": "Workspace invitations",
+  "members.colInviteEmail": "Invited email",
+  "members.colInviteRole": "Role",
+  "members.colInviteStatus": "Status",
+  "members.colInviteRepos": "Repository grants",
+  "members.colInviteExpires": "Expires (UTC)",
+  "members.revokeInviteAction": "Revoke invitation",
+
+  "members.acceptDialogTitle": "Redeem workspace invitation",
+  "members.acceptDialogSubtitle":
+    "Your signed-in account email must match the invited email address.",
+  "members.acceptTokenLabel": "Single-use invitation token",
+  "members.acceptSubmitAction": "Accept invitation",
+
+  "members.breakGlassSectionTitle": "Audited Break-Glass Grants",
+  "members.breakGlassSectionSubtitle":
+    "Time-bounded temporary read-only grants issued to Instance Owners under step-up verification.",
+  "members.breakGlassTableLabel": "Workspace break-glass grants",
+  "members.colBgReason": "Audit reason",
+  "members.colBgStatus": "State",
+  "members.colBgExpires": "Expires (UTC)",
+  "members.bgActiveBadge": "Active (read-only)",
+  "members.bgInactiveBadge": "Expired / Revoked",
+  "members.revokeBreakGlassAction": "Revoke break-glass",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

@@ -4,7 +4,7 @@ import type { components, operations, paths } from "./schema.js";
 export type SchemaName = keyof components["schemas"];
 export type SchemaOf<K extends SchemaName> = components["schemas"][K];
 
-// Canonical S-01..S-22 & A-01..A-03 TypeScript aliases strictly derived from openapi.v1.json
+// Canonical S-01..S-22 & A-01..A-05 TypeScript aliases strictly derived from openapi.v1.json
 export type Problem = SchemaOf<"Problem">;
 export type ProblemFieldError = SchemaOf<"ProblemFieldError">;
 export type ActionReceipt = SchemaOf<"ActionReceipt">;
@@ -30,8 +30,23 @@ export type MfaEnrollRequest = SchemaOf<"MfaEnrollRequest">;
 export type MfaEnrollResponse = SchemaOf<"MfaEnrollResponse">;
 export type MfaDeleteRequest = SchemaOf<"MfaDeleteRequest">;
 export type Workspace = SchemaOf<"Workspace">;
+export type WorkspacePage = SchemaOf<"Page_Workspace_">;
+export type WorkspaceCreateRequest = SchemaOf<"WorkspaceCreateRequest">;
+export type WorkspaceUpdateRequest = SchemaOf<"WorkspaceUpdateRequest">;
+export type WorkspaceDeleteRequest = SchemaOf<"WorkspaceDeleteRequest">;
+export type WorkspaceRole = Membership["role"];
 export type Membership = SchemaOf<"Membership">;
+export type MembershipPage = SchemaOf<"Page_Membership_">;
+export type MemberUpdateRequest = SchemaOf<"MemberUpdateRequest">;
 export type Invite = SchemaOf<"Invite">;
+export type InviteStatus = Invite["status"];
+export type InvitePage = SchemaOf<"Page_Invite_">;
+export type InviteCreateRequest = SchemaOf<"InviteCreateRequest">;
+export type InviteCreateResponse = SchemaOf<"InviteCreateResponse">;
+export type InviteAcceptRequest = SchemaOf<"InviteAcceptRequest">;
+export type BreakGlassGrant = SchemaOf<"BreakGlassGrant">;
+export type BreakGlassGrantPage = SchemaOf<"Page_BreakGlassGrant_">;
+export type BreakGlassCreateRequest = SchemaOf<"BreakGlassCreateRequest">;
 export type Connection = SchemaOf<"Connection">;
 export type ConnectionWrite = SchemaOf<"ConnectionWrite">;
 export type Repository = SchemaOf<"Repository">;
@@ -72,9 +87,35 @@ export interface RequestCallOptions {
   readonly signal?: AbortSignal;
 }
 
+export interface OptimisticMutationOptions extends RequestCallOptions {
+  readonly ifMatch?: string;
+}
+
+export interface IdempotentMutationOptions extends RequestCallOptions {
+  readonly idempotencyKey: string;
+}
+
+export interface ListWorkspacesQuery {
+  readonly cursor?: string | null;
+  readonly limit?: number;
+}
+
+export interface ListWorkspaceMembersQuery {
+  readonly cursor?: string | null;
+  readonly limit?: number;
+  readonly role?: WorkspaceRole | null;
+}
+
+export interface ListWorkspaceInvitationsQuery {
+  readonly cursor?: string | null;
+  readonly limit?: number;
+  readonly status?: InviteStatus | null;
+}
+
 export interface ApiEnvelope<TData> {
   readonly data: TData;
   readonly correlationId: string | null;
+  readonly etag?: string | null;
 }
 
 export class Red2PrApiError extends Error {
@@ -125,6 +166,74 @@ export interface Red2PrClient {
     body: MfaDeleteRequest,
     options?: RequestCallOptions,
   ): Promise<{ correlationId: string | null }>;
+  listWorkspaces(
+    query?: ListWorkspacesQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<WorkspacePage>>;
+  createWorkspace(
+    body: WorkspaceCreateRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<Workspace>>;
+  getWorkspace(ws: string, options?: RequestCallOptions): Promise<ApiEnvelope<Workspace>>;
+  updateWorkspace(
+    ws: string,
+    body: WorkspaceUpdateRequest,
+    options?: OptimisticMutationOptions,
+  ): Promise<ApiEnvelope<Workspace>>;
+  deleteWorkspace(
+    ws: string,
+    body: WorkspaceDeleteRequest,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<ActionReceipt>>;
+  listBreakGlassGrants(
+    ws: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<BreakGlassGrantPage>>;
+  createBreakGlassGrant(
+    ws: string,
+    body: BreakGlassCreateRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<BreakGlassGrant>>;
+  revokeBreakGlassGrant(
+    ws: string,
+    grantId: string,
+    options?: RequestCallOptions,
+  ): Promise<{ correlationId: string | null }>;
+  listWorkspaceMembers(
+    ws: string,
+    query?: ListWorkspaceMembersQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<MembershipPage>>;
+  updateWorkspaceMember(
+    ws: string,
+    memberId: string,
+    body: MemberUpdateRequest,
+    options?: OptimisticMutationOptions,
+  ): Promise<ApiEnvelope<Membership>>;
+  removeWorkspaceMember(
+    ws: string,
+    memberId: string,
+    options?: RequestCallOptions,
+  ): Promise<{ correlationId: string | null }>;
+  listWorkspaceInvitations(
+    ws: string,
+    query?: ListWorkspaceInvitationsQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<InvitePage>>;
+  createWorkspaceInvitation(
+    ws: string,
+    body: InviteCreateRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<InviteCreateResponse>>;
+  revokeWorkspaceInvitation(
+    ws: string,
+    inviteId: string,
+    options?: RequestCallOptions,
+  ): Promise<{ correlationId: string | null }>;
+  acceptWorkspaceInvitation(
+    body: InviteAcceptRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<Membership>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -175,12 +284,31 @@ function coerceProblem(errorBody: unknown, response: Response): Problem {
   };
 }
 
-function buildOptionalHeaders(reqOptions?: RequestCallOptions): Record<string, string> {
+function buildOptionalHeaders(
+  reqOptions?: RequestCallOptions & {
+    readonly ifMatch?: string;
+    readonly idempotencyKey?: string;
+  },
+): Record<string, string> {
   const headers: Record<string, string> = {};
   if (reqOptions?.correlationId !== undefined) {
     headers["X-Correlation-Id"] = reqOptions.correlationId;
   }
+  if (reqOptions?.ifMatch !== undefined) {
+    headers["If-Match"] = reqOptions.ifMatch;
+  }
+  if (reqOptions?.idempotencyKey !== undefined) {
+    headers["Idempotency-Key"] = reqOptions.idempotencyKey;
+  }
   return headers;
+}
+
+function toEnvelope<TData>(data: TData, response: Response): ApiEnvelope<TData> {
+  return {
+    data,
+    correlationId: response.headers.get("X-Correlation-Id"),
+    etag: response.headers.get("ETag"),
+  };
 }
 
 export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrClient {
@@ -249,10 +377,7 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       if (data === undefined) {
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }
-      return {
-        data,
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return toEnvelope(data, response);
     },
     async getAuthCsrf(reqOptions) {
       const { data, error, response } = await raw.GET("/api/v1/auth/csrf", {
@@ -263,10 +388,7 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }
       memoryCsrfToken = data.csrf_token;
-      return {
-        data,
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return toEnvelope(data, response);
     },
     async claimInstanceOwner(body, reqOptions) {
       await ensurePreAuthCsrf(reqOptions);
@@ -279,10 +401,7 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }
       memoryCsrfToken = data.csrf_token;
-      return {
-        data,
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return toEnvelope(data, response);
     },
     async login(body, reqOptions) {
       await ensurePreAuthCsrf(reqOptions);
@@ -297,10 +416,7 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       if (typeof data.csrf_token === "string" && data.csrf_token.length > 0) {
         memoryCsrfToken = data.csrf_token;
       }
-      return {
-        data,
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return toEnvelope(data, response);
     },
     async logout(reqOptions) {
       const { error, response } = await raw.POST("/api/v1/auth/logout", {
@@ -326,10 +442,7 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }
       memoryCsrfToken = data.csrf_token;
-      return {
-        data,
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return toEnvelope(data, response);
     },
     async recoverAccount(body, reqOptions) {
       await ensurePreAuthCsrf(reqOptions);
@@ -342,10 +455,7 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }
       memoryCsrfToken = data.csrf_token;
-      return {
-        data,
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return toEnvelope(data, response);
     },
     async getMe(reqOptions) {
       const { data, error, response } = await raw.GET("/api/v1/me", {
@@ -356,10 +466,7 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }
       memoryCsrfToken = data.csrf_token;
-      return {
-        data,
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return toEnvelope(data, response);
     },
     async listMySessions(reqOptions) {
       const { data, error, response } = await raw.GET("/api/v1/me/sessions", {
@@ -369,10 +476,7 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       if (data === undefined) {
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }
-      return {
-        data,
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return toEnvelope(data, response);
     },
     async revokeMySession(sessionId, reqOptions) {
       const { error, response } = await raw.DELETE("/api/v1/me/sessions/{session_id}", {
@@ -399,10 +503,7 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       if (typeof data.csrf_token === "string" && data.csrf_token.length > 0) {
         memoryCsrfToken = data.csrf_token;
       }
-      return {
-        data,
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return toEnvelope(data, response);
     },
     async deleteMyMfa(body, reqOptions) {
       const { error, response } = await raw.DELETE("/api/v1/me/mfa", {
@@ -416,6 +517,200 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       return {
         correlationId: response.headers.get("X-Correlation-Id"),
       };
+    },
+    async listWorkspaces(query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces", {
+        params: { query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async createWorkspace(body, reqOptions) {
+      const { data, error, response } = await raw.POST("/api/v1/workspaces", {
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async getWorkspace(ws, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}", {
+        params: { path: { ws } },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async updateWorkspace(ws, body, reqOptions) {
+      const { data, error, response } = await raw.PATCH("/api/v1/workspaces/{ws}", {
+        params: {
+          path: { ws },
+          header: reqOptions?.ifMatch ? { "If-Match": reqOptions.ifMatch } : undefined,
+        },
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async deleteWorkspace(ws, body, reqOptions) {
+      const { data, error, response } = await raw.DELETE("/api/v1/workspaces/{ws}", {
+        params: {
+          path: { ws },
+          header: { "Idempotency-Key": reqOptions.idempotencyKey },
+        },
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async listBreakGlassGrants(ws, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/break-glass", {
+        params: { path: { ws } },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async createBreakGlassGrant(ws, body, reqOptions) {
+      const { data, error, response } = await raw.POST("/api/v1/workspaces/{ws}/break-glass", {
+        params: { path: { ws } },
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async revokeBreakGlassGrant(ws, grantId, reqOptions) {
+      const { error, response } = await raw.DELETE(
+        "/api/v1/workspaces/{ws}/break-glass/{grant_id}",
+        {
+          params: { path: { ws, grant_id: grantId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (!response.ok) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return {
+        correlationId: response.headers.get("X-Correlation-Id"),
+      };
+    },
+    async listWorkspaceMembers(ws, query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/members", {
+        params: { path: { ws }, query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async updateWorkspaceMember(ws, memberId, body, reqOptions) {
+      const { data, error, response } = await raw.PATCH(
+        "/api/v1/workspaces/{ws}/members/{member_id}",
+        {
+          params: {
+            path: { ws, member_id: memberId },
+            header: reqOptions?.ifMatch ? { "If-Match": reqOptions.ifMatch } : undefined,
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async removeWorkspaceMember(ws, memberId, reqOptions) {
+      const { error, response } = await raw.DELETE("/api/v1/workspaces/{ws}/members/{member_id}", {
+        params: { path: { ws, member_id: memberId } },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (!response.ok) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return {
+        correlationId: response.headers.get("X-Correlation-Id"),
+      };
+    },
+    async listWorkspaceInvitations(ws, query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/invitations", {
+        params: { path: { ws }, query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async createWorkspaceInvitation(ws, body, reqOptions) {
+      const { data, error, response } = await raw.POST("/api/v1/workspaces/{ws}/invitations", {
+        params: { path: { ws } },
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async revokeWorkspaceInvitation(ws, inviteId, reqOptions) {
+      const { error, response } = await raw.DELETE(
+        "/api/v1/workspaces/{ws}/invitations/{invite_id}",
+        {
+          params: { path: { ws, invite_id: inviteId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (!response.ok) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return {
+        correlationId: response.headers.get("X-Correlation-Id"),
+      };
+    },
+    async acceptWorkspaceInvitation(body, reqOptions) {
+      const { data, error, response } = await raw.POST("/api/v1/invitations/accept", {
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
     },
   };
 }

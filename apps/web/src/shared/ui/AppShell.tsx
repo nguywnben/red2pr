@@ -140,6 +140,7 @@ function buildDefaultNavItems(workspaceSlug: string | undefined): readonly Shell
     },
     { id: "analytics", labelKey: "app.nav.analytics", href: `${prefix}/analytics` },
     { id: "audit", labelKey: "app.nav.audit", href: `${prefix}/audit` },
+    { id: "members", labelKey: "app.nav.members", href: `${prefix}/members` },
     { id: "settings", labelKey: "app.nav.settings", href: `${prefix}/settings` },
     { id: "operations", labelKey: "app.nav.operations", href: "/admin/operations" },
     { id: "account", labelKey: "app.nav.account", href: "/account" },
