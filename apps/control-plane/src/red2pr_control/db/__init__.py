@@ -1,0 +1,83 @@
+"""PostgreSQL 16 persistence spine: ORM models, RLS guards, idempotency, and outbox."""
+
+from red2pr_control.db.base import (
+    AuditCheckpointModel,
+    AuditLogModel,
+    Base,
+    EffectTombstoneModel,
+    IdempotencyRecordModel,
+    InstanceModel,
+    OutboxClaimModel,
+    OutboxEventModel,
+    SchemaMigrationRecordModel,
+    SecretEntryModel,
+    WorkspaceModel,
+)
+from red2pr_control.db.engine import (
+    assert_non_bypassrls_role,
+    assert_postgres_16_and_durability,
+    create_admin_engine,
+    create_app_engine,
+    create_session_factory,
+    ensure_compatible_event_loop,
+    normalize_psycopg_url,
+    run_alembic_downgrade,
+    run_alembic_upgrade,
+)
+from red2pr_control.db.idempotency import (
+    IdempotencyClaimOutcome,
+    claim_idempotent_operation,
+    complete_idempotent_operation,
+    purge_expired_idempotency_records,
+)
+from red2pr_control.db.outbox import (
+    ClaimedOutboxEvent,
+    ack_outbox_claim,
+    claim_pending_outbox_events,
+    enqueue_outbox_event,
+    fail_outbox_claim,
+)
+from red2pr_control.db.rls import (
+    RlsConfigurationError,
+    RlsScopeMode,
+    install_rls_pool_guards,
+    instance_rls_session,
+    workspace_rls_session,
+)
+
+__all__ = [
+    "AuditCheckpointModel",
+    "AuditLogModel",
+    "Base",
+    "ClaimedOutboxEvent",
+    "EffectTombstoneModel",
+    "IdempotencyClaimOutcome",
+    "IdempotencyRecordModel",
+    "InstanceModel",
+    "OutboxClaimModel",
+    "OutboxEventModel",
+    "RlsConfigurationError",
+    "RlsScopeMode",
+    "SchemaMigrationRecordModel",
+    "SecretEntryModel",
+    "WorkspaceModel",
+    "ack_outbox_claim",
+    "assert_non_bypassrls_role",
+    "assert_postgres_16_and_durability",
+    "claim_idempotent_operation",
+    "claim_pending_outbox_events",
+    "complete_idempotent_operation",
+    "create_admin_engine",
+    "create_app_engine",
+    "create_session_factory",
+    "enqueue_outbox_event",
+    "ensure_compatible_event_loop",
+    "fail_outbox_claim",
+    "install_rls_pool_guards",
+    "instance_rls_session",
+    "normalize_psycopg_url",
+    "purge_expired_idempotency_records",
+    "run_alembic_downgrade",
+    "run_alembic_upgrade",
+    "workspace_rls_session",
+]
