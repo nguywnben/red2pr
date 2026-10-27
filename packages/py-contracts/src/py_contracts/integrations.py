@@ -1,10 +1,13 @@
 """Canonical provider connections, repositories, CI runs/jobs, and notifications (S-08..S-10, S-16).
 
 Enforces:
-- S-08: Write-only opaque secret references; read DTOs expose SecretPresence only.
-- S-09: Non-coerced opaque external_id, safe path globs, and non-waivable require_baseline=True.
+- S-08: Write-only secret inputs / opaque secret references; read DTOs expose SecretPresence only.
+- S-09: Non-coerced opaque external_id, safe path globs, workflow hazard metadata (`SEC-031`),
+  and non-waivable require_baseline=True.
 - S-10: GitHub/GitLab run attempt_key and job retry_of_id preserved as opaque strings.
 - S-16: Six-channel notification destinations, delivery state machine, and preferences.
+- A-06 / A-23: GitHub App connection lifecycle, capability snapshots, single-use 10m install state,
+  and repository discovery contracts (`SRC-01`, `U09`).
 - ADR-037 / INS-02: Per-purpose outbound consent records and step-up-registered private endpoints.
 """
 
@@ -26,6 +29,7 @@ from pydantic import (
 
 from py_contracts.events import EventType
 from py_contracts.primitives import (
+    ActionReceipt,
     BoundedName,
     BoundedReason,
     BoundedText,
@@ -89,16 +93,52 @@ class SecretPresence(StrictContractModel):
 
 
 class ConnectionWrite(StrictContractModel):
-    """S-08 write input accepting an opaque secret_ref."""
+    """S-08 / A-06 write input accepting opaque secret_ref or write-only credential material."""
 
     provider: ProviderKind
     base_url: BoundedUrl
     auth_mode: ConnectionAuthMode
     secret_ref: OpaqueSecretRef | None = None
+    display_name: BoundedName | None = None
+    app_id: OpaqueProviderId | None = None
+    client_id: BoundedName | None = None
+    private_key_pem: Annotated[StrictStr, Field(min_length=32, max_length=16384)] | None = None
+    webhook_secret_ref: OpaqueSecretRef | None = None
+    webhook_secret: Annotated[StrictStr, Field(min_length=16, max_length=512)] | None = None
+
+    @model_validator(mode="after")
+    def _validate_mutually_exclusive_secret_inputs(self) -> ConnectionWrite:
+        if self.secret_ref is not None and self.private_key_pem is not None:
+            raise ValueError("Provide either secret_ref or private_key_pem, not both")
+        if self.webhook_secret_ref is not None and self.webhook_secret is not None:
+            raise ValueError("Provide either webhook_secret_ref or webhook_secret, not both")
+        return self
+
+
+class ConnectionPatchRequest(StrictContractModel):
+    """A-06 partial connection update & credential rotation payload (`S-02` version-checked)."""
+
+    expected_version: PositiveVersion | None = None
+    display_name: BoundedName | None = None
+    base_url: BoundedUrl | None = None
+    app_id: OpaqueProviderId | None = None
+    client_id: BoundedName | None = None
+    secret_ref: OpaqueSecretRef | None = None
+    private_key_pem: Annotated[StrictStr, Field(min_length=32, max_length=16384)] | None = None
+    webhook_secret_ref: OpaqueSecretRef | None = None
+    webhook_secret: Annotated[StrictStr, Field(min_length=16, max_length=512)] | None = None
+
+    @model_validator(mode="after")
+    def _validate_patch_secret_inputs(self) -> ConnectionPatchRequest:
+        if self.secret_ref is not None and self.private_key_pem is not None:
+            raise ValueError("Provide either secret_ref or private_key_pem, not both")
+        if self.webhook_secret_ref is not None and self.webhook_secret is not None:
+            raise ValueError("Provide either webhook_secret_ref or webhook_secret, not both")
+        return self
 
 
 class Connection(WorkspaceResourceBase):
-    """S-08 provider connection & capability snapshot read DTO."""
+    """S-08 provider connection & capability snapshot read DTO (never exposes secret values)."""
 
     provider: ProviderKind
     base_url: BoundedUrl
@@ -109,11 +149,60 @@ class Connection(WorkspaceResourceBase):
     checked_at: UtcTimestamp | None = None
     vendor_version: BoundedName | None = None
     api_version: BoundedName | None = None
+    display_name: BoundedName | None = None
+    app_id: OpaqueProviderId | None = None
+    client_id: BoundedName | None = None
+    installation_id: OpaqueProviderId | None = None
+    account_login: BoundedName | None = None
+    webhook_secret_presence: SecretPresence | None = None
+    granted_permissions: dict[BoundedName, BoundedName] = Field(default_factory=dict)
+    missing_permissions: list[BoundedName] = Field(default_factory=list)
+    repository_count: Annotated[StrictInt, Field(ge=0)] = 0
+    flagged_hazard_repo_count: Annotated[StrictInt, Field(ge=0)] = 0
+    grant_review_required: StrictBool = False
+    status_detail: BoundedReason | None = None
+    last_synced_at: UtcTimestamp | None = None
 
 
-# S-09 Repository & Policy
+ConnectionPage = Page[Connection]
+
+
+class CapabilitySnapshot(WorkspaceResourceBase):
+    """Immutable observed provider capability & permission snapshot (`S-08`, `SRC-01`)."""
+
+    connection_id: InternalId
+    provider: ProviderKind
+    status: ConnectionStatus
+    capabilities: dict[BoundedName, CapabilityAvailability] = Field(default_factory=dict)
+    granted_permissions: dict[BoundedName, BoundedName] = Field(default_factory=dict)
+    missing_permissions: list[BoundedName] = Field(default_factory=list)
+    vendor_version: BoundedName | None = None
+    api_version: BoundedName | None = None
+    checked_at: UtcTimestamp
+    detail: BoundedReason | None = None
+
+
+# S-09 Repository, Policy & Workflow Hazard Metadata (`SEC-031`)
 RepositoryVisibility = Literal["public", "private", "internal", "unknown"]
 RepositoryMode = Literal["monitor", "approval", "auto_repair"]
+WorkflowHazardCode = Literal[
+    "pull_request_target",
+    "privileged_workflow_run",
+    "write_all_permissions",
+    "deploy_trigger",
+    "workflow_parse_warning",
+]
+WorkflowHazardSeverity = Literal["high", "medium", "low"]
+WorkflowHazardStatus = Literal["clean", "flagged", "unscanned"]
+
+
+class WorkflowHazardFinding(StrictContractModel):
+    """Structured workflow hazard finding from `.github/workflows` inspection (`SEC-031`)."""
+
+    code: WorkflowHazardCode
+    severity: WorkflowHazardSeverity
+    workflow_path: BoundedText
+    detail: BoundedReason
 
 
 class RepositoryPolicy(StrictContractModel):
@@ -141,6 +230,86 @@ class Repository(WorkspaceResourceBase):
     paused: StrictBool = False
     policy_revision: PositiveVersion
     tags: list[BoundedName] = Field(default_factory=list)
+    archived: StrictBool = False
+    is_fork: StrictBool = False
+    workflow_hazard_status: WorkflowHazardStatus = "unscanned"
+    workflow_hazards: list[WorkflowHazardFinding] = Field(default_factory=list)
+    auto_repair_blocked: StrictBool = False
+
+
+class ConnectionDetailResponse(StrictContractModel):
+    """A-06 detailed connection view with latest capability snapshot and scoped repositories."""
+
+    connection: Connection
+    latest_snapshot: CapabilitySnapshot | None = None
+    repositories: list[Repository] = Field(default_factory=list)
+
+
+class ConnectionProbeResponse(StrictContractModel):
+    """A-06 live capability & permission probe result."""
+
+    receipt: ActionReceipt
+    connection: Connection
+    snapshot: CapabilitySnapshot
+
+
+class ConnectionSyncResponse(StrictContractModel):
+    """A-06 paginated repository discovery & workflow hazard scan result."""
+
+    receipt: ActionReceipt
+    connection: Connection
+    discovered_count: Annotated[StrictInt, Field(ge=0)]
+    partial_sync: StrictBool = False
+    flagged_hazard_count: Annotated[StrictInt, Field(ge=0)] = 0
+    repositories: list[Repository] = Field(default_factory=list)
+
+
+class GitHubInstallStateCreateRequest(StrictContractModel):
+    """A-23 request to mint a single-use 10-minute GitHub App callback/installation state nonce."""
+
+    expected_origin: BoundedUrl | None = None
+
+
+class GitHubInstallStateResponse(StrictContractModel):
+    """A-23 single-use 10-minute GitHub installation state nonce bound to user/workspace/origin."""
+
+    connection_id: InternalId
+    workspace_id: InternalId
+    state: Annotated[StrictStr, Field(min_length=16, max_length=256)]
+    expires_at: UtcTimestamp
+    install_url: BoundedUrl | None = None
+
+
+class GitHubCallbackResponse(StrictContractModel):
+    """A-23 safe read-only validation of GitHub OAuth / App installation redirect parameters."""
+
+    state_valid: StrictBool
+    workspace_id: InternalId
+    workspace_slug: BoundedName
+    connection_id: InternalId
+    installation_id: OpaqueProviderId | None = None
+    setup_action: BoundedName | None = None
+    expires_at: UtcTimestamp
+
+
+class GitHubInstallationConfirmRequest(StrictContractModel):
+    """A-23 CSRF-protected mutation confirming & binding a GitHub App installation."""
+
+    installation_id: OpaqueProviderId
+    state: Annotated[StrictStr, Field(min_length=16, max_length=256)]
+    expected_origin: BoundedUrl | None = None
+    selected_external_repo_ids: list[OpaqueProviderId] | None = None
+
+
+class GitHubInstallationConfirmResponse(StrictContractModel):
+    """A-23 confirmed GitHub App installation binding, permission diff & discovered repos."""
+
+    receipt: ActionReceipt
+    connection: Connection
+    snapshot: CapabilitySnapshot
+    repositories: list[Repository] = Field(default_factory=list)
+    partial_sync: StrictBool = False
+    grant_review_required: StrictBool = False
 
 
 # S-10 CiRun & CiJob

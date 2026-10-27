@@ -32,9 +32,15 @@ from py_contracts import (
     BreakGlassCreateRequest,
     BreakGlassGrant,
     BreakGlassGrantPage,
+    CapabilitySnapshot,
     CiJob,
     CiRun,
     Connection,
+    ConnectionDetailResponse,
+    ConnectionPage,
+    ConnectionPatchRequest,
+    ConnectionProbeResponse,
+    ConnectionSyncResponse,
     ConnectionWrite,
     ConsentCreateRequest,
     ConsentRecord,
@@ -48,6 +54,11 @@ from py_contracts import (
     EndpointRegistrationPage,
     EventEnvelope,
     EvidenceManifestV1,
+    GitHubCallbackResponse,
+    GitHubInstallationConfirmRequest,
+    GitHubInstallationConfirmResponse,
+    GitHubInstallStateCreateRequest,
+    GitHubInstallStateResponse,
     Invite,
     InviteAcceptRequest,
     InviteCreateRequest,
@@ -83,6 +94,7 @@ from py_contracts import (
     RepositoryPolicy,
     ResultV1,
     SandboxJobV1,
+    SecretPresence,
     Session,
     SessionListItem,
     SessionPage,
@@ -107,6 +119,7 @@ from py_contracts import (
     User,
     Verification,
     Worker,
+    WorkflowHazardFinding,
     Workspace,
     WorkspaceCreateRequest,
     WorkspaceDeleteRequest,
@@ -129,6 +142,10 @@ from red2pr_control.core.logging import (
 )
 from red2pr_control.iam.router import build_iam_router
 from red2pr_control.iam.sessions import IamService
+from red2pr_control.integrations import (
+    GitHubIntegrationService,
+    build_integrations_router,
+)
 from red2pr_control.operations.setup_wizard import (
     SetupStepRegistry,
     SetupWizardService,
@@ -185,8 +202,21 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     BreakGlassGrant,
     BreakGlassGrantPage,
     BreakGlassCreateRequest,
+    SecretPresence,
     Connection,
+    ConnectionPage,
     ConnectionWrite,
+    ConnectionPatchRequest,
+    CapabilitySnapshot,
+    WorkflowHazardFinding,
+    ConnectionDetailResponse,
+    ConnectionProbeResponse,
+    ConnectionSyncResponse,
+    GitHubInstallStateCreateRequest,
+    GitHubInstallStateResponse,
+    GitHubCallbackResponse,
+    GitHubInstallationConfirmRequest,
+    GitHubInstallationConfirmResponse,
     Repository,
     RepositoryPolicy,
     CiRun,
@@ -370,6 +400,7 @@ def create_app(
     setup_step_registry: SetupStepRegistry | None = None,
     task_queue_service: DurableTaskQueueService | None = None,
     operation_receipt_service: OperationReceiptService | None = None,
+    github_integration_service: GitHubIntegrationService | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     app = FastAPI(
@@ -383,11 +414,14 @@ def create_app(
         docs_url=None,
         redoc_url=None,
     )
+    if github_integration_service is not None and setup_step_registry is not None:
+        github_integration_service.register_setup_probe(setup_step_registry)
     app.state.iam_service = iam_service
     app.state.setup_wizard_service = setup_wizard_service
     app.state.setup_step_registry = setup_step_registry
     app.state.task_queue_service = task_queue_service
     app.state.operation_receipt_service = operation_receipt_service
+    app.state.github_integration_service = github_integration_service
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -408,6 +442,7 @@ def create_app(
     app.include_router(build_iam_router())
     app.include_router(build_setup_router())
     app.include_router(build_orchestrator_router())
+    app.include_router(build_integrations_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:

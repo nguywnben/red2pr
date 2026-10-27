@@ -47,10 +47,32 @@ export type InviteAcceptRequest = SchemaOf<"InviteAcceptRequest">;
 export type BreakGlassGrant = SchemaOf<"BreakGlassGrant">;
 export type BreakGlassGrantPage = SchemaOf<"Page_BreakGlassGrant_">;
 export type BreakGlassCreateRequest = SchemaOf<"BreakGlassCreateRequest">;
+export type SecretPresence = SchemaOf<"SecretPresence">;
 export type Connection = SchemaOf<"Connection">;
+export type ConnectionPage = SchemaOf<"Page_Connection_">;
+export type ProviderKind = Connection["provider"];
+export type ConnectionAuthMode = Connection["auth_mode"];
+export type ConnectionStatus = Connection["status"];
+export type CapabilityAvailability = NonNullable<Connection["capabilities"]>[string];
 export type ConnectionWrite = SchemaOf<"ConnectionWrite">;
+export type ConnectionPatchRequest = SchemaOf<"ConnectionPatchRequest">;
+export type CapabilitySnapshot = SchemaOf<"CapabilitySnapshot">;
+export type WorkflowHazardFinding = SchemaOf<"WorkflowHazardFinding">;
+export type WorkflowHazardCode = WorkflowHazardFinding["code"];
+export type WorkflowHazardSeverity = WorkflowHazardFinding["severity"];
 export type Repository = SchemaOf<"Repository">;
+export type RepositoryVisibility = Repository["visibility"];
+export type RepositoryMode = Repository["mode"];
+export type WorkflowHazardStatus = NonNullable<Repository["workflow_hazard_status"]>;
 export type RepositoryPolicy = SchemaOf<"RepositoryPolicy">;
+export type ConnectionDetailResponse = SchemaOf<"ConnectionDetailResponse">;
+export type ConnectionProbeResponse = SchemaOf<"ConnectionProbeResponse">;
+export type ConnectionSyncResponse = SchemaOf<"ConnectionSyncResponse">;
+export type GitHubInstallStateCreateRequest = SchemaOf<"GitHubInstallStateCreateRequest">;
+export type GitHubInstallStateResponse = SchemaOf<"GitHubInstallStateResponse">;
+export type GitHubCallbackResponse = SchemaOf<"GitHubCallbackResponse">;
+export type GitHubInstallationConfirmRequest = SchemaOf<"GitHubInstallationConfirmRequest">;
+export type GitHubInstallationConfirmResponse = SchemaOf<"GitHubInstallationConfirmResponse">;
 export type CiRun = SchemaOf<"CiRun">;
 export type CiJob = SchemaOf<"CiJob">;
 export type Repair = SchemaOf<"Repair">;
@@ -167,6 +189,18 @@ export interface ListWorkspaceTaskJobsQuery {
   readonly repository_id?: string | null;
   readonly cursor?: string | null;
   readonly limit?: number;
+}
+
+export interface ListConnectionsQuery {
+  readonly provider?: ProviderKind | null;
+  readonly cursor?: string | null;
+  readonly limit?: number;
+}
+
+export interface GitHubCallbackQuery {
+  readonly state?: string | null;
+  readonly installation_id?: string | null;
+  readonly setup_action?: string | null;
 }
 
 export interface ApiEnvelope<TData> {
@@ -342,6 +376,58 @@ export interface Red2PrClient {
     operationId: string,
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<ActionReceipt>>;
+  listConnections(
+    ws: string,
+    query?: ListConnectionsQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<ConnectionPage>>;
+  createConnection(
+    ws: string,
+    body: ConnectionWrite,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<Connection>>;
+  getConnection(
+    ws: string,
+    connectionId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<ConnectionDetailResponse>>;
+  updateConnection(
+    ws: string,
+    connectionId: string,
+    body: ConnectionPatchRequest,
+    options: IdempotentOptimisticMutationOptions,
+  ): Promise<ApiEnvelope<Connection>>;
+  deleteConnection(
+    ws: string,
+    connectionId: string,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<ActionReceipt>>;
+  probeConnection(
+    ws: string,
+    connectionId: string,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<ConnectionProbeResponse>>;
+  syncConnection(
+    ws: string,
+    connectionId: string,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<ConnectionSyncResponse>>;
+  mintGitHubInstallState(
+    ws: string,
+    connectionId: string,
+    body: GitHubInstallStateCreateRequest | null,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<GitHubInstallStateResponse>>;
+  handleGitHubCallback(
+    query: GitHubCallbackQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<GitHubCallbackResponse>>;
+  confirmGitHubInstallation(
+    ws: string,
+    connectionId: string,
+    body: GitHubInstallationConfirmRequest,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<GitHubInstallationConfirmResponse>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -961,6 +1047,165 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         headers: buildOptionalHeaders(reqOptions),
         signal: reqOptions?.signal,
       });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async listConnections(ws, query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/integrations", {
+        params: { path: { ws }, query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async createConnection(ws, body, reqOptions) {
+      const { data, error, response } = await raw.POST("/api/v1/workspaces/{ws}/integrations", {
+        params: {
+          path: { ws },
+          header: { "Idempotency-Key": reqOptions.idempotencyKey },
+        },
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async getConnection(ws, connectionId, reqOptions) {
+      const { data, error, response } = await raw.GET(
+        "/api/v1/workspaces/{ws}/integrations/{connection_id}",
+        {
+          params: { path: { ws, connection_id: connectionId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async updateConnection(ws, connectionId, body, reqOptions) {
+      const { data, error, response } = await raw.PATCH(
+        "/api/v1/workspaces/{ws}/integrations/{connection_id}",
+        {
+          params: {
+            path: { ws, connection_id: connectionId },
+            header: {
+              "Idempotency-Key": reqOptions.idempotencyKey,
+              ...(reqOptions.ifMatch ? { "If-Match": reqOptions.ifMatch } : {}),
+            },
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async deleteConnection(ws, connectionId, reqOptions) {
+      const { data, error, response } = await raw.DELETE(
+        "/api/v1/workspaces/{ws}/integrations/{connection_id}",
+        {
+          params: {
+            path: { ws, connection_id: connectionId },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async probeConnection(ws, connectionId, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/workspaces/{ws}/integrations/{connection_id}/probes",
+        {
+          params: {
+            path: { ws, connection_id: connectionId },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async syncConnection(ws, connectionId, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/workspaces/{ws}/integrations/{connection_id}/sync",
+        {
+          params: {
+            path: { ws, connection_id: connectionId },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async mintGitHubInstallState(ws, connectionId, body, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/state",
+        {
+          params: {
+            path: { ws, connection_id: connectionId },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          body: body ?? {},
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async handleGitHubCallback(query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/integrations/github/callback", {
+        params: { query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async confirmGitHubInstallation(ws, connectionId, body, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/confirm",
+        {
+          params: {
+            path: { ws, connection_id: connectionId },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        },
+      );
       if (data === undefined) {
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }

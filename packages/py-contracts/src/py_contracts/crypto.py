@@ -10,6 +10,7 @@ Provides:
   with canonical AAD binding) supporting live key rotation (OPS-03).
 - Constant-time HMAC-SHA256 verification and Red2PR v1 webhook signing/verification
   (docs/32_NOTIFICATION_EVENT_MATRIX.md).
+- RFC 7515 / RFC 7519 RS256 GitHub App JWT signing and verification (`SRC-01`, `U09`).
 """
 
 from __future__ import annotations
@@ -20,16 +21,24 @@ import hmac
 import json
 import os
 from collections.abc import Iterable, Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from cryptography.exceptions import InvalidSignature, InvalidTag
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
 )
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    PublicFormat,
+    load_pem_private_key,
+    load_pem_public_key,
+)
 
 from py_contracts.primitives import (
     BoundedName,
@@ -431,3 +440,144 @@ def verify_red2pr_webhook_v1(
             code="invalid_webhook_signature",
             detail="Red2PR v1 webhook HMAC verification failed",
         )
+
+
+# ---------------------------------------------------------------------------
+# RFC 7515 / RFC 7519 RS256 GitHub App JWT Signing & Verification (SRC-01)
+# ---------------------------------------------------------------------------
+
+
+def _load_rsa_private_key(pem_bytes: bytes, *, min_key_size: int = 2048) -> RSAPrivateKey:
+    try:
+        loaded = load_pem_private_key(pem_bytes, password=None)
+    except Exception as exc:
+        raise CryptoVerificationError(
+            code="invalid_rsa_private_key",
+            detail="Failed to parse unencrypted PEM private key.",
+        ) from exc
+    if not isinstance(loaded, RSAPrivateKey):
+        raise CryptoVerificationError(
+            code="unsupported_private_key_type",
+            detail="GitHub App JWT signing requires an RSA private key.",
+        )
+    if loaded.key_size < min_key_size:
+        raise CryptoVerificationError(
+            code="weak_rsa_key",
+            detail=f"RSA private key size must be >= {min_key_size} bits.",
+        )
+    return loaded
+
+
+def validate_rsa_private_key_pem(pem_bytes: bytes, *, min_key_size: int = 2048) -> None:
+    """Validate that `pem_bytes` is an unencrypted RSA private key of at least `min_key_size`."""
+    _load_rsa_private_key(pem_bytes, min_key_size=min_key_size)
+
+
+def sign_github_app_jwt_rs256(
+    *,
+    private_key_pem: bytes,
+    issuer: str,
+    now: datetime,
+    ttl_seconds: int = 540,
+    clock_drift_seconds: int = 60,
+) -> str:
+    """Mint an RS256 GitHub App JWT (`iat = now - 60s`, `exp <= now + 540s`, total `<= 10m`)."""
+    clean_issuer = issuer.strip()
+    if not clean_issuer or len(clean_issuer) > 128:
+        raise CryptoVerificationError(
+            code="invalid_jwt_issuer",
+            detail="GitHub App issuer (app_id or client_id) must be 1..128 characters.",
+        )
+    if ttl_seconds < 1 or clock_drift_seconds < 0 or (ttl_seconds + clock_drift_seconds) > 600:
+        raise CryptoVerificationError(
+            code="invalid_jwt_lifetime",
+            detail="GitHub App JWT lifetime (exp - iat) must not exceed 600 seconds.",
+        )
+
+    rsa_key = _load_rsa_private_key(private_key_pem)
+    now_unix = int(now.astimezone(UTC).timestamp())
+    header = {"alg": "RS256", "typ": "JWT"}
+    payload = {
+        "iat": now_unix - clock_drift_seconds,
+        "exp": now_unix + ttl_seconds,
+        "iss": clean_issuer,
+    }
+    signing_input = (
+        f"{_b64url_encode(canonical_json_bytes(header))}."
+        f"{_b64url_encode(canonical_json_bytes(payload))}"
+    ).encode("ascii")
+    signature = rsa_key.sign(signing_input, asym_padding.PKCS1v15(), hashes.SHA256())
+    return f"{signing_input.decode('ascii')}.{_b64url_encode(signature)}"
+
+
+def verify_rs256_jwt(
+    token: str,
+    *,
+    public_key_pem: bytes,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Verify an RS256 JWT signature, algorithm header, and `iat`/`exp` window."""
+    parts = token.strip().split(".")
+    if len(parts) != 3 or not all(parts):
+        raise CryptoVerificationError(
+            code="malformed_jwt",
+            detail="JWT must consist of three non-empty base64url segments.",
+        )
+    header_b64, payload_b64, sig_b64 = parts
+    try:
+        header_obj = json.loads(_b64url_decode(header_b64).decode("utf-8"))
+        payload_obj = json.loads(_b64url_decode(payload_b64).decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CryptoVerificationError(
+            code="malformed_jwt",
+            detail="JWT header or payload is not valid UTF-8 JSON.",
+        ) from exc
+
+    if (
+        not isinstance(header_obj, dict)
+        or header_obj.get("alg") != "RS256"
+        or not isinstance(payload_obj, dict)
+    ):
+        raise CryptoVerificationError(
+            code="unsupported_jwt_algorithm",
+            detail="Only RS256 JWT headers are accepted.",
+        )
+
+    try:
+        loaded_pub = load_pem_public_key(public_key_pem)
+    except Exception as exc:
+        raise CryptoVerificationError(
+            code="invalid_rsa_public_key",
+            detail="Failed to parse PEM RSA public key.",
+        ) from exc
+    if not isinstance(loaded_pub, RSAPublicKey):
+        raise CryptoVerificationError(
+            code="invalid_rsa_public_key",
+            detail="Public key is not an RSA key.",
+        )
+
+    sig_bytes = _b64url_decode(sig_b64)
+    signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
+    try:
+        loaded_pub.verify(sig_bytes, signing_input, asym_padding.PKCS1v15(), hashes.SHA256())
+    except InvalidSignature as exc:
+        raise CryptoVerificationError(
+            code="invalid_jwt_signature",
+            detail="RS256 JWT signature verification failed.",
+        ) from exc
+
+    iat = payload_obj.get("iat")
+    exp = payload_obj.get("exp")
+    if not isinstance(iat, int) or not isinstance(exp, int) or exp <= iat or (exp - iat) > 600:
+        raise CryptoVerificationError(
+            code="invalid_jwt_claims",
+            detail="JWT iat/exp claims are missing or exceed 600s lifetime.",
+        )
+    if now is not None:
+        now_unix = int(now.astimezone(UTC).timestamp())
+        if now_unix >= exp:
+            raise CryptoVerificationError(
+                code="jwt_expired",
+                detail="RS256 JWT has expired.",
+            )
+    return dict(payload_obj)

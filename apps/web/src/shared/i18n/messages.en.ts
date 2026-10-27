@@ -13,6 +13,7 @@ export const EN_MESSAGES = {
   "app.nav.approvals": "Approvals",
   "app.nav.repositories": "Repositories",
   "app.nav.connections": "Connections",
+  "app.nav.integrations": "Integrations",
   "app.nav.workers": "Workers",
   "app.nav.queues": "Task Queues",
   "app.nav.notifications": "Notifications",
@@ -396,6 +397,14 @@ export const EN_MESSAGES = {
   "queues.cancelAction": "Cancel",
   "queues.requeueAction": "Requeue",
   "queues.reconcileAction": "Reconcile",
+
+  "integrations.pageTitle": "Source & Provider Integrations",
+  "integrations.pageSubtitle":
+    "Least-privilege GitHub App installation binding, JIT scoped tokens, capability snapshots, and .github/workflows hazard scanning.",
+  "integrations.tabGitHub": "GitHub App (SRC-01)",
+  "integrations.tabGitLab": "GitLab (SRC-02)",
+  "integrations.connectionsTableLabel": "Configured GitHub App connections",
+  "integrations.reposTableLabel": "Discovered repositories and workflow hazard posture",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

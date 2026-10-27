@@ -1,0 +1,30 @@
+{
+  "id": 99001,
+  "app_id": 412009,
+  "app_slug": "red2pr-selfhosted",
+  "target_id": 88001,
+  "target_type": "Organization",
+  "repository_selection": "selected",
+  "suspended_at": null,
+  "suspended_by": null,
+  "account": {
+    "login": "acme-platform",
+    "id": 88001,
+    "type": "Organization"
+  },
+  "permissions": {
+    "actions": "read",
+    "checks": "read",
+    "contents": "write",
+    "metadata": "read",
+    "pull_requests": "write"
+  },
+  "events": [
+    "check_run",
+    "installation",
+    "installation_repositories",
+    "pull_request",
+    "workflow_job",
+    "workflow_run"
+  ]
+}

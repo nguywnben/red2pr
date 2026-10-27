@@ -18,6 +18,10 @@ import {
   isStepUpValid,
   type AuthProblemSummary,
 } from "../features/auth";
+import {
+  GitHubCallbackRedirectRoute,
+  IntegrationsPage,
+} from "../features/integrations";
 import { AcceptInviteDialog, MembersPage } from "../features/members";
 import { QueuesPage } from "../features/queues";
 import { SetupWizardPage } from "../features/setup";
@@ -65,6 +69,11 @@ function WorkspaceSectionOutlet({
     <Routes>
       <Route path="members" element={<MembersPage workspace={workspace} me={meData} />} />
       <Route path="queues" element={<QueuesPage workspace={workspace} me={meData} />} />
+      <Route
+        path="integrations"
+        element={<IntegrationsPage workspace={workspace} me={meData} />}
+      />
+      <Route path="connections" element={<Navigate to="../integrations" replace />} />
       <Route
         path="*"
         element={
@@ -561,6 +570,7 @@ export function AppRoutes(): React.JSX.Element {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/setup" element={<SetupWizardPage />} />
       <Route path="/setup/*" element={<SetupWizardPage />} />
+      <Route path="/integrations/github/callback" element={<GitHubCallbackRedirectRoute />} />
       <Route path="/account" element={<AccountRouteShell />} />
       <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
       <Route path="/admin/*" element={<AdminRouteShell />} />

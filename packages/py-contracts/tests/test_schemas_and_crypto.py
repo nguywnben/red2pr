@@ -1350,3 +1350,144 @@ def test_u08_task_job_queue_and_dlq_contracts() -> None:
                 "unexpected_extra": True,
             }
         )
+
+
+def test_u09_rs256_github_app_jwt_and_a06_a23_contracts() -> None:
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives.serialization import (
+        Encoding,
+        NoEncryption,
+        PrivateFormat,
+        PublicFormat,
+    )
+
+    from py_contracts.crypto import (
+        sign_github_app_jwt_rs256,
+        validate_rsa_private_key_pem,
+        verify_rs256_jwt,
+    )
+    from py_contracts.integrations import (
+        CapabilitySnapshot,
+        ConnectionPatchRequest,
+        GitHubInstallationConfirmRequest,
+        WorkflowHazardFinding,
+    )
+
+    rsa_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    priv_pem = rsa_key.private_bytes(
+        encoding=Encoding.PEM,
+        format=PrivateFormat.PKCS8,
+        encryption_algorithm=NoEncryption(),
+    )
+    pub_pem = rsa_key.public_key().public_bytes(
+        encoding=Encoding.PEM,
+        format=PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    validate_rsa_private_key_pem(priv_pem)
+    jwt_token = sign_github_app_jwt_rs256(
+        private_key_pem=priv_pem,
+        issuer="412009",
+        now=FIXED_NOW,
+        ttl_seconds=540,
+        clock_drift_seconds=60,
+    )
+    claims = verify_rs256_jwt(jwt_token, public_key_pem=pub_pem, now=FIXED_NOW)
+    assert claims["iss"] == "412009"
+    assert claims["exp"] - claims["iat"] == 600
+
+    # Rejects > 600s total JWT lifetime
+    with pytest.raises(CryptoVerificationError) as exc_info:
+        sign_github_app_jwt_rs256(
+            private_key_pem=priv_pem,
+            issuer="412009",
+            now=FIXED_NOW,
+            ttl_seconds=541,
+            clock_drift_seconds=60,
+        )
+    assert exc_info.value.code == "invalid_jwt_lifetime"
+
+    # Rejects expired JWT
+    with pytest.raises(CryptoVerificationError) as exp_err:
+        verify_rs256_jwt(
+            jwt_token,
+            public_key_pem=pub_pem,
+            now=FIXED_NOW + timedelta(minutes=10),
+        )
+    assert exp_err.value.code == "jwt_expired"
+
+    # Rejects Ed25519 key when RSA is required
+    ed_pem = Ed25519PrivateKey.generate().private_bytes(
+        encoding=Encoding.PEM,
+        format=PrivateFormat.PKCS8,
+        encryption_algorithm=NoEncryption(),
+    )
+    with pytest.raises(CryptoVerificationError) as type_err:
+        validate_rsa_private_key_pem(ed_pem)
+    assert type_err.value.code == "unsupported_private_key_type"
+
+    # Rejects mutually exclusive secret_ref and private_key_pem
+    with pytest.raises(ValidationError):
+        ConnectionWrite(
+            provider="github",
+            base_url="https://api.github.com",
+            auth_mode="github_app",
+            secret_ref="sec_github_app_v1",
+            private_key_pem=priv_pem.decode("utf-8"),
+        )
+
+    with pytest.raises(ValidationError):
+        ConnectionPatchRequest(
+            secret_ref="sec_github_app_v1",
+            private_key_pem=priv_pem.decode("utf-8"),
+        )
+
+    ws_id = new_uuid7()
+    conn_id = new_uuid7()
+    snap = CapabilitySnapshot(
+        id=new_uuid7(),
+        workspace_id=ws_id,
+        version=1,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        connection_id=conn_id,
+        provider="github",
+        status="ready",
+        capabilities={"repo_discovery": "available", "draft_pr": "available"},
+        granted_permissions={"contents": "read", "metadata": "read"},
+        checked_at=FIXED_NOW,
+        api_version="2026-03-10",
+    )
+    assert snap.api_version == "2026-03-10"
+
+    hazard = WorkflowHazardFinding(
+        code="pull_request_target",
+        severity="high",
+        workflow_path=".github/workflows/pr-target.yml",
+        detail="Workflow triggers on pull_request_target with base-repo privileges.",
+    )
+    repo = Repository(
+        id=new_uuid7(),
+        workspace_id=ws_id,
+        version=1,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        external_id="700101",
+        connection_id=conn_id,
+        name="acme-platform/payments-service",
+        default_branch="main",
+        visibility="private",
+        mode="monitor",
+        paused=False,
+        policy_revision=1,
+        workflow_hazard_status="flagged",
+        workflow_hazards=[hazard],
+        auto_repair_blocked=True,
+    )
+    assert repo.auto_repair_blocked is True
+
+    confirm_req = GitHubInstallationConfirmRequest(
+        installation_id="99001",
+        state="st_" + "a" * 32,
+    )
+    assert confirm_req.installation_id == "99001"

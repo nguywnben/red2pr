@@ -1,0 +1,24 @@
+{
+  "total_count": 3,
+  "repository_selection": "selected",
+  "repositories": [
+    {
+      "id": 700103,
+      "name": "oss-sdk-mirror",
+      "full_name": "acme-platform/oss-sdk-mirror",
+      "private": false,
+      "visibility": "public",
+      "fork": true,
+      "archived": false,
+      "disabled": false,
+      "default_branch": "develop",
+      "permissions": {
+        "admin": false,
+        "maintain": false,
+        "push": true,
+        "triage": true,
+        "pull": true
+      }
+    }
+  ]
+}

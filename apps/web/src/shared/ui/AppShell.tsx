@@ -128,9 +128,9 @@ function buildDefaultNavItems(workspaceSlug: string | undefined): readonly Shell
       href: `${prefix}/repositories`,
     },
     {
-      id: "connections",
-      labelKey: "app.nav.connections",
-      href: `${prefix}/connections`,
+      id: "integrations",
+      labelKey: "app.nav.integrations",
+      href: `${prefix}/integrations`,
     },
     { id: "workers", labelKey: "app.nav.workers", href: `${prefix}/workers` },
     { id: "queues", labelKey: "app.nav.queues", href: `${prefix}/queues` },

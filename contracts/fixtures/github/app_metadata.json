@@ -1,0 +1,28 @@
+{
+  "id": 412009,
+  "slug": "red2pr-selfhosted",
+  "client_id": "Iv23liRed2PrSelfHosted01",
+  "name": "Red2PR Self-Hosted",
+  "owner": {
+    "login": "acme-platform",
+    "id": 88001,
+    "type": "Organization"
+  },
+  "html_url": "https://github.com/apps/red2pr-selfhosted",
+  "permissions": {
+    "actions": "read",
+    "checks": "read",
+    "contents": "write",
+    "metadata": "read",
+    "pull_requests": "write"
+  },
+  "events": [
+    "check_run",
+    "check_suite",
+    "installation",
+    "installation_repositories",
+    "pull_request",
+    "workflow_job",
+    "workflow_run"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "total_count": 3,
+  "repository_selection": "selected",
+  "repositories": [
+    {
+      "id": 700101,
+      "name": "payments-service",
+      "full_name": "acme-platform/payments-service",
+      "private": true,
+      "visibility": "private",
+      "fork": false,
+      "archived": false,
+      "disabled": false,
+      "default_branch": "main",
+      "permissions": {
+        "admin": false,
+        "maintain": false,
+        "push": true,
+        "triage": true,
+        "pull": true
+      }
+    },
+    {
+      "id": 700102,
+      "name": "docs-portal",
+      "full_name": "acme-platform/docs-portal",
+      "private": false,
+      "visibility": "public",
+      "fork": false,
+      "archived": false,
+      "disabled": false,
+      "default_branch": "main",
+      "permissions": {
+        "admin": false,
+        "maintain": false,
+        "push": true,
+        "triage": true,
+        "pull": true
+      }
+    }
+  ]
+}

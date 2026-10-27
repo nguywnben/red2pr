@@ -1314,3 +1314,285 @@ class OperationReceiptModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class ProviderConnectionModel(Base):
+    """S-08 / SRC-01 workspace-scoped source provider connection (secrets stored in Z2 broker)."""
+
+    __tablename__ = "provider_connections"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_provider_connections_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_provider_connections_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+            name="fk_provider_connections_created_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "provider IN ('github', 'gitlab')",
+            name="provider_connection_provider_valid",
+        ),
+        CheckConstraint(
+            "auth_mode IN ('github_app', 'signed_webhook', 'secret_token')",
+            name="provider_connection_auth_mode_valid",
+        ),
+        CheckConstraint(
+            "status IN ("
+            "'not_configured', 'checking', 'ready', 'degraded', 'revoked', 'unsupported'"
+            ")",
+            name="provider_connection_status_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_provider_connections_workspace_created",
+            "workspace_id",
+            "created_at",
+            "id",
+        ),
+        Index(
+            "uq_provider_connections_active_install",
+            "workspace_id",
+            "provider",
+            "external_installation_id",
+            unique=True,
+            postgresql_where=text("external_installation_id IS NOT NULL AND status <> 'revoked'"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    base_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    auth_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    app_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    client_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    external_installation_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    account_login: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    credential_secret_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    credential_secret_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    webhook_secret_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    webhook_secret_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_configured")
+    capabilities_json: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False, default=dict)
+    granted_permissions_json: Mapped[dict[str, str]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    missing_permissions_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    vendor_version: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    api_version: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    status_detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    grant_review_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    had_prior_revocation: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class CapabilitySnapshotModel(Base):
+    """S-08 immutable observed provider capability & permission snapshot."""
+
+    __tablename__ = "capability_snapshots"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_capability_snapshots_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_capability_snapshots_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "connection_id"],
+            ["provider_connections.workspace_id", "provider_connections.id"],
+            name="fk_capability_snapshots_tenant_conn_provider_connections",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "provider IN ('github', 'gitlab')",
+            name="capability_snapshot_provider_valid",
+        ),
+        CheckConstraint(
+            "status IN ("
+            "'not_configured', 'checking', 'ready', 'degraded', 'revoked', 'unsupported'"
+            ")",
+            name="capability_snapshot_status_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_capability_snapshots_conn_checked",
+            "workspace_id",
+            "connection_id",
+            "checked_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    connection_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    capabilities_json: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False, default=dict)
+    granted_permissions_json: Mapped[dict[str, str]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    missing_permissions_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    vendor_version: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    api_version: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class ProviderInstallStateModel(Base):
+    """A-23 single-use 10-minute SHA-256 hashed GitHub App installation callback state nonce."""
+
+    __tablename__ = "provider_install_states"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_provider_install_states_workspace_id_id"),
+        UniqueConstraint("state_hash", name="uq_provider_install_states_state_hash"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_provider_install_states_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "connection_id"],
+            ["provider_connections.workspace_id", "provider_connections.id"],
+            name="fk_provider_install_states_tenant_conn_provider_connections",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["initiated_by_user_id"],
+            ["users.id"],
+            name="fk_provider_install_states_initiated_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "provider IN ('github', 'gitlab')",
+            name="provider_install_state_provider_valid",
+        ),
+        Index(
+            "ix_provider_install_states_conn_expires",
+            "workspace_id",
+            "connection_id",
+            "expires_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    connection_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="github")
+    initiated_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    state_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expected_origin: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class RepositoryModel(Base):
+    """S-09 / SRC-01 workspace-scoped repository catalog entry with SEC-031 hazard metadata."""
+
+    __tablename__ = "repositories"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_repositories_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "provider_connection_id",
+            "external_repo_id",
+            name="uq_repositories_ws_conn_ext_id",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_repositories_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "provider_connection_id"],
+            ["provider_connections.workspace_id", "provider_connections.id"],
+            name="fk_repositories_tenant_conn_provider_connections",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "visibility IN ('public', 'private', 'internal', 'unknown')",
+            name="repository_visibility_valid",
+        ),
+        CheckConstraint(
+            "mode IN ('monitor', 'approval', 'auto_repair')",
+            name="repository_mode_valid",
+        ),
+        CheckConstraint(
+            "workflow_hazard_status IN ('clean', 'flagged', 'unscanned')",
+            name="repository_hazard_status_valid",
+        ),
+        CheckConstraint(
+            "NOT (mode = 'auto_repair' AND auto_repair_blocked IS TRUE)",
+            name="repository_hazard_blocks_auto_repair",
+        ),
+        CheckConstraint("policy_revision >= 1", name="repository_policy_revision_pos"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_repositories_ws_name", "workspace_id", "name"),
+        Index(
+            "ix_repositories_ws_conn_active",
+            "workspace_id",
+            "provider_connection_id",
+            "active",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider_connection_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    external_repo_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    default_branch: Mapped[str] = mapped_column(String(120), nullable=False, default="main")
+    visibility: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    mode: Mapped[str] = mapped_column(String(32), nullable=False, default="monitor")
+    paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_fork: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    policy_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    tags_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    workflow_hazard_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="unscanned"
+    )
+    workflow_hazards_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    auto_repair_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

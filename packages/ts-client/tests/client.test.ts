@@ -449,4 +449,212 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     const polled = await client.getOperationReceipt(opId);
     assert.equal(polled.data.state, "succeeded");
   });
+
+  it("serializes U09 A-06 & A-23 GitHub App integration, callback state, and hazard contracts", async () => {
+    const connId = "019a2500-0000-7000-8000-000000000101";
+    const wsId = "019a2500-0000-7000-8000-000000000001";
+    const opId = "019a2500-0000-7000-8000-000000000202";
+    const seenCalls: Array<{
+      method: string;
+      path: string;
+      idemKey: string | null;
+      csrf: string | null;
+    }> = [];
+
+    const sampleConn = {
+      id: connId,
+      workspace_id: wsId,
+      version: 2,
+      created_at: "2026-10-27T10:00:00Z",
+      updated_at: "2026-10-27T10:01:00Z",
+      provider: "github",
+      base_url: "https://api.github.com",
+      auth_mode: "github_app",
+      secret_presence: { configured: true, secret_version: 1 },
+      webhook_secret_presence: { configured: true, secret_version: 1 },
+      status: "ready",
+      capabilities: { app_jwt_auth: "available", repo_discovery: "available" },
+      checked_at: "2026-10-27T10:01:00Z",
+      vendor_version: "github.com",
+      api_version: "2026-03-10",
+      display_name: "Acme GitHub App",
+      app_id: "340122",
+      client_id: "Iv1.acme",
+      installation_id: "99001",
+      account_login: "acme-corp",
+      granted_permissions: { metadata: "read", contents: "read", actions: "read" },
+      missing_permissions: ["pull_requests:write"],
+      repository_count: 1,
+      flagged_hazard_repo_count: 1,
+      grant_review_required: false,
+      status_detail: "Ready.",
+      last_synced_at: "2026-10-27T10:01:00Z",
+    };
+
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u09-token",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        seenCalls.push({
+          method: request.method,
+          path: url.pathname,
+          idemKey: request.headers.get("Idempotency-Key"),
+          csrf: request.headers.get("X-CSRF-Token"),
+        });
+
+        if (request.method === "POST" && url.pathname === "/api/v1/workspaces/acme/integrations") {
+          return new Response(JSON.stringify({ ...sampleConn, version: 1, status: "not_configured" }), {
+            status: 201,
+            headers: { "Content-Type": "application/json", ETag: '"v1"' },
+          });
+        }
+        if (
+          request.method === "POST" &&
+          url.pathname === `/api/v1/workspaces/acme/integrations/${connId}/installations/state`
+        ) {
+          return new Response(
+            JSON.stringify({
+              connection_id: connId,
+              workspace_id: wsId,
+              state: "st_single_use_nonce_1234567890",
+              expires_at: "2026-10-27T10:10:00Z",
+              install_url: "https://github.com/settings/apps?state=st_single_use_nonce_1234567890",
+            }),
+            { status: 201, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (request.method === "GET" && url.pathname === "/api/v1/integrations/github/callback") {
+          assert.equal(url.searchParams.get("state"), "st_single_use_nonce_1234567890");
+          assert.equal(url.searchParams.get("installation_id"), "99001");
+          return new Response(
+            JSON.stringify({
+              state_valid: true,
+              workspace_id: wsId,
+              workspace_slug: "acme",
+              connection_id: connId,
+              installation_id: "99001",
+              setup_action: "install",
+              expires_at: "2026-10-27T10:10:00Z",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (
+          request.method === "POST" &&
+          url.pathname === `/api/v1/workspaces/acme/integrations/${connId}/installations/confirm`
+        ) {
+          return new Response(
+            JSON.stringify({
+              receipt: {
+                operation_id: opId,
+                resource_id: connId,
+                state: "succeeded",
+                correlation_id: "corr-u09-confirm",
+                status_url: `/api/v1/operations/${opId}`,
+                result_id: connId,
+              },
+              connection: sampleConn,
+              snapshot: {
+                id: "019a2500-0000-7000-8000-000000000303",
+                workspace_id: wsId,
+                version: 1,
+                created_at: "2026-10-27T10:01:00Z",
+                updated_at: "2026-10-27T10:01:00Z",
+                connection_id: connId,
+                provider: "github",
+                status: "ready",
+                capabilities: { app_jwt_auth: "available", repo_discovery: "available" },
+                granted_permissions: { metadata: "read", contents: "read", actions: "read" },
+                missing_permissions: ["pull_requests:write"],
+                vendor_version: "github.com",
+                api_version: "2026-03-10",
+                checked_at: "2026-10-27T10:01:00Z",
+                detail: "Verified.",
+              },
+              repositories: [
+                {
+                  id: "019a2500-0000-7000-8000-000000000404",
+                  workspace_id: wsId,
+                  version: 1,
+                  created_at: "2026-10-27T10:01:00Z",
+                  updated_at: "2026-10-27T10:01:00Z",
+                  external_id: "501002",
+                  connection_id: connId,
+                  name: "acme-corp/docs-site",
+                  default_branch: "main",
+                  visibility: "public",
+                  mode: "monitor",
+                  paused: false,
+                  policy_revision: 1,
+                  tags: [],
+                  archived: false,
+                  is_fork: false,
+                  workflow_hazard_status: "flagged",
+                  workflow_hazards: [
+                    {
+                      code: "pull_request_target",
+                      severity: "high",
+                      workflow_path: ".github/workflows/pr-target.yml",
+                      detail: "Workflow triggers on pull_request_target.",
+                    },
+                  ],
+                  auto_repair_blocked: true,
+                },
+              ],
+              partial_sync: false,
+              grant_review_required: false,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        throw new Error(`Unexpected ${request.method} ${url.pathname}`);
+      },
+    });
+
+    const created = await client.createConnection(
+      "acme",
+      {
+        provider: "github",
+        base_url: "https://api.github.com",
+        auth_mode: "github_app",
+        display_name: "Acme GitHub App",
+        app_id: "340122",
+        private_key_pem: "-----BEGIN PRIVATE KEY-----\nREDACTED_IN_TRANSIT\n-----END PRIVATE KEY-----",
+      },
+      { idempotencyKey: "019a2500-0000-7000-8000-000000000801" },
+    );
+    assert.equal(created.etag, '"v1"');
+    assert.equal(created.data.secret_presence.configured, true);
+
+    const minted = await client.mintGitHubInstallState(
+      "acme",
+      connId,
+      { expected_origin: "http://127.0.0.1:4280" },
+      { idempotencyKey: "019a2500-0000-7000-8000-000000000802" },
+    );
+    assert.equal(minted.data.state, "st_single_use_nonce_1234567890");
+
+    const cb = await client.handleGitHubCallback({
+      state: minted.data.state,
+      installation_id: "99001",
+      setup_action: "install",
+    });
+    assert.equal(cb.data.state_valid, true);
+    assert.equal(cb.data.workspace_slug, "acme");
+
+    const confirmed = await client.confirmGitHubInstallation(
+      "acme",
+      connId,
+      {
+        installation_id: "99001",
+        state: minted.data.state,
+      },
+      { idempotencyKey: "019a2500-0000-7000-8000-000000000803" },
+    );
+    assert.equal(confirmed.data.connection.status, "ready");
+    assert.equal(confirmed.data.repositories?.[0]?.auto_repair_blocked, true);
+    assert.equal(seenCalls[2]?.csrf, null); // GET callback does not send mutation CSRF
+    assert.equal(seenCalls[3]?.csrf, "csrf-u09-token");
+  });
 });

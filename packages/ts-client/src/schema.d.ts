@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/github/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Validate single-use GitHub App callback state without mutation (A-23) */
+        get: operations["handleGitHubCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/accept": {
         parameters: {
             query?: never;
@@ -413,6 +430,111 @@ export interface paths {
         get: operations["streamWorkspaceEvents"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List workspace provider connections with secret-presence metadata (A-06) */
+        get: operations["listConnections"];
+        put?: never;
+        /** Create a workspace provider connection sealing write-only credentials (A-06) */
+        post: operations["createConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get provider connection detail, capability snapshot & scoped repositories (A-06) */
+        get: operations["getConnection"];
+        put?: never;
+        post?: never;
+        /** Disconnect provider connection, revoke credentials & suspend active jobs (A-06) */
+        delete: operations["deleteConnection"];
+        options?: never;
+        head?: never;
+        /** Update provider connection metadata or rotate write-only credentials (A-06) */
+        patch: operations["updateConnection"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Consume single-use state, verify GitHub App installation & discover repos (A-23) */
+        post: operations["confirmGitHubInstallation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mint single-use 10m GitHub App callback state bound to user/workspace (A-23) */
+        post: operations["mintGitHubInstallState"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/probes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run live provider capability & permission probe (A-06) */
+        post: operations["probeConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Synchronize paginated repositories and `.github/workflows` hazard metadata (A-06) */
+        post: operations["syncConnection"];
         delete?: never;
         options?: never;
         head?: never;
@@ -786,6 +908,54 @@ export interface components {
             reason_code: string;
         };
         /**
+         * CapabilitySnapshot
+         * @description Immutable observed provider capability & permission snapshot (`S-08`, `SRC-01`).
+         */
+        CapabilitySnapshot: {
+            /** Api Version */
+            api_version?: string | null;
+            /** Capabilities */
+            capabilities?: {
+                [key: string]: "available" | "unavailable" | "unknown";
+            };
+            /** Checked At */
+            checked_at: string;
+            /** Connection Id */
+            connection_id: string;
+            /** Created At */
+            created_at: string;
+            /** Detail */
+            detail?: string | null;
+            /** Granted Permissions */
+            granted_permissions?: {
+                [key: string]: string;
+            };
+            /** Id */
+            id: string;
+            /** Missing Permissions */
+            missing_permissions?: string[];
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "github" | "gitlab";
+            /** Repository Id */
+            repository_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_configured" | "checking" | "ready" | "degraded" | "revoked" | "unsupported";
+            /** Updated At */
+            updated_at: string;
+            /** Vendor Version */
+            vendor_version?: string | null;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
          * CiJob
          * @description S-10 normalized CI job with matrix dimensions and retry lineage.
          */
@@ -880,14 +1050,15 @@ export interface components {
         };
         /**
          * Connection
-         * @description S-08 provider connection & capability snapshot read DTO.
+         * @description S-08 provider connection & capability snapshot read DTO (never exposes secret values).
          */
         Connection: {
-            /**
-             * Api Version
-             * @default null
-             */
-            api_version: string | null;
+            /** Account Login */
+            account_login?: string | null;
+            /** Api Version */
+            api_version?: string | null;
+            /** App Id */
+            app_id?: string | null;
             /**
              * Auth Mode
              * @enum {string}
@@ -899,48 +1070,138 @@ export interface components {
             capabilities?: {
                 [key: string]: "available" | "unavailable" | "unknown";
             };
-            /**
-             * Checked At
-             * @default null
-             */
-            checked_at: string | null;
+            /** Checked At */
+            checked_at?: string | null;
+            /** Client Id */
+            client_id?: string | null;
             /** Created At */
             created_at: string;
+            /** Display Name */
+            display_name?: string | null;
+            /**
+             * Flagged Hazard Repo Count
+             * @default 0
+             */
+            flagged_hazard_repo_count: number;
+            /**
+             * Grant Review Required
+             * @default false
+             */
+            grant_review_required: boolean;
+            /** Granted Permissions */
+            granted_permissions?: {
+                [key: string]: string;
+            };
             /** Id */
             id: string;
+            /** Installation Id */
+            installation_id?: string | null;
+            /** Last Synced At */
+            last_synced_at?: string | null;
+            /** Missing Permissions */
+            missing_permissions?: string[];
             /**
              * Provider
              * @enum {string}
              */
             provider: "github" | "gitlab";
             /**
-             * Repository Id
-             * @default null
+             * Repository Count
+             * @default 0
              */
-            repository_id: string | null;
+            repository_count: number;
+            /** Repository Id */
+            repository_id?: string | null;
             secret_presence: components["schemas"]["SecretPresence"];
             /**
              * Status
              * @enum {string}
              */
             status: "not_configured" | "checking" | "ready" | "degraded" | "revoked" | "unsupported";
+            /** Status Detail */
+            status_detail?: string | null;
             /** Updated At */
             updated_at: string;
-            /**
-             * Vendor Version
-             * @default null
-             */
-            vendor_version: string | null;
+            /** Vendor Version */
+            vendor_version?: string | null;
             /** Version */
             version: number;
+            webhook_secret_presence?: components["schemas"]["SecretPresence"] | null;
             /** Workspace Id */
             workspace_id: string;
         };
         /**
+         * ConnectionDetailResponse
+         * @description A-06 detailed connection view with latest capability snapshot and scoped repositories.
+         */
+        ConnectionDetailResponse: {
+            connection: components["schemas"]["Connection"];
+            latest_snapshot?: components["schemas"]["CapabilitySnapshot"] | null;
+            /** Repositories */
+            repositories?: components["schemas"]["Repository"][];
+        };
+        /**
+         * ConnectionPatchRequest
+         * @description A-06 partial connection update & credential rotation payload (`S-02` version-checked).
+         */
+        ConnectionPatchRequest: {
+            /** App Id */
+            app_id?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Client Id */
+            client_id?: string | null;
+            /** Display Name */
+            display_name?: string | null;
+            /** Expected Version */
+            expected_version?: number | null;
+            /** Private Key Pem */
+            private_key_pem?: string | null;
+            /** Secret Ref */
+            secret_ref?: string | null;
+            /** Webhook Secret */
+            webhook_secret?: string | null;
+            /** Webhook Secret Ref */
+            webhook_secret_ref?: string | null;
+        };
+        /**
+         * ConnectionProbeResponse
+         * @description A-06 live capability & permission probe result.
+         */
+        ConnectionProbeResponse: {
+            connection: components["schemas"]["Connection"];
+            receipt: components["schemas"]["ActionReceipt"];
+            snapshot: components["schemas"]["CapabilitySnapshot"];
+        };
+        /**
+         * ConnectionSyncResponse
+         * @description A-06 paginated repository discovery & workflow hazard scan result.
+         */
+        ConnectionSyncResponse: {
+            connection: components["schemas"]["Connection"];
+            /** Discovered Count */
+            discovered_count: number;
+            /**
+             * Flagged Hazard Count
+             * @default 0
+             */
+            flagged_hazard_count: number;
+            /**
+             * Partial Sync
+             * @default false
+             */
+            partial_sync: boolean;
+            receipt: components["schemas"]["ActionReceipt"];
+            /** Repositories */
+            repositories?: components["schemas"]["Repository"][];
+        };
+        /**
          * ConnectionWrite
-         * @description S-08 write input accepting an opaque secret_ref.
+         * @description S-08 / A-06 write input accepting opaque secret_ref or write-only credential material.
          */
         ConnectionWrite: {
+            /** App Id */
+            app_id?: string | null;
             /**
              * Auth Mode
              * @enum {string}
@@ -948,16 +1209,23 @@ export interface components {
             auth_mode: "github_app" | "signed_webhook" | "secret_token";
             /** Base Url */
             base_url: string;
+            /** Client Id */
+            client_id?: string | null;
+            /** Display Name */
+            display_name?: string | null;
+            /** Private Key Pem */
+            private_key_pem?: string | null;
             /**
              * Provider
              * @enum {string}
              */
             provider: "github" | "gitlab";
-            /**
-             * Secret Ref
-             * @default null
-             */
-            secret_ref: string | null;
+            /** Secret Ref */
+            secret_ref?: string | null;
+            /** Webhook Secret */
+            webhook_secret?: string | null;
+            /** Webhook Secret Ref */
+            webhook_secret_ref?: string | null;
         };
         /**
          * ConsentCreateRequest
@@ -1367,6 +1635,85 @@ export interface components {
         GetExecutionResultArgs: {
             /** Operation Id */
             operation_id: string;
+        };
+        /**
+         * GitHubCallbackResponse
+         * @description A-23 safe read-only validation of GitHub OAuth / App installation redirect parameters.
+         */
+        GitHubCallbackResponse: {
+            /** Connection Id */
+            connection_id: string;
+            /** Expires At */
+            expires_at: string;
+            /** Installation Id */
+            installation_id?: string | null;
+            /** Setup Action */
+            setup_action?: string | null;
+            /** State Valid */
+            state_valid: boolean;
+            /** Workspace Id */
+            workspace_id: string;
+            /** Workspace Slug */
+            workspace_slug: string;
+        };
+        /**
+         * GitHubInstallStateCreateRequest
+         * @description A-23 request to mint a single-use 10-minute GitHub App callback/installation state nonce.
+         */
+        GitHubInstallStateCreateRequest: {
+            /** Expected Origin */
+            expected_origin?: string | null;
+        };
+        /**
+         * GitHubInstallStateResponse
+         * @description A-23 single-use 10-minute GitHub installation state nonce bound to user/workspace/origin.
+         */
+        GitHubInstallStateResponse: {
+            /** Connection Id */
+            connection_id: string;
+            /** Expires At */
+            expires_at: string;
+            /** Install Url */
+            install_url?: string | null;
+            /** State */
+            state: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * GitHubInstallationConfirmRequest
+         * @description A-23 CSRF-protected mutation confirming & binding a GitHub App installation.
+         */
+        GitHubInstallationConfirmRequest: {
+            /** Expected Origin */
+            expected_origin?: string | null;
+            /** Installation Id */
+            installation_id: string;
+            /** Selected External Repo Ids */
+            selected_external_repo_ids?: string[] | null;
+            /** State */
+            state: string;
+        };
+        /**
+         * GitHubInstallationConfirmResponse
+         * @description A-23 confirmed GitHub App installation binding, permission diff & discovered repos.
+         */
+        GitHubInstallationConfirmResponse: {
+            connection: components["schemas"]["Connection"];
+            /**
+             * Grant Review Required
+             * @default false
+             */
+            grant_review_required: boolean;
+            /**
+             * Partial Sync
+             * @default false
+             */
+            partial_sync: boolean;
+            receipt: components["schemas"]["ActionReceipt"];
+            /** Repositories */
+            repositories?: components["schemas"]["Repository"][];
+            snapshot: components["schemas"]["CapabilitySnapshot"];
         };
         /**
          * Invite
@@ -1883,6 +2230,15 @@ export interface components {
             /** Snapshot At */
             snapshot_at: string;
         };
+        /** Page[Connection] */
+        Page_Connection_: {
+            /** Items */
+            items: components["schemas"]["Connection"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+        };
         /** Page[ConsentRecord] */
         Page_ConsentRecord_: {
             /** Items */
@@ -2341,6 +2697,16 @@ export interface components {
          * @description S-09 workspace-scoped repository catalog entry.
          */
         Repository: {
+            /**
+             * Archived
+             * @default false
+             */
+            archived: boolean;
+            /**
+             * Auto Repair Blocked
+             * @default false
+             */
+            auto_repair_blocked: boolean;
             /** Connection Id */
             connection_id: string;
             /** Created At */
@@ -2351,6 +2717,11 @@ export interface components {
             external_id: string;
             /** Id */
             id: string;
+            /**
+             * Is Fork
+             * @default false
+             */
+            is_fork: boolean;
             /**
              * Mode
              * @enum {string}
@@ -2365,11 +2736,8 @@ export interface components {
             paused: boolean;
             /** Policy Revision */
             policy_revision: number;
-            /**
-             * Repository Id
-             * @default null
-             */
-            repository_id: string | null;
+            /** Repository Id */
+            repository_id?: string | null;
             /** Tags */
             tags?: string[];
             /** Updated At */
@@ -2381,6 +2749,14 @@ export interface components {
              * @enum {string}
              */
             visibility: "public" | "private" | "internal" | "unknown";
+            /**
+             * Workflow Hazard Status
+             * @default unscanned
+             * @enum {string}
+             */
+            workflow_hazard_status: "clean" | "flagged" | "unscanned";
+            /** Workflow Hazards */
+            workflow_hazards?: components["schemas"]["WorkflowHazardFinding"][];
             /** Workspace Id */
             workspace_id: string;
         };
@@ -2648,11 +3024,8 @@ export interface components {
         SecretPresence: {
             /** Configured */
             configured: boolean;
-            /**
-             * Secret Version
-             * @default null
-             */
-            secret_version: number | null;
+            /** Secret Version */
+            secret_version?: number | null;
         };
         /** SecurityIdentityEventPayload */
         SecurityIdentityEventPayload: {
@@ -3380,6 +3753,26 @@ export interface components {
             worker_id: string;
         };
         /**
+         * WorkflowHazardFinding
+         * @description Structured workflow hazard finding from `.github/workflows` inspection (`SEC-031`).
+         */
+        WorkflowHazardFinding: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "pull_request_target" | "privileged_workflow_run" | "write_all_permissions" | "deploy_trigger" | "workflow_parse_warning";
+            /** Detail */
+            detail: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+            /** Workflow Path */
+            workflow_path: string;
+        };
+        /**
          * Workspace
          * @description S-07 multi-workspace tenant resource (ADR-030).
          */
@@ -3989,6 +4382,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StepUpResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    handleGitHubCallback: {
+        parameters: {
+            query?: {
+                state?: string | null;
+                installation_id?: string | null;
+                setup_action?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GitHubCallbackResponse"];
                 };
             };
             /** @description Bad Request */
@@ -7035,6 +7552,1146 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    listConnections: {
+        parameters: {
+            query?: {
+                provider?: ("github" | "gitlab") | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Connection_"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    createConnection: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connection"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    deleteConnection: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    updateConnection: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "If-Match"?: string | null;
+            };
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connection"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    confirmGitHubInstallation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GitHubInstallationConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GitHubInstallationConfirmResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    mintGitHubInstallState: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["GitHubInstallStateCreateRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GitHubInstallStateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    probeConnection: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionProbeResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    syncConnection: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionSyncResponse"];
                 };
             };
             /** @description Bad Request */

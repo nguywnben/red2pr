@@ -503,3 +503,257 @@ class SecretBrokerTotpVault:
             workspace_id=None,
             now=now,
         )
+
+
+class SecretBrokerProviderVault:
+    """Z2 capability-scoped provider vault for GitHub/GitLab credentials & encrypted JIT tokens.
+
+    Enforces `Z1`/`Z2` least privilege (`U09`, `SRC-01`, `SEC-011`, `SEC-017`):
+    - Raw RSA private key PEMs and webhook secrets never cross from `Z2` into `Z1` adapters.
+    - RS256 GitHub App JWTs and webhook HMAC verifications execute strictly inside `Z2`.
+    - Short-lived JIT scoped installation tokens are cached envelope-encrypted in broker memory
+      with AAD bound to `(workspace_id, connection_id, installation_id, scope_key)` and
+      honoring `expires_at` minus a 60-second safety margin.
+    """
+
+    _JIT_EXPIRY_SAFETY_MARGIN_SECONDS = 60
+
+    def __init__(self, broker: SecretBroker) -> None:
+        import threading
+
+        self._broker = broker
+        self._lock = threading.RLock()
+        self._jit_cache: dict[tuple[str, str, str, str], tuple[EnvelopeCiphertext, datetime]] = {}
+
+    async def store_provider_credential(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        plaintext: bytes,
+        purpose: Literal["provider_read", "webhook_auth"],
+        require_rsa_pem: bool = False,
+        now: datetime | None = None,
+    ) -> tuple[str, int]:
+        if require_rsa_pem:
+            from py_contracts.crypto import CryptoVerificationError, validate_rsa_private_key_pem
+            from red2pr_control.core.errors import UnprocessableEntityError
+
+            try:
+                validate_rsa_private_key_pem(plaintext)
+            except CryptoVerificationError as exc:
+                raise UnprocessableEntityError(
+                    code=exc.code,
+                    detail=exc.detail,
+                ) from exc
+
+        meta = await self._broker.store_secret(
+            session,
+            plaintext=plaintext,
+            purpose=purpose,
+            workspace_id=workspace_id,
+            now=now,
+        )
+        return (meta.secret_ref, meta.active_key_version)
+
+    async def inspect_secret_presence(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+        expected_purpose: Literal["provider_read", "webhook_auth"],
+    ) -> tuple[bool, int | None]:
+        row = await session.scalar(
+            select(SecretEntryModel).where(
+                SecretEntryModel.secret_ref == secret_ref,
+                SecretEntryModel.workspace_id == workspace_id,
+            )
+        )
+        if row is None:
+            raise NotFoundError(
+                code="secret_not_found",
+                detail="Referenced secret was not found in this workspace.",
+            )
+        if row.revoked_at is not None:
+            raise ForbiddenError(
+                code="secret_revoked",
+                detail="Referenced secret has been revoked.",
+            )
+        if row.purpose != expected_purpose:
+            raise ForbiddenError(
+                code="secret_purpose_denied",
+                detail=f"Referenced secret does not have purpose '{expected_purpose}'.",
+            )
+        return (True, int(row.active_key_version))
+
+    async def revoke_provider_credential(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+        connection_id: str | None = None,
+        now: datetime | None = None,
+    ) -> None:
+        self.invalidate_cached_tokens(workspace_id=workspace_id, connection_id=connection_id)
+        try:
+            await self._broker.revoke_secret(
+                session,
+                secret_ref=secret_ref,
+                workspace_id=workspace_id,
+                now=now,
+            )
+        except NotFoundError:
+            return
+
+    async def mint_github_app_jwt(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+        issuer: str,
+        now: datetime,
+    ) -> str:
+        from py_contracts.crypto import CryptoVerificationError, sign_github_app_jwt_rs256
+        from red2pr_control.core.errors import UnprocessableEntityError
+
+        pem_bytes = await self._broker.resolve_secret_bytes(
+            session,
+            secret_ref=secret_ref,
+            capability=INTEGRATIONS_READ_SECRET_CAPABILITY,
+            workspace_id=workspace_id,
+        )
+        try:
+            jwt_token = sign_github_app_jwt_rs256(
+                private_key_pem=pem_bytes,
+                issuer=issuer,
+                now=now,
+            )
+        except CryptoVerificationError as exc:
+            raise UnprocessableEntityError(code=exc.code, detail=exc.detail) from exc
+        self._broker._redactor.register_canary(jwt_token)
+        return jwt_token
+
+    async def verify_webhook_hmac(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+        raw_body: bytes,
+        signature_header: str,
+    ) -> bool:
+        from py_contracts.crypto import verify_hmac_sha256_hex
+
+        secret_bytes = await self._broker.resolve_secret_bytes(
+            session,
+            secret_ref=secret_ref,
+            capability=INTEGRATIONS_READ_SECRET_CAPABILITY,
+            workspace_id=workspace_id,
+        )
+        return verify_hmac_sha256_hex(secret_bytes, raw_body, signature_header)
+
+    def get_cached_jit_installation_token(
+        self,
+        *,
+        workspace_id: str,
+        connection_id: str,
+        installation_id: str,
+        scope_key: str,
+        now: datetime,
+    ) -> str | None:
+        from datetime import timedelta
+
+        ref_now = now.astimezone(UTC)
+        cache_key = (workspace_id, connection_id, installation_id, scope_key)
+        with self._lock:
+            cached = self._jit_cache.get(cache_key)
+            if cached is None:
+                return None
+            envelope, expires_at = cached
+            if ref_now + timedelta(
+                seconds=self._JIT_EXPIRY_SAFETY_MARGIN_SECONDS
+            ) >= expires_at.astimezone(UTC):
+                self._jit_cache.pop(cache_key, None)
+                return None
+
+        aad_ctx = {
+            "cache_kind": "github_jit_installation_token",
+            "workspace_id": workspace_id,
+            "connection_id": connection_id,
+            "installation_id": installation_id,
+            "scope_key": scope_key,
+        }
+        try:
+            raw = decrypt_envelope(
+                envelope,
+                key_ring=self._broker._key_ring,
+                aad_context=aad_ctx,
+            )
+            return raw.decode("utf-8")
+        except Exception:
+            with self._lock:
+                self._jit_cache.pop(cache_key, None)
+            return None
+
+    def cache_jit_installation_token(
+        self,
+        *,
+        workspace_id: str,
+        connection_id: str,
+        installation_id: str,
+        scope_key: str,
+        token: str,
+        expires_at: datetime,
+        now: datetime,
+    ) -> None:
+        from datetime import timedelta
+
+        ref_now = now.astimezone(UTC)
+        exp_utc = expires_at.astimezone(UTC)
+        if (
+            not token
+            or ref_now + timedelta(seconds=self._JIT_EXPIRY_SAFETY_MARGIN_SECONDS) >= exp_utc
+        ):
+            return
+
+        self._broker._redactor.register_canary(token)
+        aad_ctx = {
+            "cache_kind": "github_jit_installation_token",
+            "workspace_id": workspace_id,
+            "connection_id": connection_id,
+            "installation_id": installation_id,
+            "scope_key": scope_key,
+        }
+        envelope = encrypt_envelope(
+            token.encode("utf-8"),
+            key_ring=self._broker._key_ring,
+            aad_context=aad_ctx,
+        )
+        cache_key = (workspace_id, connection_id, installation_id, scope_key)
+        with self._lock:
+            self._jit_cache[cache_key] = (envelope, exp_utc)
+
+    def invalidate_cached_tokens(
+        self,
+        *,
+        workspace_id: str,
+        connection_id: str | None = None,
+    ) -> int:
+        with self._lock:
+            keys_to_remove = [
+                k
+                for k in self._jit_cache
+                if k[0] == workspace_id and (connection_id is None or k[1] == connection_id)
+            ]
+            for key in keys_to_remove:
+                self._jit_cache.pop(key, None)
+            return len(keys_to_remove)
+
+    def cached_token_count(self, *, workspace_id: str | None = None) -> int:
+        with self._lock:
+            if workspace_id is None:
+                return len(self._jit_cache)
+            return sum(1 for k in self._jit_cache if k[0] == workspace_id)

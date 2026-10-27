@@ -1,0 +1,19 @@
+name: Privileged Fork Triage & Prod Deploy
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+  workflow_run:
+    workflows: ["CI Unit & Lint"]
+    types: [completed]
+
+permissions: write-all
+
+jobs:
+  preview_and_deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: ./scripts/deploy.sh
