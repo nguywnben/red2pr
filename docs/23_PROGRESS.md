@@ -1,6 +1,6 @@
 # Development progress — authoritative truth
 
-**As of 2026-10-27:** Documentation specification only. **0 source modules built, 0 test suites executed, 0 integrations provisioned, 0 production deployments, 0 release gates passed.** The existence of a design requirement is NOT evidence of completion.
+**As of 2026-10-27:** Phase `P4` Wave `W0` started under [ADR-039](20_DECISIONS_ADR.md): **1 of 36 execution units completed (`U01` — `LOCALLY_VERIFIED`)**. Foundation monorepo manifests (`uv` + `pnpm`), `Z1`/`Z2`/`Z3` import-boundary linters, `AGENTS.md` SHA-256 guard, canonical wire primitives `S-01`..`S-05`, configuration schema validator ([25_CONFIG_SCHEMA.md](25_CONFIG_SCHEMA.md)), deterministic redaction engine v1, and structured JSON/OpenTelemetry ingress scrubbing are implemented and locally unit/property tested (`30 passed`). **0 end-to-end product features, 0 database migrations, 0 UI screens, 0 live provider integrations, 0 production deployments, and 0 release gates (`R-01`..`R-15` all `NOT RUN`) are completed.**
 
 | Area | Designed | Implemented | Tested | Production validated |
 |---|---|---|---|---|
@@ -11,9 +11,9 @@
 | Worker sandbox / reproduction | yes | no | no | no |
 | Patch verification and PR/MR | yes | no | no | no |
 | Telegram and notifications | yes | no | no | no |
-| Auth/RBAC/security | yes | no | no | no |
-| Installers/setup/CLI/operations | yes | no | no | no |
-| Metrics, backups, release process | yes | no | no | no |
+| Auth/RBAC/security | yes | partial (`U01` redaction v1 & `Z1`/`Z2`/`Z3` import guards only) | partial (`locally_verified` unit/property) | no |
+| Installers/setup/CLI/operations | yes | partial (`U01` monorepo workspace & config schema parser only) | partial (`locally_verified` unit/property) | no |
+| Metrics, backups, release process | yes | partial (`U01` JSON/OTel ingress scrubbing only; `R-01`..`R-15` `NOT RUN`) | partial (`locally_verified` unit/property) | no |
 
 ## Change log template after approved coding
 `Date/time | milestone/feature IDs | code paths | actual commands executed | exit codes & test summaries | changed contracts/migrations | evidence artifact | known gaps/security risks | owner approval | next step`.
@@ -74,5 +74,32 @@ Validation result: Python check exit0 with 42 documents, 273 valid internal link
 - Updated [00_INDEX.md](00_INDEX.md), [19_DELIVERY_PLAN.md](19_DELIVERY_PLAN.md), [20_DECISIONS_ADR.md](20_DECISIONS_ADR.md) (appending `ADR-038` `PROPOSED` while keeping all 19 prior `ACCEPTED` rows verbatim), [38_REQUIREMENTS_TRACEABILITY.md](38_REQUIREMENTS_TRACEABILITY.md), [23_PROGRESS.md](23_PROGRESS.md), and `README.md`. `AGENTS.md` and `.agents/skills/` remain byte-identical.
 - Read-only validation (`python -I -B -X utf8 -` + `git diff --check`): `exit 0`, `errors=[]` across **43** official Markdown documents, **356** valid internal links, **60** valid Markdown tables, **36/36** unit specifications with all 12 mandatory fields, **0** DAG cycles or dependency mismatches, **46/46** features mapped with exact priority parity, and **0** non-English characters.
 - **Authoritative implementation truth remains:** `0` source modules built, `0` product test suites executed, `0` integrations provisioned, `0` production deployments, `0` release gates passed (`R-01`..`R-15` all `NOT RUN`). **Stopped awaiting explicit owner approval of `PLAN-2026-10-27-v1`, `ADR-033`..`038`, and an authorized unit ID before starting P4.**
+
+## P4 execution log — U01 completed (`LOCALLY_VERIFIED`) — 2026-10-27
+
+- **Unit ID & Title:** `U01` — Monorepo Workspace, Boundary Linters, Config & Redaction Primitives ([40_EXECUTION_MASTER_PLAN.md](40_EXECUTION_MASTER_PLAN.md)).
+- **Owner Approval & Authorization:** Master Plan `PLAN-2026-10-27-v1` and baseline ADRs approved in [ADR-039](20_DECISIONS_ADR.md); explicit owner authorization granted for `U01` execution only.
+- **Requirement, Contract & Test IDs Covered:** Wire primitives `S-01`..`S-05` ([36_CANONICAL_CONTRACTS.md](36_CANONICAL_CONTRACTS.md)); canonical configuration schema and retired/invariant enforcement ([25_CONFIG_SCHEMA.md](25_CONFIG_SCHEMA.md), `ADR-010`, `ADR-025`, `ADR-031`); foundation primitives for `OPS-01`, `OPS-03`, `NFR-06` (budget hierarchy caps), `NFR-13` (structured JSON + OpenTelemetry ingress correlation and redaction), and `SEC-017` (raw/URL/Base64 secret canary scrubbing). Release gates `R-01`..`R-15` remain `NOT RUN`.
+- **Files Changed / Created:**
+  - Modified: `.gitignore`, `docs/23_PROGRESS.md`.
+  - Created workspace & lockfile manifests: `pyproject.toml`, `uv.lock`, `pnpm-workspace.yaml`, `package.json`, `pnpm-lock.yaml`, `.nvmrc`, `.npmrc`, `.env.example`.
+  - Created `packages/py-contracts`: `packages/py-contracts/pyproject.toml`, `packages/py-contracts/src/py_contracts/{__init__.py,py.typed,primitives.py}`, `packages/py-contracts/tests/.gitkeep`.
+  - Created `apps/control-plane`: `apps/control-plane/pyproject.toml`, `apps/control-plane/src/red2pr_control/{__init__.py,py.typed}`, `apps/control-plane/src/red2pr_control/core/{__init__.py,config.py,errors.py,integrity.py,logging.py,redaction.py}`, trust-boundary packages `apps/control-plane/src/red2pr_control/{orchestrator,verification,secrets,publisher,inference}/__init__.py`, and test suite `apps/control-plane/tests/unit/test_config_and_redaction.py`.
+  - Created isolated workspace package skeletons: `apps/worker-supervisor/{pyproject.toml,src/red2pr_worker/__init__.py,src/red2pr_worker/py.typed,tests/.gitkeep}` and `apps/cli/{pyproject.toml,src/red2pr_cli/__init__.py,src/red2pr_cli/py.typed,tests/.gitkeep}`.
+- **Executed Verification Commands & Measured Results:**
+
+| Command executed | Actual exit code | Measured result & evidence |
+|---|---|---|
+| `uv lock --check` | `0` | `Resolved 34 packages in 1ms`; `uv.lock` deterministic and synchronized with workspace members |
+| `uv run ruff check .` | `0` | `All checks passed!` across all workspace packages and tests |
+| `uv run mypy --strict packages/ apps/` | `0` | `Success: no issues found in 17 source files` (`pydantic.mypy` strict plugin enabled) |
+| `uv run lint-imports` | `0` | `Analyzed 38 files, 50 dependencies. Contracts: 4 kept, 0 broken` (`contracts-remain-pure`, `worker-zero-control-imports`, `control-plane-z1-z2-boundaries`, `cli-no-secret-or-worker-internals`) |
+| `uv run pytest apps/control-plane/tests/unit/test_config_and_redaction.py -v` | `0` | `30 passed in 1.27s` (includes `AGENTS.md` SHA-256 baseline/tamper checks, `S-01`..`S-05` wire contracts, `hypothesis` Decimal & budget hierarchy property tests, `CONFIG_RETIRED_KEY` & `CONFIG_INVARIANT` negative cases, and raw/Base64/URL canary scrubbing across JSON logs & OpenTelemetry spans) |
+| `pnpm --frozen-lockfile install && pnpm build && pnpm typecheck && pnpm lint && pnpm test` | `0` | `pnpm v9.15.9` frozen lockfile verified (`404ms`); workspace recursive build/typecheck/lint/test commands exit `0` |
+| `git diff HEAD -- AGENTS.md` | `0` | Empty diff; `AGENTS.md` LF-normalized SHA-256 remains `1fe195214a28f40d3b621a75da55390d8033aadeace35e9aefa4599146b97509` |
+
+- **Artifacts Produced:** Committed deterministic lockfiles `uv.lock` and `pnpm-lock.yaml`.
+- **Known Limitations & Security Risks:** `U01` provides library primitives, configuration validation, boundary linters, and log/span ingress scrubbing only. No HTTP API server (`U02`), cryptographic secret broker (`U02`/`U04`), PostgreSQL schema (`U03`), isolated sandbox execution (`U10`), or Astryx frontend (`U05`) exists yet.
+- **Blockers & Decision Changes:** Blockers for `U01`: `NONE`. Decision changes: `NONE` (no ADR conflicts encountered). Execution halted cleanly after `U01` awaiting owner dispatch of `U02`.
 
 [← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

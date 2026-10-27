@@ -23,8 +23,11 @@ venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.hypothesis/
+.import_linter_cache/
 .mypy_cache/
 .ruff_cache/
+.pnpm-store/
 coverage/
 .coverage
 *.log
