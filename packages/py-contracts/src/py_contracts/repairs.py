@@ -4,7 +4,8 @@ Implements:
 - S-11: Repair state machine (lower_snake_case per docs/08 + ADR-038) and Diagnosis.
 - S-12: Patch, Verification (V-01..V-08), and patch/base/policy-bound Approval.
 - S-13: Publication (sanitized URLs without credentials) and RemoteCheck.
-- S-18 & A-18: Canonical 10-phase setup wizard (ADR-038), LifecycleOperation, SystemHealthResponse.
+- S-18 & A-18: Canonical 10-phase setup wizard (ADR-038 / U07), LifecycleOperation,
+  SystemHealthResponse.
 """
 
 from __future__ import annotations
@@ -12,15 +13,26 @@ from __future__ import annotations
 import urllib.parse
 from typing import Annotated, Any, Literal
 
-from pydantic import BeforeValidator, Field, StrictBool, StrictInt
+from pydantic import BeforeValidator, Field, StrictBool, StrictInt, model_validator
 
-from py_contracts.integrations import CiConclusion, GitSha
+from py_contracts.iam import WorkspaceSlugStr
+from py_contracts.integrations import (
+    CanonicalGlobPattern,
+    CiConclusion,
+    ConnectionAuthMode,
+    GitSha,
+    NotificationChannel,
+    OpaqueSecretRef,
+    ProviderKind,
+    RepositoryMode,
+)
 from py_contracts.primitives import (
     BoundedName,
     BoundedText,
     BoundedUrl,
     InstanceResourceBase,
     InternalId,
+    Money,
     OpaqueProviderId,
     PositiveVersion,
     Sha256Digest,
@@ -238,15 +250,42 @@ class RemoteCheck(WorkspaceResourceBase):
 SetupWizardPhase = Literal[
     "owner_claim",
     "topology_tls",
-    "storage_recovery",
-    "workspace_membership",
-    "provider_connection",
-    "inference_consent",
-    "worker_validation",
-    "repository_policy",
-    "notification_setup",
+    "storage_keys",
+    "workspace_admin",
+    "provider_connect",
+    "model_consent",
+    "worker_readiness",
+    "repo_policy",
+    "notifications",
     "readiness_review",
 ]
+SETUP_WIZARD_PHASES: tuple[SetupWizardPhase, ...] = (
+    "owner_claim",
+    "topology_tls",
+    "storage_keys",
+    "workspace_admin",
+    "provider_connect",
+    "model_consent",
+    "worker_readiness",
+    "repo_policy",
+    "notifications",
+    "readiness_review",
+)
+OPTIONAL_SETUP_PHASES: frozenset[SetupWizardPhase] = frozenset(
+    {
+        "provider_connect",
+        "model_consent",
+        "worker_readiness",
+        "notifications",
+    }
+)
+SetupStepStatus = Literal["pending", "completed", "not_configured", "degraded", "blocked"]
+SetupStepAction = Literal["save", "skip", "back"]
+SetupDeploymentMode = Literal["local", "server", "distributed"]
+SetupTlsMode = Literal["loopback_http", "reverse_proxy_https", "custom_ca_https"]
+SetupStorageBackend = Literal["local", "s3_compatible"]
+SetupSandboxBackend = Literal["docker_isolated", "podman_rootless", "remote_vm_worker"]
+SetupTelemetryMode = Literal["local_only", "consented_export"]
 PrerequisiteStatus = Literal[
     "passed",
     "failed",
@@ -267,13 +306,111 @@ class SetupPrerequisite(StrictContractModel):
     remediation: BoundedText
 
 
+class SetupStepSummary(StrictContractModel):
+    """Per-phase durable setup checkpoint summary with redacted configuration draft."""
+
+    phase: SetupWizardPhase
+    status: SetupStepStatus
+    optional: StrictBool = False
+    redacted_draft: dict[str, Any] = Field(default_factory=dict)
+    probe_status: PrerequisiteStatus | None = None
+    probe_detail: BoundedText | None = None
+    updated_at: UtcTimestamp | None = None
+
+
 class SetupState(InstanceResourceBase):
-    """S-18 resumable 10-phase setup wizard checkpoint and readiness state (ADR-038)."""
+    """S-18 resumable 10-phase setup wizard checkpoint and readiness state (ADR-038, INS-02)."""
 
     phase: SetupWizardPhase
     checkpoint: BoundedName
+    owner_claimed: StrictBool = False
     prerequisites: list[SetupPrerequisite]
     readiness: SetupReadiness
+    ready_monitor: StrictBool = False
+    ready_repair: StrictBool = False
+    completed_at: UtcTimestamp | None = None
+    default_workspace_id: InternalId | None = None
+    default_workspace_slug: BoundedName | None = None
+    steps: list[SetupStepSummary] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _enforce_readiness_flag_consistency(self) -> SetupState:
+        expected_monitor = self.readiness in ("ready_monitor", "ready_repair")
+        expected_repair = self.readiness == "ready_repair"
+        if "ready_monitor" not in self.model_fields_set:
+            object.__setattr__(self, "ready_monitor", expected_monitor)
+        elif self.ready_monitor != expected_monitor:
+            raise ValueError("ready_monitor flag must match SetupState.readiness")
+        if "ready_repair" not in self.model_fields_set:
+            object.__setattr__(self, "ready_repair", expected_repair)
+        elif self.ready_repair != expected_repair:
+            raise ValueError("ready_repair flag must match SetupState.readiness")
+        return self
+
+
+class SetupStepSubmitRequest(StrictContractModel):
+    """A-01 step mutation input with mandatory expected_checkpoint optimistic locking."""
+
+    expected_checkpoint: BoundedName
+    action: SetupStepAction = "save"
+
+    # Phase 2: topology_tls
+    deployment_mode: SetupDeploymentMode | None = None
+    public_base_url: BoundedUrl | None = None
+    tls_mode: SetupTlsMode | None = None
+
+    # Phase 3: storage_keys
+    storage_backend: SetupStorageBackend | None = None
+    master_key_custody_confirmed: StrictBool | None = None
+    backup_retention_days: Annotated[StrictInt, Field(ge=1, le=3650)] | None = None
+    artifact_endpoint_id: InternalId | None = None
+
+    # Phase 4: workspace_admin
+    workspace_name: BoundedName | None = None
+    workspace_slug: WorkspaceSlugStr | None = None
+
+    # Phase 5: provider_connect
+    provider: ProviderKind | None = None
+    provider_base_url: BoundedUrl | None = None
+    auth_mode: ConnectionAuthMode | None = None
+    endpoint_registration_id: InternalId | None = None
+    provider_consent_id: InternalId | None = None
+
+    # Phase 6: model_consent
+    primary_model: BoundedName | None = None
+    escalation_model: BoundedName | None = None
+    inference_consent_id: InternalId | None = None
+    max_cost_per_session: Money | None = None
+    max_tokens_per_session: Annotated[StrictInt, Field(ge=1, le=1_000_000)] | None = None
+    max_calls_per_session: Annotated[StrictInt, Field(ge=1, le=100)] | None = None
+
+    # Phase 7: worker_readiness
+    sandbox_backend: SetupSandboxBackend | None = None
+    runtime_profile_id: BoundedName | None = None
+    host_escape_risk_acknowledged: StrictBool | None = None
+    run_self_test: StrictBool | None = None
+
+    # Phase 8: repo_policy
+    default_repo_mode: RepositoryMode | None = None
+    require_baseline: StrictBool | None = None
+    auto_merge: StrictBool | None = None
+    max_attempts: Annotated[StrictInt, Field(ge=1, le=5)] | None = None
+    max_diff_lines: Annotated[StrictInt, Field(ge=1, le=2000)] | None = None
+    protected_branches: list[CanonicalGlobPattern] | None = None
+
+    # Phase 9: notifications
+    channel: NotificationChannel | None = None
+    notification_consent_id: InternalId | None = None
+    telemetry_mode: SetupTelemetryMode | None = None
+    telemetry_consent_id: InternalId | None = None
+
+    # Phase 10: readiness_review
+    target_readiness: SetupReadiness | None = None
+    notes: BoundedText | None = None
+
+    # Shared write-only opaque secret ref & draft notes (redacted before persistence)
+    secret_ref: OpaqueSecretRef | None = None
+    draft_notes: dict[BoundedName, BoundedText] | None = None
 
 
 LifecycleOperationKind = Literal[

@@ -19,6 +19,7 @@ import {
   type AuthProblemSummary,
 } from "../features/auth";
 import { AcceptInviteDialog, MembersPage } from "../features/members";
+import { SetupWizardPage } from "../features/setup";
 import {
   ApiClientProvider,
   invalidateWorkspaceQueries,
@@ -556,6 +557,8 @@ export function AppRoutes(): React.JSX.Element {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/setup" element={<SetupWizardPage />} />
+      <Route path="/setup/*" element={<SetupWizardPage />} />
       <Route path="/account" element={<AccountRouteShell />} />
       <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
       <Route path="/admin/*" element={<AdminRouteShell />} />

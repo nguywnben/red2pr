@@ -36,8 +36,15 @@ from py_contracts import (
     CiRun,
     Connection,
     ConnectionWrite,
+    ConsentCreateRequest,
+    ConsentRecord,
+    ConsentRecordPage,
+    ConsentRevokeRequest,
     CsrfBootstrapResponse,
     Diagnosis,
+    EndpointRegistration,
+    EndpointRegistrationCreateRequest,
+    EndpointRegistrationPage,
     EventEnvelope,
     EvidenceManifestV1,
     Invite,
@@ -80,7 +87,10 @@ from py_contracts import (
     SessionPage,
     SetupClaimRequest,
     SetupClaimResponse,
+    SetupPrerequisite,
     SetupState,
+    SetupStepSubmitRequest,
+    SetupStepSummary,
     StepUpRequest,
     StepUpResponse,
     StrictContractModel,
@@ -113,6 +123,11 @@ from red2pr_control.core.logging import (
 )
 from red2pr_control.iam.router import build_iam_router
 from red2pr_control.iam.sessions import IamService
+from red2pr_control.operations.setup_wizard import (
+    SetupStepRegistry,
+    SetupWizardService,
+    build_setup_router,
+)
 
 CORRELATION_HEADER = "X-Correlation-Id"
 _SAFE_CORR_RE = re.compile(r"^[A-Za-z0-9._:-]{1,120}$")
@@ -181,6 +196,16 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     AuditRecord,
     ModelUsageRecord,
     ReportExportRequest,
+    ConsentCreateRequest,
+    ConsentRevokeRequest,
+    ConsentRecord,
+    ConsentRecordPage,
+    EndpointRegistrationCreateRequest,
+    EndpointRegistration,
+    EndpointRegistrationPage,
+    SetupPrerequisite,
+    SetupStepSummary,
+    SetupStepSubmitRequest,
     SetupState,
     LifecycleOperation,
     SystemHealthResponse,
@@ -321,7 +346,12 @@ def _request_correlation_id(request: Request) -> str:
     return current_correlation_id()
 
 
-def create_app(*, iam_service: IamService | None = None) -> FastAPI:
+def create_app(
+    *,
+    iam_service: IamService | None = None,
+    setup_wizard_service: SetupWizardService | None = None,
+    setup_step_registry: SetupStepRegistry | None = None,
+) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     app = FastAPI(
         title="Red2PR Control Plane API",
@@ -335,6 +365,8 @@ def create_app(*, iam_service: IamService | None = None) -> FastAPI:
         redoc_url=None,
     )
     app.state.iam_service = iam_service
+    app.state.setup_wizard_service = setup_wizard_service
+    app.state.setup_step_registry = setup_step_registry
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -353,6 +385,7 @@ def create_app(*, iam_service: IamService | None = None) -> FastAPI:
 
     app.include_router(system_router)
     app.include_router(build_iam_router())
+    app.include_router(build_setup_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:

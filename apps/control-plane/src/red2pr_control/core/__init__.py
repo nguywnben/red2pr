@@ -1,4 +1,4 @@
-"""Core configuration, redaction, error envelope, integrity and structured logging."""
+"""Core configuration, redaction, error envelope, egress proxy, integrity and logging."""
 
 from red2pr_control.core.config import (
     AiBudgetCaps,
@@ -7,6 +7,22 @@ from red2pr_control.core.config import (
     load_config,
     parse_config_yaml,
     validate_child_budget_within_parent,
+)
+from red2pr_control.core.egress import (
+    CaBundleResolverProtocol,
+    DnsResolverProtocol,
+    EgressAuditEvent,
+    EgressAuditSink,
+    EgressBlockedError,
+    EgressPinnedAsyncTransport,
+    EgressPolicyEngine,
+    EgressSafeHttpClient,
+    EndpointAllowlistProviderProtocol,
+    InMemoryCaBundleResolver,
+    InMemoryEndpointAllowlistProvider,
+    PinnedEgressTarget,
+    RegisteredEndpointRule,
+    SystemAsyncDnsResolver,
 )
 from red2pr_control.core.errors import (
     PROBLEM_JSON_MEDIA_TYPE,
@@ -35,14 +51,28 @@ __all__ = [
     "PROBLEM_JSON_MEDIA_TYPE",
     "REDACTION_VERSION",
     "AiBudgetCaps",
+    "CaBundleResolverProtocol",
     "ConfigValidationError",
+    "DnsResolverProtocol",
+    "EgressAuditEvent",
+    "EgressAuditSink",
+    "EgressBlockedError",
+    "EgressPinnedAsyncTransport",
+    "EgressPolicyEngine",
+    "EgressSafeHttpClient",
+    "EndpointAllowlistProviderProtocol",
     "EntryPoint",
+    "InMemoryCaBundleResolver",
+    "InMemoryEndpointAllowlistProvider",
     "IntegrityCheckError",
+    "PinnedEgressTarget",
     "Red2PrConfig",
     "Red2PrError",
     "RedactingSpanProcessor",
     "Redactor",
+    "RegisteredEndpointRule",
     "StructuredJsonFormatter",
+    "SystemAsyncDnsResolver",
     "bind_telemetry_context",
     "build_problem",
     "current_correlation_id",

@@ -352,6 +352,32 @@ export const EN_MESSAGES = {
   "members.bgActiveBadge": "Active (read-only)",
   "members.bgInactiveBadge": "Expired / Revoked",
   "members.revokeBreakGlassAction": "Revoke break-glass",
+
+  "setup.pageTitle": "Instance Setup & Readiness Wizard",
+  "setup.pageSubtitle":
+    "Durable 10-phase onboarding without manual .env edits. Optional capabilities stay explicitly Not Configured until verified.",
+  "setup.phasesNavLabel": "Setup wizard phases",
+  "setup.monitorReady": "Monitor Ready",
+  "setup.monitorNotReady": "Monitor Not Ready",
+  "setup.repairReady": "Repair Ready",
+  "setup.repairNotReady": "Repair Blocked / Not Configured",
+  "setup.optionalBadge": "Optional",
+  "setup.saveContinue": "Save & continue",
+  "setup.skipOptional": "Skip for now (Not Configured)",
+  "setup.backPrevious": "Previous step",
+  "setup.reloadCheckpoint": "Reload latest checkpoint",
+  "setup.openWorkspace": "Open initial workspace",
+  "setup.completeReview": "Complete setup review",
+  "setup.consentsTitle": "Outbound Data-Sharing Consents",
+  "setup.consentsSubtitle":
+    "Separate explicit owner consents for inference, notifications, telemetry, and provider calls. Secret data is never permitted.",
+  "setup.grantConsentAction": "Grant outbound consent",
+  "setup.revokeConsentAction": "Revoke consent",
+  "setup.endpointsTitle": "Private Egress Endpoint Registry (ADR-037)",
+  "setup.endpointsSubtitle":
+    "Owner 5-minute step-up required. Pins validated private CIDRs and custom CA bundles per adapter without disabling TLS verification.",
+  "setup.registerEndpointAction": "Register private endpoint",
+  "setup.revokeEndpointAction": "Revoke endpoint",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

@@ -5,32 +5,42 @@ Enforces:
 - S-09: Non-coerced opaque external_id, safe path globs, and non-waivable require_baseline=True.
 - S-10: GitHub/GitLab run attempt_key and job retry_of_id preserved as opaque strings.
 - S-16: Six-channel notification destinations, delivery state machine, and preferences.
+- ADR-037 / INS-02: Per-purpose outbound consent records and step-up-registered private endpoints.
 """
 
 from __future__ import annotations
 
+import ipaddress
 import re
 from typing import Annotated, Any, Literal
 
-from pydantic import BeforeValidator, Field, StrictBool, StrictInt, StrictStr, StringConstraints
+from pydantic import (
+    BeforeValidator,
+    Field,
+    StrictBool,
+    StrictInt,
+    StrictStr,
+    StringConstraints,
+    model_validator,
+)
 
 from py_contracts.events import EventType
 from py_contracts.primitives import (
     BoundedName,
+    BoundedReason,
     BoundedText,
     BoundedUrl,
     InstanceResourceBase,
     InternalId,
     OpaqueProviderId,
+    Page,
     PositiveVersion,
     StrictContractModel,
     UtcTimestamp,
     WorkspaceResourceBase,
 )
 
-_OPAQUE_SECRET_REF_RE = re.compile(
-    r"^(?:sec_[A-Za-z0-9_-]{3,120}|ref:[A-Za-z0-9_.:/-]{3,120})$"
-)
+_OPAQUE_SECRET_REF_RE = re.compile(r"^(?:sec_[A-Za-z0-9_-]{3,120}|ref:[A-Za-z0-9_.:/-]{3,120})$")
 
 
 def _validate_opaque_secret_ref(value: Any) -> str:
@@ -251,3 +261,220 @@ class NotificationPreference(InstanceResourceBase):
     min_severity: NotificationSeverity = "info"
     quiet_hours: QuietHoursWindow | None = None
     timezone: BoundedName = "UTC"
+
+
+# U07 / ADR-037 Outbound Consents & Private Endpoint Registrations
+ConsentPurpose = Literal["inference", "notification", "telemetry", "provider"]
+ConsentScope = Literal["instance", "workspace", "repository"]
+ConsentDataClass = Literal["public", "workspace_internal", "restricted"]
+ConsentStatus = Literal["active", "revoked"]
+
+EgressAdapterKind = Literal[
+    "github",
+    "gitlab",
+    "meta_inference",
+    "oidc",
+    "s3_artifacts",
+    "telegram",
+    "slack",
+    "discord",
+    "webhook",
+    "smtp",
+]
+EndpointScheme = Literal["https", "http"]
+EndpointRegistrationStatus = Literal["active", "revoked"]
+
+_FORBIDDEN_V4_CIDRS: tuple[ipaddress.IPv4Network, ...] = (
+    ipaddress.IPv4Network("0.0.0.0/8"),
+    ipaddress.IPv4Network("127.0.0.0/8"),
+    ipaddress.IPv4Network("169.254.0.0/16"),
+    ipaddress.IPv4Network("224.0.0.0/4"),
+    ipaddress.IPv4Network("240.0.0.0/4"),
+)
+_FORBIDDEN_V6_CIDRS: tuple[ipaddress.IPv6Network, ...] = (
+    ipaddress.IPv6Network("::/128"),
+    ipaddress.IPv6Network("::1/128"),
+    ipaddress.IPv6Network("fd00:ec2::254/128"),
+    ipaddress.IPv6Network("fe80::/10"),
+    ipaddress.IPv6Network("ff00::/8"),
+    ipaddress.IPv6Network("2002::/16"),
+    ipaddress.IPv6Network("2001::/32"),
+    ipaddress.IPv6Network("64:ff9b::/96"),
+    ipaddress.IPv6Network("64:ff9b:1::/48"),
+)
+_IPV4_MAPPED_V6_NET = ipaddress.IPv6Network("::ffff:0:0/96")
+_DNS_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+_NUMERIC_OR_HEX_LABEL_RE = re.compile(r"^(?:0x[0-9a-f]+|0[0-7]+|\d+)$")
+
+
+def _is_permanently_forbidden_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if isinstance(ip_obj, ipaddress.IPv6Address):
+        if ip_obj.ipv4_mapped is not None:
+            return _is_permanently_forbidden_ip(ip_obj.ipv4_mapped)
+        if ip_obj.sixtofour is not None or ip_obj.teredo is not None:
+            return True
+        return any(ip_obj in net for net in _FORBIDDEN_V6_CIDRS)
+    return any(ip_obj in net for net in _FORBIDDEN_V4_CIDRS)
+
+
+def _validate_endpoint_host(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("Endpoint host must be a string")
+    candidate = value.strip().lower().rstrip(".")
+    if candidate.startswith("[") and candidate.endswith("]"):
+        candidate = candidate[1:-1]
+    if not candidate or len(candidate) > 253:
+        raise ValueError("Endpoint host must be 1..253 characters")
+    if any(ch in candidate for ch in ("/", "@", "?", "#", " ", "\t", "\r", "\n", "\x00")):
+        raise ValueError("Endpoint host must not contain path, userinfo, or control characters")
+
+    try:
+        ip_obj = ipaddress.ip_address(candidate)
+    except ValueError:
+        if ":" in candidate:
+            raise ValueError(
+                "Endpoint host must not include a port; specify port separately"
+            ) from None
+        try:
+            ascii_host = candidate.encode("idna").decode("ascii").lower()
+        except UnicodeError as exc:
+            raise ValueError("Endpoint host is not valid IDNA hostname") from exc
+        labels = ascii_host.split(".")
+        if all(_NUMERIC_OR_HEX_LABEL_RE.fullmatch(lbl) is not None for lbl in labels):
+            raise ValueError("Obfuscated integer/octal/hex IPv4 hostnames are forbidden") from None
+        if not all(_DNS_LABEL_RE.fullmatch(lbl) is not None for lbl in labels):
+            raise ValueError("Endpoint host contains invalid DNS label characters") from None
+        return ascii_host
+
+    if _is_permanently_forbidden_ip(ip_obj):
+        raise ValueError(
+            "Loopback, link-local, cloud metadata, multicast, and unspecified IPs are forbidden"
+        )
+    return ip_obj.compressed
+
+
+def _validate_registrable_cidr(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("CIDR must be a string")
+    raw = value.strip()
+    if "/" not in raw:
+        raise ValueError("CIDR must include an explicit prefix length (e.g. 10.24.0.0/16)")
+    try:
+        net = ipaddress.ip_network(raw, strict=False)
+    except ValueError as exc:
+        raise ValueError("Invalid IPv4 or IPv6 CIDR notation") from exc
+
+    if isinstance(net, ipaddress.IPv4Network):
+        if net.prefixlen < 8:
+            raise ValueError("IPv4 CIDR prefix length must be >= 8 (no blanket wildcard ranges)")
+        if any(net.overlaps(forbidden) for forbidden in _FORBIDDEN_V4_CIDRS):
+            raise ValueError(
+                "CIDR overlaps forbidden loopback, link-local, metadata, or reserved space"
+            )
+        return net.with_prefixlen
+
+    if net.prefixlen < 16:
+        raise ValueError("IPv6 CIDR prefix length must be >= 16 (no blanket wildcard ranges)")
+    if net.overlaps(_IPV4_MAPPED_V6_NET):
+        raise ValueError("Register canonical IPv4 CIDRs instead of IPv4-mapped IPv6 CIDRs")
+    if any(net.overlaps(forbidden) for forbidden in _FORBIDDEN_V6_CIDRS):
+        raise ValueError(
+            "CIDR overlaps forbidden loopback, link-local, multicast, or transition space"
+        )
+    return net.with_prefixlen
+
+
+EndpointHostStr = Annotated[StrictStr, BeforeValidator(_validate_endpoint_host)]
+RegistrableCidrStr = Annotated[StrictStr, BeforeValidator(_validate_registrable_cidr)]
+
+
+class ConsentCreateRequest(StrictContractModel):
+    """Explicit per-purpose outbound data-sharing consent grant (ADR-037, INS-02)."""
+
+    purpose: ConsentPurpose
+    scope: ConsentScope = "instance"
+    workspace_id: InternalId | None = None
+    repository_id: InternalId | None = None
+    destination: BoundedUrl
+    data_classes: Annotated[list[ConsentDataClass], Field(min_length=1, max_length=3)]
+    policy_notice_acknowledged: Literal[True] = True
+
+    @model_validator(mode="after")
+    def _validate_scope_workspace_consistency(self) -> ConsentCreateRequest:
+        if self.scope == "instance" and (
+            self.workspace_id is not None or self.repository_id is not None
+        ):
+            raise ValueError("workspace_id and repository_id must be omitted when scope='instance'")
+        if self.scope == "workspace":
+            if self.workspace_id is None:
+                raise ValueError("workspace_id is required when scope='workspace'")
+            if self.repository_id is not None:
+                raise ValueError("repository_id must be omitted when scope='workspace'")
+        if self.scope == "repository" and (self.workspace_id is None or self.repository_id is None):
+            raise ValueError(
+                "workspace_id and repository_id are both required when scope='repository'"
+            )
+        deduped = list(dict.fromkeys(self.data_classes))
+        object.__setattr__(self, "data_classes", deduped)
+        return self
+
+
+class ConsentRevokeRequest(StrictContractModel):
+    """Revocation payload for an active outbound consent grant."""
+
+    reason: BoundedReason | None = None
+
+
+class ConsentRecord(InstanceResourceBase):
+    """Durable outbound consent record isolated by purpose (`S-18`, `SEC-018`)."""
+
+    purpose: ConsentPurpose
+    scope: ConsentScope
+    workspace_id: InternalId | None = None
+    repository_id: InternalId | None = None
+    destination: BoundedUrl
+    data_classes: list[ConsentDataClass]
+    granted_by_user_id: InternalId
+    policy_revision: PositiveVersion
+    status: ConsentStatus
+    revoked_at: UtcTimestamp | None = None
+    revoke_reason: BoundedReason | None = None
+
+
+ConsentRecordPage = Page[ConsentRecord]
+
+
+class EndpointRegistrationCreateRequest(StrictContractModel):
+    """Owner step-up-authorized private endpoint allowlist registration (ADR-037)."""
+
+    adapter: EgressAdapterKind
+    scheme: EndpointScheme = "https"
+    host: EndpointHostStr
+    port: Annotated[StrictInt, Field(ge=1, le=65535)] = 443
+    cidrs: Annotated[list[RegistrableCidrStr], Field(min_length=1, max_length=32)]
+    ca_ref: OpaqueSecretRef | None = None
+    description: BoundedText | None = None
+
+    @model_validator(mode="after")
+    def _deduplicate_cidrs(self) -> EndpointRegistrationCreateRequest:
+        deduped = list(dict.fromkeys(self.cidrs))
+        object.__setattr__(self, "cidrs", deduped)
+        return self
+
+
+class EndpointRegistration(InstanceResourceBase):
+    """Registered private service endpoint bound to exact adapter, host, port, CIDRs & CA ref."""
+
+    owner_user_id: InternalId
+    adapter: EgressAdapterKind
+    scheme: EndpointScheme
+    host: EndpointHostStr
+    port: Annotated[StrictInt, Field(ge=1, le=65535)]
+    cidrs: list[RegistrableCidrStr]
+    ca_ref: OpaqueSecretRef | None = None
+    description: BoundedText | None = None
+    status: EndpointRegistrationStatus
+    revoked_at: UtcTimestamp | None = None
+
+
+EndpointRegistrationPage = Page[EndpointRegistration]

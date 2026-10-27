@@ -69,7 +69,26 @@ export type NotificationPreference = SchemaOf<"NotificationPreference">;
 export type AuditRecord = SchemaOf<"AuditRecord">;
 export type ModelUsageRecord = SchemaOf<"ModelUsageRecord">;
 export type ReportExportRequest = SchemaOf<"ReportExportRequest">;
+export type ConsentCreateRequest = SchemaOf<"ConsentCreateRequest">;
+export type ConsentRevokeRequest = SchemaOf<"ConsentRevokeRequest">;
+export type ConsentRecord = SchemaOf<"ConsentRecord">;
+export type ConsentPurpose = ConsentRecord["purpose"];
+export type ConsentScope = ConsentRecord["scope"];
+export type ConsentDataClass = ConsentRecord["data_classes"][number];
+export type ConsentRecordPage = SchemaOf<"Page_ConsentRecord_">;
+export type EndpointRegistrationCreateRequest = SchemaOf<"EndpointRegistrationCreateRequest">;
+export type EndpointRegistration = SchemaOf<"EndpointRegistration">;
+export type EgressAdapterKind = EndpointRegistration["adapter"];
+export type EndpointScheme = EndpointRegistration["scheme"];
+export type EndpointRegistrationPage = SchemaOf<"Page_EndpointRegistration_">;
+export type SetupPrerequisite = SchemaOf<"SetupPrerequisite">;
+export type SetupStepSummary = SchemaOf<"SetupStepSummary">;
+export type SetupStepStatus = SetupStepSummary["status"];
+export type SetupStepSubmitRequest = SchemaOf<"SetupStepSubmitRequest">;
+export type SetupStepAction = NonNullable<SetupStepSubmitRequest["action"]>;
 export type SetupState = SchemaOf<"SetupState">;
+export type SetupWizardPhase = SetupState["phase"];
+export type SetupReadiness = SetupState["readiness"];
 export type LifecycleOperation = SchemaOf<"LifecycleOperation">;
 export type SystemHealthResponse = SchemaOf<"SystemHealthResponse">;
 export type EventEnvelope = SchemaOf<"EventEnvelope">;
@@ -95,6 +114,10 @@ export interface IdempotentMutationOptions extends RequestCallOptions {
   readonly idempotencyKey: string;
 }
 
+export interface OptionalIdempotentMutationOptions extends RequestCallOptions {
+  readonly idempotencyKey?: string;
+}
+
 export interface ListWorkspacesQuery {
   readonly cursor?: string | null;
   readonly limit?: number;
@@ -110,6 +133,16 @@ export interface ListWorkspaceInvitationsQuery {
   readonly cursor?: string | null;
   readonly limit?: number;
   readonly status?: InviteStatus | null;
+}
+
+export interface ListSetupConsentsQuery {
+  readonly purpose?: ConsentPurpose | null;
+  readonly include_revoked?: boolean;
+}
+
+export interface ListEndpointRegistrationsQuery {
+  readonly adapter?: EgressAdapterKind | null;
+  readonly include_revoked?: boolean;
 }
 
 export interface ApiEnvelope<TData> {
@@ -145,6 +178,37 @@ export interface Red2PrClient {
     body: SetupClaimRequest,
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<SetupClaimResponse>>;
+  getSetupState(options?: RequestCallOptions): Promise<ApiEnvelope<SetupState>>;
+  submitSetupStep(
+    phase: SetupWizardPhase,
+    body: SetupStepSubmitRequest,
+    options?: OptionalIdempotentMutationOptions,
+  ): Promise<ApiEnvelope<SetupState>>;
+  listSetupConsents(
+    query?: ListSetupConsentsQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<ConsentRecordPage>>;
+  grantSetupConsent(
+    body: ConsentCreateRequest,
+    options?: OptionalIdempotentMutationOptions,
+  ): Promise<ApiEnvelope<ConsentRecord>>;
+  revokeSetupConsent(
+    consentId: string,
+    body?: ConsentRevokeRequest,
+    options?: OptionalIdempotentMutationOptions,
+  ): Promise<ApiEnvelope<ConsentRecord>>;
+  listEndpointRegistrations(
+    query?: ListEndpointRegistrationsQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<EndpointRegistrationPage>>;
+  registerPrivateEndpoint(
+    body: EndpointRegistrationCreateRequest,
+    options?: OptionalIdempotentMutationOptions,
+  ): Promise<ApiEnvelope<EndpointRegistration>>;
+  revokePrivateEndpoint(
+    endpointId: string,
+    options?: OptionalIdempotentMutationOptions,
+  ): Promise<ApiEnvelope<EndpointRegistration>>;
   login(body: LoginRequest, options?: RequestCallOptions): Promise<ApiEnvelope<LoginResponse>>;
   logout(options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
   stepUp(body: StepUpRequest, options?: RequestCallOptions): Promise<ApiEnvelope<StepUpResponse>>;
@@ -401,6 +465,95 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }
       memoryCsrfToken = data.csrf_token;
+      return toEnvelope(data, response);
+    },
+    async getSetupState(reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/setup", {
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async submitSetupStep(phase, body, reqOptions) {
+      const { data, error, response } = await raw.POST("/api/v1/setup/steps/{phase}", {
+        params: { path: { phase } },
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async listSetupConsents(query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/setup/consents", {
+        params: { query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async grantSetupConsent(body, reqOptions) {
+      const { data, error, response } = await raw.POST("/api/v1/setup/consents", {
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async revokeSetupConsent(consentId, body = {}, reqOptions) {
+      const { data, error, response } = await raw.DELETE("/api/v1/setup/consents/{consent_id}", {
+        params: { path: { consent_id: consentId } },
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async listEndpointRegistrations(query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/setup/endpoints", {
+        params: { query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async registerPrivateEndpoint(body, reqOptions) {
+      const { data, error, response } = await raw.POST("/api/v1/setup/endpoints", {
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async revokePrivateEndpoint(endpointId, reqOptions) {
+      const { data, error, response } = await raw.DELETE("/api/v1/setup/endpoints/{endpoint_id}", {
+        params: { path: { endpoint_id: endpointId } },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
       return toEnvelope(data, response);
     },
     async login(body, reqOptions) {

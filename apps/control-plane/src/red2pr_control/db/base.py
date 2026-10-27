@@ -1,11 +1,12 @@
-"""SQLAlchemy 2.0 declarative base and U03/U05/U06 persistence ORM models (docs/06_DATA_MODEL.md).
+"""SQLAlchemy 2.0 declarative base and U03..U07 persistence ORM models (docs/06_DATA_MODEL.md).
 
-Defines the authoritative relational persistence models for Migrations 0001..0003:
+Defines the authoritative relational persistence models for Migrations 0001..0004:
 - instances, workspaces, secret_entries, idempotency_records, effect_tombstones,
   outbox_events, outbox_claims, audit_log, audit_checkpoints, schema_migrations (0001)
 - users, bootstrap_tokens, sessions, mfa_credentials, recovery_codes, auth_challenges,
   auth_rate_limits (0002)
 - memberships, invitations, repo_grants, break_glass_grants (0003)
+- setup_checkpoints, consents, endpoint_registrations (0004)
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -832,6 +834,214 @@ class BreakGlassGrantModel(Base):
     user_id: Mapped[str] = mapped_column(String(36), nullable=False)
     reason: Mapped[str] = mapped_column(String(512), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class SetupCheckpointModel(Base):
+    """INS-02 durable 10-phase setup wizard checkpoint (redacted non-secret draft payload)."""
+
+    __tablename__ = "setup_checkpoints"
+    __table_args__ = (
+        UniqueConstraint("instance_id", "phase", name="uq_setup_checkpoints_instance_phase"),
+        ForeignKeyConstraint(
+            ["instance_id"],
+            ["instances.id"],
+            name="fk_setup_checkpoints_instance_id_instances",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["completed_by_user_id"],
+            ["users.id"],
+            name="fk_setup_checkpoints_completed_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "phase IN ("
+            "'owner_claim', 'topology_tls', 'storage_keys', 'workspace_admin', "
+            "'provider_connect', 'model_consent', 'worker_readiness', 'repo_policy', "
+            "'notifications', 'readiness_review'"
+            ")",
+            name="setup_phase_valid",
+        ),
+        CheckConstraint("phase_order >= 1 AND phase_order <= 10", name="setup_phase_order_valid"),
+        CheckConstraint(
+            "status IN ('pending', 'completed', 'not_configured', 'degraded', 'blocked')",
+            name="setup_status_valid",
+        ),
+        CheckConstraint(
+            "probe_status IS NULL OR probe_status IN ("
+            "'passed', 'failed', 'needs_admin', 'needs_restart', "
+            "'not_configured', 'blocked', 'unsupported'"
+            ")",
+            name="setup_probe_status_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_setup_checkpoints_instance_order", "instance_id", "phase_order"),
+        Index(
+            "uq_setup_checkpoints_one_current",
+            "instance_id",
+            unique=True,
+            postgresql_where=text("is_current_phase IS TRUE"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    instance_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    phase: Mapped[str] = mapped_column(String(64), nullable=False)
+    phase_order: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    is_current_phase: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    checkpoint_token: Mapped[str] = mapped_column(String(120), nullable=False)
+    draft_payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    probe_status: Mapped[str | None] = mapped_column(String(32), nullable=True, default=None)
+    probe_detail: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    blocking_reasons_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    completed_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class ConsentModel(Base):
+    """S-18 & SEC-018 explicit data-sharing consent ledger separated by purpose and scope."""
+
+    __tablename__ = "consents"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_consents_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_consents_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["granted_by_user_id"],
+            ["users.id"],
+            name="fk_consents_granted_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["revoked_by_user_id"],
+            ["users.id"],
+            name="fk_consents_revoked_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "purpose IN ('inference', 'notification', 'telemetry', 'provider')",
+            name="consent_purpose_valid",
+        ),
+        CheckConstraint(
+            "scope IN ('instance', 'workspace', 'repository')",
+            name="consent_scope_valid",
+        ),
+        CheckConstraint(
+            "(scope = 'instance' AND workspace_id IS NULL AND repository_id IS NULL) OR "
+            "(scope = 'workspace' AND workspace_id IS NOT NULL AND repository_id IS NULL) OR "
+            "(scope = 'repository' AND workspace_id IS NOT NULL AND repository_id IS NOT NULL)",
+            name="consent_scope_binding_valid",
+        ),
+        CheckConstraint(
+            "NOT jsonb_exists(data_classes_json, 'secret')",
+            name="consent_forbid_secret_class",
+        ),
+        CheckConstraint("policy_version >= 1", name="consent_policy_version_pos"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_consents_purpose_active", "purpose", "revoked_at", "created_at", "id"),
+        Index("ix_consents_workspace_purpose", "workspace_id", "purpose", "revoked_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False)
+    scope: Mapped[str] = mapped_column(String(32), nullable=False)
+    workspace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    destination: Mapped[str] = mapped_column(String(512), nullable=False)
+    data_classes_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    granted_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    revoked_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoke_reason: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    policy_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class EndpointRegistrationModel(Base):
+    """ADR-037 owner-registered private adapter endpoint allowlist entry."""
+
+    __tablename__ = "endpoint_registrations"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+            name="fk_endpoint_registrations_created_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["revoked_by_user_id"],
+            ["users.id"],
+            name="fk_endpoint_registrations_revoked_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "adapter IN ("
+            "'github', 'gitlab', 'meta_inference', 'oidc', 's3_artifacts', "
+            "'telegram', 'slack', 'discord', 'webhook', 'smtp'"
+            ")",
+            name="endpoint_adapter_valid",
+        ),
+        CheckConstraint(
+            "scheme IN ('https', 'http')",
+            name="endpoint_scheme_valid",
+        ),
+        CheckConstraint("port >= 1 AND port <= 65535", name="endpoint_port_valid"),
+        CheckConstraint(
+            "jsonb_typeof(cidrs_json) = 'array' AND jsonb_array_length(cidrs_json) >= 1",
+            name="endpoint_cidrs_nonempty",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_endpoint_registrations_adapter_host", "adapter", "host", "port", "revoked_at"),
+        Index(
+            "uq_endpoint_registrations_active_target",
+            "adapter",
+            "scheme",
+            "host",
+            "port",
+            unique=True,
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    adapter: Mapped[str] = mapped_column(String(32), nullable=False)
+    scheme: Mapped[str] = mapped_column(String(16), nullable=False)
+    host: Mapped[str] = mapped_column(String(255), nullable=False)
+    port: Mapped[int] = mapped_column(Integer, nullable=False)
+    cidrs_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    ca_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    revoked_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(

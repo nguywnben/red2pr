@@ -97,6 +97,7 @@ from red2pr_control.iam.rbac import (
 from red2pr_control.iam.sessions import (
     AuthenticatedContext,
     IamService,
+    assert_no_secret_in_query_url,
     clear_session_cookie,
     extract_client_ip,
     extract_session_cookie,
@@ -334,6 +335,7 @@ def build_iam_router() -> APIRouter:
         iam: Annotated[IamService, Depends(get_iam_service)],
     ) -> CsrfBootstrapResponse:
         _apply_no_store_headers(response)
+        assert_no_secret_in_query_url(request)
         boot = await iam.get_csrf_bootstrap(request)
         set_csrf_cookie(response, csrf_token=boot.csrf_token, secure=iam.secure_cookies)
         return boot
@@ -354,6 +356,7 @@ def build_iam_router() -> APIRouter:
         iam: Annotated[IamService, Depends(get_iam_service)],
     ) -> SetupClaimResponse:
         _apply_no_store_headers(response)
+        assert_no_secret_in_query_url(request)
         await _enforce_preauth_csrf(request, iam)
         dto, raw_sess_token = await iam.claim_bootstrap_owner(
             payload,

@@ -61,6 +61,8 @@ from py_contracts.integrations import (
     CiRun,
     Connection,
     ConnectionWrite,
+    ConsentCreateRequest,
+    EndpointRegistrationCreateRequest,
     NotificationDelivery,
     NotificationDestination,
     NotificationPreference,
@@ -71,6 +73,7 @@ from py_contracts.integrations import (
 )
 from py_contracts.primitives import Money, new_uuid7
 from py_contracts.repairs import (
+    SETUP_WIZARD_PHASES,
     Approval,
     Diagnosis,
     LifecycleOperation,
@@ -82,6 +85,7 @@ from py_contracts.repairs import (
     RepairSuspension,
     SetupPrerequisite,
     SetupState,
+    SetupStepSubmitRequest,
     SystemHealthResponse,
     Verification,
     VerificationGateResult,
@@ -523,19 +527,20 @@ def test_s11_s12_s13_s18_repairs_verification_publication_and_10_phase_setup() -
     )
     assert rc.outcome == "passed"
 
-    # S-18 canonical 10-phase wizard enum (ADR-038)
+    # S-18 canonical 10-phase wizard enum (ADR-038 / U07)
     expected_10_phases = (
         "owner_claim",
         "topology_tls",
-        "storage_recovery",
-        "workspace_membership",
-        "provider_connection",
-        "inference_consent",
-        "worker_validation",
-        "repository_policy",
-        "notification_setup",
+        "storage_keys",
+        "workspace_admin",
+        "provider_connect",
+        "model_consent",
+        "worker_readiness",
+        "repo_policy",
+        "notifications",
         "readiness_review",
     )
+    assert expected_10_phases == SETUP_WIZARD_PHASES
     for phase in expected_10_phases:
         state = SetupState(
             id=new_uuid7(),
@@ -554,6 +559,22 @@ def test_s11_s12_s13_s18_repairs_verification_publication_and_10_phase_setup() -
             readiness="ready_monitor",
         )
         assert state.phase == phase
+        assert state.ready_monitor is True
+        assert state.ready_repair is False
+
+    # Contradictory readiness vs ready_repair flags fail validation
+    with pytest.raises(ValidationError):
+        SetupState(
+            id=new_uuid7(),
+            version=1,
+            created_at=FIXED_NOW,
+            updated_at=FIXED_NOW,
+            phase="readiness_review",
+            checkpoint="ckpt-bad",
+            prerequisites=[],
+            readiness="ready_monitor",
+            ready_repair=True,
+        )
 
     op = LifecycleOperation(
         id=new_uuid7(),
@@ -903,9 +924,7 @@ def test_sec030_ed25519_manifest_and_result_signing_tamper_revocation_and_domain
     )
 
     # 1. Tampering 1 byte of EvidenceManifestV1 payload fails verification (SEC-030)
-    tampered_manifest = signed_manifest.model_copy(
-        update={"diff_digest": "f" + SAMPLE_DIGEST[1:]}
-    )
+    tampered_manifest = signed_manifest.model_copy(update={"diff_digest": "f" + SAMPLE_DIGEST[1:]})
     with pytest.raises(CryptoVerificationError) as tamper_exc:
         verify_model_ed25519(
             tampered_manifest,
@@ -986,9 +1005,7 @@ def test_sec030_ed25519_manifest_and_result_signing_tamper_revocation_and_domain
     assert unk_exc.value.code == "unknown_signer_key"
 
     # 5. Revoked-at-signing key rejected, while historical signature prior to rotation passes
-    rotated_record = pub_record.model_copy(
-        update={"revoked_at": FIXED_NOW + timedelta(hours=1)}
-    )
+    rotated_record = pub_record.model_copy(update={"revoked_at": FIXED_NOW + timedelta(hours=1)})
     rotated_keyring = KeyRing([rotated_record])
     # Signed at FIXED_NOW (< revoked_at) -> still verifiable for historical audit
     verify_model_ed25519(
@@ -1102,3 +1119,91 @@ def test_exported_json_schemas_match_committed_artifacts_without_drift() -> None
         committed_path = schema_dir / filename
         assert committed_path.is_file(), f"Missing committed JSON Schema: {committed_path}"
         assert committed_path.read_text(encoding="utf-8") == expected_text
+
+
+def test_u07_consent_and_endpoint_registration_contracts_reject_ssrf_and_secrets() -> None:
+    consent = ConsentCreateRequest(
+        purpose="inference",
+        scope="instance",
+        destination="https://api.meta.ai/v1",
+        data_classes=["restricted", "workspace_internal", "restricted"],
+        policy_notice_acknowledged=True,
+    )
+    assert consent.data_classes == ["restricted", "workspace_internal"]
+
+    # Secret data class is never allowed for outbound sharing
+    with pytest.raises(ValidationError):
+        ConsentCreateRequest.model_validate(
+            {
+                "purpose": "inference",
+                "scope": "instance",
+                "destination": "https://api.meta.ai/v1",
+                "data_classes": ["secret"],
+                "policy_notice_acknowledged": True,
+            }
+        )
+
+    # Workspace-scoped consent requires workspace_id; instance-scoped forbids it
+    with pytest.raises(ValidationError):
+        ConsentCreateRequest(
+            purpose="provider",
+            scope="workspace",
+            destination="https://gitlab.corp.internal",
+            data_classes=["workspace_internal"],
+        )
+
+    reg = EndpointRegistrationCreateRequest(
+        adapter="gitlab",
+        scheme="https",
+        host="GitLab.Corp.Internal.",
+        port=8443,
+        cidrs=["10.24.0.0/16", "10.24.0.0/16", "fd00:1234::/32"],
+        ca_ref="ref:ca/corp-root-v1",
+    )
+    assert reg.host == "gitlab.corp.internal"
+    assert reg.cidrs == ["10.24.0.0/16", "fd00:1234::/32"]
+
+    # Forbidden CIDRs & hosts: loopback, cloud metadata, blanket 0.0.0.0/0, integer IPv4
+    for bad_cidr in (
+        "127.0.0.1/32",
+        "169.254.169.254/32",
+        "0.0.0.0/0",
+        "::1/128",
+        "fe80::/10",
+        "::ffff:169.254.169.254/128",
+    ):
+        with pytest.raises(ValidationError):
+            EndpointRegistrationCreateRequest(
+                adapter="gitlab",
+                scheme="https",
+                host="gitlab.corp.internal",
+                port=443,
+                cidrs=[bad_cidr],
+            )
+
+    for bad_host in (
+        "127.0.0.1",
+        "169.254.169.254",
+        "::1",
+        "[::ffff:169.254.169.254]",
+        "2130706433",
+        "0x7f.0.0.1",
+        "gitlab.corp.internal:8443",
+    ):
+        with pytest.raises(ValidationError):
+            EndpointRegistrationCreateRequest(
+                adapter="gitlab",
+                scheme="https",
+                host=bad_host,
+                port=443,
+                cidrs=["10.24.0.0/16"],
+            )
+
+    step_req = SetupStepSubmitRequest(
+        expected_checkpoint="ckpt_1",
+        action="save",
+        deployment_mode="local",
+        public_base_url="http://127.0.0.1:4280",
+        tls_mode="loopback_http",
+    )
+    assert step_req.expected_checkpoint == "ckpt_1"

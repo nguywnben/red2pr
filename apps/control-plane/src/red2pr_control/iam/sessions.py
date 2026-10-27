@@ -58,6 +58,7 @@ from py_contracts.iam import (
 from py_contracts.primitives import new_uuid7
 from red2pr_control.analytics_audit.audit_chain import append_audit_entry
 from red2pr_control.core.errors import (
+    BadRequestError,
     ConflictError,
     ForbiddenError,
     GoneError,
@@ -110,6 +111,45 @@ STEP_UP_VALIDITY_WINDOW: timedelta = timedelta(minutes=5)
 MFA_LOGIN_CHALLENGE_TTL: timedelta = timedelta(minutes=5)
 MFA_ENROLL_CHALLENGE_TTL: timedelta = timedelta(minutes=10)
 BOOTSTRAP_DEFAULT_TTL: timedelta = timedelta(minutes=15)
+BOOTSTRAP_MAX_TTL: timedelta = timedelta(minutes=15)
+
+_FORBIDDEN_QUERY_PARAM_NAMES: frozenset[str] = frozenset(
+    {
+        "bootstrap_token",
+        "token",
+        "secret",
+        "password",
+        "api_key",
+        "apikey",
+        "access_token",
+        "client_secret",
+        "private_key",
+        "webhook_secret",
+    }
+)
+_FORBIDDEN_QUERY_PARAM_SUFFIXES: tuple[str, ...] = (
+    "_token",
+    "_secret",
+    "_password",
+    "_key",
+)
+
+
+def assert_no_secret_in_query_url(request: Request) -> None:
+    """Reject setup/auth requests carrying bootstrap tokens or credentials in query URLs."""
+    for raw_key in request.query_params:
+        lowered = raw_key.strip().lower()
+        if lowered in _FORBIDDEN_QUERY_PARAM_NAMES or any(
+            lowered.endswith(suffix) for suffix in _FORBIDDEN_QUERY_PARAM_SUFFIXES
+        ):
+            raise BadRequestError(
+                code="secret_in_query_url",
+                detail=(
+                    "Bootstrap tokens and credentials must never be passed in URL query "
+                    "parameters; submit them in the JSON request body or headers."
+                ),
+            )
+
 
 RATE_LIMIT_WINDOW: timedelta = timedelta(minutes=15)
 LOGIN_ACCOUNT_IP_MAX_FAILURES: int = 5
@@ -483,8 +523,11 @@ class IamService:
         correlation_id: str = "bootstrap-init",
     ) -> tuple[str, datetime]:
         """Provision singleton `instances` row (if absent) and mint a one-use bootstrap token."""
-        if ttl_seconds < 60 or ttl_seconds > 3600:
-            raise ValueError("Bootstrap token TTL must be between 60 and 3600 seconds")
+        max_ttl_seconds = int(BOOTSTRAP_MAX_TTL.total_seconds())
+        if ttl_seconds < 60 or ttl_seconds > max_ttl_seconds:
+            raise ValueError(
+                f"Bootstrap token TTL must be between 60 and {max_ttl_seconds} seconds"
+            )
 
         ref_now = self.now()
         expires_at = ref_now + timedelta(seconds=ttl_seconds)
