@@ -54,6 +54,8 @@ _INSTANCE_LEVEL_EVENTS: frozenset[str] = frozenset(
         "backup.failed",
         "release.update_available",
         "operations.restore.completed",
+        "security.policy.denied",
+        "identity.permission_revoked",
     }
 )
 

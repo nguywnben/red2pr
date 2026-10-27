@@ -5,6 +5,7 @@ description = "Red2PR Python/FastAPI modular monolith control plane (Z1/Z2)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.14.0,<2.0.0",
+    "argon2-cffi>=23.1.0,<26.0.0",
     "fastapi>=0.115.0,<1.0.0",
     "opentelemetry-api>=1.28.0,<2.0.0",
     "opentelemetry-sdk>=1.28.0,<2.0.0",

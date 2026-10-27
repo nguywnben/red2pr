@@ -441,3 +441,219 @@ class SchemaMigrationRecordModel(Base):
     applied_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class UserModel(Base):
+    """S-06 instance-scoped user account with Argon2id password digest & grant_epoch."""
+
+    __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("username", name="uq_users_username"),
+        UniqueConstraint("email", name="uq_users_email"),
+        CheckConstraint("status IN ('active', 'disabled')", name="user_status_valid"),
+        CheckConstraint("grant_epoch >= 1", name="user_grant_epoch_pos"),
+        CheckConstraint("version >= 1", name="version_pos"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    username: Mapped[str] = mapped_column(String(120), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    is_instance_owner: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    grant_epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class BootstrapTokenModel(Base):
+    """A-01 one-time expiring instance-owner bootstrap claim token (hashed at rest)."""
+
+    __tablename__ = "bootstrap_tokens"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_bootstrap_tokens_token_hash"),
+        ForeignKeyConstraint(
+            ["claimed_by_user_id"],
+            ["users.id"],
+            name="fk_bootstrap_tokens_claimed_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    loopback_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    claimed_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class SessionModel(Base):
+    """S-06 authenticated browser/CLI session (opaque 256-bit token SHA-256 hashed at rest)."""
+
+    __tablename__ = "sessions"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_sessions_token_hash"),
+        ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name="fk_sessions_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "auth_strength IN ('password', 'mfa')",
+            name="session_auth_strength_valid",
+        ),
+        CheckConstraint("grant_epoch >= 1", name="session_grant_epoch_pos"),
+        CheckConstraint("recovery_epoch >= 1", name="session_recovery_epoch_pos"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_sessions_user_active", "user_id", "revoked_at", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    csrf_secret_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    auth_strength: Mapped[str] = mapped_column(String(32), nullable=False)
+    step_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    grant_epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    recovery_epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    idle_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    client_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoke_reason: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class MfaCredentialModel(Base):
+    """RFC 6238 TOTP MFA credential referencing Z2 SecretBroker (purpose='mfa_totp')."""
+
+    __tablename__ = "mfa_credentials"
+    __table_args__ = (
+        UniqueConstraint("secret_ref", name="uq_mfa_credentials_secret_ref"),
+        ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name="fk_mfa_credentials_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'active', 'revoked')",
+            name="mfa_credential_status_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_mfa_credentials_user_status", "user_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    secret_ref: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    last_used_timestep: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    challenge_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    enrolled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class RecoveryCodeModel(Base):
+    """Single-use HMAC-SHA256 hashed account recovery codes (SEC-038)."""
+
+    __tablename__ = "recovery_codes"
+    __table_args__ = (
+        UniqueConstraint("code_hash", name="uq_recovery_codes_code_hash"),
+        ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name="fk_recovery_codes_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        Index("ix_recovery_codes_user_unused", "user_id", "used_at", "revoked_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    batch_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class AuthChallengeModel(Base):
+    """Short-lived cookie-free MFA login challenge ticket (never issues full session cookie)."""
+
+    __tablename__ = "auth_challenges"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name="fk_auth_challenges_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("purpose IN ('login_mfa')", name="auth_challenge_purpose_valid"),
+        CheckConstraint("failed_attempts >= 0", name="auth_challenge_attempts_nonneg"),
+        Index("ix_auth_challenges_user_expires", "user_id", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False, default="login_mfa")
+    client_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class AuthRateLimitModel(Base):
+    """Multi-process PostgreSQL sliding-window failure attempts for NFR-05 & SEC-038."""
+
+    __tablename__ = "auth_rate_limits"
+    __table_args__ = (
+        CheckConstraint(
+            "action IN ('login', 'step_up', 'recovery', 'bootstrap_claim', 'mfa_verify')",
+            name="auth_rate_action_valid",
+        ),
+        Index("ix_auth_rate_limits_lookup", "action", "bucket_key", "attempted_at"),
+        Index("ix_auth_rate_limits_expires", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    bucket_key: Mapped[str] = mapped_column(String(256), nullable=False)
+    attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -33,12 +33,20 @@ from py_contracts import (
     CiRun,
     Connection,
     ConnectionWrite,
+    CsrfBootstrapResponse,
     Diagnosis,
     EventEnvelope,
     EvidenceManifestV1,
     Invite,
     LifecycleOperation,
+    LoginRequest,
+    LoginResponse,
+    LogoutRequest,
     Membership,
+    MeResponse,
+    MfaDeleteRequest,
+    MfaEnrollRequest,
+    MfaEnrollResponse,
     ModelUsageRecord,
     Money,
     NotificationDelivery,
@@ -49,6 +57,8 @@ from py_contracts import (
     Problem,
     ProblemFieldError,
     Publication,
+    RecoveryRequest,
+    RecoveryResponse,
     RemoteCheck,
     Repair,
     ReportExportRequest,
@@ -57,10 +67,16 @@ from py_contracts import (
     ResultV1,
     SandboxJobV1,
     Session,
+    SessionListItem,
+    SetupClaimRequest,
+    SetupClaimResponse,
     SetupState,
+    StepUpRequest,
+    StepUpResponse,
     StrictContractModel,
     SystemHealthResponse,
     TaskJob,
+    TelegramLinkSummary,
     ToolCallRequest,
     ToolCallResponse,
     User,
@@ -81,6 +97,8 @@ from red2pr_control.core.logging import (
     current_correlation_id,
     get_structured_logger,
 )
+from red2pr_control.iam.router import build_iam_router
+from red2pr_control.iam.sessions import IamService
 
 CORRELATION_HEADER = "X-Correlation-Id"
 _SAFE_CORR_RE = re.compile(r"^[A-Za-z0-9._:-]{1,120}$")
@@ -94,6 +112,22 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     Money,
     User,
     Session,
+    SessionListItem,
+    CsrfBootstrapResponse,
+    SetupClaimRequest,
+    SetupClaimResponse,
+    LoginRequest,
+    LoginResponse,
+    LogoutRequest,
+    StepUpRequest,
+    StepUpResponse,
+    RecoveryRequest,
+    RecoveryResponse,
+    TelegramLinkSummary,
+    MeResponse,
+    MfaEnrollRequest,
+    MfaEnrollResponse,
+    MfaDeleteRequest,
     Workspace,
     Membership,
     Invite,
@@ -261,7 +295,7 @@ def _request_correlation_id(request: Request) -> str:
     return current_correlation_id()
 
 
-def create_app() -> FastAPI:
+def create_app(*, iam_service: IamService | None = None) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     app = FastAPI(
         title="Red2PR Control Plane API",
@@ -274,6 +308,7 @@ def create_app() -> FastAPI:
         docs_url=None,
         redoc_url=None,
     )
+    app.state.iam_service = iam_service
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -291,6 +326,7 @@ def create_app() -> FastAPI:
         return SystemHealthResponse(status="ok", timestamp=datetime.now(tz=UTC))
 
     app.include_router(system_router)
+    app.include_router(build_iam_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:
@@ -396,7 +432,8 @@ def create_app() -> FastAPI:
         )
         components = schema.setdefault("components", {})
         existing_schemas: dict[str, Any] = dict(components.get("schemas", {}))
-        existing_schemas.update(top_defs.get("$defs", {}))
+        for model_name, model_schema in top_defs.get("$defs", {}).items():
+            existing_schemas.setdefault(model_name, model_schema)
         components["schemas"] = {k: existing_schemas[k] for k in sorted(existing_schemas)}
         app.openapi_schema = schema
         return schema

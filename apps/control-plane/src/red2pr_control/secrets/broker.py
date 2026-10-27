@@ -453,3 +453,53 @@ class SecretBroker:
             row.version += 1
             await session.flush()
         return _row_to_metadata(row)
+
+
+class SecretBrokerTotpVault:
+    """Z2 capability-scoped adapter storing & unwrapping RFC 6238 TOTP keys (`mfa_totp`)."""
+
+    def __init__(self, broker: SecretBroker) -> None:
+        self._broker = broker
+
+    async def store_totp_secret(
+        self,
+        session: AsyncSession,
+        *,
+        plaintext: bytes,
+        now: datetime | None = None,
+    ) -> str:
+        meta = await self._broker.store_secret(
+            session,
+            plaintext=plaintext,
+            purpose="mfa_totp",
+            workspace_id=None,
+            now=now,
+        )
+        return meta.secret_ref
+
+    async def resolve_totp_secret(
+        self,
+        session: AsyncSession,
+        *,
+        secret_ref: str,
+    ) -> bytes:
+        return await self._broker.resolve_secret_bytes(
+            session,
+            secret_ref=secret_ref,
+            capability=IAM_SECRET_CAPABILITY,
+            workspace_id=None,
+        )
+
+    async def revoke_totp_secret(
+        self,
+        session: AsyncSession,
+        *,
+        secret_ref: str,
+        now: datetime | None = None,
+    ) -> None:
+        await self._broker.revoke_secret(
+            session,
+            secret_ref=secret_ref,
+            workspace_id=None,
+            now=now,
+        )

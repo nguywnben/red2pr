@@ -90,4 +90,40 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(finalWizardPhase, "readiness_review");
     assert.equal(baselineRequired, true);
   });
+
+  it("synchronizes heap-only CSRF tokens across auth mutations and wipes on logout", async () => {
+    const seenHeaders: Array<{ path: string; csrf: string | null }> = [];
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        seenHeaders.push({
+          path: url.pathname,
+          csrf: request.headers.get("X-CSRF-Token"),
+        });
+        if (url.pathname === "/api/v1/auth/csrf") {
+          return new Response(
+            JSON.stringify({
+              csrf_token: "anon.csrf-test-token-01",
+              bootstrap_claim_required: false,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (url.pathname === "/api/v1/auth/logout") {
+          return new Response(null, { status: 204 });
+        }
+        throw new Error(`Unexpected path ${url.pathname}`);
+      },
+    });
+
+    await client.getAuthCsrf();
+    await client.logout();
+    await client.logout();
+    assert.deepEqual(seenHeaders, [
+      { path: "/api/v1/auth/csrf", csrf: null },
+      { path: "/api/v1/auth/logout", csrf: "anon.csrf-test-token-01" },
+      { path: "/api/v1/auth/logout", csrf: null },
+    ]);
+  });
 });

@@ -142,6 +142,7 @@ function buildDefaultNavItems(workspaceSlug: string | undefined): readonly Shell
     { id: "audit", labelKey: "app.nav.audit", href: `${prefix}/audit` },
     { id: "settings", labelKey: "app.nav.settings", href: `${prefix}/settings` },
     { id: "operations", labelKey: "app.nav.operations", href: "/admin/operations" },
+    { id: "account", labelKey: "app.nav.account", href: "/account" },
   ];
 }
 
@@ -230,7 +231,7 @@ export function AppShell({
         banner={banner}
         topNav={
           <TopNav
-            label={t("app.nav.primary")}
+            label={t("app.nav.topBar")}
             heading={
               <TopNavHeading
                 heading={t("app.brand")}

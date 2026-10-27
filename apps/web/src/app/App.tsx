@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router";
+import { AccountPage, LoginPage } from "../features/auth";
 import { ApiClientProvider } from "../shared/api";
 import { I18nProvider, useI18n } from "../shared/i18n";
 import { ThemeProvider } from "../shared/theme";
@@ -27,6 +28,15 @@ function WorkspaceShellRoute(): React.JSX.Element {
   );
 }
 
+function AccountShellRoute(): React.JSX.Element {
+  const location = useLocation();
+  return (
+    <AppShell activePath={location.pathname} activeWorkspaceSlug="default" sseState="offline">
+      <AccountPage />
+    </AppShell>
+  );
+}
+
 export function App(): React.JSX.Element {
   return (
     <I18nProvider>
@@ -35,6 +45,8 @@ export function App(): React.JSX.Element {
           <BrowserRouter>
             <AppErrorBoundary>
               <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/account" element={<AccountShellRoute />} />
                 <Route path="/w/:ws/*" element={<WorkspaceShellRoute />} />
                 <Route path="/admin/*" element={<WorkspaceShellRoute />} />
                 <Route path="*" element={<Navigate to="/w/default/overview" replace />} />

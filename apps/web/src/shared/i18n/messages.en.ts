@@ -5,6 +5,7 @@ export const EN_MESSAGES = {
   "app.workspace.label": "Active workspace",
   "app.workspace.empty": "No workspace selected",
   "app.nav.primary": "Primary navigation",
+  "app.nav.topBar": "Workspace header navigation",
   "app.nav.mobileMenu": "Open navigation menu",
   "app.nav.overview": "Overview",
   "app.nav.failures": "CI Failures",
@@ -18,6 +19,7 @@ export const EN_MESSAGES = {
   "app.nav.audit": "Audit Log",
   "app.nav.settings": "Settings",
   "app.nav.operations": "Operations",
+  "app.nav.account": "Account & Security",
   "app.theme.label": "Theme mode",
   "app.theme.light": "Light",
   "app.theme.dark": "Dark",
@@ -140,6 +142,119 @@ export const EN_MESSAGES = {
   "shell.readyTitle": "Red2PR Workspace Shell Ready",
   "shell.readyDescription":
     "Contract-first React 19 + Vite + pinned Astryx 0.7.4 foundation with strict sanitization and cursor-resilient SSE synchronization.",
+
+  "auth.modeLabel": "Authentication flow",
+  "auth.modeSignIn": "Password sign-in",
+  "auth.modeBootstrap": "Initial owner claim",
+  "auth.modeRecovery": "Recovery code reset",
+  "auth.signInTitle": "Sign in to Red2PR",
+  "auth.signInSubtitle":
+    "Local session authentication protected by HttpOnly cookies, Origin checks, and CSRF tokens.",
+  "auth.bootstrapBanner":
+    "This instance has not been claimed yet. Redeem your one-time bootstrap secret to create the local Instance Owner account.",
+  "auth.identifierLabel": "Email or display name",
+  "auth.identifierHint": "Enter the email address or display name registered on this instance.",
+  "auth.passwordLabel": "Password",
+  "auth.passwordPolicyHint": "Minimum 12 characters; hashed with Argon2id.",
+  "auth.signInSubmit": "Sign in",
+  "auth.mfaTitle": "Verify two-factor authenticator code",
+  "auth.mfaSubtitle":
+    "No authenticated session is issued until you verify a valid 6-digit TOTP code.",
+  "auth.otpLabel": "6-digit authenticator code",
+  "auth.otpHint": "Open your TOTP authenticator app and enter the current 6-digit code.",
+  "auth.mfaSubmit": "Verify code & sign in",
+  "auth.mfaBack": "Back to password sign-in",
+  "auth.mfaUseRecovery": "Lost authenticator? Use a recovery code",
+  "auth.bootstrapTitle": "Claim local Instance Owner",
+  "auth.bootstrapSubtitle":
+    "One-time expiring bootstrap claim restricted to loopback or configured HTTPS.",
+  "auth.bootstrapTokenLabel": "One-time bootstrap token",
+  "auth.bootstrapTokenHint": "Paste the expiring token generated during local installation.",
+  "auth.displayNameLabel": "Display name",
+  "auth.emailOptionalLabel": "Email address (optional)",
+  "auth.newOwnerPasswordLabel": "Owner password",
+  "auth.bootstrapSubmit": "Claim owner & sign in",
+  "auth.recoveryTitle": "Reset account with single-use recovery code",
+  "auth.recoverySubtitle":
+    "Consuming a recovery code revokes all active sessions, rotates your password, and resets compromised MFA so you can re-enroll.",
+  "auth.recoveryCodeLabel": "Single-use recovery code",
+  "auth.recoveryCodeHint": "Format: R2PR-XXXX-XXXX-XXXX (each code works only once).",
+  "auth.recoveryIdentifierLabel": "Account email or display name (optional)",
+  "auth.newPasswordLabel": "New password",
+  "auth.recoverySubmit": "Reset password & sign in",
+  "auth.genericAuthErrorTitle": "Authentication request could not be completed",
+  "auth.rateLimitedNotice":
+    "Too many failed attempts from this source. Wait {seconds} seconds before trying again.",
+
+  "stepUp.dialogTitle": "Confirm privileged step-up (5-minute window)",
+  "stepUp.dialogSubtitle":
+    "Security-sensitive account and MFA changes require fresh re-authentication.",
+  "stepUp.passwordLabel": "Current password",
+  "stepUp.otpLabel": "Current 6-digit authenticator code",
+  "stepUp.submit": "Verify step-up",
+  "stepUp.cancel": "Cancel",
+
+  "account.pageTitle": "Account & Security",
+  "account.pageSubtitle":
+    "Manage your local profile, active sessions, TOTP two-factor authentication, and single-use recovery codes.",
+  "account.signOut": "Sign out",
+  "account.profileTitle": "Profile & Authorization Summary",
+  "account.fieldDisplayName": "Display name",
+  "account.fieldEmail": "Email",
+  "account.fieldEmailUnset": "Not set",
+  "account.fieldStatus": "Account status",
+  "account.fieldRole": "Instance role",
+  "account.roleOwner": "Instance Owner",
+  "account.roleMember": "Standard User",
+  "account.fieldAuthStrength": "Session auth strength",
+  "account.fieldStepUp": "Privileged step-up window",
+  "account.stepUpActive": "Verified until {until}",
+  "account.stepUpInactive": "Not verified (5m step-up required for MFA changes)",
+  "account.verifyStepUpAction": "Verify step-up (5m)",
+  "account.grantsHeading": "Effective workspace memberships",
+  "account.grantsEmpty":
+    "No workspace memberships granted yet. Instance Owner access never implicitly grants repository read access.",
+  "account.telegramTitle": "Personal Telegram Pairing",
+  "account.telegramNotConfiguredBadge": "Not Configured",
+  "account.telegramNotConfiguredDesc":
+    "Personal Telegram pairing becomes available after a workspace configures its Telegram bot integration.",
+
+  "account.mfaTitle": "Two-Factor Authentication (TOTP MFA)",
+  "account.mfaEnabledBadge": "MFA Enabled",
+  "account.mfaDisabledBadge": "MFA Not Enrolled",
+  "account.mfaMandatoryNotice":
+    "Mandatory policy: Instance Owners and privileged roles must keep TOTP MFA enabled and cannot disable MFA to bypass step-up checks.",
+  "account.mfaStartEnroll": "Set up authenticator MFA",
+  "account.mfaRotateEnroll": "Rotate authenticator MFA",
+  "account.mfaSecretOnceWarning":
+    "Save or scan this TOTP secret now. For security, the control plane encrypts this secret in the Z2 vault and will never display it again.",
+  "account.mfaSecretLabel": "Base32 TOTP secret (shown once)",
+  "account.mfaUriLabel": "otpauth provisioning URI (shown once)",
+  "account.mfaConfirmOtpLabel": "Enter 6-digit code from your authenticator to activate",
+  "account.mfaConfirmAction": "Activate TOTP MFA",
+  "account.mfaCancelSetup": "Cancel setup",
+  "account.mfaRecoveryOnceWarning":
+    "Store these 10 single-use recovery codes in an offline password manager now. Each code is HMAC-hashed at rest and will never be shown again.",
+  "account.mfaAcknowledgeCodes": "I have saved these recovery codes",
+  "account.mfaDisableHeading": "Disable TOTP MFA",
+  "account.mfaDisableDesc":
+    "Requires an active 5-minute step-up window and one unused recovery code. Blocked by policy for privileged accounts.",
+  "account.mfaDisableCodeLabel": "Single-use recovery code authorization",
+  "account.mfaDisableAction": "Disable MFA",
+
+  "account.sessionsTitle": "Active Sessions",
+  "account.sessionsSubtitle":
+    "Opaque HttpOnly sessions with 30-minute idle timeout and 12-hour maximum lifetime.",
+  "account.sessionsTableLabel": "Active account sessions",
+  "account.colSessionDevice": "Device / Session",
+  "account.colSessionStrength": "Strength",
+  "account.colSessionIp": "Client IP",
+  "account.colSessionLastSeen": "Last active (UTC)",
+  "account.colSessionExpires": "Expires (UTC)",
+  "account.colSessionAction": "Action",
+  "account.currentSessionBadge": "Current session",
+  "account.unknownDevice": "Browser session",
+  "account.revokeSessionAction": "Revoke",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;
