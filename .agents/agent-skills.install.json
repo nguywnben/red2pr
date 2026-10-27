@@ -1,0 +1,169 @@
+{
+  "source": "https://github.com/addyosmani/agent-skills",
+  "website": "https://skills.addy.ie/",
+  "commit": "aeac41d4d005999432bb7312f7ff06383a91d59d",
+  "installed_at": "2026-10-26T14:12:55.2258331+00:00",
+  "scope": "project",
+  "destination": ".agents/skills",
+  "installer": "Codex bundled skill-installer (download mode)",
+  "skill_count": 25,
+  "skills": [
+    "skills/api-and-interface-design",
+    "skills/browser-testing-with-devtools",
+    "skills/ci-cd-and-automation",
+    "skills/code-review-and-quality",
+    "skills/code-simplification",
+    "skills/constraint-driven-development",
+    "skills/context-engineering",
+    "skills/debugging-and-error-recovery",
+    "skills/deprecation-and-migration",
+    "skills/documentation-and-adrs",
+    "skills/doubt-driven-development",
+    "skills/frontend-ui-engineering",
+    "skills/git-workflow-and-versioning",
+    "skills/idea-refine",
+    "skills/incremental-implementation",
+    "skills/interview-me",
+    "skills/observability-and-instrumentation",
+    "skills/performance-optimization",
+    "skills/planning-and-task-breakdown",
+    "skills/security-and-hardening",
+    "skills/shipping-and-launch",
+    "skills/source-driven-development",
+    "skills/spec-driven-development",
+    "skills/test-driven-development",
+    "skills/using-agent-skills"
+  ],
+  "files": [
+    {
+      "path": "skills/api-and-interface-design/SKILL.md",
+      "sha": "3e2e37f8f4fba2c66f9f1599eaf01a55ae3f3e33"
+    },
+    {
+      "path": "skills/browser-testing-with-devtools/SKILL.md",
+      "sha": "9864d2724e273e1164d62ab10b73590ae00fd6a8"
+    },
+    {
+      "path": "skills/ci-cd-and-automation/SKILL.md",
+      "sha": "118456fcb10225c030769a4fee7815b9c536b0ce"
+    },
+    {
+      "path": "skills/code-review-and-quality/SKILL.md",
+      "sha": "08209ff2208d2883d48d945f7754c428b77f8d87"
+    },
+    {
+      "path": "skills/code-simplification/SKILL.md",
+      "sha": "239b2848489511de30d9e63b0bd183adc4b01347"
+    },
+    {
+      "path": "skills/constraint-driven-development/SKILL.md",
+      "sha": "3028719c0bad95b3e439024b2f52255c0c9f1ffe"
+    },
+    {
+      "path": "skills/constraint-driven-development/references/floor-guard.md",
+      "sha": "0fa8a6946149b9f31b79f09f7cd1be6b3ac9f9e7"
+    },
+    {
+      "path": "skills/context-engineering/SKILL.md",
+      "sha": "fb8bb5f85128302b231d301c1201da1e223f6869"
+    },
+    {
+      "path": "skills/debugging-and-error-recovery/SKILL.md",
+      "sha": "356da20365a7cd6825b4ffad14be39280c92cdfc"
+    },
+    {
+      "path": "skills/deprecation-and-migration/SKILL.md",
+      "sha": "7bf884ca5743d63be448725f88041dde8a10cd5d"
+    },
+    {
+      "path": "skills/documentation-and-adrs/SKILL.md",
+      "sha": "ecc28cef82b65be804329b242f6399bce46987fd"
+    },
+    {
+      "path": "skills/doubt-driven-development/SKILL.md",
+      "sha": "472c35ab9f32e8ec8b592e5cc7d228ad8cdce278"
+    },
+    {
+      "path": "skills/frontend-ui-engineering/SKILL.md",
+      "sha": "3c77256874f2990612d0c980fa9b73cc3116152c"
+    },
+    {
+      "path": "skills/git-workflow-and-versioning/SKILL.md",
+      "sha": "0e03a2323ed3f0131626660c3142f69c4a6f8830"
+    },
+    {
+      "path": "skills/idea-refine/SKILL.md",
+      "sha": "c35e693a114ba6b5de18ec58fa119992800915e2"
+    },
+    {
+      "path": "skills/idea-refine/examples.md",
+      "sha": "a797d22c69cb248d718713633f42d4ee7a4d01d7"
+    },
+    {
+      "path": "skills/idea-refine/frameworks.md",
+      "sha": "0e7fc8fe203bd6aabfba0f79cb6fa98c76d92e28"
+    },
+    {
+      "path": "skills/idea-refine/refinement-criteria.md",
+      "sha": "53e79c725b7aa0a4a39389056bd71b1689aa8740"
+    },
+    {
+      "path": "skills/idea-refine/scripts/idea-refine.sh",
+      "sha": "a53cb5a9dc00252003a04d485132d58a5260e9b6"
+    },
+    {
+      "path": "skills/incremental-implementation/SKILL.md",
+      "sha": "9c4f49bc841adb3c0f98baaa9eabd435a5b64ef9"
+    },
+    {
+      "path": "skills/interview-me/SKILL.md",
+      "sha": "200f9186ffa234708aa5deec1946c6dfcb7a7335"
+    },
+    {
+      "path": "skills/observability-and-instrumentation/SKILL.md",
+      "sha": "84d9cb373467fe0e15236e190833ecc90f840c38"
+    },
+    {
+      "path": "skills/performance-optimization/SKILL.md",
+      "sha": "ff57eab055e7df4994aa9dcdcc3a6ff1d30411e0"
+    },
+    {
+      "path": "skills/performance-optimization/references/optimization-patterns.md",
+      "sha": "63e27bcc7a051c3dc23c164f146f374e119874cc"
+    },
+    {
+      "path": "skills/planning-and-task-breakdown/SKILL.md",
+      "sha": "296249b64334bcfd1aeaefd27b9e3e5494e38ec0"
+    },
+    {
+      "path": "skills/security-and-hardening/SKILL.md",
+      "sha": "e80e1e9a4f5b2989308c376d4ea0d333fe2c26ef"
+    },
+    {
+      "path": "skills/security-and-hardening/references/hardening-patterns.md",
+      "sha": "e5fba73c9fc029444d3c099d0a51538e90ed97c2"
+    },
+    {
+      "path": "skills/shipping-and-launch/SKILL.md",
+      "sha": "f94bb48702bd250b7ad18c264a46d77b46ea115b"
+    },
+    {
+      "path": "skills/source-driven-development/SKILL.md",
+      "sha": "2704f0e130bc4659951aa552373914b2d63d18c9"
+    },
+    {
+      "path": "skills/spec-driven-development/SKILL.md",
+      "sha": "f54426bec00bcda5f700ab3368eed7203306830f"
+    },
+    {
+      "path": "skills/test-driven-development/SKILL.md",
+      "sha": "2f9c4bad747df3c88f3cd443b4990ab12d77b7d0"
+    },
+    {
+      "path": "skills/using-agent-skills/SKILL.md",
+      "sha": "d56ac03ab057036c1bdcc9127c88952758ee2f0d"
+    }
+  ],
+  "license": "agent-skills.LICENSE",
+  "verification": "All installed skill files match upstream Git blob hashes; existing root files and docs unchanged."
+}
