@@ -87,5 +87,13 @@ Proposal:
 
 Consequences: 100% of the 46 features, 21 screens, 24 API families, 22 schemas, 40 security tests, 16 NFR targets, and 15 release gates map cleanly to non-overlapping owning units. Owner approval of ADR-033…038 is required before `U01` implementation begins.
 
+## P4 kickoff & owner approval records — 2026-10-27
+
+Prior rows above are preserved verbatim as decision history. On 2026-10-27 the repository owner explicitly approved the Master Implementation Plan and baseline architecture proposals to transition the project into P4 vertical-slice construction:
+
+| ID | Status | Decision | Rationale / consequences |
+|---|---|---|---|
+| ADR-039 | ACCEPTED | Approve `PLAN-2026-10-27-v1` ([40_EXECUTION_MASTER_PLAN.md](40_EXECUTION_MASTER_PLAN.md)), promote baseline proposals `ADR-012`..`020` and `ADR-033`..`038` to accepted baseline, and authorize `U01` execution | Explicit owner approval on 2026-10-27. Freezes `U01`–`U36` IDs, DAG, monorepo boundaries, and the six `ADR-038` contract alignments. `ADR-021` (license/domain/signing identity), `ADR-022` (measured hardware/OS/GitLab minima), `ADR-023` (OIDC `P1` slice), and `ADR-024` (relay operating model) remain `OPEN` until their designated units (`U28`, `U29`, `U36`). External live API calls, host virtualization changes, and `git push` continue to require explicit scope-specific owner authorization. |
+
 
 [← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

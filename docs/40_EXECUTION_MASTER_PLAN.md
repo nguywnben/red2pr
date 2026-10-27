@@ -1,6 +1,6 @@
 # Red2PR 1.0.0 — Official Master Implementation Plan
 
-**Plan version:** `PLAN-2026-10-27-v1` · **Specification baseline:** `SPEC-2026-10-27-v5` (`9688499`) · **Status:** `AWAITING_OWNER_APPROVAL` (0 modules implemented, 0 tests executed) · **Governing ADR:** [ADR-027](20_DECISIONS_ADR.md), [ADR-038](20_DECISIONS_ADR.md) (`PROPOSED`).
+**Plan version:** `PLAN-2026-10-27-v1` · **Specification baseline:** `SPEC-2026-10-27-v5` (`9688499`) · **Status:** `APPROVED_FOR_P4` (Owner approved on 2026-10-27 via [ADR-039](20_DECISIONS_ADR.md)) · **Governing ADR:** [ADR-027](20_DECISIONS_ADR.md), [ADR-038](20_DECISIONS_ADR.md), [ADR-039](20_DECISIONS_ADR.md).
 
 > **Path note:** Because `docs/36_CANONICAL_CONTRACTS.md` through `docs/39_SPEC_AUDIT.md` already occupy slots `36`–`39` in the specification index, this single authoritative Master Implementation Plan is recorded at `docs/40_EXECUTION_MASTER_PLAN.md` without overwriting existing canonical contracts.
 

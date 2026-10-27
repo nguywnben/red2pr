@@ -1,6 +1,6 @@
 # Red2PR specification index
 
-**Specification version:** SPEC-2026-10-27-v5 (P2 review) + PLAN-2026-10-27-v1 (P3 execution master plan awaiting owner approval) · **Status:** design and master plan baseline, not an implementation · **Language:** English.
+**Specification version:** SPEC-2026-10-27-v5 (P2 review) + PLAN-2026-10-27-v1 (P3 execution master plan approved under ADR-039; P4 active) · **Status:** approved design and execution baseline · **Language:** English.
 
 ## Recommended reading order
 | File | Contents |
