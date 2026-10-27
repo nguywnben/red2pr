@@ -30,6 +30,7 @@ import {
   type AuthProblemSummary,
 } from "../auth";
 import { generateClientUuidV7 } from "../queues/QueuesPage";
+import { ConnectionPollingReconcileCard } from "./ConnectionPollingReconcileCard";
 
 type GlyphKind = "check" | "warn" | "error" | "info" | "clock" | "lock" | "offline";
 type RepositoryRow = Repository & Record<string, unknown>;
@@ -1065,6 +1066,28 @@ export function GitLabIntegrationPanel({
               />
             </div>
           </section>
+
+          <ConnectionPollingReconcileCard
+            workspaceSlug={wsSlug}
+            connection={activeConnection}
+            repositories={detailQuery.data?.detail.repositories ?? []}
+            syncCursors={detailQuery.data?.detail.sync_cursors ?? []}
+            isAdmin={isAdmin}
+            onReconciled={async (result) => {
+              setFeedbackBanner({
+                tone: result.tone,
+                glyph:
+                  result.tone === "success"
+                    ? "check"
+                    : result.tone === "danger"
+                      ? "error"
+                      : "warn",
+                text: result.text,
+                correlationId: result.correlationId,
+              });
+              await refreshIntegrations();
+            }}
+          />
         </>
       ) : null}
 

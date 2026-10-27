@@ -32,6 +32,7 @@ import {
   type AuthProblemSummary,
 } from "../auth";
 import { generateClientUuidV7 } from "../queues/QueuesPage";
+import { ConnectionPollingReconcileCard } from "./ConnectionPollingReconcileCard";
 
 type GlyphKind = "check" | "warn" | "error" | "info" | "clock" | "lock" | "offline";
 type RepositoryRow = Repository & Record<string, unknown>;
@@ -1262,6 +1263,30 @@ export function GitHubIntegrationPanel({
             )}
           </div>
         </section>
+      ) : null}
+
+      {selectedConnection !== null ? (
+        <ConnectionPollingReconcileCard
+          workspaceSlug={wsSlug}
+          connection={selectedConnection}
+          repositories={selectedDetail?.repositories ?? []}
+          syncCursors={selectedDetail?.sync_cursors ?? []}
+          isAdmin={isAdmin}
+          onReconciled={async (result) => {
+            setFeedbackBanner({
+              tone: result.tone,
+              glyph:
+                result.tone === "success"
+                  ? "check"
+                  : result.tone === "danger"
+                    ? "error"
+                    : "warn",
+              text: result.text,
+              correlationId: result.correlationId,
+            });
+            await refreshIntegrations();
+          }}
+        />
       ) : null}
 
       {/* Rotate Credentials / Edit Connection Dialog */}

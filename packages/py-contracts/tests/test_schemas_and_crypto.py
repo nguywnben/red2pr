@@ -1605,3 +1605,117 @@ def test_u10_gitlab_webhook_v19_signing_rotation_and_s08_pinned_auth_contracts()
             secret_ref="sec_gl_token_v1",
             access_token="glpat-1234567890abcdef1234",
         )
+
+
+def test_u11_webhook_ingress_sync_cursor_and_reconcile_contracts() -> None:
+    from py_contracts import (
+        ActionReceipt,
+        ConnectionDetailResponse,
+        ConnectionReconcileRequest,
+        ConnectionReconcileResponse,
+        ProviderSyncCursor,
+        WebhookIngressReceipt,
+    )
+
+    ws_id = new_uuid7()
+    conn_id = new_uuid7()
+    repo_id = new_uuid7()
+    inbox_id = new_uuid7()
+    trigger_id = new_uuid7()
+
+    ingress = WebhookIngressReceipt(
+        inbox_id=inbox_id,
+        connection_id=conn_id,
+        provider="github",
+        delivery_id="deliv-gh-5001-a",
+        status="normalized",
+        disposition="accepted_trigger",
+        duplicate=False,
+        trigger_id=trigger_id,
+        correlation_id="corr-u11-01",
+        received_at=FIXED_NOW,
+    )
+    assert ingress.status == "normalized"
+    assert ingress.disposition == "accepted_trigger"
+
+    cursor = ProviderSyncCursor(
+        id=new_uuid7(),
+        workspace_id=ws_id,
+        version=2,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        connection_id=conn_id,
+        repository_id=repo_id,
+        provider="github",
+        etag='W/"runs-etag-1"',
+        high_water_mark_at=FIXED_NOW,
+        last_seen_run_id="5001",
+        last_stable_page=1,
+        overlap_seconds=300,
+        poll_interval_seconds=60,
+        last_polled_at=FIXED_NOW,
+        last_success_at=FIXED_NOW,
+        next_poll_after=FIXED_NOW + timedelta(seconds=64),
+        last_status="gap_detected",
+        history_gap_detected=True,
+        history_gap_since=FIXED_NOW - timedelta(days=95),
+        history_gap_until=FIXED_NOW - timedelta(days=90),
+        history_gap_detail="Offline duration (95d) exceeded provider retention (90d).",
+    )
+    assert cursor.history_gap_detected is True
+    assert cursor.last_status == "gap_detected"
+
+    req = ConnectionReconcileRequest(
+        repository_ids=[repo_id],
+        acknowledge_history_gap=True,
+        force_poll=True,
+    )
+    assert req.acknowledge_history_gap is True
+
+    op_id = new_uuid7()
+    reconcile_resp = ConnectionReconcileResponse(
+        receipt=ActionReceipt(
+            operation_id=op_id,
+            resource_id=conn_id,
+            state="succeeded",
+            correlation_id="corr-u11-rec",
+            status_url=f"/api/v1/operations/{op_id}",
+            result_id=conn_id,
+        ),
+        connection_id=conn_id,
+        polled_repository_count=1,
+        rate_limited_count=0,
+        history_gap_count=1,
+        triggers_created_count=1,
+        pending_inbox_reconciled_count=1,
+        complete_recovery=False,
+        sync_cursors=[cursor],
+    )
+    assert reconcile_resp.complete_recovery is False
+    assert len(reconcile_resp.sync_cursors) == 1
+
+    # ConnectionDetailResponse exposes additive sync_cursors (defaulting to [])
+    conn_dto = Connection(
+        id=conn_id,
+        workspace_id=ws_id,
+        version=1,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        provider="github",
+        base_url="https://api.github.com",
+        auth_mode="github_app",
+        secret_presence=SecretPresence(configured=True, secret_version=1),
+        webhook_secret_presence=SecretPresence(configured=True, secret_version=1),
+        status="ready",
+    )
+    detail = ConnectionDetailResponse(connection=conn_dto, sync_cursors=[cursor])
+    assert detail.sync_cursors[0].history_gap_detected is True
+
+    # Extra unknown properties rejected on StrictContractModel
+    with pytest.raises(ValidationError):
+        WebhookIngressReceipt.model_validate(
+            {
+                **ingress.model_dump(mode="json"),
+                "raw_secret_leak": "forbidden",
+            }
+        )

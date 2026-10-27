@@ -256,12 +256,110 @@ class Repository(WorkspaceResourceBase):
     auto_repair_blocked: StrictBool = False
 
 
+# U11 Webhook Ingress, Resumable Polling & Reconciliation (`SRC-03`, `SRC-04`, `A-22`)
+WebhookInboxStatus = Literal[
+    "received",
+    "normalized",
+    "duplicate_semantic",
+    "ignored",
+    "reconcile_pending",
+    "quarantined",
+]
+WebhookIngressDisposition = Literal[
+    "accepted_trigger",
+    "duplicate_delivery",
+    "duplicate_semantic",
+    "reconcile_scheduled",
+    "ignored_non_failure",
+    "ignored_bot_loop",
+    "ignored_untracked_repo",
+    "ignored_repository_paused",
+    "ignored_stale_replay",
+    "installation_revoked",
+]
+SyncCursorStatus = Literal[
+    "idle",
+    "ok",
+    "not_modified",
+    "rate_limited",
+    "gap_detected",
+    "error",
+    "revoked",
+]
+
+
+class WebhookIngressReceipt(StrictContractModel):
+    """A-22 durable webhook receipt returned strictly after PostgreSQL fsync commit."""
+
+    inbox_id: InternalId
+    connection_id: InternalId
+    provider: ProviderKind
+    delivery_id: OpaqueProviderId
+    status: WebhookInboxStatus
+    disposition: WebhookIngressDisposition
+    duplicate: StrictBool = False
+    trigger_id: InternalId | None = None
+    job_id: InternalId | None = None
+    correlation_id: BoundedName
+    received_at: UtcTimestamp
+
+
+class ProviderSyncCursor(WorkspaceResourceBase):
+    """SRC-04 resumable per-repository polling checkpoint, rate-limit backoff & gap status."""
+
+    connection_id: InternalId
+    repository_id: InternalId
+    provider: ProviderKind
+    etag: BoundedText | None = None
+    high_water_mark_at: UtcTimestamp | None = None
+    last_seen_run_id: OpaqueProviderId | None = None
+    last_stable_page: Annotated[StrictInt, Field(ge=1)] = 1
+    overlap_seconds: Annotated[StrictInt, Field(ge=0, le=3600)] = 300
+    poll_interval_seconds: Annotated[StrictInt, Field(ge=10, le=3600)] = 60
+    last_polled_at: UtcTimestamp | None = None
+    last_success_at: UtcTimestamp | None = None
+    next_poll_after: UtcTimestamp | None = None
+    rate_limit_remaining: Annotated[StrictInt, Field(ge=0)] | None = None
+    rate_limit_reset_at: UtcTimestamp | None = None
+    consecutive_failures: Annotated[StrictInt, Field(ge=0)] = 0
+    last_status: SyncCursorStatus = "idle"
+    last_error_code: BoundedName | None = None
+    last_error_detail: BoundedReason | None = None
+    history_gap_detected: StrictBool = False
+    history_gap_since: UtcTimestamp | None = None
+    history_gap_until: UtcTimestamp | None = None
+    history_gap_detail: BoundedReason | None = None
+
+
+class ConnectionReconcileRequest(StrictContractModel):
+    """A-06 / SRC-04 operator-triggered run polling & missed-event reconciliation request."""
+
+    repository_ids: list[InternalId] | None = None
+    acknowledge_history_gap: StrictBool = False
+    force_poll: StrictBool = False
+
+
+class ConnectionReconcileResponse(StrictContractModel):
+    """A-06 / SRC-04 reconciliation summary (complete_recovery=False on history gaps or 429)."""
+
+    receipt: ActionReceipt
+    connection_id: InternalId
+    polled_repository_count: Annotated[StrictInt, Field(ge=0)] = 0
+    rate_limited_count: Annotated[StrictInt, Field(ge=0)] = 0
+    history_gap_count: Annotated[StrictInt, Field(ge=0)] = 0
+    triggers_created_count: Annotated[StrictInt, Field(ge=0)] = 0
+    pending_inbox_reconciled_count: Annotated[StrictInt, Field(ge=0)] = 0
+    complete_recovery: StrictBool = True
+    sync_cursors: list[ProviderSyncCursor] = Field(default_factory=list)
+
+
 class ConnectionDetailResponse(StrictContractModel):
-    """A-06 detailed connection view with latest capability snapshot and scoped repositories."""
+    """A-06 detailed connection view with latest capability snapshot, repos & sync cursors."""
 
     connection: Connection
     latest_snapshot: CapabilitySnapshot | None = None
     repositories: list[Repository] = Field(default_factory=list)
+    sync_cursors: list[ProviderSyncCursor] = Field(default_factory=list)
 
 
 class ConnectionProbeResponse(StrictContractModel):

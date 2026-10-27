@@ -40,6 +40,8 @@ from py_contracts import (
     ConnectionPage,
     ConnectionPatchRequest,
     ConnectionProbeResponse,
+    ConnectionReconcileRequest,
+    ConnectionReconcileResponse,
     ConnectionSyncResponse,
     ConnectionWrite,
     ConsentCreateRequest,
@@ -84,6 +86,7 @@ from py_contracts import (
     Patch,
     Problem,
     ProblemFieldError,
+    ProviderSyncCursor,
     Publication,
     RecoveryRequest,
     RecoveryResponse,
@@ -118,6 +121,7 @@ from py_contracts import (
     ToolCallResponse,
     User,
     Verification,
+    WebhookIngressReceipt,
     Worker,
     WorkflowHazardFinding,
     Workspace,
@@ -144,7 +148,11 @@ from red2pr_control.iam.router import build_iam_router
 from red2pr_control.iam.sessions import IamService
 from red2pr_control.integrations import (
     GitHubIntegrationService,
+    LocalPollingService,
+    MissedEventReconciler,
+    WebhookIngestService,
     build_integrations_router,
+    build_webhooks_router,
 )
 from red2pr_control.operations.setup_wizard import (
     SetupStepRegistry,
@@ -212,6 +220,10 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     ConnectionDetailResponse,
     ConnectionProbeResponse,
     ConnectionSyncResponse,
+    ConnectionReconcileRequest,
+    ConnectionReconcileResponse,
+    ProviderSyncCursor,
+    WebhookIngressReceipt,
     GitHubInstallStateCreateRequest,
     GitHubInstallStateResponse,
     GitHubCallbackResponse,
@@ -401,6 +413,9 @@ def create_app(
     task_queue_service: DurableTaskQueueService | None = None,
     operation_receipt_service: OperationReceiptService | None = None,
     github_integration_service: GitHubIntegrationService | None = None,
+    webhook_ingest_service: WebhookIngestService | None = None,
+    polling_service: LocalPollingService | None = None,
+    reconciler_service: MissedEventReconciler | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     app = FastAPI(
@@ -422,6 +437,9 @@ def create_app(
     app.state.task_queue_service = task_queue_service
     app.state.operation_receipt_service = operation_receipt_service
     app.state.github_integration_service = github_integration_service
+    app.state.webhook_ingest_service = webhook_ingest_service
+    app.state.polling_service = polling_service
+    app.state.reconciler_service = reconciler_service
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -443,6 +461,7 @@ def create_app(
     app.include_router(build_setup_router())
     app.include_router(build_orchestrator_router())
     app.include_router(build_integrations_router())
+    app.include_router(build_webhooks_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:

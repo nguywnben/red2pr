@@ -12,6 +12,8 @@ from py_contracts.integrations import (
     ConnectionPage,
     ConnectionPatchRequest,
     ConnectionProbeResponse,
+    ConnectionReconcileRequest,
+    ConnectionReconcileResponse,
     ConnectionSyncResponse,
     ConnectionWrite,
     GitHubCallbackResponse,
@@ -37,6 +39,7 @@ from red2pr_control.iam.rbac import (
 )
 from red2pr_control.iam.sessions import IamService, extract_client_ip
 from red2pr_control.integrations.github_app import GitHubIntegrationService
+from red2pr_control.integrations.reconciler import MissedEventReconciler
 
 _COMMON_PROBLEM_RESPONSES: dict[int | str, dict[str, object]] = {
     400: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
@@ -75,6 +78,16 @@ def _resolve_github_integration_service(request: Request) -> GitHubIntegrationSe
         raise DependencyUnavailableError(
             code="integrations_unconfigured",
             detail="Provider integration service is not configured on this control-plane instance.",
+        )
+    return svc
+
+
+def _resolve_reconciler_service(request: Request) -> MissedEventReconciler:
+    svc = getattr(request.app.state, "reconciler_service", None)
+    if not isinstance(svc, MissedEventReconciler):
+        raise DependencyUnavailableError(
+            code="reconciler_unconfigured",
+            detail="Missed-event reconciler service is not configured on this instance.",
         )
     return svc
 
@@ -324,6 +337,43 @@ def build_integrations_router() -> APIRouter:
         return await svc.sync_connection(
             ws_ctx,
             connection_id=connection_id,
+            idempotency_key=idem,
+            client_ip=extract_client_ip(request),
+            correlation_id=_req_corr_id(request),
+            now=iam.now(),
+        )
+
+    @router.post(
+        "/workspaces/{ws}/integrations/{connection_id}/reconcile",
+        operation_id="reconcileConnectionRuns",
+        tags=["integrations"],
+        response_model=ConnectionReconcileResponse,
+        summary=(
+            "Reconcile missed webhook events and resumable polling cursors (A-06, SRC-03, SRC-04)"
+        ),
+        responses=_COMMON_PROBLEM_RESPONSES,
+    )
+    async def reconcile_connection_runs(
+        connection_id: Annotated[str, Path(min_length=1, max_length=64)],
+        request: Request,
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_integrations_admin)],
+        iam: Annotated[IamService, Depends(_resolve_iam)],
+        reconciler: Annotated[MissedEventReconciler, Depends(_resolve_reconciler_service)],
+        payload: Annotated[ConnectionReconcileRequest | None, Body()] = None,
+        idempotency_key: Annotated[
+            str | None,
+            Header(alias="Idempotency-Key", max_length=128),
+        ] = None,
+    ) -> ConnectionReconcileResponse:
+        idem = _require_idempotency_key(
+            idempotency_key,
+            endpoint_label="POST /api/v1/workspaces/{ws}/integrations/{connection_id}/reconcile",
+        )
+        effective_payload = payload or ConnectionReconcileRequest()
+        return await reconciler.reconcile_connection(
+            ws_ctx,
+            connection_id=connection_id,
+            payload=effective_payload,
             idempotency_key=idem,
             client_ip=extract_client_ip(request),
             correlation_id=_req_corr_id(request),

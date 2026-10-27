@@ -714,4 +714,97 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(created.data.auth_mode, "gitlab_signed_v19");
     assert.equal(created.data.api_version, "v4");
   });
+
+  it("serializes U11 sync_cursors and reconcileConnectionRuns with honest complete_recovery=false", async () => {
+    const connId = "019a2700-0000-7000-8000-000000000101";
+    const wsId = "019a2700-0000-7000-8000-000000000001";
+    const repoId = "019a2700-0000-7000-8000-000000000201";
+    const opId = "019a2700-0000-7000-8000-000000000301";
+    let capturedReconcileBody: Record<string, unknown> | null = null;
+    let capturedIdemKey: string | null = null;
+    let capturedCsrf: string | null = null;
+
+    const sampleCursor = {
+      id: "019a2700-0000-7000-8000-000000000401",
+      workspace_id: wsId,
+      version: 2,
+      created_at: "2026-10-27T15:00:00Z",
+      updated_at: "2026-10-27T15:05:00Z",
+      connection_id: connId,
+      repository_id: repoId,
+      provider: "github",
+      etag: 'W/"etag-5001"',
+      high_water_mark_at: "2026-10-27T15:00:00Z",
+      last_seen_run_id: "5001",
+      last_stable_page: 1,
+      overlap_seconds: 300,
+      poll_interval_seconds: 60,
+      last_polled_at: "2026-10-27T15:05:00Z",
+      last_success_at: "2026-10-27T15:05:00Z",
+      next_poll_after: "2026-10-27T15:06:05Z",
+      consecutive_failures: 0,
+      last_status: "gap_detected",
+      history_gap_detected: true,
+      history_gap_since: "2026-07-01T00:00:00Z",
+      history_gap_until: "2026-10-27T15:00:00Z",
+      history_gap_detail: "Offline duration exceeded provider retention.",
+    };
+
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u11-token",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        if (
+          request.method === "POST" &&
+          url.pathname === `/api/v1/workspaces/acme/integrations/${connId}/reconcile`
+        ) {
+          capturedIdemKey = request.headers.get("Idempotency-Key");
+          capturedCsrf = request.headers.get("X-CSRF-Token");
+          capturedReconcileBody = (await request.json()) as Record<string, unknown>;
+          return new Response(
+            JSON.stringify({
+              receipt: {
+                operation_id: opId,
+                resource_id: connId,
+                state: "succeeded",
+                correlation_id: "corr-u11-reconcile",
+                status_url: `/api/v1/operations/${opId}`,
+                result_id: connId,
+              },
+              connection_id: connId,
+              polled_repository_count: 1,
+              rate_limited_count: 0,
+              history_gap_count: 1,
+              triggers_created_count: 1,
+              pending_inbox_reconciled_count: 0,
+              complete_recovery: false,
+              sync_cursors: [sampleCursor],
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "X-Correlation-Id": "corr-u11-reconcile",
+              },
+            },
+          );
+        }
+        throw new Error(`Unexpected ${request.method} ${url.pathname}`);
+      },
+    });
+
+    const reconciled = await client.reconcileConnectionRuns(
+      "acme",
+      connId,
+      { acknowledge_history_gap: true, force_poll: true },
+      { idempotencyKey: "019a2700-0000-7000-8000-000000000999" },
+    );
+    assert.equal(capturedIdemKey, "019a2700-0000-7000-8000-000000000999");
+    assert.equal(capturedCsrf, "csrf-u11-token");
+    assert.equal(capturedReconcileBody?.["acknowledge_history_gap"], true);
+    assert.equal(capturedReconcileBody?.["force_poll"], true);
+    assert.equal(reconciled.data.complete_recovery, false);
+    assert.equal(reconciled.data.sync_cursors?.[0]?.history_gap_detected, true);
+  });
 });

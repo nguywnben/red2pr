@@ -1322,7 +1322,7 @@
       },
       "ConnectionDetailResponse": {
         "additionalProperties": false,
-        "description": "A-06 detailed connection view with latest capability snapshot and scoped repositories.",
+        "description": "A-06 detailed connection view with latest capability snapshot, repos & sync cursors.",
         "properties": {
           "connection": {
             "$ref": "#/components/schemas/Connection"
@@ -1342,6 +1342,13 @@
               "$ref": "#/components/schemas/Repository"
             },
             "title": "Repositories",
+            "type": "array"
+          },
+          "sync_cursors": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderSyncCursor"
+            },
+            "title": "Sync Cursors",
             "type": "array"
           }
         },
@@ -1520,6 +1527,99 @@
           "snapshot"
         ],
         "title": "ConnectionProbeResponse",
+        "type": "object"
+      },
+      "ConnectionReconcileRequest": {
+        "additionalProperties": false,
+        "description": "A-06 / SRC-04 operator-triggered run polling & missed-event reconciliation request.",
+        "properties": {
+          "acknowledge_history_gap": {
+            "default": false,
+            "title": "Acknowledge History Gap",
+            "type": "boolean"
+          },
+          "force_poll": {
+            "default": false,
+            "title": "Force Poll",
+            "type": "boolean"
+          },
+          "repository_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Ids"
+          }
+        },
+        "title": "ConnectionReconcileRequest",
+        "type": "object"
+      },
+      "ConnectionReconcileResponse": {
+        "additionalProperties": false,
+        "description": "A-06 / SRC-04 reconciliation summary (complete_recovery=False on history gaps or 429).",
+        "properties": {
+          "complete_recovery": {
+            "default": true,
+            "title": "Complete Recovery",
+            "type": "boolean"
+          },
+          "connection_id": {
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "history_gap_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "History Gap Count",
+            "type": "integer"
+          },
+          "pending_inbox_reconciled_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Pending Inbox Reconciled Count",
+            "type": "integer"
+          },
+          "polled_repository_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Polled Repository Count",
+            "type": "integer"
+          },
+          "rate_limited_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Rate Limited Count",
+            "type": "integer"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/ActionReceipt"
+          },
+          "sync_cursors": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderSyncCursor"
+            },
+            "title": "Sync Cursors",
+            "type": "array"
+          },
+          "triggers_created_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Triggers Created Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "receipt",
+          "connection_id"
+        ],
+        "title": "ConnectionReconcileResponse",
         "type": "object"
       },
       "ConnectionSyncResponse": {
@@ -3075,6 +3175,19 @@
           "snapshot"
         ],
         "title": "GitHubInstallationConfirmResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
         "type": "object"
       },
       "Invite": {
@@ -4955,6 +5068,257 @@
           "status"
         ],
         "title": "ProviderConnectionEventPayload",
+        "type": "object"
+      },
+      "ProviderSyncCursor": {
+        "additionalProperties": false,
+        "description": "SRC-04 resumable per-repository polling checkpoint, rate-limit backoff & gap status.",
+        "properties": {
+          "connection_id": {
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "consecutive_failures": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Consecutive Failures",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "etag": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Etag"
+          },
+          "high_water_mark_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High Water Mark At"
+          },
+          "history_gap_detail": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Gap Detail"
+          },
+          "history_gap_detected": {
+            "default": false,
+            "title": "History Gap Detected",
+            "type": "boolean"
+          },
+          "history_gap_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Gap Since"
+          },
+          "history_gap_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Gap Until"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_error_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Code"
+          },
+          "last_error_detail": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Detail"
+          },
+          "last_polled_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Polled At"
+          },
+          "last_seen_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen Run Id"
+          },
+          "last_stable_page": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Last Stable Page",
+            "type": "integer"
+          },
+          "last_status": {
+            "default": "idle",
+            "enum": [
+              "idle",
+              "ok",
+              "not_modified",
+              "rate_limited",
+              "gap_detected",
+              "error",
+              "revoked"
+            ],
+            "title": "Last Status",
+            "type": "string"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "next_poll_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Poll After"
+          },
+          "overlap_seconds": {
+            "default": 300,
+            "maximum": 3600.0,
+            "minimum": 0.0,
+            "title": "Overlap Seconds",
+            "type": "integer"
+          },
+          "poll_interval_seconds": {
+            "default": 60,
+            "maximum": 3600.0,
+            "minimum": 10.0,
+            "title": "Poll Interval Seconds",
+            "type": "integer"
+          },
+          "provider": {
+            "enum": [
+              "github",
+              "gitlab"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "rate_limit_remaining": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Remaining"
+          },
+          "rate_limit_reset_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Reset At"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "connection_id",
+          "provider"
+        ],
+        "title": "ProviderSyncCursor",
         "type": "object"
       },
       "Publication": {
@@ -8778,6 +9142,46 @@
         "title": "User",
         "type": "object"
       },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
       "Verification": {
         "additionalProperties": false,
         "description": "S-12 deterministic local/remote verification verdict.",
@@ -8878,6 +9282,109 @@
           "outcome"
         ],
         "title": "VerificationGateResult",
+        "type": "object"
+      },
+      "WebhookIngressReceipt": {
+        "additionalProperties": false,
+        "description": "A-22 durable webhook receipt returned strictly after PostgreSQL fsync commit.",
+        "properties": {
+          "connection_id": {
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "correlation_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "delivery_id": {
+            "title": "Delivery Id",
+            "type": "string"
+          },
+          "disposition": {
+            "enum": [
+              "accepted_trigger",
+              "duplicate_delivery",
+              "duplicate_semantic",
+              "reconcile_scheduled",
+              "ignored_non_failure",
+              "ignored_bot_loop",
+              "ignored_untracked_repo",
+              "ignored_repository_paused",
+              "ignored_stale_replay",
+              "installation_revoked"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "duplicate": {
+            "default": false,
+            "title": "Duplicate",
+            "type": "boolean"
+          },
+          "inbox_id": {
+            "title": "Inbox Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "provider": {
+            "enum": [
+              "github",
+              "gitlab"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "received_at": {
+            "title": "Received At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "received",
+              "normalized",
+              "duplicate_semantic",
+              "ignored",
+              "reconcile_pending",
+              "quarantined"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trigger_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Id"
+          }
+        },
+        "required": [
+          "inbox_id",
+          "connection_id",
+          "provider",
+          "delivery_id",
+          "status",
+          "disposition",
+          "correlation_id",
+          "received_at"
+        ],
+        "title": "WebhookIngressReceipt",
         "type": "object"
       },
       "Worker": {
@@ -9963,6 +10470,268 @@
         "summary": "Verify password (+ TOTP if enrolled) for 5-minute privileged step-up (A-02)",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/hooks/github/{connection}": {
+      "post": {
+        "operationId": "ingestGitHubWebhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Connection",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookIngressReceipt"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookIngressReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Verify raw GitHub HMAC-SHA256 webhook & commit durable inbox receipt (A-22)",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/api/v1/hooks/gitlab/{connection}": {
+      "post": {
+        "operationId": "ingestGitLabWebhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Connection",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookIngressReceipt"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookIngressReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Verify pinned GitLab webhook & commit durable inbox receipt (A-22)",
+        "tags": [
+          "webhooks"
         ]
       }
     },
@@ -15284,6 +16053,195 @@
           }
         },
         "summary": "Run live provider capability & permission probe (A-06)",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/reconcile": {
+      "post": {
+        "operationId": "reconcileConnectionRuns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Connection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ConnectionReconcileRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionReconcileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Reconcile missed webhook events and resumable polling cursors (A-06, SRC-03, SRC-04)",
         "tags": [
           "integrations"
         ]

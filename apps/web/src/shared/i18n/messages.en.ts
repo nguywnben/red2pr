@@ -413,6 +413,12 @@ export const EN_MESSAGES = {
   "integrations.gitlabAddConnection": "Add GitLab connection",
   "integrations.gitlabPinnedSignedLabel": "Pinned: Signed v19 HMAC (Standard Webhooks)",
   "integrations.gitlabPinnedLegacyLabel": "Pinned: Legacy X-Gitlab-Token (TLS)",
+  "integrations.pollingSectionTitle": "Webhook Ingress & Local Polling Reconciler (SRC-03 · SRC-04)",
+  "integrations.pollingSectionSubtitle":
+    "Raw-body cryptographic webhook ingress paired with resumable 60s local/NAT polling (5m overlap, ETag conditional caching, and 429 Retry-After backoff).",
+  "integrations.syncCursorsTableLabel": "Repository polling cursors and history-gap status",
+  "integrations.reconcileRunsAction": "Reconcile runs",
+  "integrations.acknowledgeGapAction": "Acknowledge gap & resync",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

@@ -1,0 +1,22 @@
+{
+  "object_kind": "build",
+  "ref": "main",
+  "tag": false,
+  "sha": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a17701",
+  "build_id": 99101,
+  "build_name": "pytest-unit",
+  "build_stage": "test",
+  "build_status": "failed",
+  "build_allow_failure": false,
+  "pipeline_id": 7701,
+  "project_id": 4401,
+  "project": {
+    "id": 4401,
+    "path_with_namespace": "acme-group/billing-api"
+  },
+  "user": {
+    "id": 901,
+    "username": "gl-dev",
+    "bot": false
+  }
+}

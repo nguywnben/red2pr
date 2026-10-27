@@ -1597,3 +1597,300 @@ class RepositoryModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class CiRunTriggerModel(Base):
+    """SRC-03 / W-03 / SEC-002 normalized semantic CI run-attempt failure trigger."""
+
+    __tablename__ = "ci_run_triggers"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_ci_run_triggers_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "repository_id",
+            "provider_run_id",
+            "attempt_key",
+            name="uq_ci_run_triggers_semantic",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_ci_run_triggers_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "connection_id"],
+            ["provider_connections.workspace_id", "provider_connections.id"],
+            name="fk_ci_run_triggers_tenant_conn_provider_connections",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_ci_run_triggers_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "provider IN ('github', 'gitlab')",
+            name="ci_run_trigger_provider_valid",
+        ),
+        CheckConstraint(
+            "status IN ('queued', 'in_progress', 'completed', 'unknown')",
+            name="ci_run_trigger_status_valid",
+        ),
+        CheckConstraint(
+            "conclusion IN ("
+            "'failure', 'timed_out', 'action_required', 'cancelled', "
+            "'success', 'skipped', 'neutral', 'unknown'"
+            ")",
+            name="ci_run_trigger_conclusion_valid",
+        ),
+        CheckConstraint(
+            "first_source IN ('webhook', 'poll', 'reconcile')",
+            name="ci_run_trigger_source_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_ci_run_triggers_ws_repo_run",
+            "workspace_id",
+            "repository_id",
+            "provider_run_id",
+            "triggered_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    connection_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_run_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    attempt_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    head_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    ref: Mapped[str] = mapped_column(String(120), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="completed")
+    conclusion: Mapped[str] = mapped_column(String(32), nullable=False, default="failure")
+    jobs_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    raw_vendor_status: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    is_rerun: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    untrusted_fork: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    first_source: Mapped[str] = mapped_column(String(32), nullable=False)
+    first_inbox_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class WebhookInboxModel(Base):
+    """SRC-03 / A-22 / NFR-01 durable verified webhook & poll delivery inbox."""
+
+    __tablename__ = "webhook_inbox"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_webhook_inbox_workspace_id_id"),
+        UniqueConstraint(
+            "connection_id",
+            "provider_delivery_id",
+            name="uq_webhook_inbox_conn_delivery",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_webhook_inbox_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "connection_id"],
+            ["provider_connections.workspace_id", "provider_connections.id"],
+            name="fk_webhook_inbox_tenant_conn_provider_connections",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_webhook_inbox_tenant_repo_repositories",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "provider IN ('github', 'gitlab')",
+            name="webhook_inbox_provider_valid",
+        ),
+        CheckConstraint(
+            "source IN ('webhook', 'poll', 'reconcile')",
+            name="webhook_inbox_source_valid",
+        ),
+        CheckConstraint(
+            "signature_valid IS TRUE",
+            name="webhook_inbox_signature_verified",
+        ),
+        CheckConstraint(
+            "status IN ("
+            "'received', 'normalized', 'duplicate_semantic', "
+            "'ignored', 'reconcile_pending', 'quarantined'"
+            ")",
+            name="webhook_inbox_status_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_webhook_inbox_ws_status_received",
+            "workspace_id",
+            "status",
+            "received_at",
+            "id",
+        ),
+        Index(
+            "ix_webhook_inbox_conn_received",
+            "workspace_id",
+            "connection_id",
+            "received_at",
+        ),
+        Index(
+            "ix_webhook_inbox_retention",
+            "workspace_id",
+            "retention_until",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    connection_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="webhook")
+    event_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    provider_delivery_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    payload_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    signature_valid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    provider_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    attempt_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    head_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="received")
+    disposition_reason: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    sanitized_headers_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    normalized_summary_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    trigger_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retention_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class ProviderSyncCursorModel(Base):
+    """SRC-04 / NFR-04 resumable per-repository polling checkpoint, rate-limit & gap tracker."""
+
+    __tablename__ = "provider_sync_cursors"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_provider_sync_cursors_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "connection_id",
+            "repository_id",
+            name="uq_provider_sync_cursors_ws_conn_repo",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_provider_sync_cursors_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "connection_id"],
+            ["provider_connections.workspace_id", "provider_connections.id"],
+            name="fk_provider_sync_cursors_tenant_conn_provider_connections",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_provider_sync_cursors_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "provider IN ('github', 'gitlab')",
+            name="provider_sync_cursor_provider_valid",
+        ),
+        CheckConstraint("last_stable_page >= 1", name="provider_sync_cursor_page_pos"),
+        CheckConstraint(
+            "overlap_seconds >= 0 AND overlap_seconds <= 3600",
+            name="provider_sync_cursor_overlap_bounds",
+        ),
+        CheckConstraint(
+            "poll_interval_seconds >= 10 AND poll_interval_seconds <= 3600",
+            name="provider_sync_cursor_interval_bounds",
+        ),
+        CheckConstraint(
+            "consecutive_failures >= 0",
+            name="provider_sync_cursor_failures_nonneg",
+        ),
+        CheckConstraint(
+            "last_status IN ("
+            "'idle', 'ok', 'not_modified', 'rate_limited', 'gap_detected', 'error', 'revoked'"
+            ")",
+            name="provider_sync_cursor_status_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_provider_sync_cursors_due",
+            "workspace_id",
+            "connection_id",
+            "next_poll_after",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    connection_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    etag: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    high_water_mark_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_seen_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    last_stable_page: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    overlap_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=300)
+    poll_interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
+    last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_poll_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rate_limit_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rate_limit_reset_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_status: Mapped[str] = mapped_column(String(32), nullable=False, default="idle")
+    last_error_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_error_detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    history_gap_detected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    history_gap_since: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    history_gap_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    history_gap_detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

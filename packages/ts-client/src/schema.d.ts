@@ -89,6 +89,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hooks/github/{connection}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify raw GitHub HMAC-SHA256 webhook & commit durable inbox receipt (A-22) */
+        post: operations["ingestGitHubWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hooks/gitlab/{connection}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify pinned GitLab webhook & commit durable inbox receipt (A-22) */
+        post: operations["ingestGitLabWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/github/callback": {
         parameters: {
             query?: never;
@@ -518,6 +552,23 @@ export interface paths {
         put?: never;
         /** Run live provider capability & permission probe (A-06) */
         post: operations["probeConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reconcile missed webhook events and resumable polling cursors (A-06, SRC-03, SRC-04) */
+        post: operations["reconcileConnectionRuns"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1132,13 +1183,15 @@ export interface components {
         };
         /**
          * ConnectionDetailResponse
-         * @description A-06 detailed connection view with latest capability snapshot and scoped repositories.
+         * @description A-06 detailed connection view with latest capability snapshot, repos & sync cursors.
          */
         ConnectionDetailResponse: {
             connection: components["schemas"]["Connection"];
             latest_snapshot?: components["schemas"]["CapabilitySnapshot"] | null;
             /** Repositories */
             repositories?: components["schemas"]["Repository"][];
+            /** Sync Cursors */
+            sync_cursors?: components["schemas"]["ProviderSyncCursor"][];
         };
         /**
          * ConnectionPatchRequest
@@ -1176,6 +1229,65 @@ export interface components {
             connection: components["schemas"]["Connection"];
             receipt: components["schemas"]["ActionReceipt"];
             snapshot: components["schemas"]["CapabilitySnapshot"];
+        };
+        /**
+         * ConnectionReconcileRequest
+         * @description A-06 / SRC-04 operator-triggered run polling & missed-event reconciliation request.
+         */
+        ConnectionReconcileRequest: {
+            /**
+             * Acknowledge History Gap
+             * @default false
+             */
+            acknowledge_history_gap: boolean;
+            /**
+             * Force Poll
+             * @default false
+             */
+            force_poll: boolean;
+            /** Repository Ids */
+            repository_ids?: string[] | null;
+        };
+        /**
+         * ConnectionReconcileResponse
+         * @description A-06 / SRC-04 reconciliation summary (complete_recovery=False on history gaps or 429).
+         */
+        ConnectionReconcileResponse: {
+            /**
+             * Complete Recovery
+             * @default true
+             */
+            complete_recovery: boolean;
+            /** Connection Id */
+            connection_id: string;
+            /**
+             * History Gap Count
+             * @default 0
+             */
+            history_gap_count: number;
+            /**
+             * Pending Inbox Reconciled Count
+             * @default 0
+             */
+            pending_inbox_reconciled_count: number;
+            /**
+             * Polled Repository Count
+             * @default 0
+             */
+            polled_repository_count: number;
+            /**
+             * Rate Limited Count
+             * @default 0
+             */
+            rate_limited_count: number;
+            receipt: components["schemas"]["ActionReceipt"];
+            /** Sync Cursors */
+            sync_cursors?: components["schemas"]["ProviderSyncCursor"][];
+            /**
+             * Triggers Created Count
+             * @default 0
+             */
+            triggers_created_count: number;
         };
         /**
          * ConnectionSyncResponse
@@ -1720,6 +1832,11 @@ export interface components {
             /** Repositories */
             repositories?: components["schemas"]["Repository"][];
             snapshot: components["schemas"]["CapabilitySnapshot"];
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
         };
         /**
          * Invite
@@ -2365,6 +2482,88 @@ export interface components {
             connection_id: string;
             /** Status */
             status: string;
+        };
+        /**
+         * ProviderSyncCursor
+         * @description SRC-04 resumable per-repository polling checkpoint, rate-limit backoff & gap status.
+         */
+        ProviderSyncCursor: {
+            /** Connection Id */
+            connection_id: string;
+            /**
+             * Consecutive Failures
+             * @default 0
+             */
+            consecutive_failures: number;
+            /** Created At */
+            created_at: string;
+            /** Etag */
+            etag?: string | null;
+            /** High Water Mark At */
+            high_water_mark_at?: string | null;
+            /** History Gap Detail */
+            history_gap_detail?: string | null;
+            /**
+             * History Gap Detected
+             * @default false
+             */
+            history_gap_detected: boolean;
+            /** History Gap Since */
+            history_gap_since?: string | null;
+            /** History Gap Until */
+            history_gap_until?: string | null;
+            /** Id */
+            id: string;
+            /** Last Error Code */
+            last_error_code?: string | null;
+            /** Last Error Detail */
+            last_error_detail?: string | null;
+            /** Last Polled At */
+            last_polled_at?: string | null;
+            /** Last Seen Run Id */
+            last_seen_run_id?: string | null;
+            /**
+             * Last Stable Page
+             * @default 1
+             */
+            last_stable_page: number;
+            /**
+             * Last Status
+             * @default idle
+             * @enum {string}
+             */
+            last_status: "idle" | "ok" | "not_modified" | "rate_limited" | "gap_detected" | "error" | "revoked";
+            /** Last Success At */
+            last_success_at?: string | null;
+            /** Next Poll After */
+            next_poll_after?: string | null;
+            /**
+             * Overlap Seconds
+             * @default 300
+             */
+            overlap_seconds: number;
+            /**
+             * Poll Interval Seconds
+             * @default 60
+             */
+            poll_interval_seconds: number;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "github" | "gitlab";
+            /** Rate Limit Remaining */
+            rate_limit_remaining?: number | null;
+            /** Rate Limit Reset At */
+            rate_limit_reset_at?: string | null;
+            /** Repository Id */
+            repository_id: string;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
         };
         /**
          * Publication
@@ -3680,6 +3879,19 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
         /**
          * Verification
          * @description S-12 deterministic local/remote verification verdict.
@@ -3721,6 +3933,46 @@ export interface components {
              * @enum {string}
              */
             outcome: "pass" | "fail" | "unknown" | "not_applicable";
+        };
+        /**
+         * WebhookIngressReceipt
+         * @description A-22 durable webhook receipt returned strictly after PostgreSQL fsync commit.
+         */
+        WebhookIngressReceipt: {
+            /** Connection Id */
+            connection_id: string;
+            /** Correlation Id */
+            correlation_id: string;
+            /** Delivery Id */
+            delivery_id: string;
+            /**
+             * Disposition
+             * @enum {string}
+             */
+            disposition: "accepted_trigger" | "duplicate_delivery" | "duplicate_semantic" | "reconcile_scheduled" | "ignored_non_failure" | "ignored_bot_loop" | "ignored_untracked_repo" | "ignored_repository_paused" | "ignored_stale_replay" | "installation_revoked";
+            /**
+             * Duplicate
+             * @default false
+             */
+            duplicate: boolean;
+            /** Inbox Id */
+            inbox_id: string;
+            /** Job Id */
+            job_id?: string | null;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "github" | "gitlab";
+            /** Received At */
+            received_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "received" | "normalized" | "duplicate_semantic" | "ignored" | "reconcile_pending" | "quarantined";
+            /** Trigger Id */
+            trigger_id?: string | null;
         };
         /**
          * Worker
@@ -4468,6 +4720,226 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    ingestGitHubWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookIngressReceipt"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookIngressReceipt"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    ingestGitLabWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookIngressReceipt"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookIngressReceipt"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
             /** @description Too Many Requests */
@@ -8573,6 +9045,135 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConnectionProbeResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    reconcileConnectionRuns: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConnectionReconcileRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionReconcileResponse"];
                 };
             };
             /** @description Bad Request */

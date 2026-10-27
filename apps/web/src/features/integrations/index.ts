@@ -1,3 +1,8 @@
+export {
+  ConnectionPollingReconcileCard,
+  type ConnectionPollingReconcileCardProps,
+  type ReconcileFeedbackPayload,
+} from "./ConnectionPollingReconcileCard";
 export { GitHubCallbackRedirectRoute } from "./GitHubCallbackRedirectRoute";
 export {
   GitHubIntegrationPanel,

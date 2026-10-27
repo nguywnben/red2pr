@@ -56,8 +56,11 @@ from red2pr_control.integrations.base import (
     ProviderError,
     ProviderJobRecord,
     ProviderPermissionSummary,
+    ProviderPollItem,
+    ProviderPollRunsResult,
     ProviderRemoteCheckRecord,
     ProviderRunRecord,
+    parse_retry_after_seconds,
 )
 
 GITLAB_API_VERSION = "v4"
@@ -491,12 +494,16 @@ class GitLabAdapter:
         if 200 <= status_code < 300:
             return
 
-        retry_after: int | None = None
+        ref_now = datetime.now(tz=UTC)
         raw_retry = response.headers.get("retry-after") or response.headers.get(
             "ratelimit-resettime"
         )
-        if raw_retry and raw_retry.strip().isdigit():
-            retry_after = min(int(raw_retry.strip()), 3600)
+        retry_after = parse_retry_after_seconds(raw_retry, now=ref_now)
+        if retry_after is None:
+            raw_reset = response.headers.get("ratelimit-reset")
+            if raw_reset and raw_reset.strip().isdigit():
+                delta = int(raw_reset.strip()) - int(ref_now.timestamp())
+                retry_after = max(1, min(delta, 3600))
 
         body_msg = ""
         try:
@@ -1652,6 +1659,142 @@ class GitLabAdapter:
                     )
                 )
         return (tuple(runs), newest_ts)
+
+    async def poll_runs(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        since_cursor: str | None = None,
+        etag: str | None = None,
+        page: int = 1,
+        per_page: int = 50,
+        now: datetime | None = None,
+    ) -> ProviderPollRunsResult:
+        del now
+        token = await self._resolve_token(session, ctx)
+        encoded_proj = self._encode_project_ref(repo_full_name)
+        bounded_page = max(1, page)
+        bounded_per_page = max(1, min(per_page, 100))
+        q_parts = [
+            f"per_page={bounded_per_page}",
+            f"page={bounded_page}",
+            "order_by=updated_at",
+            "sort=desc",
+        ]
+        if since_cursor:
+            q_parts.append(f"updated_after={quote(since_cursor, safe='')}")
+        query = f"?{'&'.join(q_parts)}"
+
+        extra_hdrs: dict[str, str] = {}
+        if etag and bounded_page == 1:
+            extra_hdrs["If-None-Match"] = etag
+
+        resp = await self._send_request(
+            "GET",
+            self._build_api_url(
+                ctx.base_url,
+                f"/projects/{encoded_proj}/pipelines{query}",
+            ),
+            headers=self._default_headers(access_token=token, extra=extra_hdrs),
+        )
+
+        rl_remaining: int | None = None
+        raw_rem = resp.headers.get("ratelimit-remaining")
+        if raw_rem and raw_rem.strip().isdigit():
+            rl_remaining = int(raw_rem.strip())
+
+        rl_reset: datetime | None = None
+        raw_reset = resp.headers.get("ratelimit-reset")
+        if raw_reset and raw_reset.strip().isdigit():
+            rl_reset = datetime.fromtimestamp(int(raw_reset.strip()), tz=UTC)
+
+        resp_etag = resp.headers.get("etag")
+        clean_etag = resp_etag.strip()[:500] if resp_etag and resp_etag.strip() else None
+
+        if resp.status_code == 304:
+            return ProviderPollRunsResult(
+                items=(),
+                not_modified=True,
+                etag=clean_etag or etag,
+                rate_limit_remaining=rl_remaining,
+                rate_limit_reset_at=rl_reset,
+            )
+
+        if resp.status_code == 410:
+            return ProviderPollRunsResult(
+                items=(),
+                retention_expired=True,
+                etag=clean_etag,
+                rate_limit_remaining=rl_remaining,
+                rate_limit_reset_at=rl_reset,
+            )
+
+        self._raise_for_gitlab_status(resp)
+        raw_items = resp.json()
+        items: list[ProviderPollItem] = []
+        oldest_dt: datetime | None = None
+        newest_dt: datetime | None = None
+        if isinstance(raw_items, list):
+            for item in raw_items:
+                if not isinstance(item, Mapping):
+                    continue
+                obs_dt = _parse_iso_dt(item.get("updated_at")) or _parse_iso_dt(
+                    item.get("created_at")
+                )
+                if obs_dt is not None:
+                    if oldest_dt is None or obs_dt < oldest_dt:
+                        oldest_dt = obs_dt
+                    if newest_dt is None or obs_dt > newest_dt:
+                        newest_dt = obs_dt
+
+                raw_status = str(item.get("status") or "unknown")
+                norm_status, conclusion, jobs_complete = _map_gitlab_pipeline_status(raw_status)
+                pipe_id = str(item.get("id") or "")
+                proj_id = (
+                    str(item.get("project_id")) if item.get("project_id") is not None else None
+                )
+                items.append(
+                    ProviderPollItem(
+                        run=ProviderRunRecord(
+                            external_run_id=pipe_id,
+                            attempt_key=f"pipeline:{pipe_id}",
+                            head_sha=str(item.get("sha") or ""),
+                            ref=str(item.get("ref") or "HEAD")[:120],
+                            event_type=str(item.get("source") or "push")[:120],
+                            status=norm_status,
+                            conclusion=conclusion,
+                            jobs_complete=jobs_complete,
+                            raw_vendor_status=raw_status[:120],
+                            head_repo_id=proj_id,
+                            base_repo_id=proj_id,
+                            head_repo_fork=False,
+                        ),
+                        observed_at=obs_dt,
+                    )
+                )
+
+        next_page_hdr = (resp.headers.get("x-next-page") or "").strip()
+        has_next = next_page_hdr.isdigit() or (
+            isinstance(raw_items, list) and len(raw_items) >= bounded_per_page
+        )
+        next_page = (
+            int(next_page_hdr)
+            if next_page_hdr.isdigit()
+            else ((bounded_page + 1) if has_next else None)
+        )
+        return ProviderPollRunsResult(
+            items=tuple(items),
+            not_modified=False,
+            etag=clean_etag,
+            rate_limit_remaining=rl_remaining,
+            rate_limit_reset_at=rl_reset,
+            has_next_page=has_next,
+            next_page=next_page,
+            oldest_observed_at=oldest_dt,
+            newest_observed_at=newest_dt,
+        )
 
     async def revoke_connection(
         self,

@@ -648,13 +648,54 @@ class SecretBrokerProviderVault:
     ) -> bool:
         from py_contracts.crypto import verify_hmac_sha256_hex
 
-        secret_bytes = await self._broker.resolve_secret_bytes(
-            session,
-            secret_ref=secret_ref,
-            capability=INTEGRATIONS_READ_SECRET_CAPABILITY,
-            workspace_id=workspace_id,
+        row = await session.scalar(
+            select(SecretEntryModel).where(
+                SecretEntryModel.secret_ref == secret_ref,
+                SecretEntryModel.workspace_id == workspace_id,
+            )
         )
-        return verify_hmac_sha256_hex(secret_bytes, raw_body, signature_header)
+        if row is None or row.revoked_at is not None or row.purpose != "webhook_auth":
+            verify_hmac_sha256_hex(
+                b"__red2pr_dummy_webhook_hmac_secret__",
+                raw_body,
+                signature_header,
+            )
+            return False
+
+        aad_ctx = _build_aad_context(
+            secret_ref=row.secret_ref,
+            workspace_id=row.workspace_id,
+            purpose=row.purpose,
+        )
+        enrolled_secrets: list[bytes] = []
+        active_env = EnvelopeCiphertext.model_validate(row.envelope_json)
+        active_plain = decrypt_envelope(
+            active_env,
+            key_ring=self._broker._key_ring,
+            aad_context=aad_ctx,
+        )
+        self._broker._register_canary_if_textual(active_plain)
+        enrolled_secrets.append(active_plain)
+
+        if row.previous_envelope_json is not None:
+            try:
+                prev_env = EnvelopeCiphertext.model_validate(row.previous_envelope_json)
+                prev_plain = decrypt_envelope(
+                    prev_env,
+                    key_ring=self._broker._key_ring,
+                    aad_context=aad_ctx,
+                )
+            except (ValueError, KeyError):
+                prev_plain = b""
+            if prev_plain:
+                self._broker._register_canary_if_textual(prev_plain)
+                enrolled_secrets.append(prev_plain)
+
+        matched = False
+        for secret_bytes in enrolled_secrets:
+            sig_ok = verify_hmac_sha256_hex(secret_bytes, raw_body, signature_header)
+            matched = sig_ok or matched
+        return matched
 
     async def rotate_provider_credential(
         self,

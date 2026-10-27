@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Literal, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -196,6 +197,54 @@ class ForkPullRequestTrustVerdict:
     untrusted_fork: bool
     allow_auto_repair: bool
     reason_code: str
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderPollItem:
+    """Single run/pipeline observation returned during conditional polling (`SRC-04`)."""
+
+    run: ProviderRunRecord
+    observed_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderPollRunsResult:
+    """Conditional polling result with `ETag`, rate-limit metadata & pagination (`SRC-04`)."""
+
+    items: tuple[ProviderPollItem, ...]
+    not_modified: bool = False
+    etag: str | None = None
+    rate_limit_remaining: int | None = None
+    rate_limit_reset_at: datetime | None = None
+    has_next_page: bool = False
+    next_page: int | None = None
+    oldest_observed_at: datetime | None = None
+    newest_observed_at: datetime | None = None
+    retention_expired: bool = False
+
+
+def parse_retry_after_seconds(
+    raw_value: str | None,
+    *,
+    now: datetime,
+    max_seconds: int = 3600,
+) -> int | None:
+    """Parse HTTP `Retry-After` delta-seconds or RFC 7231 HTTP-date into bounded seconds."""
+    if raw_value is None:
+        return None
+    cleaned = raw_value.strip()
+    if not cleaned:
+        return None
+    if cleaned.isdigit():
+        return max(1, min(int(cleaned), max_seconds))
+    try:
+        dt = parsedate_to_datetime(cleaned)
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    delta = int((dt.astimezone(UTC) - now.astimezone(UTC)).total_seconds())
+    return max(1, min(delta, max_seconds))
 
 
 class ProviderCredentialVaultProtocol(Protocol):
@@ -464,6 +513,7 @@ class SourceProviderAdapter(Protocol):
         *,
         headers: Mapping[str, str],
         raw_body: bytes,
+        now: datetime | None = None,
     ) -> bool: ...
 
     async def sync_cursor(
@@ -475,6 +525,19 @@ class SourceProviderAdapter(Protocol):
         since_cursor: str | None = None,
         now: datetime | None = None,
     ) -> tuple[Sequence[ProviderRunRecord], str | None]: ...
+
+    async def poll_runs(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        since_cursor: str | None = None,
+        etag: str | None = None,
+        page: int = 1,
+        per_page: int = 50,
+        now: datetime | None = None,
+    ) -> ProviderPollRunsResult: ...
 
     async def revoke_connection(
         self,

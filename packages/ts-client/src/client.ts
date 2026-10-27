@@ -68,6 +68,13 @@ export type RepositoryPolicy = SchemaOf<"RepositoryPolicy">;
 export type ConnectionDetailResponse = SchemaOf<"ConnectionDetailResponse">;
 export type ConnectionProbeResponse = SchemaOf<"ConnectionProbeResponse">;
 export type ConnectionSyncResponse = SchemaOf<"ConnectionSyncResponse">;
+export type WebhookIngressReceipt = SchemaOf<"WebhookIngressReceipt">;
+export type WebhookInboxStatus = WebhookIngressReceipt["status"];
+export type WebhookIngressDisposition = WebhookIngressReceipt["disposition"];
+export type ProviderSyncCursor = SchemaOf<"ProviderSyncCursor">;
+export type SyncCursorStatus = NonNullable<ProviderSyncCursor["last_status"]>;
+export type ConnectionReconcileRequest = SchemaOf<"ConnectionReconcileRequest">;
+export type ConnectionReconcileResponse = SchemaOf<"ConnectionReconcileResponse">;
 export type GitHubInstallStateCreateRequest = SchemaOf<"GitHubInstallStateCreateRequest">;
 export type GitHubInstallStateResponse = SchemaOf<"GitHubInstallStateResponse">;
 export type GitHubCallbackResponse = SchemaOf<"GitHubCallbackResponse">;
@@ -412,6 +419,12 @@ export interface Red2PrClient {
     connectionId: string,
     options: IdempotentMutationOptions,
   ): Promise<ApiEnvelope<ConnectionSyncResponse>>;
+  reconcileConnectionRuns(
+    ws: string,
+    connectionId: string,
+    body: Partial<ConnectionReconcileRequest> | null,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<ConnectionReconcileResponse>>;
   mintGitHubInstallState(
     ws: string,
     connectionId: string,
@@ -1154,6 +1167,28 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           params: {
             path: { ws, connection_id: connectionId },
             header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async reconcileConnectionRuns(ws, connectionId, body, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/workspaces/{ws}/integrations/{connection_id}/reconcile",
+        {
+          params: {
+            path: { ws, connection_id: connectionId },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          body: {
+            repository_ids: body?.repository_ids ?? null,
+            acknowledge_history_gap: body?.acknowledge_history_gap ?? false,
+            force_poll: body?.force_poll ?? false,
           },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions.signal,

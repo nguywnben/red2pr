@@ -55,10 +55,12 @@ from py_contracts.integrations import (
     GitHubInstallStateCreateRequest,
     GitHubInstallStateResponse,
     ProviderKind,
+    ProviderSyncCursor,
     Repository,
     RepositoryMode,
     RepositoryVisibility,
     SecretPresence,
+    SyncCursorStatus,
     WorkflowHazardFinding,
     WorkflowHazardStatus,
 )
@@ -80,11 +82,13 @@ from red2pr_control.core.errors import (
     NotFoundError,
     UnprocessableEntityError,
 )
+from red2pr_control.core.logging import get_structured_logger
 from red2pr_control.core.redaction import DEFAULT_REDACTOR, Redactor
 from red2pr_control.db.base import (
     CapabilitySnapshotModel,
     ProviderConnectionModel,
     ProviderInstallStateModel,
+    ProviderSyncCursorModel,
     RepositoryModel,
     TaskJobModel,
     WorkspaceModel,
@@ -115,8 +119,11 @@ from red2pr_control.integrations.base import (
     ProviderError,
     ProviderJobRecord,
     ProviderPermissionSummary,
+    ProviderPollItem,
+    ProviderPollRunsResult,
     ProviderRemoteCheckRecord,
     ProviderRunRecord,
+    parse_retry_after_seconds,
 )
 from red2pr_control.integrations.gitlab_client import GITLAB_API_VERSION, GitLabAdapter
 from red2pr_control.operations.setup_wizard import (
@@ -152,6 +159,7 @@ EXCESS_DISCOURAGED_PERMISSIONS: frozenset[str] = frozenset(
 
 _PERMISSION_RANK: dict[str, int] = {"none": 0, "read": 1, "write": 2, "admin": 3}
 _UUID_ADAPTER: TypeAdapter[str] = TypeAdapter(InternalId)
+_GH_LOGGER = get_structured_logger("red2pr_control.integrations.github")
 
 
 def _permission_satisfies(granted: str | None, required: str) -> bool:
@@ -533,10 +541,16 @@ class GitHubAppAdapter:
         if 200 <= status_code < 300:
             return
 
-        retry_after: int | None = None
-        raw_retry = response.headers.get("retry-after")
-        if raw_retry and raw_retry.strip().isdigit():
-            retry_after = int(raw_retry.strip())
+        ref_now = datetime.now(tz=UTC)
+        retry_after = parse_retry_after_seconds(
+            response.headers.get("retry-after"),
+            now=ref_now,
+        )
+        if retry_after is None:
+            raw_reset = response.headers.get("x-ratelimit-reset")
+            if raw_reset and raw_reset.strip().isdigit():
+                delta = int(raw_reset.strip()) - int(ref_now.timestamp())
+                retry_after = max(1, min(delta, 3600))
 
         body_msg = ""
         try:
@@ -1700,8 +1714,23 @@ class GitHubAppAdapter:
         *,
         headers: Mapping[str, str],
         raw_body: bytes,
+        now: datetime | None = None,
     ) -> bool:
+        del now
         if not ctx.webhook_secret_ref:
+            _GH_LOGGER.warning(
+                "Rejected GitHub webhook: no webhook secret configured",
+                extra={
+                    "event": "security.github_webhook.rejected",
+                    "error_code": "webhook_secret_unconfigured",
+                    "reason_code": "webhook_secret_unconfigured",
+                    "attributes": {
+                        "workspace_id": ctx.workspace_id,
+                        "connection_id": ctx.connection_id,
+                        "reason_code": "webhook_secret_unconfigured",
+                    },
+                },
+            )
             return False
         sig_header: str | None = None
         for k, v in headers.items():
@@ -1709,13 +1738,193 @@ class GitHubAppAdapter:
                 sig_header = v
                 break
         if not sig_header or not sig_header.startswith("sha256="):
+            _GH_LOGGER.warning(
+                "Rejected GitHub webhook: missing or malformed X-Hub-Signature-256 header",
+                extra={
+                    "event": "security.github_webhook.rejected",
+                    "error_code": "missing_webhook_signature",
+                    "reason_code": "missing_webhook_signature",
+                    "attributes": {
+                        "workspace_id": ctx.workspace_id,
+                        "connection_id": ctx.connection_id,
+                        "reason_code": "missing_webhook_signature",
+                    },
+                },
+            )
             return False
-        return await self._vault.verify_webhook_hmac(
+        verified = await self._vault.verify_webhook_hmac(
             session,
             workspace_id=ctx.workspace_id,
             secret_ref=ctx.webhook_secret_ref,
             raw_body=raw_body,
             signature_header=sig_header,
+        )
+        if not verified:
+            _GH_LOGGER.warning(
+                "Rejected GitHub webhook: invalid HMAC-SHA256 signature",
+                extra={
+                    "event": "security.github_webhook.rejected",
+                    "error_code": "invalid_webhook_signature",
+                    "reason_code": "invalid_webhook_signature",
+                    "attributes": {
+                        "workspace_id": ctx.workspace_id,
+                        "connection_id": ctx.connection_id,
+                        "reason_code": "invalid_webhook_signature",
+                    },
+                },
+            )
+        return verified
+
+    async def poll_runs(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        since_cursor: str | None = None,
+        etag: str | None = None,
+        page: int = 1,
+        per_page: int = 50,
+        now: datetime | None = None,
+    ) -> ProviderPollRunsResult:
+        ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+        owner, repo = _split_repo_full_name(repo_full_name)
+        token = await self._get_jit_installation_token(
+            session,
+            ctx,
+            permissions={"metadata": "read", "actions": "read"},
+            repositories=[repo],
+            now=ref_now,
+        )
+        bounded_page = max(1, page)
+        bounded_per_page = max(1, min(per_page, 100))
+        q_parts = [f"per_page={bounded_per_page}", f"page={bounded_page}"]
+        if since_cursor:
+            q_parts.append(f"created=%3E%3D{quote(since_cursor, safe='')}")
+        query = f"?{'&'.join(q_parts)}"
+
+        req_headers = self._default_headers(bearer_token=token)
+        if etag and bounded_page == 1:
+            req_headers["If-None-Match"] = etag
+
+        resp = await self._send_request(
+            "GET",
+            self._build_url(
+                ctx.base_url,
+                f"/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/actions/runs{query}",
+            ),
+            headers=req_headers,
+        )
+
+        rl_remaining: int | None = None
+        raw_rem = resp.headers.get("x-ratelimit-remaining")
+        if raw_rem and raw_rem.strip().isdigit():
+            rl_remaining = int(raw_rem.strip())
+
+        rl_reset: datetime | None = None
+        raw_reset = resp.headers.get("x-ratelimit-reset")
+        if raw_reset and raw_reset.strip().isdigit():
+            rl_reset = datetime.fromtimestamp(int(raw_reset.strip()), tz=UTC)
+
+        resp_etag = resp.headers.get("etag")
+        clean_etag = resp_etag.strip()[:500] if resp_etag and resp_etag.strip() else None
+
+        if resp.status_code == 304:
+            return ProviderPollRunsResult(
+                items=(),
+                not_modified=True,
+                etag=clean_etag or etag,
+                rate_limit_remaining=rl_remaining,
+                rate_limit_reset_at=rl_reset,
+            )
+
+        if resp.status_code == 410:
+            return ProviderPollRunsResult(
+                items=(),
+                retention_expired=True,
+                etag=clean_etag,
+                rate_limit_remaining=rl_remaining,
+                rate_limit_reset_at=rl_reset,
+            )
+
+        self._raise_for_github_status(resp)
+        payload = resp.json()
+        raw_runs = payload.get("workflow_runs", []) if isinstance(payload, Mapping) else []
+        items: list[ProviderPollItem] = []
+        oldest_dt: datetime | None = None
+        newest_dt: datetime | None = None
+        if isinstance(raw_runs, list):
+            for item in raw_runs:
+                if not isinstance(item, Mapping):
+                    continue
+                obs_dt = _parse_iso_dt(item.get("updated_at")) or _parse_iso_dt(
+                    item.get("created_at")
+                )
+                if obs_dt is not None:
+                    if oldest_dt is None or obs_dt < oldest_dt:
+                        oldest_dt = obs_dt
+                    if newest_dt is None or obs_dt > newest_dt:
+                        newest_dt = obs_dt
+
+                head_repo = item.get("head_repository")
+                base_repo = item.get("repository")
+                head_repo_id = (
+                    str(head_repo.get("id"))
+                    if isinstance(head_repo, Mapping) and head_repo.get("id") is not None
+                    else None
+                )
+                base_repo_id = (
+                    str(base_repo.get("id"))
+                    if isinstance(base_repo, Mapping) and base_repo.get("id") is not None
+                    else None
+                )
+                head_fork = bool(head_repo.get("fork")) if isinstance(head_repo, Mapping) else False
+
+                run_attempt = str(item.get("run_attempt") or "1")
+                raw_status = str(item.get("status") or "unknown")
+                run_id_str = str(item.get("id", ""))
+                items.append(
+                    ProviderPollItem(
+                        run=ProviderRunRecord(
+                            external_run_id=run_id_str,
+                            attempt_key=f"{run_id_str}:{run_attempt}",
+                            head_sha=str(item.get("head_sha") or ""),
+                            ref=str(item.get("head_branch") or "HEAD")[:120],
+                            event_type=str(item.get("event") or "unknown")[:120],
+                            status=(
+                                raw_status
+                                if raw_status in {"queued", "in_progress", "completed"}
+                                else "unknown"
+                            ),
+                            conclusion=(
+                                str(item["conclusion"])
+                                if item.get("conclusion") is not None
+                                else None
+                            ),
+                            jobs_complete=raw_status == "completed",
+                            raw_vendor_status=raw_status[:120],
+                            head_repo_id=head_repo_id,
+                            base_repo_id=base_repo_id,
+                            head_repo_fork=head_fork,
+                        ),
+                        observed_at=obs_dt,
+                    )
+                )
+
+        link_hdr = resp.headers.get("link") or ""
+        has_next = 'rel="next"' in link_hdr or (
+            isinstance(raw_runs, list) and len(raw_runs) >= bounded_per_page
+        )
+        return ProviderPollRunsResult(
+            items=tuple(items),
+            not_modified=False,
+            etag=clean_etag,
+            rate_limit_remaining=rl_remaining,
+            rate_limit_reset_at=rl_reset,
+            has_next_page=has_next,
+            next_page=(bounded_page + 1) if has_next else None,
+            oldest_observed_at=oldest_dt,
+            newest_observed_at=newest_dt,
         )
 
     async def sync_cursor(
@@ -1872,6 +2081,38 @@ def _to_snapshot_dto(row: CapabilitySnapshotModel) -> CapabilitySnapshot:
         api_version=row.api_version,
         checked_at=row.checked_at,
         detail=row.detail,
+    )
+
+
+def _to_sync_cursor_dto(row: ProviderSyncCursorModel) -> ProviderSyncCursor:
+    return ProviderSyncCursor(
+        id=row.id,
+        workspace_id=row.workspace_id,
+        version=row.version,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        connection_id=row.connection_id,
+        repository_id=row.repository_id,
+        provider=cast(ProviderKind, row.provider),
+        etag=row.etag,
+        high_water_mark_at=row.high_water_mark_at,
+        last_seen_run_id=row.last_seen_run_id,
+        last_stable_page=row.last_stable_page,
+        overlap_seconds=row.overlap_seconds,
+        poll_interval_seconds=row.poll_interval_seconds,
+        last_polled_at=row.last_polled_at,
+        last_success_at=row.last_success_at,
+        next_poll_after=row.next_poll_after,
+        rate_limit_remaining=row.rate_limit_remaining,
+        rate_limit_reset_at=row.rate_limit_reset_at,
+        consecutive_failures=row.consecutive_failures,
+        last_status=cast(SyncCursorStatus, row.last_status),
+        last_error_code=row.last_error_code,
+        last_error_detail=row.last_error_detail,
+        history_gap_detected=row.history_gap_detected,
+        history_gap_since=row.history_gap_since,
+        history_gap_until=row.history_gap_until,
+        history_gap_detail=row.history_gap_detail,
     )
 
 
@@ -2111,6 +2352,21 @@ class GitHubIntegrationService:
                     updated_at=now,
                 )
             )
+            await db.execute(
+                update(ProviderSyncCursorModel)
+                .where(
+                    ProviderSyncCursorModel.workspace_id == ws_id,
+                    ProviderSyncCursorModel.connection_id == conn_row.id,
+                )
+                .values(
+                    last_status="revoked",
+                    next_poll_after=None,
+                    last_error_code="connection_revoked",
+                    last_error_detail=self._redactor.redact_text(detail)[:950],
+                    version=ProviderSyncCursorModel.version + 1,
+                    updated_at=now,
+                )
+            )
 
         was_already_revoked = conn_row.status == "revoked"
         conn_row.status = "revoked"
@@ -2290,10 +2546,28 @@ class GitHubIntegrationService:
             visible_repos = [
                 _to_repository_dto(r) for r in repo_rows if ctx.can_read_repository(r.id)
             ]
+            cursor_rows = list(
+                (
+                    await db.scalars(
+                        select(ProviderSyncCursorModel)
+                        .where(
+                            ProviderSyncCursorModel.workspace_id == ws_id,
+                            ProviderSyncCursorModel.connection_id == row.id,
+                        )
+                        .order_by(ProviderSyncCursorModel.repository_id.asc())
+                    )
+                ).all()
+            )
+            visible_cursors = [
+                _to_sync_cursor_dto(c)
+                for c in cursor_rows
+                if ctx.can_read_repository(c.repository_id)
+            ]
             return ConnectionDetailResponse(
                 connection=conn_dto,
                 latest_snapshot=_to_snapshot_dto(snap_row) if snap_row is not None else None,
                 repositories=visible_repos,
+                sync_cursors=visible_cursors,
             )
 
     async def create_connection(

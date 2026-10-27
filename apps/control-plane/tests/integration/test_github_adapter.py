@@ -717,7 +717,13 @@ async def test_u09_migration_0006_reversibility_rls_and_hazard_check_constraints
                     )
                 )
             ).fetchall()
-            assert len(rows) == 32
+            assert len(rows) >= 32
+            assert {
+                "provider_connections",
+                "capability_snapshots",
+                "repositories",
+                "provider_install_states",
+            }.issubset({relname for relname, _, _ in rows})
             for relname, has_rls, force_rls in rows:
                 assert has_rls is True, f"{relname} missing ENABLE ROW LEVEL SECURITY"
                 assert force_rls is True, f"{relname} missing FORCE ROW LEVEL SECURITY"
