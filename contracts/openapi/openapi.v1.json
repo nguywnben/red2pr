@@ -1085,6 +1085,8 @@
           "auth_mode": {
             "enum": [
               "github_app",
+              "gitlab_signed_v19",
+              "gitlab_legacy_token",
               "signed_webhook",
               "secret_token"
             ],
@@ -1353,6 +1355,19 @@
         "additionalProperties": false,
         "description": "A-06 partial connection update & credential rotation payload (`S-02` version-checked).",
         "properties": {
+          "access_token": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 12,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Token"
+          },
           "app_id": {
             "anyOf": [
               {
@@ -1363,6 +1378,24 @@
               }
             ],
             "title": "App Id"
+          },
+          "auth_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "github_app",
+                  "gitlab_signed_v19",
+                  "gitlab_legacy_token",
+                  "signed_webhook",
+                  "secret_token"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Mode"
           },
           "base_url": {
             "anyOf": [
@@ -1535,6 +1568,19 @@
         "additionalProperties": false,
         "description": "S-08 / A-06 write input accepting opaque secret_ref or write-only credential material.",
         "properties": {
+          "access_token": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 12,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Token"
+          },
           "app_id": {
             "anyOf": [
               {
@@ -1549,6 +1595,8 @@
           "auth_mode": {
             "enum": [
               "github_app",
+              "gitlab_signed_v19",
+              "gitlab_legacy_token",
               "signed_webhook",
               "secret_token"
             ],
@@ -7079,6 +7127,8 @@
               {
                 "enum": [
                   "github_app",
+                  "gitlab_signed_v19",
+                  "gitlab_legacy_token",
                   "signed_webhook",
                   "secret_token"
                 ],

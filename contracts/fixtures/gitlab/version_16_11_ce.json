@@ -1,0 +1,8 @@
+{
+  "version": "16.11.5",
+  "revision": "33cd481a92b",
+  "kas": {
+    "enabled": false
+  },
+  "enterprise": false
+}

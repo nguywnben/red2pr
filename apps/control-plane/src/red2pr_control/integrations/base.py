@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from py_contracts.integrations import (
     CapabilityAvailability,
+    ConnectionAuthMode,
     ProviderKind,
     RepositoryVisibility,
     WorkflowHazardFinding,
@@ -69,6 +70,8 @@ class ProviderConnectionContext:
     installation_id: str | None
     credential_secret_ref: str | None
     webhook_secret_ref: str | None
+    auth_mode: ConnectionAuthMode = "github_app"
+    vendor_version: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +87,7 @@ class ProviderPermissionSummary:
     excess_unused_permissions: tuple[str, ...]
     capabilities: dict[str, CapabilityAvailability]
     suspended: bool = False
+    unsupported_auth_mode: bool = False
     detail: str | None = None
 
 
@@ -245,6 +249,38 @@ class ProviderCredentialVaultProtocol(Protocol):
         secret_ref: str,
         raw_body: bytes,
         signature_header: str,
+    ) -> bool: ...
+
+    async def rotate_provider_credential(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+        new_plaintext: bytes,
+        purpose: Literal["provider_read", "webhook_auth"],
+        retain_previous_for_overlap: bool = False,
+        now: datetime | None = None,
+    ) -> tuple[str, int]: ...
+
+    async def resolve_provider_access_token(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+    ) -> str: ...
+
+    async def verify_gitlab_webhook_auth(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+        pinned_auth_mode: ConnectionAuthMode,
+        headers: Mapping[str, str],
+        raw_body: bytes,
+        now: datetime,
     ) -> bool: ...
 
     def get_cached_jit_installation_token(

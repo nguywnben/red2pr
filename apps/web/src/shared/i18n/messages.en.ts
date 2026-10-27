@@ -400,11 +400,19 @@ export const EN_MESSAGES = {
 
   "integrations.pageTitle": "Source & Provider Integrations",
   "integrations.pageSubtitle":
-    "Least-privilege GitHub App installation binding, JIT scoped tokens, capability snapshots, and .github/workflows hazard scanning.",
+    "Least-privilege GitHub App & GitLab Cloud/Self-Managed adapters, pinned webhook authentication, capability snapshots, and CI workflow hazard scanning.",
   "integrations.tabGitHub": "GitHub App (SRC-01)",
   "integrations.tabGitLab": "GitLab (SRC-02)",
   "integrations.connectionsTableLabel": "Configured GitHub App connections",
+  "integrations.gitlabConnectionsTableLabel": "Configured GitLab connections",
   "integrations.reposTableLabel": "Discovered repositories and workflow hazard posture",
+  "integrations.gitlabProjectsTableLabel": "Discovered GitLab projects and .gitlab-ci.yml hazard posture",
+  "integrations.gitlabSectionTitle": "GitLab Cloud & Self-Managed Connections",
+  "integrations.gitlabSectionSubtitle":
+    "Connect GitLab.com or owner-registered Self-Managed GitLab instances over ADR-037 DNS-pinned HTTPS with immutable webhook authentication modes.",
+  "integrations.gitlabAddConnection": "Add GitLab connection",
+  "integrations.gitlabPinnedSignedLabel": "Pinned: Signed v19 HMAC (Standard Webhooks)",
+  "integrations.gitlabPinnedLegacyLabel": "Pinned: Legacy X-Gitlab-Token (TLS)",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

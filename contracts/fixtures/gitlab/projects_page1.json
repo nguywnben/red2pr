@@ -1,0 +1,40 @@
+[
+  {
+    "id": 440101,
+    "name": "billing-engine",
+    "path_with_namespace": "acme-group/platform/billing-engine",
+    "default_branch": "main",
+    "visibility": "private",
+    "archived": false,
+    "empty_repo": false,
+    "jobs_enabled": true,
+    "merge_requests_enabled": true,
+    "ci_config_path": ".gitlab-ci.yml",
+    "permissions": {
+      "project_access": {
+        "access_level": 40,
+        "notification_level": 3
+      },
+      "group_access": null
+    }
+  },
+  {
+    "id": 440102,
+    "name": "deploy-infra",
+    "path_with_namespace": "acme-group/platform/deploy-infra",
+    "default_branch": "main",
+    "visibility": "internal",
+    "archived": false,
+    "empty_repo": false,
+    "jobs_enabled": true,
+    "merge_requests_enabled": true,
+    "ci_config_path": ".gitlab-ci.yml",
+    "permissions": {
+      "project_access": {
+        "access_level": 30,
+        "notification_level": 3
+      },
+      "group_access": null
+    }
+  }
+]

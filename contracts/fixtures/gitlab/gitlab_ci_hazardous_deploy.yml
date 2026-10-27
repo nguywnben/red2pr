@@ -1,0 +1,18 @@
+stages:
+  - test
+  - deploy
+
+unit-test:
+  stage: test
+  script:
+    - pytest -q
+
+auto-prod-deploy:
+  stage: deploy
+  environment:
+    name: production
+    url: https://prod.acme.example
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - ./scripts/deploy_prod.sh

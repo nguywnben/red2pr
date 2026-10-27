@@ -1,0 +1,25 @@
+[
+  {
+    "id": 440103,
+    "name": "sdk-docs",
+    "path_with_namespace": "acme-group/platform/sdk-docs",
+    "default_branch": "trunk",
+    "visibility": "public",
+    "archived": false,
+    "empty_repo": false,
+    "jobs_enabled": true,
+    "merge_requests_enabled": true,
+    "ci_config_path": ".gitlab-ci.yml",
+    "forked_from_project": {
+      "id": 10099,
+      "path_with_namespace": "upstream/sdk-docs"
+    },
+    "permissions": {
+      "project_access": null,
+      "group_access": {
+        "access_level": 40,
+        "notification_level": 3
+      }
+    }
+  }
+]

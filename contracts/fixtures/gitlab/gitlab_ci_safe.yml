@@ -1,0 +1,20 @@
+stages:
+  - lint
+  - test
+
+ruff-mypy:
+  stage: lint
+  image: python:3.12-slim
+  script:
+    - ruff check .
+    - mypy --strict src/
+
+pytest-suite:
+  stage: test
+  image: python:3.12-slim
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.12"]
+        DB_ENGINE: ["postgres16"]
+  script:
+    - pytest -q

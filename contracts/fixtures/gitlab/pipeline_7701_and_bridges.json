@@ -1,0 +1,31 @@
+{
+  "pipeline": {
+    "id": 7701,
+    "iid": 142,
+    "project_id": 440101,
+    "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ref": "main",
+    "status": "failed",
+    "source": "push",
+    "created_at": "2026-10-27T05:50:00.000Z",
+    "updated_at": "2026-10-27T05:58:00.000Z",
+    "web_url": "https://gitlab.com/acme-group/platform/billing-engine/-/pipelines/7701"
+  },
+  "bridges": [
+    {
+      "id": 88090,
+      "name": "trigger-integration-child",
+      "stage": "integration",
+      "status": "failed",
+      "downstream_pipeline": {
+        "id": 7702,
+        "iid": 143,
+        "project_id": 440101,
+        "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ref": "main",
+        "status": "failed",
+        "source": "parent_pipeline"
+      }
+    }
+  ]
+}

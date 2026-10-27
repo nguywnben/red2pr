@@ -1,8 +1,9 @@
 import type { MeResponse, ProviderKind, Workspace } from "@red2pr/ts-client";
 import React, { useState } from "react";
 import { useI18n } from "../../shared/i18n";
-import { StateView, StatusGlyph } from "../../shared/ui";
+import { StatusGlyph } from "../../shared/ui";
 import { GitHubIntegrationPanel } from "./GitHubIntegrationPanel";
+import { GitLabIntegrationPanel } from "./GitLabIntegrationPanel";
 
 export interface IntegrationsPageProps {
   readonly workspace: Workspace;
@@ -41,7 +42,7 @@ export function IntegrationsPage({ workspace, me }: IntegrationsPageProps): Reac
           onClick={() => setActiveProvider("gitlab")}
         >
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <StatusGlyph kind="clock" />
+            <StatusGlyph kind="check" />
             <span>{t("integrations.tabGitLab")}</span>
           </span>
         </button>
@@ -50,20 +51,7 @@ export function IntegrationsPage({ workspace, me }: IntegrationsPageProps): Reac
       {activeProvider === "github" ? (
         <GitHubIntegrationPanel workspace={workspace} me={me} />
       ) : (
-        <section
-          className="red2pr-surface red2pr-card-section"
-          aria-labelledby="gitlab-pending-heading"
-          data-testid="gitlab-integration-pending-panel"
-        >
-          <h2 id="gitlab-pending-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
-            GitLab Cloud &amp; Self-Managed Adapter (SRC-02)
-          </h2>
-          <StateView
-            state="degraded"
-            title="GitLab adapter not yet enabled on this build"
-            description="GitLab OAuth, fine-grained token probes, Self-Managed custom CA / private CIDR binding, and .gitlab-ci.yml discovery are scheduled in Unit U10."
-          />
-        </section>
+        <GitLabIntegrationPanel workspace={workspace} me={me} />
       )}
     </div>
   );

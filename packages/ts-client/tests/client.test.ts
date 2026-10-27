@@ -657,4 +657,61 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(seenCalls[2]?.csrf, null); // GET callback does not send mutation CSRF
     assert.equal(seenCalls[3]?.csrf, "csrf-u09-token");
   });
+
+  it("serializes U10 GitLab pinned auth_mode, write-only access_token, and probe/sync contracts", async () => {
+    const connId = "019a2600-0000-7000-8000-000000000901";
+    let capturedBody: Record<string, unknown> | null = null;
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u10-token",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        if (request.method === "POST" && url.pathname === "/api/v1/workspaces/acme/integrations") {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return new Response(
+            JSON.stringify({
+              id: connId,
+              workspace_id: "019a2600-0000-7000-8000-000000000101",
+              version: 1,
+              created_at: "2026-10-27T10:00:00Z",
+              updated_at: "2026-10-27T10:00:00Z",
+              provider: "gitlab",
+              base_url: "https://gitlab.com",
+              auth_mode: "gitlab_signed_v19",
+              display_name: "GitLab Cloud Prod",
+              secret_presence: { configured: true, secret_version: 1 },
+              webhook_secret_presence: { configured: true, secret_version: 1 },
+              status: "not_configured",
+              capabilities: {
+                repo_discovery: "unknown",
+                webhook_hmac: "available",
+                idempotency_key_v17_4: "unknown",
+              },
+              api_version: "v4",
+            }),
+            { status: 201, headers: { "Content-Type": "application/json", ETag: '"v1"' } },
+          );
+        }
+        throw new Error(`Unexpected ${request.method} ${url.pathname}`);
+      },
+    });
+
+    const created = await client.createConnection(
+      "acme",
+      {
+        provider: "gitlab",
+        base_url: "https://gitlab.com",
+        auth_mode: "gitlab_signed_v19",
+        display_name: "GitLab Cloud Prod",
+        access_token: "glpat-write-only-token-example",
+        webhook_secret: "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+      },
+      { idempotencyKey: "019a2600-0000-7000-8000-000000000902" },
+    );
+    assert.equal(capturedBody?.["auth_mode"], "gitlab_signed_v19");
+    assert.equal(capturedBody?.["access_token"], "glpat-write-only-token-example");
+    assert.equal(created.data.provider, "gitlab");
+    assert.equal(created.data.auth_mode, "gitlab_signed_v19");
+    assert.equal(created.data.api_version, "v4");
+  });
 });

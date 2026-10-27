@@ -34,6 +34,7 @@ from py_contracts.crypto import (
     decrypt_envelope,
     encrypt_envelope,
 )
+from py_contracts.integrations import ConnectionAuthMode
 from py_contracts.primitives import (
     BoundedName,
     InternalId,
@@ -654,6 +655,147 @@ class SecretBrokerProviderVault:
             workspace_id=workspace_id,
         )
         return verify_hmac_sha256_hex(secret_bytes, raw_body, signature_header)
+
+    async def rotate_provider_credential(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+        new_plaintext: bytes,
+        purpose: Literal["provider_read", "webhook_auth"],
+        retain_previous_for_overlap: bool = False,
+        now: datetime | None = None,
+    ) -> tuple[str, int]:
+        ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+        self.invalidate_cached_tokens(workspace_id=workspace_id)
+        row = await session.scalar(
+            select(SecretEntryModel)
+            .where(
+                SecretEntryModel.secret_ref == secret_ref,
+                SecretEntryModel.workspace_id == workspace_id,
+            )
+            .with_for_update()
+        )
+        if row is None or row.revoked_at is not None or row.purpose != purpose:
+            return await self.store_provider_credential(
+                session,
+                workspace_id=workspace_id,
+                plaintext=new_plaintext,
+                purpose=purpose,
+                require_rsa_pem=False,
+                now=ref_now,
+            )
+
+        aad_ctx = _build_aad_context(
+            secret_ref=row.secret_ref,
+            workspace_id=row.workspace_id,
+            purpose=row.purpose,
+        )
+        new_envelope = encrypt_envelope(
+            new_plaintext,
+            key_ring=self._broker._key_ring,
+            aad_context=aad_ctx,
+        )
+        self._broker._register_canary_if_textual(new_plaintext)
+        row.previous_envelope_json = (
+            dict(row.envelope_json) if retain_previous_for_overlap else None
+        )
+        row.envelope_json = new_envelope.model_dump(mode="json")
+        row.kek_version = new_envelope.kek_version
+        row.aad_digest = new_envelope.aad_digest
+        row.active_key_version = int(row.active_key_version) + 1
+        row.rotated_at = ref_now
+        row.updated_at = ref_now
+        row.version += 1
+        await session.flush()
+        return (row.secret_ref, int(row.active_key_version))
+
+    async def resolve_provider_access_token(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+    ) -> str:
+        raw = await self._broker.resolve_secret_bytes(
+            session,
+            secret_ref=secret_ref,
+            capability=INTEGRATIONS_READ_SECRET_CAPABILITY,
+            workspace_id=workspace_id,
+        )
+        token = raw.decode("utf-8", errors="strict").strip()
+        if token:
+            self._broker._redactor.register_canary(token)
+        return token
+
+    async def verify_gitlab_webhook_auth(
+        self,
+        session: AsyncSession,
+        *,
+        workspace_id: str,
+        secret_ref: str,
+        pinned_auth_mode: ConnectionAuthMode,
+        headers: Mapping[str, str],
+        raw_body: bytes,
+        now: datetime,
+    ) -> bool:
+        from py_contracts.crypto import verify_gitlab_legacy_token, verify_gitlab_webhook_v19
+
+        row = await session.scalar(
+            select(SecretEntryModel).where(
+                SecretEntryModel.secret_ref == secret_ref,
+                SecretEntryModel.workspace_id == workspace_id,
+            )
+        )
+        if row is None or row.revoked_at is not None or row.purpose != "webhook_auth":
+            return False
+
+        aad_ctx = _build_aad_context(
+            secret_ref=row.secret_ref,
+            workspace_id=row.workspace_id,
+            purpose=row.purpose,
+        )
+        enrolled_secrets: list[bytes] = []
+        active_env = EnvelopeCiphertext.model_validate(row.envelope_json)
+        active_plain = decrypt_envelope(
+            active_env,
+            key_ring=self._broker._key_ring,
+            aad_context=aad_ctx,
+        )
+        self._broker._register_canary_if_textual(active_plain)
+        enrolled_secrets.append(active_plain)
+
+        if row.previous_envelope_json is not None:
+            try:
+                prev_env = EnvelopeCiphertext.model_validate(row.previous_envelope_json)
+                prev_plain = decrypt_envelope(
+                    prev_env,
+                    key_ring=self._broker._key_ring,
+                    aad_context=aad_ctx,
+                )
+            except (ValueError, KeyError):
+                prev_plain = b""
+            if prev_plain:
+                self._broker._register_canary_if_textual(prev_plain)
+                enrolled_secrets.append(prev_plain)
+
+        lowered_headers = {k.strip().lower(): v for k, v in headers.items()}
+        if pinned_auth_mode in {"gitlab_signed_v19", "signed_webhook"}:
+            return verify_gitlab_webhook_v19(
+                secrets=enrolled_secrets,
+                webhook_id=lowered_headers.get("webhook-id"),
+                webhook_timestamp=lowered_headers.get("webhook-timestamp"),
+                webhook_signature=lowered_headers.get("webhook-signature"),
+                raw_body=raw_body,
+                now_unix=int(now.astimezone(UTC).timestamp()),
+            )
+        if pinned_auth_mode in {"gitlab_legacy_token", "secret_token"}:
+            return verify_gitlab_legacy_token(
+                secrets=enrolled_secrets,
+                header_token=lowered_headers.get("x-gitlab-token"),
+            )
+        return False
 
     def get_cached_jit_installation_token(
         self,

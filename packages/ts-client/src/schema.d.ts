@@ -1063,7 +1063,7 @@ export interface components {
              * Auth Mode
              * @enum {string}
              */
-            auth_mode: "github_app" | "signed_webhook" | "secret_token";
+            auth_mode: "github_app" | "gitlab_signed_v19" | "gitlab_legacy_token" | "signed_webhook" | "secret_token";
             /** Base Url */
             base_url: string;
             /** Capabilities */
@@ -1145,8 +1145,12 @@ export interface components {
          * @description A-06 partial connection update & credential rotation payload (`S-02` version-checked).
          */
         ConnectionPatchRequest: {
+            /** Access Token */
+            access_token?: string | null;
             /** App Id */
             app_id?: string | null;
+            /** Auth Mode */
+            auth_mode?: ("github_app" | "gitlab_signed_v19" | "gitlab_legacy_token" | "signed_webhook" | "secret_token") | null;
             /** Base Url */
             base_url?: string | null;
             /** Client Id */
@@ -1200,13 +1204,15 @@ export interface components {
          * @description S-08 / A-06 write input accepting opaque secret_ref or write-only credential material.
          */
         ConnectionWrite: {
+            /** Access Token */
+            access_token?: string | null;
             /** App Id */
             app_id?: string | null;
             /**
              * Auth Mode
              * @enum {string}
              */
-            auth_mode: "github_app" | "signed_webhook" | "secret_token";
+            auth_mode: "github_app" | "gitlab_signed_v19" | "gitlab_legacy_token" | "signed_webhook" | "secret_token";
             /** Base Url */
             base_url: string;
             /** Client Id */
@@ -3207,7 +3213,7 @@ export interface components {
             /** Artifact Endpoint Id */
             artifact_endpoint_id?: string | null;
             /** Auth Mode */
-            auth_mode?: ("github_app" | "signed_webhook" | "secret_token") | null;
+            auth_mode?: ("github_app" | "gitlab_signed_v19" | "gitlab_legacy_token" | "signed_webhook" | "secret_token") | null;
             /** Auto Merge */
             auto_merge?: boolean | null;
             /** Backup Retention Days */

@@ -1491,3 +1491,117 @@ def test_u09_rs256_github_app_jwt_and_a06_a23_contracts() -> None:
         state="st_" + "a" * 32,
     )
     assert confirm_req.installation_id == "99001"
+
+
+def test_u10_gitlab_webhook_v19_signing_rotation_and_s08_pinned_auth_contracts() -> None:
+    import base64
+
+    from py_contracts import (
+        ConnectionPatchRequest,
+        decode_gitlab_signing_key,
+        sign_gitlab_webhook_v19,
+        verify_gitlab_legacy_token,
+        verify_gitlab_webhook_v19,
+    )
+
+    raw_key_1 = b"0123456789abcdef0123456789abcdef"
+    whsec_key_1 = "whsec_" + base64.b64encode(raw_key_1).decode("ascii")
+    raw_key_2 = b"fedcba9876543210fedcba9876543210"
+    whsec_key_2 = "whsec_" + base64.b64encode(raw_key_2).decode("ascii")
+
+    assert decode_gitlab_signing_key(whsec_key_1) == raw_key_1
+    body = b'{"object_kind":"pipeline","object_attributes":{"id":7701}}'
+    ts = int(FIXED_NOW.timestamp())
+    msg_id = "msg_0192ce00aabbccdd"
+
+    sig_v1 = sign_gitlab_webhook_v19(
+        secret=whsec_key_1,
+        webhook_id=msg_id,
+        timestamp_unix=ts,
+        raw_body=body,
+    )
+    assert sig_v1.startswith("v1,")
+    assert verify_gitlab_webhook_v19(
+        secrets=[whsec_key_1],
+        webhook_id=msg_id,
+        webhook_timestamp=str(ts),
+        webhook_signature=sig_v1,
+        raw_body=body,
+        now_unix=ts + 120,
+    )
+
+    # Rotated key overlap: active = whsec_key_2, previous = whsec_key_1 -> still verifies!
+    assert verify_gitlab_webhook_v19(
+        secrets=[whsec_key_2, whsec_key_1],
+        webhook_id=msg_id,
+        webhook_timestamp=str(ts),
+        webhook_signature=f"v1,dW5rbm93bg== {sig_v1}",
+        raw_body=body,
+        now_unix=ts + 60,
+    )
+
+    # Expired (>300s skew), tampered body, or missing signature MUST fail (SEC-027)
+    assert not verify_gitlab_webhook_v19(
+        secrets=[whsec_key_1],
+        webhook_id=msg_id,
+        webhook_timestamp=str(ts - 301),
+        webhook_signature=sig_v1,
+        raw_body=body,
+        now_unix=ts,
+    )
+    assert not verify_gitlab_webhook_v19(
+        secrets=[whsec_key_1],
+        webhook_id=msg_id,
+        webhook_timestamp=str(ts),
+        webhook_signature=sig_v1,
+        raw_body=body + b" ",
+        now_unix=ts,
+    )
+    assert not verify_gitlab_webhook_v19(
+        secrets=[whsec_key_1],
+        webhook_id=msg_id,
+        webhook_timestamp=str(ts),
+        webhook_signature=None,
+        raw_body=body,
+        now_unix=ts,
+    )
+
+    with pytest.raises(CryptoVerificationError) as bad_whsec:
+        decode_gitlab_signing_key("whsec_@@@not_base64@@@")
+    assert bad_whsec.value.code == "invalid_gitlab_signing_key"
+
+    # Constant-time legacy token verification
+    assert verify_gitlab_legacy_token(
+        secrets=["glwh_legacy_secret_2026"],
+        header_token="glwh_legacy_secret_2026",
+    )
+    assert not verify_gitlab_legacy_token(
+        secrets=["glwh_legacy_secret_2026"],
+        header_token="glwh_wrong_secret_2026",
+    )
+
+    # S-08 write-only access_token & pinned GitLab auth_mode contracts
+    gl_write = ConnectionWrite(
+        provider="gitlab",
+        base_url="https://gitlab.com",
+        auth_mode="gitlab_signed_v19",
+        display_name="GitLab Cloud Prod",
+        access_token="glpat-1234567890abcdef1234",
+        webhook_secret=whsec_key_1,
+    )
+    assert gl_write.auth_mode == "gitlab_signed_v19"
+
+    # Mutually exclusive access_token vs secret_ref / private_key_pem
+    with pytest.raises(ValidationError):
+        ConnectionWrite(
+            provider="gitlab",
+            base_url="https://gitlab.com",
+            auth_mode="gitlab_legacy_token",
+            secret_ref="sec_gl_token_v1",
+            access_token="glpat-1234567890abcdef1234",
+        )
+    with pytest.raises(ValidationError):
+        ConnectionPatchRequest(
+            secret_ref="sec_gl_token_v1",
+            access_token="glpat-1234567890abcdef1234",
+        )

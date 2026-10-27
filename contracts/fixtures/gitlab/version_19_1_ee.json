@@ -1,0 +1,10 @@
+{
+  "version": "19.1.2-ee",
+  "revision": "f9a812bc7d0",
+  "kas": {
+    "enabled": true,
+    "externalUrl": "wss://kas.gitlab.com",
+    "version": "19.1.0"
+  },
+  "enterprise": true
+}

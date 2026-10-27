@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import ipaddress
 import secrets
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
@@ -30,7 +31,11 @@ from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from py_contracts.crypto import sha256_canonical_json
+from py_contracts.crypto import (
+    CryptoVerificationError,
+    decode_gitlab_signing_key,
+    sha256_canonical_json,
+)
 from py_contracts.events import EventEnvelope, ProviderConnectionEventPayload
 from py_contracts.integrations import (
     CapabilityAvailability,
@@ -113,6 +118,7 @@ from red2pr_control.integrations.base import (
     ProviderRemoteCheckRecord,
     ProviderRunRecord,
 )
+from red2pr_control.integrations.gitlab_client import GITLAB_API_VERSION, GitLabAdapter
 from red2pr_control.operations.setup_wizard import (
     SetupStepProbeCallable,
     SetupStepProbeResult,
@@ -1815,6 +1821,8 @@ def _to_connection_context(row: ProviderConnectionModel) -> ProviderConnectionCo
         installation_id=row.external_installation_id,
         credential_secret_ref=row.credential_secret_ref,
         webhook_secret_ref=row.webhook_secret_ref,
+        auth_mode=cast(ConnectionAuthMode, row.auth_mode),
+        vendor_version=row.vendor_version,
     )
 
 
@@ -1946,8 +1954,49 @@ def _validate_uuid_or_404(raw_id: str, *, code: str, detail: str) -> str:
         raise NotFoundError(code=code, detail=detail) from exc
 
 
+def _assert_not_permanently_forbidden_base_url(
+    base_url: str,
+    *,
+    adapter: ProviderKind,
+) -> None:
+    parsed = urlparse(base_url.strip())
+    if parsed.scheme.lower() not in {"https", "http"} or not parsed.hostname:
+        raise UnprocessableEntityError(
+            code="invalid_base_url",
+            detail=f"base_url must be a valid http(s) {adapter} API endpoint.",
+        )
+    host_cand = parsed.hostname.strip().lower().rstrip(".")
+    if host_cand == "localhost" or host_cand.endswith(".localhost"):
+        raise EgressBlockedError(
+            code="egress_forbidden_ip",
+            detail="Loopback base_url targets are permanently forbidden (ADR-037).",
+            adapter=adapter,
+            target_url=base_url,
+        )
+    try:
+        ip_obj = ipaddress.ip_address(host_cand)
+    except ValueError:
+        return
+    if (
+        ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_multicast
+        or ip_obj.is_unspecified
+        or (isinstance(ip_obj, ipaddress.IPv6Address) and ip_obj.ipv4_mapped is not None)
+    ):
+        raise EgressBlockedError(
+            code="egress_forbidden_ip",
+            detail=(
+                "Loopback, link-local, and cloud metadata base_url targets are "
+                "permanently forbidden (ADR-037)."
+            ),
+            adapter=adapter,
+            target_url=base_url,
+        )
+
+
 class GitHubIntegrationService:
-    """Workspace-scoped `A-06` & `A-23` provider integration lifecycle service (`U09`)."""
+    """Workspace-scoped `A-06` & `A-23` provider integration lifecycle service (`U09`..`U10`)."""
 
     def __init__(
         self,
@@ -1956,6 +2005,7 @@ class GitHubIntegrationService:
         signing_key: bytes,
         vault: ProviderCredentialVaultProtocol,
         github_adapter: GitHubAppAdapter,
+        gitlab_adapter: GitLabAdapter | None = None,
         redactor: Redactor | None = None,
     ) -> None:
         self._session_factory = session_factory
@@ -1963,6 +2013,12 @@ class GitHubIntegrationService:
         self._vault = vault
         self._github = github_adapter
         self._redactor = redactor or DEFAULT_REDACTOR
+        self._gitlab = gitlab_adapter or GitLabAdapter(
+            vault=vault,
+            egress_policy=github_adapter._egress_policy,
+            ca_bundle_resolver=github_adapter._ca_resolver,
+            redactor=self._redactor,
+        )
 
     async def _suspend_connection_work_and_mark_revoked(
         self,
@@ -2253,31 +2309,51 @@ class GitHubIntegrationService:
         ws_id = ctx.workspace_id
         ref_now = now.astimezone(UTC)
 
-        if payload.provider == "gitlab":
-            raise UnprocessableEntityError(
-                code="provider_adapter_pending",
-                detail=(
-                    "GitLab adapter slice is scheduled for U10; select provider='github' in U09."
-                ),
-            )
-        if payload.auth_mode != "github_app":
-            raise UnprocessableEntityError(
-                code="invalid_github_auth_mode",
-                detail="GitHub connections require auth_mode='github_app'.",
-            )
-        if not payload.app_id:
-            raise UnprocessableEntityError(
-                code="github_app_id_required",
-                detail="app_id is required when creating a GitHub App connection.",
-            )
+        is_gitlab = payload.provider == "gitlab"
+        if is_gitlab:
+            if payload.auth_mode not in {"gitlab_signed_v19", "gitlab_legacy_token"}:
+                raise UnprocessableEntityError(
+                    code="invalid_gitlab_auth_mode",
+                    detail=(
+                        "GitLab connections require pinned auth_mode='gitlab_signed_v19' or "
+                        "'gitlab_legacy_token'."
+                    ),
+                )
+            if payload.private_key_pem is not None:
+                raise UnprocessableEntityError(
+                    code="invalid_gitlab_credential_type",
+                    detail="GitLab connections accept access_token or secret_ref, not RSA PEMs.",
+                )
+            if payload.access_token is None and payload.secret_ref is None:
+                raise UnprocessableEntityError(
+                    code="gitlab_access_token_required",
+                    detail="Provide a write-only GitLab project/group access_token or secret_ref.",
+                )
+            if payload.auth_mode == "gitlab_signed_v19" and payload.webhook_secret is not None:
+                try:
+                    decode_gitlab_signing_key(payload.webhook_secret)
+                except CryptoVerificationError as exc:
+                    raise UnprocessableEntityError(code=exc.code, detail=exc.detail) from exc
+        else:
+            if payload.auth_mode != "github_app":
+                raise UnprocessableEntityError(
+                    code="invalid_github_auth_mode",
+                    detail="GitHub connections require auth_mode='github_app'.",
+                )
+            if payload.access_token is not None:
+                raise UnprocessableEntityError(
+                    code="invalid_github_credential_type",
+                    detail="GitHub App connections accept private_key_pem or secret_ref.",
+                )
+            if not payload.app_id:
+                raise UnprocessableEntityError(
+                    code="github_app_id_required",
+                    detail="app_id is required when creating a GitHub App connection.",
+                )
 
-        parsed_base = urlparse(payload.base_url)
-        if parsed_base.scheme.lower() not in {"https", "http"} or not parsed_base.hostname:
-            raise UnprocessableEntityError(
-                code="invalid_base_url",
-                detail="base_url must be a valid http(s) GitHub API endpoint.",
-            )
+        _assert_not_permanently_forbidden_base_url(payload.base_url, adapter=payload.provider)
 
+        raw_secret_material = payload.private_key_pem or payload.access_token
         # Redact secret inputs before hashing idempotency request fingerprint
         fingerprint_payload = {
             "provider": payload.provider,
@@ -2287,8 +2363,8 @@ class GitHubIntegrationService:
             "app_id": payload.app_id,
             "client_id": payload.client_id,
             "secret_fingerprint": (
-                hashlib.sha256(payload.private_key_pem.encode("utf-8")).hexdigest()
-                if payload.private_key_pem
+                hashlib.sha256(raw_secret_material.encode("utf-8")).hexdigest()
+                if raw_secret_material
                 else payload.secret_ref
             ),
             "webhook_fingerprint": (
@@ -2300,8 +2376,14 @@ class GitHubIntegrationService:
 
         async with workspace_rls_session(self._session_factory, workspace_id=ws_id) as db:
             provisional_id = new_uuid7(now=ref_now)
+            identity_segment = (
+                payload.app_id
+                if not is_gitlab
+                else f"{payload.auth_mode}:{payload.display_name or 'default'}"
+            )
             effect_key = (
-                f"integration.create:{ws_id}:{payload.provider}:{payload.app_id}:{payload.base_url}"
+                f"integration.create:{ws_id}:{payload.provider}:"
+                f"{identity_segment}:{payload.base_url}"
             )
             claim = await claim_idempotent_operation(
                 db,
@@ -2327,6 +2409,15 @@ class GitHubIntegrationService:
                     plaintext=payload.private_key_pem.encode("utf-8"),
                     purpose="provider_read",
                     require_rsa_pem=True,
+                    now=ref_now,
+                )
+            elif payload.access_token is not None:
+                cred_ref, cred_ver = await self._vault.store_provider_credential(
+                    db,
+                    workspace_id=ws_id,
+                    plaintext=payload.access_token.encode("utf-8"),
+                    purpose="provider_read",
+                    require_rsa_pem=False,
                     now=ref_now,
                 )
             elif payload.secret_ref is not None:
@@ -2358,19 +2449,50 @@ class GitHubIntegrationService:
                 )
                 wh_ref = payload.webhook_secret_ref
 
-            display_name = (
-                payload.display_name.strip()
-                if payload.display_name
+            default_label = (
+                f"GitLab ({urlparse(payload.base_url).hostname or 'v4'})"
+                if is_gitlab
                 else f"GitHub App ({payload.app_id})"
+            )
+            display_name = (
+                payload.display_name.strip() if payload.display_name else default_label
             )[:120]
+
+            initial_caps = (
+                {
+                    "repo_discovery": "unknown" if cred_ref else "unavailable",
+                    "ci_read": "unknown" if cred_ref else "unavailable",
+                    "draft_review_create": "unknown" if cred_ref else "unavailable",
+                    "webhook_hmac": (
+                        "available"
+                        if (payload.auth_mode == "gitlab_signed_v19" and wh_ref)
+                        else "unavailable"
+                    ),
+                    "polling_fallback": "unknown" if cred_ref else "unavailable",
+                    "idempotency_key_v17_4": "unknown",
+                }
+                if is_gitlab
+                else {
+                    "app_jwt_auth": "unknown" if cred_ref else "unavailable",
+                    "repo_discovery": "unavailable",
+                    "webhook_hmac": "available" if wh_ref else "unavailable",
+                }
+            )
+            initial_detail = (
+                "GitLab credentials sealed in Z2 vault with pinned webhook auth_mode; "
+                "run Probe capabilities and Sync projects to verify scopes."
+                if is_gitlab
+                else "GitHub App credentials stored; mint an installation state and confirm "
+                "installation to discover repositories."
+            )
 
             conn_row = ProviderConnectionModel(
                 id=provisional_id,
                 workspace_id=ws_id,
-                provider="github",
+                provider=payload.provider,
                 display_name=display_name,
                 base_url=payload.base_url.strip().rstrip("/"),
-                auth_mode="github_app",
+                auth_mode=payload.auth_mode,
                 app_id=payload.app_id,
                 client_id=payload.client_id,
                 external_installation_id=None,
@@ -2380,19 +2502,14 @@ class GitHubIntegrationService:
                 webhook_secret_ref=wh_ref,
                 webhook_secret_version=wh_ver,
                 status="not_configured",
-                capabilities_json={
-                    "app_jwt_auth": "unknown" if cred_ref else "unavailable",
-                    "repo_discovery": "unavailable",
-                    "webhook_hmac": "available" if wh_ref else "unavailable",
-                },
-                granted_permissions_json={},
+                capabilities_json=initial_caps,
+                granted_permissions_json=(
+                    {"webhook_auth_mode": payload.auth_mode} if is_gitlab else {}
+                ),
                 missing_permissions_json=[],
                 vendor_version=None,
-                api_version=GITHUB_API_VERSION,
-                status_detail=(
-                    "GitHub App credentials stored; mint an installation state and confirm "
-                    "installation to discover repositories."
-                ),
+                api_version=GITLAB_API_VERSION if is_gitlab else GITHUB_API_VERSION,
+                status_detail=initial_detail,
                 grant_review_required=False,
                 had_prior_revocation=False,
                 checked_at=None,
@@ -2434,7 +2551,8 @@ class GitHubIntegrationService:
                 correlation_id=correlation_id,
                 client_ip=client_ip,
                 metadata={
-                    "provider": "github",
+                    "provider": payload.provider,
+                    "auth_mode": payload.auth_mode,
                     "app_id": payload.app_id,
                     "credential_configured": cred_ref is not None,
                     "webhook_secret_configured": wh_ref is not None,
@@ -2475,16 +2593,18 @@ class GitHubIntegrationService:
             detail="Provider connection not found.",
         )
 
+        patch_secret_material = payload.private_key_pem or payload.access_token
         fingerprint_payload = {
             "connection_id": clean_id,
             "expected_version": payload.expected_version,
             "display_name": payload.display_name,
             "base_url": payload.base_url,
+            "auth_mode": payload.auth_mode,
             "app_id": payload.app_id,
             "client_id": payload.client_id,
             "secret_fingerprint": (
-                hashlib.sha256(payload.private_key_pem.encode("utf-8")).hexdigest()
-                if payload.private_key_pem
+                hashlib.sha256(patch_secret_material.encode("utf-8")).hexdigest()
+                if patch_secret_material
                 else payload.secret_ref
             ),
             "webhook_fingerprint": (
@@ -2493,6 +2613,8 @@ class GitHubIntegrationService:
                 else payload.webhook_secret_ref
             ),
         }
+
+        immutable_auth_err: UnprocessableEntityError | None = None
 
         async with workspace_rls_session(self._session_factory, workspace_id=ws_id) as db:
             row = await db.scalar(
@@ -2509,149 +2631,244 @@ class GitHubIntegrationService:
                     detail="Provider connection not found.",
                 )
 
-            claim = await claim_idempotent_operation(
-                db,
-                workspace_id=ws_id,
-                principal_id=ctx.auth.user.id,
-                operation="integrations.update",
-                idempotency_key=idempotency_key,
-                request_payload=fingerprint_payload,
-                logical_effect_key=f"integration.update:{ws_id}:{clean_id}:{idempotency_key}",
-                resource_id=clean_id,
-                correlation_id=correlation_id,
-                now=ref_now,
-            )
-            if not claim.is_new_claim and claim.cached_response is not None:
-                return Connection.model_validate(claim.cached_response)
-
-            enforce_optimistic_version(
-                current_version=row.version,
-                if_match_header=if_match_header,
-                expected_version=payload.expected_version,
-            )
-
-            rotated_credentials = False
-            if payload.display_name is not None:
-                row.display_name = payload.display_name.strip()[:120]
-            if payload.base_url is not None:
-                row.base_url = payload.base_url.strip().rstrip("/")
-            if payload.app_id is not None:
-                row.app_id = payload.app_id
-                rotated_credentials = True
-            if payload.client_id is not None:
-                row.client_id = payload.client_id
-
-            if payload.private_key_pem is not None:
-                old_ref = row.credential_secret_ref
-                new_ref, _ = await self._vault.store_provider_credential(
+            if payload.auth_mode is not None and payload.auth_mode != row.auth_mode:
+                await append_audit_entry(
                     db,
                     workspace_id=ws_id,
-                    plaintext=payload.private_key_pem.encode("utf-8"),
-                    purpose="provider_read",
-                    require_rsa_pem=True,
+                    actor_type="user",
+                    actor_id=ctx.auth.user.id,
+                    action="integration.connection_auth_mode_change",
+                    target=f"provider_connection:{row.id}",
+                    decision="deny",
+                    reason_code="auth_mode_downgrade_forbidden",
+                    correlation_id=correlation_id,
+                    client_ip=client_ip,
+                    metadata={
+                        "provider": row.provider,
+                        "current_auth_mode": row.auth_mode,
+                        "attempted_auth_mode": payload.auth_mode,
+                    },
+                    occurred_at=ref_now,
+                )
+                immutable_auth_err = UnprocessableEntityError(
+                    code="auth_mode_immutable",
+                    detail=(
+                        "Connection auth_mode is pinned at creation and cannot be downgraded "
+                        "or modified (`SEC-027`)."
+                    ),
+                )
+
+            if immutable_auth_err is None:
+                if row.provider == "gitlab" and payload.private_key_pem is not None:
+                    raise UnprocessableEntityError(
+                        code="invalid_gitlab_credential_type",
+                        detail="GitLab connections rotate access_token, not RSA private_key_pem.",
+                    )
+                if row.provider == "github" and payload.access_token is not None:
+                    raise UnprocessableEntityError(
+                        code="invalid_github_credential_type",
+                        detail="GitHub App connections rotate private_key_pem, not access_token.",
+                    )
+                if payload.base_url is not None:
+                    _assert_not_permanently_forbidden_base_url(
+                        payload.base_url,
+                        adapter=cast(ProviderKind, row.provider),
+                    )
+                if (
+                    row.auth_mode in {"gitlab_signed_v19", "signed_webhook"}
+                    and payload.webhook_secret is not None
+                ):
+                    try:
+                        decode_gitlab_signing_key(payload.webhook_secret)
+                    except CryptoVerificationError as exc:
+                        raise UnprocessableEntityError(code=exc.code, detail=exc.detail) from exc
+
+                claim = await claim_idempotent_operation(
+                    db,
+                    workspace_id=ws_id,
+                    principal_id=ctx.auth.user.id,
+                    operation="integrations.update",
+                    idempotency_key=idempotency_key,
+                    request_payload=fingerprint_payload,
+                    logical_effect_key=f"integration.update:{ws_id}:{clean_id}:{idempotency_key}",
+                    resource_id=clean_id,
+                    correlation_id=correlation_id,
                     now=ref_now,
                 )
-                if old_ref:
-                    await self._vault.revoke_provider_credential(
+                if not claim.is_new_claim and claim.cached_response is not None:
+                    return Connection.model_validate(claim.cached_response)
+
+                enforce_optimistic_version(
+                    current_version=row.version,
+                    if_match_header=if_match_header,
+                    expected_version=payload.expected_version,
+                )
+
+                rotated_credentials = False
+                if payload.display_name is not None:
+                    row.display_name = payload.display_name.strip()[:120]
+                if payload.base_url is not None:
+                    row.base_url = payload.base_url.strip().rstrip("/")
+                if payload.app_id is not None:
+                    row.app_id = payload.app_id
+                    rotated_credentials = True
+                if payload.client_id is not None:
+                    row.client_id = payload.client_id
+
+                if payload.private_key_pem is not None:
+                    old_ref = row.credential_secret_ref
+                    new_ref, _ = await self._vault.store_provider_credential(
                         db,
                         workspace_id=ws_id,
-                        secret_ref=old_ref,
-                        connection_id=row.id,
+                        plaintext=payload.private_key_pem.encode("utf-8"),
+                        purpose="provider_read",
+                        require_rsa_pem=True,
                         now=ref_now,
                     )
-                row.credential_secret_ref = new_ref
-                row.credential_secret_version = (row.credential_secret_version or 0) + 1
-                rotated_credentials = True
-            elif payload.secret_ref is not None:
-                _, ver = await self._vault.inspect_secret_presence(
-                    db,
-                    workspace_id=ws_id,
-                    secret_ref=payload.secret_ref,
-                    expected_purpose="provider_read",
-                )
-                row.credential_secret_ref = payload.secret_ref
-                row.credential_secret_version = (row.credential_secret_version or 0) + (ver or 1)
-                rotated_credentials = True
+                    if old_ref:
+                        await self._vault.revoke_provider_credential(
+                            db,
+                            workspace_id=ws_id,
+                            secret_ref=old_ref,
+                            connection_id=row.id,
+                            now=ref_now,
+                        )
+                    row.credential_secret_ref = new_ref
+                    row.credential_secret_version = (row.credential_secret_version or 0) + 1
+                    rotated_credentials = True
+                elif payload.access_token is not None:
+                    if row.credential_secret_ref:
+                        new_ref, new_ver = await self._vault.rotate_provider_credential(
+                            db,
+                            workspace_id=ws_id,
+                            secret_ref=row.credential_secret_ref,
+                            new_plaintext=payload.access_token.encode("utf-8"),
+                            purpose="provider_read",
+                            retain_previous_for_overlap=False,
+                            now=ref_now,
+                        )
+                    else:
+                        new_ref, new_ver = await self._vault.store_provider_credential(
+                            db,
+                            workspace_id=ws_id,
+                            plaintext=payload.access_token.encode("utf-8"),
+                            purpose="provider_read",
+                            require_rsa_pem=False,
+                            now=ref_now,
+                        )
+                    row.credential_secret_ref = new_ref
+                    row.credential_secret_version = max(
+                        (row.credential_secret_version or 0) + 1,
+                        new_ver,
+                    )
+                    rotated_credentials = True
+                elif payload.secret_ref is not None:
+                    _, ver = await self._vault.inspect_secret_presence(
+                        db,
+                        workspace_id=ws_id,
+                        secret_ref=payload.secret_ref,
+                        expected_purpose="provider_read",
+                    )
+                    row.credential_secret_ref = payload.secret_ref
+                    row.credential_secret_version = (row.credential_secret_version or 0) + (
+                        ver or 1
+                    )
+                    rotated_credentials = True
 
-            if payload.webhook_secret is not None:
-                old_wh = row.webhook_secret_ref
-                new_wh, _ = await self._vault.store_provider_credential(
+                if payload.webhook_secret is not None:
+                    if row.webhook_secret_ref:
+                        new_wh, new_wh_ver = await self._vault.rotate_provider_credential(
+                            db,
+                            workspace_id=ws_id,
+                            secret_ref=row.webhook_secret_ref,
+                            new_plaintext=payload.webhook_secret.encode("utf-8"),
+                            purpose="webhook_auth",
+                            retain_previous_for_overlap=True,
+                            now=ref_now,
+                        )
+                    else:
+                        new_wh, new_wh_ver = await self._vault.store_provider_credential(
+                            db,
+                            workspace_id=ws_id,
+                            plaintext=payload.webhook_secret.encode("utf-8"),
+                            purpose="webhook_auth",
+                            require_rsa_pem=False,
+                            now=ref_now,
+                        )
+                    row.webhook_secret_ref = new_wh
+                    row.webhook_secret_version = max(
+                        (row.webhook_secret_version or 0) + 1,
+                        new_wh_ver,
+                    )
+                    rotated_credentials = True
+                elif payload.webhook_secret_ref is not None:
+                    _, wh_ver = await self._vault.inspect_secret_presence(
+                        db,
+                        workspace_id=ws_id,
+                        secret_ref=payload.webhook_secret_ref,
+                        expected_purpose="webhook_auth",
+                    )
+                    row.webhook_secret_ref = payload.webhook_secret_ref
+                    row.webhook_secret_version = (row.webhook_secret_version or 0) + (wh_ver or 1)
+                    rotated_credentials = True
+
+                if rotated_credentials:
+                    self._vault.invalidate_cached_tokens(workspace_id=ws_id, connection_id=row.id)
+                    if row.status == "revoked" and row.credential_secret_ref is not None:
+                        # Rotating credentials on a previously revoked connection keeps
+                        # grant_review_required=True and resets status until re-verified (`W-02`)
+                        row.status = "not_configured"
+                        if row.provider == "github":
+                            row.external_installation_id = None
+                            row.status_detail = (
+                                "Credentials rotated after revocation; confirm installation and "
+                                "explicitly review repository grants before resuming."
+                            )
+                        else:
+                            row.status_detail = (
+                                "GitLab token rotated after revocation; probe capabilities and "
+                                "sync projects in Monitor mode before reviewing grants."
+                            )
+                        row.grant_review_required = True
+
+                row.version += 1
+                row.updated_at = ref_now
+                await db.flush()
+
+                await append_audit_entry(
                     db,
                     workspace_id=ws_id,
-                    plaintext=payload.webhook_secret.encode("utf-8"),
-                    purpose="webhook_auth",
-                    require_rsa_pem=False,
+                    actor_type="user",
+                    actor_id=ctx.auth.user.id,
+                    action="integration.connection_updated",
+                    target=f"provider_connection:{row.id}",
+                    decision="allow",
+                    reason_code="rotated_credentials" if rotated_credentials else "updated",
+                    correlation_id=correlation_id,
+                    client_ip=client_ip,
+                    metadata={
+                        "provider": row.provider,
+                        "rotated_credentials": rotated_credentials,
+                        "new_version": row.version,
+                    },
+                    occurred_at=ref_now,
+                )
+
+                dto = await _build_connection_dto(db, row)
+                await complete_idempotent_operation(
+                    db,
+                    workspace_id=ws_id,
+                    operation_id=claim.receipt.operation_id,
+                    state="succeeded",
+                    status_code=200,
+                    result_id=row.id,
+                    response_payload=dto.model_dump(mode="json"),
                     now=ref_now,
                 )
-                if old_wh:
-                    await self._vault.revoke_provider_credential(
-                        db,
-                        workspace_id=ws_id,
-                        secret_ref=old_wh,
-                        connection_id=row.id,
-                        now=ref_now,
-                    )
-                row.webhook_secret_ref = new_wh
-                row.webhook_secret_version = (row.webhook_secret_version or 0) + 1
-                rotated_credentials = True
-            elif payload.webhook_secret_ref is not None:
-                _, wh_ver = await self._vault.inspect_secret_presence(
-                    db,
-                    workspace_id=ws_id,
-                    secret_ref=payload.webhook_secret_ref,
-                    expected_purpose="webhook_auth",
-                )
-                row.webhook_secret_ref = payload.webhook_secret_ref
-                row.webhook_secret_version = (row.webhook_secret_version or 0) + (wh_ver or 1)
-                rotated_credentials = True
+                return dto
 
-            if rotated_credentials:
-                self._vault.invalidate_cached_tokens(workspace_id=ws_id, connection_id=row.id)
-                if row.status == "revoked" and row.credential_secret_ref is not None:
-                    # Rotating credentials on a previously revoked connection keeps
-                    # installation unbound / grant_review_required=True until re-confirmed (`W-02`)
-                    row.status = "not_configured"
-                    row.external_installation_id = None
-                    row.grant_review_required = True
-                    row.status_detail = (
-                        "Credentials rotated after revocation; confirm installation and "
-                        "explicitly review repository grants before resuming."
-                    )
-
-            row.version += 1
-            row.updated_at = ref_now
-            await db.flush()
-
-            await append_audit_entry(
-                db,
-                workspace_id=ws_id,
-                actor_type="user",
-                actor_id=ctx.auth.user.id,
-                action="integration.connection_updated",
-                target=f"provider_connection:{row.id}",
-                decision="allow",
-                reason_code="rotated_credentials" if rotated_credentials else "updated",
-                correlation_id=correlation_id,
-                client_ip=client_ip,
-                metadata={
-                    "rotated_credentials": rotated_credentials,
-                    "new_version": row.version,
-                },
-                occurred_at=ref_now,
-            )
-
-            dto = await _build_connection_dto(db, row)
-            await complete_idempotent_operation(
-                db,
-                workspace_id=ws_id,
-                operation_id=claim.receipt.operation_id,
-                state="succeeded",
-                status_code=200,
-                result_id=row.id,
-                response_payload=dto.model_dump(mode="json"),
-                now=ref_now,
-            )
-            return dto
+        assert immutable_auth_err is not None
+        raise immutable_auth_err
 
     async def delete_connection(
         self,
@@ -2775,6 +2992,11 @@ class GitHubIntegrationService:
                 raise NotFoundError(
                     code="connection_not_found",
                     detail="Provider connection not found.",
+                )
+            if conn_row.provider != "github":
+                raise UnprocessableEntityError(
+                    code="github_only_operation",
+                    detail="GitHub App installation state nonces apply only to GitHub connections.",
                 )
 
             claim = await claim_idempotent_operation(
@@ -3113,6 +3335,13 @@ class GitHubIntegrationService:
                     code="connection_not_found",
                     detail="Provider connection not found.",
                 )
+            if conn_row.provider != "github":
+                raise UnprocessableEntityError(
+                    code="github_only_operation",
+                    detail=(
+                        "GitHub App installation confirmation applies only to GitHub connections."
+                    ),
+                )
 
             effect_key = f"integration.confirm_install:{ws_id}:{clean_id}:{state_hash}"
             claim = await claim_idempotent_operation(
@@ -3420,14 +3649,22 @@ class GitHubIntegrationService:
                 return ConnectionProbeResponse.model_validate(claim.cached_response)
 
             prov_ctx = _to_connection_context(conn_row)
+            is_gitlab = conn_row.provider == "gitlab"
+            default_api_ver = GITLAB_API_VERSION if is_gitlab else GITHUB_API_VERSION
             try:
-                perm_summary = await self._github.get_permissions(db, prov_ctx, now=ref_now)
+                perm_summary = (
+                    await self._gitlab.get_permissions(db, prov_ctx, now=ref_now)
+                    if is_gitlab
+                    else await self._github.get_permissions(db, prov_ctx, now=ref_now)
+                )
                 all_missing = list(perm_summary.missing_required_permissions) + list(
                     perm_summary.missing_optional_permissions
                 )
-                if conn_row.external_installation_id is None:
-                    next_status: ConnectionStatus = "degraded"
-                elif perm_summary.missing_required_permissions:
+                if perm_summary.unsupported_auth_mode:
+                    next_status: ConnectionStatus = "unsupported"
+                elif (
+                    not is_gitlab and conn_row.external_installation_id is None
+                ) or perm_summary.missing_required_permissions:
                     next_status = "degraded"
                 else:
                     next_status = "ready"
@@ -3450,7 +3687,7 @@ class GitHubIntegrationService:
                     id=new_uuid7(now=ref_now),
                     workspace_id=ws_id,
                     connection_id=conn_row.id,
-                    provider="github",
+                    provider=conn_row.provider,
                     status=next_status,
                     capabilities_json=dict(perm_summary.capabilities),
                     granted_permissions_json=dict(perm_summary.granted_permissions),
@@ -3483,13 +3720,13 @@ class GitHubIntegrationService:
                         id=new_uuid7(now=ref_now),
                         workspace_id=ws_id,
                         connection_id=conn_row.id,
-                        provider="github",
+                        provider=conn_row.provider,
                         status="revoked",
                         capabilities_json=dict(conn_row.capabilities_json),
                         granted_permissions_json={},
                         missing_permissions_json=[],
                         vendor_version=conn_row.vendor_version,
-                        api_version=GITHUB_API_VERSION,
+                        api_version=conn_row.api_version or default_api_ver,
                         detail=conn_row.status_detail,
                         checked_at=ref_now,
                         version=1,
@@ -3594,18 +3831,24 @@ class GitHubIntegrationService:
                     code="connection_not_found",
                     detail="Provider connection not found.",
                 )
+            is_gitlab = conn_row.provider == "gitlab"
             if conn_row.status == "revoked":
                 raise ForbiddenError(
                     code="provider_connection_revoked",
                     detail=(
-                        "Provider connection is revoked; confirm a fresh installation and "
-                        "review grants before syncing."
+                        "Provider connection is revoked; rotate credentials, verify scopes, "
+                        "and review grants before syncing."
                     ),
                 )
-            if not conn_row.external_installation_id:
+            if not is_gitlab and not conn_row.external_installation_id:
                 raise ConflictError(
                     code="installation_not_confirmed",
                     detail="Confirm a GitHub App installation before syncing repositories.",
+                )
+            if is_gitlab and not conn_row.credential_secret_ref:
+                raise ConflictError(
+                    code="credentials_not_configured",
+                    detail="Configure a GitLab access token before syncing projects.",
                 )
 
             effect_key = f"integration.sync:{ws_id}:{clean_id}:{idempotency_key}"
@@ -3626,20 +3869,52 @@ class GitHubIntegrationService:
 
             prov_ctx = _to_connection_context(conn_row)
             try:
-                perm_summary = await self._github.get_permissions(db, prov_ctx, now=ref_now)
+                perm_summary = (
+                    await self._gitlab.get_permissions(db, prov_ctx, now=ref_now)
+                    if is_gitlab
+                    else await self._github.get_permissions(db, prov_ctx, now=ref_now)
+                )
+                if perm_summary.unsupported_auth_mode:
+                    conn_row.status = "unsupported"
+                    conn_row.vendor_version = perm_summary.vendor_version
+                    conn_row.capabilities_json = dict(perm_summary.capabilities)
+                    conn_row.status_detail = self._redactor.redact_text(
+                        perm_summary.detail
+                        or "Pinned GitLab webhook auth_mode is unsupported by server version."
+                    )[:950]
+                    conn_row.checked_at = ref_now
+                    conn_row.version += 1
+                    conn_row.updated_at = ref_now
+                    await db.flush()
+                    raise ProviderError(
+                        code="UNSUPPORTED",
+                        detail=perm_summary.detail
+                        or "Pinned GitLab webhook auth_mode is unsupported by server version.",
+                        provider="gitlab",
+                        status_code=422,
+                    )
                 if perm_summary.missing_required_permissions:
                     raise ProviderError(
                         code="FORBIDDEN",
                         detail=perm_summary.detail
                         or "Missing required repository read permissions.",
-                        provider="github",
+                        provider=cast(ProviderKind, conn_row.provider),
                         status_code=403,
                     )
-                discovery = await self._github.list_repos(
-                    db,
-                    prov_ctx,
-                    scan_workflows=True,
-                    now=ref_now,
+                discovery = (
+                    await self._gitlab.list_repos(
+                        db,
+                        prov_ctx,
+                        scan_workflows=True,
+                        now=ref_now,
+                    )
+                    if is_gitlab
+                    else await self._github.list_repos(
+                        db,
+                        prov_ctx,
+                        scan_workflows=True,
+                        now=ref_now,
+                    )
                 )
             except ProviderError as exc:
                 if exc.code == "REVOKED":
@@ -3667,7 +3942,7 @@ class GitHubIntegrationService:
                     revoked_err = ForbiddenError(
                         code="provider_connection_revoked",
                         detail=(
-                            "GitHub App installation or token was revoked upstream; "
+                            "Provider credentials or installation were revoked upstream; "
                             "active work suspended."
                         ),
                     )
@@ -3675,12 +3950,15 @@ class GitHubIntegrationService:
                     self._raise_http_for_provider_error(exc)
 
             if revoked_err is None:
+                reconnecting_after_revoke = bool(
+                    conn_row.had_prior_revocation or conn_row.grant_review_required
+                )
                 await self._upsert_discovered_repositories(
                     db,
                     conn_row=conn_row,
                     discovery=discovery,
                     selected_external_ids=None,
-                    force_monitor_reset=False,
+                    force_monitor_reset=reconnecting_after_revoke,
                     now=ref_now,
                 )
                 all_active_repos = list(
@@ -3696,15 +3974,27 @@ class GitHubIntegrationService:
                         )
                     ).all()
                 )
+                conn_row.account_login = perm_summary.account_login or conn_row.account_login
+                conn_row.vendor_version = perm_summary.vendor_version or conn_row.vendor_version
+                conn_row.api_version = perm_summary.api_version or conn_row.api_version
                 conn_row.status = "degraded" if discovery.partial_sync else "ready"
                 conn_row.capabilities_json = dict(perm_summary.capabilities)
                 conn_row.granted_permissions_json = dict(perm_summary.granted_permissions)
                 conn_row.missing_permissions_json = list(
                     perm_summary.missing_required_permissions
                 ) + list(perm_summary.missing_optional_permissions)
-                conn_row.status_detail = self._redactor.redact_text(
-                    discovery.warning_detail or "Repository catalog synchronized."
-                )[:950]
+                sync_msg = (
+                    discovery.warning_detail
+                    or perm_summary.detail
+                    or "Repository catalog synchronized."
+                )
+                if reconnecting_after_revoke:
+                    conn_row.grant_review_required = True
+                    sync_msg = (
+                        f"{sync_msg} Reconnected after revocation; repositories remain in "
+                        "Monitor mode until grants are reviewed."
+                    )[:950]
+                conn_row.status_detail = self._redactor.redact_text(sync_msg)[:950]
                 conn_row.checked_at = ref_now
                 conn_row.last_synced_at = ref_now
                 conn_row.version += 1
@@ -3818,14 +4108,14 @@ class GitHubIntegrationService:
         *,
         fallback_probe: SetupStepProbeCallable | None = None,
     ) -> SetupStepProbeCallable:
-        """Build the concrete `provider_connect` probe callable for `SetupStepRegistry` (`U09`)."""
+        """Build the concrete `provider_connect` probe for `SetupStepRegistry` (`U09`..`U10`)."""
 
         async def _probe(
             phase: SetupWizardPhase,
             draft: Mapping[str, Any],
         ) -> SetupStepProbeResult:
             provider = str(draft.get("provider") or "github").lower()
-            if provider != "github":
+            if provider not in {"github", "gitlab"}:
                 if fallback_probe is not None:
                     return await fallback_probe(phase, draft)
                 return SetupStepProbeResult(
@@ -3839,28 +4129,30 @@ class GitHubIntegrationService:
                     (
                         await db.scalars(
                             select(ProviderConnectionModel)
-                            .where(ProviderConnectionModel.provider == "github")
+                            .where(ProviderConnectionModel.provider == provider)
                             .order_by(ProviderConnectionModel.updated_at.desc())
                         )
                     ).all()
                 )
                 if not conn_rows:
+                    label = "GitLab" if provider == "gitlab" else "GitHub App"
                     return SetupStepProbeResult(
                         probe_status="not_configured",
                         detail=(
-                            "No GitHub App connection recorded yet; create and confirm a "
-                            "GitHub App connection in Workspace Integrations."
+                            f"No {label} connection recorded yet; create and verify a "
+                            f"{label} connection in Workspace Integrations."
                         ),
-                        blocking_reasons=("github_connection_not_configured",),
+                        blocking_reasons=(f"{provider}_connection_not_configured",),
                     )
 
                 ready_conn = next((r for r in conn_rows if r.status == "ready"), None)
                 if ready_conn is not None:
+                    default_ver = GITLAB_API_VERSION if provider == "gitlab" else GITHUB_API_VERSION
                     return SetupStepProbeResult(
                         probe_status="passed",
                         detail=(
-                            f"GitHub App connection '{ready_conn.display_name}' verified "
-                            f"(API {ready_conn.api_version or GITHUB_API_VERSION})."
+                            f"{provider.upper()} connection '{ready_conn.display_name}' verified "
+                            f"(API {ready_conn.api_version or default_ver})."
                         ),
                     )
 
@@ -3869,14 +4161,62 @@ class GitHubIntegrationService:
                     return SetupStepProbeResult(
                         probe_status="failed",
                         detail=(
-                            f"GitHub App connection '{target.display_name}' is revoked; "
-                            "re-confirm installation and review grants."
+                            f"{provider.upper()} connection '{target.display_name}' is revoked; "
+                            "rotate credentials and review grants."
                         ),
-                        blocking_reasons=("github_connection_revoked",),
+                        blocking_reasons=(f"{provider}_connection_revoked",),
+                    )
+                if target.status == "unsupported":
+                    return SetupStepProbeResult(
+                        probe_status="unsupported",
+                        detail=target.status_detail
+                        or "Pinned webhook auth_mode is unsupported by the target GitLab server.",
+                        blocking_reasons=(f"{provider}_auth_mode_unsupported",),
                     )
 
                 if target.credential_secret_ref is not None:
                     try:
+                        if provider == "gitlab":
+                            summary = await self._gitlab.get_permissions(
+                                db,
+                                _to_connection_context(target),
+                                now=datetime.now(tz=UTC),
+                            )
+                            if summary.unsupported_auth_mode:
+                                target.status = "unsupported"
+                                target.checked_at = datetime.now(tz=UTC)
+                                target.updated_at = datetime.now(tz=UTC)
+                                await db.flush()
+                                return SetupStepProbeResult(
+                                    probe_status="unsupported",
+                                    detail=summary.detail
+                                    or (
+                                        "GitLab server version < 19.0 does not support "
+                                        "signed webhooks."
+                                    ),
+                                    blocking_reasons=("gitlab_v19_webhook_signing_unsupported",),
+                                )
+                            if not summary.missing_required_permissions:
+                                target.status = "ready"
+                                target.vendor_version = summary.vendor_version
+                                target.api_version = summary.api_version
+                                target.checked_at = datetime.now(tz=UTC)
+                                target.updated_at = datetime.now(tz=UTC)
+                                await db.flush()
+                                return SetupStepProbeResult(
+                                    probe_status="passed",
+                                    detail=(
+                                        f"GitLab connection '{target.display_name}' verified "
+                                        f"({summary.vendor_version or GITLAB_API_VERSION})."
+                                    ),
+                                )
+                            return SetupStepProbeResult(
+                                probe_status="needs_admin",
+                                detail=summary.detail
+                                or "Grant read_api or api scope on GitLab token.",
+                                blocking_reasons=("gitlab_required_scope_missing",),
+                            )
+
                         summary = await self._github.get_permissions(
                             db,
                             _to_connection_context(target),
@@ -3907,16 +4247,16 @@ class GitHubIntegrationService:
                         return SetupStepProbeResult(
                             probe_status="failed",
                             detail=exc.detail,
-                            blocking_reasons=(f"github_{exc.code.lower()}",),
+                            blocking_reasons=(f"{provider}_{exc.code.lower()}",),
                         )
 
                 return SetupStepProbeResult(
                     probe_status="needs_admin",
                     detail=(
-                        f"GitHub App connection '{target.display_name}' requires RSA private "
-                        "key configuration and installation confirmation."
+                        f"{provider.upper()} connection '{target.display_name}' requires "
+                        "credential configuration."
                     ),
-                    blocking_reasons=("github_credentials_missing",),
+                    blocking_reasons=(f"{provider}_credentials_missing",),
                 )
 
         return _probe

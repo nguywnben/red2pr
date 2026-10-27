@@ -769,6 +769,9 @@ describe("U09 GitHub App Integrations UI, Callback State & Hazard Flows (UI-S15 
         return sseIdleConnectedResponse();
       }
       if (url.pathname === "/api/v1/workspaces/acme/integrations" && method === "GET") {
+        if (url.searchParams.get("provider") === "gitlab") {
+          return jsonResponse({ items: [], next_cursor: null, snapshot_at: NOW_ISO });
+        }
         return jsonResponse({ items: [readyConn], next_cursor: null, snapshot_at: NOW_ISO });
       }
       if (url.pathname === `/api/v1/workspaces/acme/integrations/${CONN_ID}` && method === "GET") {
@@ -799,9 +802,10 @@ describe("U09 GitHub App Integrations UI, Callback State & Hazard Flows (UI-S15 
     const lightAxe = await axe.run(lightView.container);
     expect(lightAxe.violations).toEqual([]);
 
-    // Switch to GitLab (SRC-02) tab -> renders explicit U10 notice cleanly
+    // Switch to GitLab (SRC-02) tab -> renders live GitLabIntegrationPanel cleanly (U10)
     await user.click(screen.getByRole("button", { name: /GitLab \(SRC-02\)/i }));
-    expect(await screen.findByTestId("gitlab-integration-pending-panel")).toBeInTheDocument();
+    expect(await screen.findByTestId("gitlab-integration-panel")).toBeInTheDocument();
+    expect(await screen.findByTestId("gitlab-readonly-rbac-banner")).toBeInTheDocument();
 
     const gitlabTabAxe = await axe.run(lightView.container);
     expect(gitlabTabAxe.violations).toEqual([]);

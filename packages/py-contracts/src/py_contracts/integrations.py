@@ -73,7 +73,13 @@ GitSha = Annotated[StrictStr, StringConstraints(pattern=r"^[0-9a-f]{40}$")]
 
 # S-08 Connection & Capability
 ProviderKind = Literal["github", "gitlab"]
-ConnectionAuthMode = Literal["github_app", "signed_webhook", "secret_token"]
+ConnectionAuthMode = Literal[
+    "github_app",
+    "gitlab_signed_v19",
+    "gitlab_legacy_token",
+    "signed_webhook",
+    "secret_token",
+]
 ConnectionStatus = Literal[
     "not_configured",
     "checking",
@@ -103,13 +109,19 @@ class ConnectionWrite(StrictContractModel):
     app_id: OpaqueProviderId | None = None
     client_id: BoundedName | None = None
     private_key_pem: Annotated[StrictStr, Field(min_length=32, max_length=16384)] | None = None
+    access_token: Annotated[StrictStr, Field(min_length=12, max_length=512)] | None = None
     webhook_secret_ref: OpaqueSecretRef | None = None
     webhook_secret: Annotated[StrictStr, Field(min_length=16, max_length=512)] | None = None
 
     @model_validator(mode="after")
     def _validate_mutually_exclusive_secret_inputs(self) -> ConnectionWrite:
-        if self.secret_ref is not None and self.private_key_pem is not None:
-            raise ValueError("Provide either secret_ref or private_key_pem, not both")
+        cred_inputs = sum(
+            1
+            for item in (self.secret_ref, self.private_key_pem, self.access_token)
+            if item is not None
+        )
+        if cred_inputs > 1:
+            raise ValueError("Provide at most one of secret_ref, private_key_pem, or access_token")
         if self.webhook_secret_ref is not None and self.webhook_secret is not None:
             raise ValueError("Provide either webhook_secret_ref or webhook_secret, not both")
         return self
@@ -121,17 +133,24 @@ class ConnectionPatchRequest(StrictContractModel):
     expected_version: PositiveVersion | None = None
     display_name: BoundedName | None = None
     base_url: BoundedUrl | None = None
+    auth_mode: ConnectionAuthMode | None = None
     app_id: OpaqueProviderId | None = None
     client_id: BoundedName | None = None
     secret_ref: OpaqueSecretRef | None = None
     private_key_pem: Annotated[StrictStr, Field(min_length=32, max_length=16384)] | None = None
+    access_token: Annotated[StrictStr, Field(min_length=12, max_length=512)] | None = None
     webhook_secret_ref: OpaqueSecretRef | None = None
     webhook_secret: Annotated[StrictStr, Field(min_length=16, max_length=512)] | None = None
 
     @model_validator(mode="after")
     def _validate_patch_secret_inputs(self) -> ConnectionPatchRequest:
-        if self.secret_ref is not None and self.private_key_pem is not None:
-            raise ValueError("Provide either secret_ref or private_key_pem, not both")
+        cred_inputs = sum(
+            1
+            for item in (self.secret_ref, self.private_key_pem, self.access_token)
+            if item is not None
+        )
+        if cred_inputs > 1:
+            raise ValueError("Provide at most one of secret_ref, private_key_pem, or access_token")
         if self.webhook_secret_ref is not None and self.webhook_secret is not None:
             raise ValueError("Provide either webhook_secret_ref or webhook_secret, not both")
         return self

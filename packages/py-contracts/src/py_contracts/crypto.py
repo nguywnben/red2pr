@@ -20,7 +20,7 @@ import hashlib
 import hmac
 import json
 import os
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, Literal
 
@@ -581,3 +581,143 @@ def verify_rs256_jwt(
                 detail="RS256 JWT has expired.",
             )
     return dict(payload_obj)
+
+
+# ---------------------------------------------------------------------------
+# GitLab 19.0+/19.1 Standard Webhooks Signing & Legacy Token Auth (SRC-02)
+# ---------------------------------------------------------------------------
+
+_GITLAB_WHSEC_PREFIX = "whsec_"
+
+
+def decode_gitlab_signing_key(secret: bytes | str) -> bytes:
+    """Decode a GitLab 19.0+/19.1 `whsec_<base64>` signing token or raw secret bytes."""
+    raw_text = secret.decode("utf-8", errors="strict") if isinstance(secret, bytes) else secret
+    cleaned = raw_text.strip()
+    if not cleaned:
+        raise CryptoVerificationError(
+            code="invalid_gitlab_signing_key",
+            detail="GitLab webhook signing key must be non-empty.",
+        )
+    if cleaned.startswith(_GITLAB_WHSEC_PREFIX):
+        b64_part = cleaned.removeprefix(_GITLAB_WHSEC_PREFIX)
+        if not b64_part:
+            raise CryptoVerificationError(
+                code="invalid_gitlab_signing_key",
+                detail="GitLab whsec_ signing key has an empty base64 payload.",
+            )
+        padding = "=" * ((4 - (len(b64_part) % 4)) % 4)
+        try:
+            decoded = base64.b64decode((b64_part + padding).encode("ascii"), validate=True)
+        except Exception as exc:
+            raise CryptoVerificationError(
+                code="invalid_gitlab_signing_key",
+                detail="GitLab whsec_ signing key is not valid Base64.",
+            ) from exc
+        if len(decoded) < 16:
+            raise CryptoVerificationError(
+                code="weak_gitlab_signing_key",
+                detail="Decoded GitLab whsec_ signing key must be at least 16 bytes.",
+            )
+        return decoded
+    raw_bytes = cleaned.encode("utf-8")
+    if len(raw_bytes) < 16:
+        raise CryptoVerificationError(
+            code="weak_gitlab_signing_key",
+            detail="GitLab webhook signing key must be at least 16 bytes.",
+        )
+    return raw_bytes
+
+
+def sign_gitlab_webhook_v19(
+    *,
+    secret: bytes | str,
+    webhook_id: str,
+    timestamp_unix: int,
+    raw_body: bytes,
+) -> str:
+    """Compute GitLab 19.0+/19.1 `webhook-signature` (`v1,<base64>`) over `{id}.{ts}.{body}`."""
+    clean_id = webhook_id.strip()
+    if not clean_id or "." in clean_id or any(ch in clean_id for ch in ("\r", "\n", "\x00")):
+        raise CryptoVerificationError(
+            code="invalid_webhook_id",
+            detail="GitLab webhook-id header must be non-empty without '.' or control bytes.",
+        )
+    key_bytes = decode_gitlab_signing_key(secret)
+    prefix = f"{clean_id}.{timestamp_unix}.".encode("ascii")
+    mac = hmac.new(key_bytes, prefix + raw_body, hashlib.sha256).digest()
+    return f"v1,{base64.b64encode(mac).decode('ascii')}"
+
+
+def verify_gitlab_webhook_v19(
+    *,
+    secrets: Sequence[bytes | str],
+    webhook_id: str | None,
+    webhook_timestamp: str | None,
+    webhook_signature: str | None,
+    raw_body: bytes,
+    now_unix: int,
+    max_skew_seconds: int = 300,
+) -> bool:
+    """Constant-time verification of GitLab 19.0+/19.1 signed webhooks (`SEC-003`, `SEC-027`).
+
+    Strictly validates `webhook-id`, `webhook-timestamp` (`<= 300s` replay window), and
+    space-delimited `v1,<base64>` signatures against active + rotated signing keys.
+    Never inspects or falls back to `X-Gitlab-Token`.
+    """
+    if not secrets or not webhook_id or not webhook_timestamp or not webhook_signature:
+        return False
+    clean_id = webhook_id.strip()
+    if not clean_id or "." in clean_id or any(ch in clean_id for ch in ("\r", "\n", "\x00")):
+        return False
+
+    try:
+        ts_int = int(webhook_timestamp.strip())
+    except ValueError:
+        return False
+    if abs(now_unix - ts_int) > max_skew_seconds:
+        return False
+
+    candidate_sigs: list[bytes] = []
+    for token in webhook_signature.strip().split():
+        if token.startswith("v1,") and len(token) > 3:
+            candidate_sigs.append(token.encode("ascii"))
+    if not candidate_sigs:
+        return False
+
+    matched = False
+    for raw_secret in secrets:
+        try:
+            expected_str = sign_gitlab_webhook_v19(
+                secret=raw_secret,
+                webhook_id=clean_id,
+                timestamp_unix=ts_int,
+                raw_body=raw_body,
+            )
+        except CryptoVerificationError:
+            continue
+        expected_bytes = expected_str.encode("ascii")
+        for cand in candidate_sigs:
+            if hmac.compare_digest(expected_bytes, cand):
+                matched = True
+    return matched
+
+
+def verify_gitlab_legacy_token(
+    *,
+    secrets: Sequence[bytes | str],
+    header_token: str | None,
+) -> bool:
+    """Constant-time verification of legacy GitLab `X-Gitlab-Token` over TLS (`SRC-02`)."""
+    if not secrets or header_token is None:
+        return False
+    provided = header_token.encode("utf-8")
+    if not provided:
+        return False
+
+    matched = False
+    for raw_secret in secrets:
+        secret_bytes = raw_secret if isinstance(raw_secret, bytes) else raw_secret.encode("utf-8")
+        if secret_bytes and hmac.compare_digest(secret_bytes, provided):
+            matched = True
+    return matched

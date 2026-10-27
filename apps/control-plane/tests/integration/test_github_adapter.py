@@ -1241,7 +1241,7 @@ async def test_u09_src_01_negative_callback_forgery_rbac_ssrf_and_partial_pagina
             )
 
         try:
-            # GitLab slice pending U10 -> 422
+            # GitLab slice requires pinned auth_mode ('gitlab_signed_v19' | 'gitlab_legacy_token')
             gl_resp = await owner_client.post(
                 "/api/v1/workspaces/acme/integrations",
                 headers=_csrf_headers(csrf, idem_key=new_uuid7(now=clock())),
@@ -1252,7 +1252,7 @@ async def test_u09_src_01_negative_callback_forgery_rbac_ssrf_and_partial_pagina
                 },
             )
             assert gl_resp.status_code == 422
-            assert gl_resp.json()["code"] == "provider_adapter_pending"
+            assert gl_resp.json()["code"] == "invalid_gitlab_auth_mode"
 
             # Create valid GitHub connection
             conn_resp = await owner_client.post(
@@ -1426,31 +1426,44 @@ async def test_u09_src_01_negative_callback_forgery_rbac_ssrf_and_partial_pagina
             )
             assert stale_ver.status_code == 409
 
-            # ADR-037 SSRF block on metadata / loopback / cleartext HTTP `base_url`
-            for bad_url in (
+            # ADR-037 SSRF block: metadata & loopback fail-fast at create (`403`), HTTP at probe
+            for forbidden_url in (
                 "https://169.254.169.254",
                 "https://127.0.0.1",
-                "http://api.github.com",
             ):
                 ssrf_conn = await owner_client.post(
                     "/api/v1/workspaces/acme/integrations",
                     headers=_csrf_headers(csrf, idem_key=new_uuid7(now=clock())),
                     json={
                         "provider": "github",
-                        "base_url": bad_url,
+                        "base_url": forbidden_url,
                         "auth_mode": "github_app",
                         "app_id": "340122",
                         "private_key_pem": rsa_pem,
                     },
                 )
-                assert ssrf_conn.status_code == 201
-                ssrf_id = ssrf_conn.json()["id"]
-                ssrf_probe = await owner_client.post(
-                    f"/api/v1/workspaces/acme/integrations/{ssrf_id}/probes",
-                    headers=_csrf_headers(csrf, idem_key=new_uuid7(now=clock())),
-                )
-                assert ssrf_probe.status_code == 403
-                assert ssrf_probe.json()["code"].startswith("egress_")
+                assert ssrf_conn.status_code == 403
+                assert ssrf_conn.json()["code"] == "egress_forbidden_ip"
+
+            cleartext_conn = await owner_client.post(
+                "/api/v1/workspaces/acme/integrations",
+                headers=_csrf_headers(csrf, idem_key=new_uuid7(now=clock())),
+                json={
+                    "provider": "github",
+                    "base_url": "http://api.github.com",
+                    "auth_mode": "github_app",
+                    "app_id": "340122",
+                    "private_key_pem": rsa_pem,
+                },
+            )
+            assert cleartext_conn.status_code == 201
+            cleartext_id = cleartext_conn.json()["id"]
+            cleartext_probe = await owner_client.post(
+                f"/api/v1/workspaces/acme/integrations/{cleartext_id}/probes",
+                headers=_csrf_headers(csrf, idem_key=new_uuid7(now=clock())),
+            )
+            assert cleartext_probe.status_code == 403
+            assert cleartext_probe.json()["code"].startswith("egress_")
         finally:
             await owner_client.aclose()
             await viewer_client.aclose()

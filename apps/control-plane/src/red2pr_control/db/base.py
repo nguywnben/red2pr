@@ -1339,7 +1339,8 @@ class ProviderConnectionModel(Base):
             name="provider_connection_provider_valid",
         ),
         CheckConstraint(
-            "auth_mode IN ('github_app', 'signed_webhook', 'secret_token')",
+            "auth_mode IN ('github_app', 'gitlab_signed_v19', 'gitlab_legacy_token', "
+            "'signed_webhook', 'secret_token')",
             name="provider_connection_auth_mode_valid",
         ),
         CheckConstraint(
