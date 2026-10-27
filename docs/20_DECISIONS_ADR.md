@@ -74,5 +74,18 @@ Impact: enables private deployments but adds endpoint-registry, audit and networ
 5. ADR-021 license/domain/publisher and ADR-024 relay operating model.
 Verify vendor versions/capabilities through [22](22_OFFICIAL_REFERENCES.md); do not ask the owner to guess API behavior. No source implementation is authorized by this document update.
 
+## P3 master implementation plan record — 2026-10-27
+
+### ADR-038 — PROPOSED: frozen 36-unit master implementation plan, monorepo boundaries and P4 change control
+Context: ADR-027 requires a single integrated, owner-approved Master Implementation Plan before any product source code is written, with continuous per-slice verification and strict change control. Six minor residual cross-document ambiguities also remained after P2 review (`Membership.role` enum missing `auditor` in `S-07` vs `doc14`/`A-17`; 10-phase vs 8-step setup wizard wording across `doc15`/`doc36`; stale `/events/*` proxy reference in `doc29` vs `/api/v1/workspaces/{ws}/events`; missing `triaging/policy_gate -> needs_human` edge in `doc08` vs `doc03`/`doc27`; stale `mobile read-only` text in `doc18` vs responsive admin in `doc04`/`doc34`; `en`-first vs bilingual `v1.0.0` copy).
+
+Proposal:
+1. Adopt [40_EXECUTION_MASTER_PLAN.md](40_EXECUTION_MASTER_PLAN.md) (`PLAN-2026-10-27-v1`) as the single execution baseline comprising **36 immutable Execution Units (`U01`–`U36`)** across **Waves `W0`–`W6`** and **Integration Gates `IG-01`–`IG-06`**.
+2. Lock the contract-first monorepo layout (`uv` Python 3.12 workspace + `pnpm` 9 / Node 22 LTS frontend build workspace) with `packages/py-contracts` (`S-01`..`S-22`), exported `contracts/openapi/openapi.v1.json`, generated `packages/ts-client`, `apps/control-plane`, zero-control-import `apps/worker-supervisor` (`import-linter` enforced), `apps/cli`, and `apps/web` (React 19 + TypeScript strict + Vite + pinned `@astryxdesign/core` `0.7.5` wrappers; never run `astryx init` in repository root).
+3. Resolve the six pre-code contract alignments uniformly: include `auditor` in `S-07` `Membership.role`; use the canonical 10-phase `A-01` setup wizard enum (`owner_claim` through `readiness_review`); serve all REST, SSE, and webhook routes under `/api/v1/*`; permit explicit `triaging -> needs_human` and `policy_gate -> needs_human` transitions; test responsive `320/768/1280px` workflows with step-up parity; and ship complete English (`en`) copy in `v1.0.0` over externalized i18n keys.
+4. Enforce strict P4 Change Control: execute only the exact owner-authorized Unit ID per session, require passing unit/integration/security tests before marking any unit `LOCALLY_VERIFIED`, separate hermetic tests from owner-authorized Wave 6 live provider/OS certification (`U33`–`U36`), and require a formal Change Request (`CR-XXX`) rather than ad-hoc unit splitting or parallel roadmaps.
+
+Consequences: 100% of the 46 features, 21 screens, 24 API families, 22 schemas, 40 security tests, 16 NFR targets, and 15 release gates map cleanly to non-overlapping owning units. Owner approval of ADR-033…038 is required before `U01` implementation begins.
+
 
 [← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

@@ -85,5 +85,16 @@ A family range such as UI-S01…21 or A-01…A-24 means all catalogue entries; s
 
 All evidence records include requirement/test IDs, build/source digest, environment+vendor versions, actual result, artifact hashes, runner identity, start/end timestamps, reviewer and expiry/retest trigger. NOT RUN/BLOCKED/FAIL are never PASS; a linked plan is not a result. Owner review of this spec does not authorize real test accounts, notifications, paid API or deployment.
 
+## P3 execution unit mapping (`U01`–`U36`) — 2026-10-27
+Every catalogue row and release gate above is bound to an immutable primary owning unit and Wave 6 certification unit in [40_EXECUTION_MASTER_PLAN.md](40_EXECUTION_MASTER_PLAN.md) (`PLAN-2026-10-27-v1`):
+- **Wave 0 (`U01`–`U04`, `IG-01`):** workspace/config/redaction (`U01`), `S-01`..`S-22` & OpenAPI/TS codegen (`U02`), PostgreSQL/RLS/outbox/idempotency/audit spine (`U03`), `UI-01` & `UI-02` (`U04`).
+- **Wave 1 (`U05`–`U08`, `IG-02`):** `IAM-01` (`U05`), `IAM-02` (`U06`), `INS-02` (`U07`), `JOB-01` & `JOB-02` (`U08`).
+- **Wave 2 (`U09`–`U13`, `IG-03`):** `SRC-01` (`U09`), `SRC-02` (`U10`), `SRC-03` & `SRC-04` (`U11`), `REP-01`..`REP-03` (`U12`), `TRI-01` & `TRI-03` (`U13`).
+- **Wave 3 (`U14`–`U20`, `IG-04`):** `SAN-01` (`U14`), `SAN-02` & `SAN-03` (`U15`), `AGT-01` & `AGT-03` (`U16`), `TRI-02` & `AGT-02` (`U17`), `FIX-01`, `FIX-02` & `FIX-04` (`U18`), `APP-01` & `APP-02` (`U19`), `FIX-03` (`U20`).
+- **Wave 4 (`U21`–`U25`, `IG-05`):** `NOT-01` (`U21`), `NOT-02` & `NOT-03` (`U22`), `NOT-04` & `EXT-01` (`U23`), `ANL-01` & `ANL-02` (`U24`), `OPS-01` & `OPS-03` (`U25`).
+- **Wave 5 (`U26`–`U30`, `IG-06`):** `INS-03` & `OPS-02` (`U26`), `INS-01` (`U27`), `IAM-03` (`U28`), `SRC-05` & `AGT-04` (`U29`), `SAN-04` & `EXT-02` (`U30`).
+- **Wave 6 (`U31`–`U36` — Release Certification):** `R-05/R-06/R-14` (`U31`), `R-07/R-10/R-11/R-13` (`U32`), `R-09` (`U33`), `R-02/R-03/R-04/R-08` (`U34`), `R-12` (`U35`), `R-01/R-15` (`U36`).
+All 46 features and 15 gates remain **NOT IMPLEMENTED / NOT RUN** pending owner approval of [40_EXECUTION_MASTER_PLAN.md](40_EXECUTION_MASTER_PLAN.md).
+
 
 [← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

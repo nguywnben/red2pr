@@ -22,3 +22,6 @@ See [docs/00_INDEX.md](docs/00_INDEX.md).
 
 ## Specification review P2 — 2026-10-27
 Current artifact is a **design under owner review**, not working product code. [Specification index](docs/00_INDEX.md), [before/after audit](docs/39_SPEC_AUDIT.md), [46-feature traceability](docs/38_REQUIREMENTS_TRACEABILITY.md) and [decisions](docs/20_DECISIONS_ADR.md) record the production scope, accepted owner choices, proposed contracts and unverified vendor/runtime dependencies. Frontend remains React19 + TypeScript + Vite + Astryx; backend/agents Python/FastAPI. No implementation master plan or product execution is authorized by this documentation update.
+
+## Master implementation plan P3 — 2026-10-27
+The unified Master Implementation Plan for Red2PR `1.0.0` is prepared at [docs/40_EXECUTION_MASTER_PLAN.md](docs/40_EXECUTION_MASTER_PLAN.md) (`PLAN-2026-10-27-v1`: 36 immutable execution units `U01`–`U36`, 7 waves, 6 integration checkpoints, 100% 46-feature coverage, and gates `R-01`–`R-15`). Repository status remains **NOT IMPLEMENTED (`0` source modules, `0` tests executed)** pending explicit owner approval of the plan and authorized execution units.

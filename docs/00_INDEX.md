@@ -1,6 +1,6 @@
 # Red2PR specification index
 
-**Specification version:** SPEC-2026-10-27-v5 (P2 review) · **Status:** design baseline, not an implementation · **Language:** English.
+**Specification version:** SPEC-2026-10-27-v5 (P2 review) + PLAN-2026-10-27-v1 (P3 execution master plan awaiting owner approval) · **Status:** design and master plan baseline, not an implementation · **Language:** English.
 
 ## Recommended reading order
 | File | Contents |
@@ -44,6 +44,7 @@
 | [37_NFR_AND_RECOVERY.md](37_NFR_AND_RECOVERY.md) | Measurable TARGETS, workload, recovery, backup consistency |
 | [38_REQUIREMENTS_TRACEABILITY.md](38_REQUIREMENTS_TRACEABILITY.md) |46feature positive/negative acceptance and reverse15release gates |
 | [39_SPEC_AUDIT.md](39_SPEC_AUDIT.md) | Full read inventory, before/after gaps, actual repo state, review decisions |
+| [40_EXECUTION_MASTER_PLAN.md](40_EXECUTION_MASTER_PLAN.md) | Frozen 36-unit master implementation plan (`U01`–`U36`), DAG, contracts, tests, release gates and P4 change control |
 
 ## Decision status
 - **Accepted:** explicitly settled by the owner and recorded as `ACCEPTED` in the ADRs. In particular, ADR-025 selects React 19/Vite/TypeScript/Astryx for the frontend and Python for the backend.
