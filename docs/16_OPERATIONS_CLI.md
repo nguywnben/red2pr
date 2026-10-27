@@ -51,4 +51,4 @@ Proposed stable exits:0 successful requested operation (not merely queued);2 inv
 Runbooks must include symptom, diagnostic command, containment, authorized recovery, verification, escalation and data-loss implications for each incident in [37](37_NFR_AND_RECOVERY.md). Backup/update/restore/uninstall tests must use disposable isolated test installation after implementation approval; none executed now.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

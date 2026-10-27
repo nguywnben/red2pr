@@ -1,4 +1,4 @@
-# Kiến trúc hệ thống — component boundaries và deployment
+# System architecture — component boundaries and deployment
 
 ## Accepted implementation-language boundary
 - **Web client:** React 19 + TypeScript + Vite, Astryx UI components + thin Red2PR design wrappers; static compiled files served through same-origin reverse proxy. No Next.js runtime required.
@@ -34,7 +34,7 @@ Web Dashboard/CLI -> [API + Auth/RBAC] -> [Control Plane/PostgreSQL]
                                              | [Telemetry/Analytics]
 ```
 
-## Module map và responsibility owner
+## Module map and responsibility ownership
 | Module | Responsibility | Has credentials? | Runs target repo code? |
 |---|---|---|---|
 | `api` | Auth/UI API, user actions, CSRF/RBAC, setup | session keys | No |
@@ -50,7 +50,7 @@ Web Dashboard/CLI -> [API + Auth/RBAC] -> [Control Plane/PostgreSQL]
 | `notifications` | route/deliver messages and callback links | bot tokens/webhook secrets | No |
 | `analytics` | event aggregation, reporting | read-only DB | No |
 
-**Module API contracts** ở [07_API_CONTRACTS.md](07_API_CONTRACTS.md), state transitions ở [08_EVENTS_STATE_MACHINES.md](08_EVENTS_STATE_MACHINES.md), isolation ở [10_SANDBOX_REPRODUCTION.md](10_SANDBOX_REPRODUCTION.md).
+**Module API contracts** are defined in [07_API_CONTRACTS.md](07_API_CONTRACTS.md), state transitions in [08_EVENTS_STATE_MACHINES.md](08_EVENTS_STATE_MACHINES.md), and isolation in [10_SANDBOX_REPRODUCTION.md](10_SANDBOX_REPRODUCTION.md).
 
 ## Durable workflow mechanics
 - PostgreSQL is source-of-truth; transactional inbox/outbox and queue jobs indexed by logical repair key. Redis + Dramatiq preferred initial worker queue **only if** durable recovery is implemented in DB; Redis state alone cannot represent durable truth.
@@ -105,4 +105,4 @@ Publisher does not accept model-issued commands; it consumes a sealed intent tha
 Single instance may host many workspaces; scheduler fairness, cache keys, object prefixes, event cursors and DB predicates all include workspace. Distributed workers do not imply HA control plane or trusted multi-tenant shared kernel. The distinction between required isolation and SAN-04 extension is explicit in ADR-034.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

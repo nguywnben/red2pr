@@ -60,4 +60,4 @@ Namespace paths are canonical: instance.*, security.*, runtime.*, providers.*, a
 Policy preview returns effective value, source scope/revision and deny reason for each constraint. Config secrets reference encrypted broker entries; API never returns secret values. Export excludes tokens/bootstrap keys and is schema-versioned. Runtime profile/env/egress/key changes invalidate affected running checkpoints and approvals before escalation. Defaults cannot override current stricter policy or accepted invariants.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

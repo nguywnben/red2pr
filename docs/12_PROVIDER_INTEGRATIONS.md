@@ -59,4 +59,4 @@ Remote verifier records expected required workflow/job/context set from reviewed
 Publication failure never discards proof; remote failure can create a budgeted linked session after triage, with loop cap across chain. No auto-merge or deployment endpoints.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

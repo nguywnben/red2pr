@@ -51,4 +51,4 @@ Official source snapshot [facebook/astryx commit 2c7ef0e](https://github.com/fac
 Read status DOC/SOURCE_VERIFIED only; no component render, CLI command, build, accessible interaction or peer installation tested. Exact reset/theme CSS import/export strings in earlier design are **integration hypotheses**, not verified public exports. Gate FE-01 requires CLI/docs/export cross-check in a controlled disposable integration after permission, without running init against root AGENTS.md; capture before/after diff and merge only reviewed docs. UI toolkit fallback must preserve Astryx tokens and receive scoped ADR; no silent design system replacement.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

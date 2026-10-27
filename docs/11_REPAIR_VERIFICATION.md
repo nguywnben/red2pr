@@ -1,4 +1,4 @@
-# Repair, deterministic verification, approval và PR/MR
+# Repair, deterministic verification, approval and PR/MR
 
 ## Repair stages
 - Triage must decide whether code/config patch is appropriate; don't patch transient network/secret/runner outages automatically.
@@ -20,7 +20,7 @@
 | V-08 | Remote CI | matching PR commit CI conclusion received from provider after publication |
 
 ## Evidence vocabulary
-`DIAGNOSED_ONLY` ≠ `REPRO_CONFIRMED` ≠ `LOCALLY_VERIFIED` ≠ `REMOTELY_VERIFIED` ≠ `MERGED` (Red2PR does NOT execute merge). ADR-031: baseline chưa tái hiện → `repro_unconfirmed`, diagnosis + chuyển người xử lý. Cấm tạo branch/push/draft PR/MR cho phiên này; human approval không được miễn V-01.
+`DIAGNOSED_ONLY` ≠ `REPRO_CONFIRMED` ≠ `LOCALLY_VERIFIED` ≠ `REMOTELY_VERIFIED` ≠ `MERGED` (Red2PR does NOT execute merge). ADR-031: a baseline that cannot be reproduced leads to `repro_unconfirmed`, diagnosis and human handoff. Branch creation, push and draft PR/MR publication are prohibited for that session; human approval cannot waive V-01.
 
 ## Diff integrity
 - No deleting/skip/xfail/suppressing failing tests, lowering lint security gates, modifying workflow to avoid checks, or unexpected deletion of files.
@@ -46,4 +46,4 @@ Human approval identity bound to account/workspace/repo/patch digest/policy revi
 Inconclusive baseline -> `REPRO_UNCONFIRMED` with human handoff and no publication; flaky baseline -> reruns and abstention; infra issue -> no patch; provider permission revocation -> stop; expired approval -> gate; remote CI fail -> link iteration budget and show new failure classification.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

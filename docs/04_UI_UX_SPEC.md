@@ -1,10 +1,10 @@
-# UI/UX specification: Information architecture và từng màn hình
+# UI/UX specification: information architecture and screens
 
 ## Frontend implementation decision
 **React 19 + TypeScript + Vite + Astryx Design System** is the target frontend. Continue Python/FastAPI in backend and execution plane. Design tokens and selected Astryx component APIs are validated using official Astryx docs/CLI; see [29_FRONTEND_ASTRYX.md](29_FRONTEND_ASTRYX.md). Red2PR wrappers shield beta API churn; do not overbuild another design system.
 
 ## Design rules
-Responsive desktop-first, dark/light mode, ngôn ngữ EN trước, hỗ trợ i18n; accessible semantics, focus rings, WCAG AA target, timezones local có biểu thị UTC khi export. Không dùng màu đơn độc để biểu thị trạng thái. Shared design tokens + component library; standardized toasts, confirmation modal, audit context.
+Responsive desktop-first layout, dark/light mode, English first with i18n support; accessible semantics, focus rings and a WCAG AA target. Display local time zones and identify UTC in exports. Never communicate status through color alone. Use shared design tokens and a component library, with standardized toasts, confirmation dialogs and audit context.
 
 ## Sitemap / route proposal
 | Path | Page | Required components, states, interactions |
@@ -59,4 +59,4 @@ Loading (skeleton), Empty (clear CTA), Success, Partial evidence, Degraded, Offl
 [34](34_SCREEN_AND_INTERACTION_CONTRACTS.md) enumerates UI-S01…21 with action, API, persistence and state/a11y acceptance. Responsive administration is proposed for all supported widths with equivalent security review; any earlier read-only-mobile shortcut is superseded in this draft. [29](29_FRONTEND_ASTRYX.md) separates source-verified Astryx props from untested integration assumptions.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

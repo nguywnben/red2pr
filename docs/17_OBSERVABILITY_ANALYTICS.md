@@ -29,4 +29,4 @@ Metrics reconcile with DB event ledger under replays; no duplicate success count
 Analytics denominators: eligible failures / all ingested failures; reproduced / eligible executed; local verified / confirmed baselines; published / locally verified eligible; remotely verified / published with completed observation. Show unknown/pending/excluded counts and period/watermark; cost includes failed/abstained/retried sessions. Never call local green a remote success; workspace aggregation only includes current authorized repositories. Trace sampling may reduce benign spans but never remove audit/security transitions.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

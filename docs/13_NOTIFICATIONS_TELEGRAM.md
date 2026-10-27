@@ -44,4 +44,4 @@ Channel setup test is explicit; failure means `degraded` not falsely `healthy`. 
 [32 Notification event matrix](32_NOTIFICATION_EVENT_MATRIX.md) defines canonical domain events, destination consent, all six channel adapters, exact retry/unknown semantics and outgoing signature. Any shorter event label here is UI copy, not another emitted event. In-app security visibility is mandatory; **external destinations** opt in. User linking and read-only commands never replace web RBAC/step-up for dangerous actions. Credentials/test deliveries are not configured or invoked during this documentation phase.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

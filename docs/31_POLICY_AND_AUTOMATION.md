@@ -37,4 +37,4 @@ UI/report exposes `diagnosed_only`, `repro_unconfirmed`, `locally_verified`, `re
 ADR-031 forbids publication without baseline; ADR-032 forbids release with Critical or invariant failure. Any earlier reference to scoped exceptions applies only to policy choices explicitly waivable under approved ADR, never V-01, secret boundaries, authorization, cross-workspace isolation or truthful proof. Approval cannot broaden a grant or invent evidence. S-12 binds base SHA/target in addition to patch and policy.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

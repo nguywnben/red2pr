@@ -47,4 +47,4 @@ Uninstall defaults preserve data/backups/keys; purge requires explicit scoped co
 Targets require owner review; unmeasured=NOT RUN, missed=FAIL, unavailable environment=BLOCKED. Target exception for performance needs ADR and public scope, cannot exempt security invariants or silently lower feature priority. R-13 evidence must distinguish load test from long-term99.5% observation; synthetic uptime is not30day operational validation. A release without necessary observation remains preproduction rather than inventing production readiness.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

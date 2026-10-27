@@ -35,4 +35,4 @@ Record video and scripted fixtures as fallback; real run can be flaky/provider r
 The >=20case corpus must include unreproducible, flaky, infra, wrong-SHA, changed-test and prompt-injection negatives; ADR-031 expects **zero publication** for unconfirmed baseline. Record all attempts/abstentions/cost, not curated successes. R-12 uses NFR-06/NFR-15 and per-feature cases in [38](38_REQUIREMENTS_TRACEABILITY.md). Hackathon-specific submission rules remain unknown until exact event supplied; demo success is never production evidence.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

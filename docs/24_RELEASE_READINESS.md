@@ -35,4 +35,4 @@
 Every release has changelog, migration plan, vulnerability response channel, rollback safety notes and updated release signature/digest. Safe design can be complete before software implementation; production status cannot.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

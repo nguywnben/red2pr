@@ -66,4 +66,4 @@ Original table is historical question inventory. Status below resolves it; unkno
 Not deciding these during P2 does not prevent documentation completion. They remain explicit blockers **before affected implementation/design freeze**, not permission to silently choose. P2 spec approval is distinct from permission to execute code or use external resources.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

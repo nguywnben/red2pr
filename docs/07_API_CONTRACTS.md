@@ -28,4 +28,4 @@ Frontend SSE A-21 reconciles REST snapshot on expired cursor, version gap or rev
 ## Compatibility and validation obligations
 Versioned API v1 must round-trip against future generated Python/OpenAPI/TypeScript schemas; incompatible field/semantics change requires new version and migration. Test all documented response branches, unknown enums, extra fields, huge input, invalid cursor, duplicate side effects, out-of-order events, cross-workspace IDs and permission changes during execution. A JSON table is not runtime validation. Required positive/negative tests and release mappings are [38](38_REQUIREMENTS_TRACEABILITY.md).
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

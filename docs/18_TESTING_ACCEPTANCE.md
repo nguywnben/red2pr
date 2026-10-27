@@ -55,4 +55,4 @@ For **each** release gate record test command, tested source SHA/container diges
 [38](38_REQUIREMENTS_TRACEABILITY.md) defines T-<feature>-P/N for every46 feature IDs and reverse R-01…15 mapping; [37](37_NFR_AND_RECOVERY.md) adds T-NFR-01…16 with explicit workload/thresholds; [26](26_SECURITY_TEST_MATRIX.md) extends negative corpus through SEC-040. All are NOT RUN. P0 release requires real applicable E2E and independent negative proof, not merely authored test names. Critical cannot be waived, High only ADR-032 exception; no baseline means no publication. Candidate support profiles must become exact tested certificates before release.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

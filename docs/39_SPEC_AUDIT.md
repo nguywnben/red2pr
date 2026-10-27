@@ -1,30 +1,30 @@
-# P2 specification audit — gap analysis trước/sau
+# P2 specification audit — before/after gap analysis
 
-**Ngày:** 2026-10-27 (Asia/Saigon). **Phạm vi:** nghiên cứu tài liệu công khai và sửa Markdown đặc tả; không code sản phẩm, không master plan chi tiết, không cài dependency, không sandbox/API có phí, không cấu hình tài khoản hay gửi thông báo. **Kết luận:** bộ thiết kế đã được mở rộng và đồng bộ để chủ dự án duyệt; chưa thể kết luận sản phẩm đã chạy hoặc production-ready.
+**Date:** 2026-10-27 (Asia/Saigon). **Scope:** research public documentation and edit specification Markdown; no product code, detailed implementation master plan, dependency installation, sandbox execution, paid API calls, account configuration or notifications. **Conclusion:** the design has been expanded and aligned for owner review; this does not establish a working or production-ready product.
 
-## Hiện trạng thực tế và mức chứng minh
-Workspace: thư mục dự án `red2pr` trên máy Windows (đường dẫn cá nhân được lược bỏ khi chuẩn bị công khai). Tại thời điểm kiểm toán P2, chưa có metadata Git; `git status --short` báo “not a git repository”. Các kết luận P2 dùng nội dung/hash đầu phiên, không dựa trên Git diff. Việc khởi tạo và xuất bản Git được chủ dự án yêu cầu riêng sau P2; xem [progress](23_PROGRESS.md).
-Trước P2:38tài liệu chính thức (AGENTS,README,docs00…35) +34tệp skills/metadata =72tệp. Không có product source/tests/manifests/lockfiles/migrations/CI/Dockerfile. Skill utility shell không phải code sản phẩm và không chạy. Sau P2 thêm4Markdown docs36…39; AGENTS và skills được bảo toàn.
-Môi trường: PowerShell7.6.5; tìm thấy Git,Python3.12-path,Node/npm,WSL executable; không tìm Docker trên PATH. Đây là discovery executable, không chứng nhận daemon/WSL distro/virtualization/runtime hoạt động. Không chạy code repo, installer hay worker. Version/hardware sâu và runtime readiness để lại kiểm chứng khi được cấp phép.
+## Actual repository state and levels of evidence
+Workspace: the `red2pr` project directory on Windows (the personal path was removed when preparing public publication). At the time of the P2 audit, Git metadata did not exist; `git status --short` reported “not a git repository”. P2 findings used the initial content/hash snapshot rather than a Git diff. The owner separately requested Git initialization and publication after P2; see [progress](23_PROGRESS.md).
+Before P2: 38 official documents (AGENTS, README, docs00…35) + 34 skill/metadata files = 72 files. There was no product source, test suite, manifest, lockfile, migration, CI configuration or Dockerfile. The skill shell utility is not product code and was not executed. P2 added four Markdown documents, docs36…39; AGENTS and the skills were preserved.
+Environment: PowerShell7.6.5; Git, a Python3.12 executable path, Node/npm and WSL were found; Docker was not on PATH. Discovering an executable does not certify a working daemon, WSL distribution, virtualization or runtime. No repository code, installer or worker was executed. Detailed version/hardware checks and runtime readiness require later authorized verification.
 
-| Mức | Có thể kết luận | Không được suy diễn |
+| Level | Supported conclusion | Must not be inferred |
 |---|---|---|
-| DESIGNED | feature/flow/contract/security/test/release requirements có tài liệu, một phần PROPOSED | thiết kế được owner chấp thuận toàn bộ |
-| IMPLEMENTED | **0 product modules** | API/tool/schema table là code chạy |
-| TESTED | **0 product test suites** | kiểm tra Markdown là test sản phẩm |
-| OPERATIONALLY_VALIDATED | **0 deployments / 0 integration validations / 0 release gates pass** | vendor public docs hoặc Astryx source prove runtime |
-| DOC/SOURCE_VERIFIED | official pages và Astryx source snapshot đọc, link/ID checks của docs riêng | account Meta quota, provider grants hay component render đã xác minh |
+| DESIGNED | Feature/flow/contract/security/test/release requirements are documented; some remain PROPOSED | The owner has approved the entire design |
+| IMPLEMENTED | **0 product modules** | API/tool/schema tables are executable code |
+| TESTED | **0 product test suites** | Markdown validation is product testing |
+| OPERATIONALLY_VALIDATED | **0 deployments / 0 integration validations / 0 release gates pass** | Public vendor documentation or Astryx source proves runtime behavior |
+| DOC/SOURCE_VERIFIED | Official pages and an Astryx source snapshot were read; document link/ID checks were performed separately | Meta account quotas, provider grants or component rendering have been verified |
 
-## Bảng chứng minh đọc đủ baseline
-Tất cả38file dưới đã đọc đầy đủ trong intake/P2, không chỉ tên file. Cột yêu cầu chỉ trích tóm tắt quyết định trọng tâm; Cxx dẫn gap register sau bảng. Những file dài đọc theo từng nhóm. Skill instructions đọc riêng không tính là product spec.
+## Complete baseline reading record
+All 38 files below were read in full during intake/P2, not merely listed. The requirements column summarizes the central decisions reviewed; Cxx references the gap register below. Long documents were read in batches. Skill instructions were read separately and are not counted as product specifications.
 
-| File | Vai trò | Yêu cầu chính đã đối chiếu | Conflict/gap |
+| File | Role | Main requirements reviewed | Conflict/gap |
 |---|---|---|---|
-| [AGENTS.md](../AGENTS.md) | Operating contract | docs-only, proof, least privilege, exact owner-approved scope, no overwrite | giữ nguyên; không tự cấp quyền code |
+| [AGENTS.md](../AGENTS.md) | Operating contract | docs-only, proof, least privilege, exact owner-approved scope, no overwrite | Preserved during P2; no self-authorized implementation |
 | [README.md](../README.md) | Product entry point | production-first full product, chosen stack, approval before code | C01,C16 |
-| [00_INDEX.md](00_INDEX.md) | Mục lục/status | ADR precedence, complete product scope | C01 |
-| [01_PRODUCT_VISION.md](01_PRODUCT_VISION.md) | Vision/personas | Self-hosted repair with proof; không auto-merge | C04 |
-| [02_FEATURE_CATALOG.md](02_FEATURE_CATALOG.md) | 46 feature IDs/priority | 41P0/4P1/1P2, acceptance toàn sản phẩm | C06,C07 |
+| [00_INDEX.md](00_INDEX.md) | Index/status | ADR precedence, complete product scope | C01 |
+| [01_PRODUCT_VISION.md](01_PRODUCT_VISION.md) | Vision/personas | Self-hosted repair with proof; no auto-merge | C04 |
+| [02_FEATURE_CATALOG.md](02_FEATURE_CATALOG.md) | 46 feature IDs/priority | 41P0/4P1/1P2, product-wide acceptance | C06,C07 |
 | [03_PERSONAS_JOURNEYS.md](03_PERSONAS_JOURNEYS.md) | User journeys | Local/team/repair/refusal/Telegram/recovery | C02,C04,C06 |
 | [04_UI_UX_SPEC.md](04_UI_UX_SPEC.md) | IA/screens/states | 21routes, access, dark/light, responsive | C13 |
 | [05_SYSTEM_ARCHITECTURE.md](05_SYSTEM_ARCHITECTURE.md) | Modules/trust/topology | Python/FastAPI, boundaries, DB/outbox/worker | C01,C07 |
@@ -59,17 +59,17 @@ Tất cả38file dưới đã đọc đầy đủ trong intake/P2, không chỉ 
 | [34_SCREEN_AND_INTERACTION_CONTRACTS.md](34_SCREEN_AND_INTERACTION_CONTRACTS.md) | Interactions/UI details | Screen actions/form states/a11y tests | C10,C13 |
 | [35_INTEGRATION_DEPENDENCIES.md](35_INTEGRATION_DEPENDENCIES.md) | Capability probe contract | Account/version/permission limits, authorized tests | C14 |
 
-## Gap analysis trước/sau
-“Đã sửa” ở đây là **đặc tả**, không phải lỗ hổng phần mềm đã được khắc phục. Nơi quyết định chưa được owner chốt, trạng thái là “đề xuất thống nhất”, không ACCEPTED.
+## Before/after gap analysis
+“Corrected” here refers to the **specification**, not a remediated software vulnerability. Where the owner has not settled a decision, its status is a proposed resolution, not ACCEPTED.
 
-| Gap | Trước: bằng chứng file/mục | Sau: điều chỉnh và tác động | Trạng thái / còn phải làm |
+| Gap | Before: file/section evidence | After: change and impact | Status / remaining work |
 |---|---|---|---|
-| C01 | doc05 Accepted language boundary chứa DB recommendation; doc29 React>=19 | React major19/TS/Vite/Astryx + Python/FastAPI giữ nguyên; PostgreSQL/outbox topology ghi PROPOSED ADR-013/035, không đổi accepted rows | chỉnh phân loại; owner duyệt infrastructure |
-| C02 | doc07 workspace create Owner/Admin vs doc30 owner-only; journeyB admin creates | A-04 và journey dùng instance owner; workspace admin quản trị scope hiện có; owner không mặc nhiên đọc mọi repo | đã sửa contract; R-06 chưa chạy |
-| C03 | doc02 monitor no execution vs doc31 sandbox exception | ADR-033 đề xuất monitor chỉ ingest/diagnose, chuyển mode web có audit; pause là override | PROPOSED, không âm thầm accepted |
-| C04 | doc08 (REPRO_*)→PATCHING; doc11 provisional draft; doc25 two keys | ADR-031 owner đã chốt; chỉ confirmed baseline đi patch; unconfirmed terminal diagnosis; bỏ provisional option và từ chối legacy key | ACCEPTED direction, negative proof pending |
-| C05 | docs07/09 tool aliases,08/32 event aliases,09 waiting model,25 budget aliases | S-20toolset, S-19event registry, suspension reason và namespace keys canonical; schema/code generation deferred | ADR-033 PROPOSED; no existing data migration |
-| C06 | IAM-03 invitesP1 vs team journeyP0; doc14 MFAoptional vs doc30 stepup | ADR-034 đề xuất local invitation IAM-02P0, federationP1; mandatory TOTP/stepup privileged roles, recovery/last-admin contract | owner review required; no priority deleted |
+| C01 | doc05 Accepted language boundary included a DB recommendation; doc29 used React>=19 | Preserve React major19/TS/Vite/Astryx + Python/FastAPI; classify PostgreSQL/outbox topology as PROPOSED ADR-013/035 without changing accepted rows | Classification corrected; infrastructure awaits owner approval |
+| C02 | doc07 allowed Owner/Admin workspace creation versus owner-only in doc30; journeyB assigned it to an admin | A-04 and the journey require the instance owner; workspace admins manage existing scope; owners do not automatically read every repository | Contract corrected; R-06 not run |
+| C03 | doc02 prohibited monitor execution while doc31 allowed a sandbox exception | ADR-033 proposes ingest/diagnose-only monitor mode, audited web mode changes and a separate pause override | PROPOSED, not silently accepted |
+| C04 | doc08 (REPRO_*)→PATCHING; doc11 provisional drafts; doc25 had two keys | Owner accepted ADR-031: only a confirmed baseline permits patching; unconfirmed terminates with diagnosis; remove provisional options and reject legacy keys | ACCEPTED direction, negative proof pending |
+| C05 | docs07/09 tool aliases,08/32 event aliases,09 waiting model,25 budget aliases | Canonical S-20 toolset, S-19 event registry, suspension reasons and namespace keys; schema/code generation deferred | ADR-033 PROPOSED; no existing data migration |
+| C06 | IAM-03 invitationsP1 versus team journeyP0; optional MFA in doc14 versus step-up in doc30 | ADR-034 proposes local invitations under IAM-02P0, federationP1, mandatory TOTP/step-up for privileged roles and recovery/last-admin contracts | Owner review required; no priority removed |
 | C07 | SAN-04 P1 “multi-tenant” vs mandatory isolated hostile workers | ADR-030 accepted tenancy; SAN-01P0 baseline isolation, SAN-04 advanced fleet extension; guest keys/control separated | implementation backend PROPOSED; independent R-05 |
 | C08 | doc32 “publish only once” vs at-least-once external channels | logical DB uniqueness, sending/accepted/unknown/bounced states; replay and perchannel receipt limits | spec corrected; R-08 needs live consented validation |
 | C09 | doc24 Critical/High waiver clause | ADR-032 Critical closed, High expiry/mitigation/owner; invariant non-waivable; SEC-039 | ACCEPTED;30day default PROPOSED |
@@ -81,29 +81,29 @@ Tất cả38file dưới đã đọc đầy đủ trong intake/P2, không chỉ 
 | C15 | SLO/hardware/restore fields vague, one-command could overpromise | doc37 sixteen numeric TARGETS+measurement/recovery; candidate3OS/distributed profiles; prereq/admin/reboot and key+object backup consistency | PROPOSED; no measured SLA/support claim |
 | C16 | tests and gates not linked per feature; “complete design” wording too strong | doc38 all46features positive/negative + reverse15gates;40SEC cases; status/progress explicit design awaiting review | doc structural checks only; all product gates NOT RUN |
 
-## Product và architecture review
-Red2PR phục vụ maintainer, reviewer, platform/SRE và security của nhóm có nhiều repository/workspace. Giá trị là giảm vòng chẩn đoán/sửa CI với bằng chứng có thể kiểm toán; không phải chatbot trả lời lỗi. Dòng xử lý: authenticated CI→normalized attempts/matrix→diagnosis/abstention→isolated baseline→bounded Meta patch→independent verifier→policy/approval→draft PR/MR→provider-confirmed CI at exact SHA. Không baseline thì dừng, không merge/deploy. Kiến trúc/trust map ở [05](05_SYSTEM_ARCHITECTURE.md).
-React19/TypeScript/Vite/Astryx hiển thị dữ liệu qua typed API/SSE; Python/FastAPI giữ orchestration, quyền, budgets, verifier và publisher. Meta inference thường outbound và phải có consent; sandbox không có provider write tokens/Meta key. PostgreSQL/outbox/storage/transport là ADR kỹ thuật còn chờ duyệt. In-app,Telegram,SMTP,Slack,Discord,signed webhooks đều trong P0; không cấu hình một channel không làm mất engine hay giả gửi thành công.
-Installers Windows/Linux/macOS đi qua preflight+wizard+checkpoint; server webhook và local polling đều reconcile; distributed có worker separation, không tự hứa HA control plane. Admin responsive và keyboard accessible, truthful proof/remote states. Release chỉ khi mọi P0 và15gate có evidence trên matrix công khai.
+## Product and architecture review
+Red2PR serves maintainers, reviewers, platform/SRE and security teams managing multiple repositories/workspaces. Its value is reducing CI diagnosis/repair cycles with auditable evidence, rather than acting as an error-answering chatbot. Flow: authenticated CI→normalized attempts/matrix→diagnosis/abstention→isolated baseline→bounded Meta patch→independent verifier→policy/approval→draft PR/MR→provider-confirmed CI at the exact SHA. Stop without a reproduced baseline; never merge/deploy. The architecture and trust map are in [05](05_SYSTEM_ARCHITECTURE.md).
+React19/TypeScript/Vite/Astryx presents data through typed API/SSE; Python/FastAPI owns orchestration, authorization, budgets, verification and publication. Meta inference is normally outbound and requires consent; the sandbox has no provider write tokens or Meta key. PostgreSQL/outbox/storage/transport remain technical ADR proposals awaiting approval. In-app, Telegram, SMTP, Slack, Discord and signed webhooks are all P0; leaving a channel unconfigured neither disables the engine nor permits a false delivery claim.
+Windows/Linux/macOS installers use preflight, a wizard and checkpoints; server webhooks and local polling both reconcile. Distributed deployments separate workers without implicitly promising control-plane HA. Administration is responsive and keyboard accessible, with truthful proof/remote states. Release requires evidence for every P0 feature and all 15 gates against the published matrix.
 
 ## New supporting documents and review outcome
-| File | Vì sao cần riêng | Nội dung đã đọc lại/đối chiếu |
+| File | Reason for a separate document | Contents reread/reconciled |
 |---|---|---|
-| [36 Canonical contracts](36_CANONICAL_CONTRACTS.md) | tránh lặp schema và naming drift giữa06/07/08/09 |24API families,22schema families, typed tools,worker,evidence/SSE |
-| [37 NFR/recovery](37_NFR_AND_RECOVERY.md) | targets cần workload/measurement/recovery chung |16NFR targets, DB/queue/worker/model/provider/storage recovery |
-| [38 Traceability](38_REQUIREMENTS_TRACEABILITY.md) | toàn sản phẩm phải truy vết hai chiều |46feature pairs of acceptance cases,15reverse gates |
-| [39 Audit](39_SPEC_AUDIT.md) | bằng chứng đọc và gap trước/sau |38baseline files,16gaps, accepted/proposed/open separation |
+| [36 Canonical contracts](36_CANONICAL_CONTRACTS.md) | Prevent duplicated schemas and naming drift across06/07/08/09 |24API families,22schema families, typed tools,worker,evidence/SSE |
+| [37 NFR/recovery](37_NFR_AND_RECOVERY.md) | Targets need a shared workload, measurement and recovery contract |16NFR targets, DB/queue/worker/model/provider/storage recovery |
+| [38 Traceability](38_REQUIREMENTS_TRACEABILITY.md) | Product-wide requirements need forward and reverse traceability |46feature pairs of acceptance cases,15reverse gates |
+| [39 Audit](39_SPEC_AUDIT.md) | Preserve reading evidence and before/after gaps |38baseline files,16gaps, accepted/proposed/open separation |
 
-## Quyết định còn mở và thứ tự nghiên cứu P2
-1. Chốt ADR-034 identity/isolation: privileged MFA, local invitations, independent reviewer/break-glass và trust domain vận hành.
-2. Duyệt ADR-035/012/013 control/queue/storage/evidence signing architecture; chọn key custody/recovery operator.
-3. Duyệt ADR-033 canonical contracts và ADR-037 private endpoint/consent exception; các conflict đã nêu không bị che bằng code.
-4. Duyệt ADR-036 target capacity/retention/RPO-RTO/High waiver duration; sau đó đo trong môi trường được phép trước support claims.
-5. ADR-021 license/domain/publisher/market privacy, ADR-024 relay ownership; owner cần cho business context.
-Vendor account/model quotas, exactOS/runtime/scopes/CLI effects là **có thể kiểm chứng**, không hỏi owner đoán. License intent/customer region/operating risk là **cần chủ dự án quyết định**. P1 extensions giữ design/capability boundaries; detailed federation/relay/MCP protocol freeze trước khi bật support, không suy diễn từ core API.
+## Open decisions and P2 research order
+1. Settle ADR-034 identity/isolation: privileged MFA, local invitations, independent review/break-glass and operational trust domains.
+2. Review ADR-035/012/013 control/queue/storage/evidence-signing architecture; choose key custody and recovery ownership.
+3. Review ADR-033 canonical contracts and ADR-037 private-endpoint/consent exceptions; do not hide identified conflicts behind implementation.
+4. Review ADR-036 capacity/retention/RPO-RTO/High-waiver targets, then measure them in an authorized environment before making support claims.
+5. Resolve ADR-021 license/domain/publisher/market privacy and ADR-024 relay ownership; the owner must provide business context.
+Vendor account/model quotas, exact OS/runtime versions, scopes and CLI effects are **verifiable facts**, not matters for the owner to guess. License intent, customer regions and accepted operating risk **require project-owner decisions**. P1 extensions retain their design/capability boundaries; freeze detailed federation/relay/MCP protocols before enabling support, rather than inferring them from the core API.
 
 ## Documentation validation
-Kiểm tra cuối đạt exit0:272liên kết nội bộ,55bảng,46feature/92acceptance cases; không lỗi cấu trúc hoặc ID trong các nhóm đã kiểm tra.16ACCEPTED gốc và AGENTS/skills nguyên vẹn. Kết quả hashes/scope và actual commands ở [23](23_PROGRESS.md). Chúng chỉ kiểm tra tài liệu; không chứng minh contract đã được thực thi. Không commit/push vì workspace không có Git metadata và người dùng không yêu cầu. Khi hoàn tất P2, dừng chờ chủ dự án duyệt đặc tả.
+The final P2 check exited0: 272 internal links, 55 tables and 46features/92acceptance cases, with no structural or ID errors in the checked groups. The original 16ACCEPTED rows and AGENTS/skills were preserved during P2. Hash/scope results and actual commands are recorded in [23](23_PROGRESS.md). These checks validate documents, not implemented contracts. No commit/push occurred during P2 because Git metadata did not yet exist and the user had not requested publication. P2 ended by waiting for owner specification approval.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

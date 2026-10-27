@@ -44,4 +44,4 @@ Every row is **CANDIDATE / NOT RUN**, not CERTIFIED. Rows select a bounded initi
 Browser/runtime latest release is not automatically certified. Unsupported major upgrades show unsupported/degraded until regression tests; dependency compatibility checked before install. Candidate macOS15+ and GitLab17.4+ are evaluation ranges, not a promise every later version works. Hardware targets are [37](37_NFR_AND_RECOVERY.md); exact minima remain ADR-022 verification tasks.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

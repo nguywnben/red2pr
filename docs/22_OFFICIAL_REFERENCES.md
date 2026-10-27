@@ -81,4 +81,4 @@ Public API docs establish possible capabilities, not this customer's grants, bil
 For live probes, operator must authorize exact account/repo/channel/cost/scope separately. [35](35_INTEGRATION_DEPENDENCIES.md) lists the capability acceptance work; source facts refresh on version upgrades, then contract fixtures and certified E2E before claims. Legal/data processing terms and precise licensing need official current terms plus owner context, not model assertions.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

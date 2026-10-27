@@ -58,4 +58,12 @@ On 2026-10-27 the owner explicitly requested creation of a public repository and
 
 Preparation: exclude local secrets/generated files with `.gitignore`, remove the personal workspace path from the public audit, preserve upstream skill attribution/license, and use the authenticated GitHub account's noreply commit address. The earlier no-Git inventory and file counts above describe the completed P2 snapshot, before publication preparation. Repository creation/push outcomes must be verified against GitHub; this entry records authorization and preparation, not a product release or passed gate.
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+## English documentation — 2026-10-27
+
+The owner requested an English repository after the initial public publication. Translated the remaining Vietnamese prose in README, AGENTS and docs00…39, including navigation, decisions, acceptance criteria and the audit report. Existing English contracts and third-party skills remain unchanged apart from translated navigation labels in project documents. This is a language-only update: requirement identifiers, priorities, decision statuses, links, operating limits and product verification status are preserved.
+
+Validation uses an inline read-only Python check against the previous commit for identifiers, link targets, status labels, feature priorities, Markdown structure and remaining Vietnamese characters, followed by Git whitespace checks. No product code, dependencies or runtime tests are introduced.
+
+Validation result: Python check exit0 with 42 documents, 273 valid internal links, 54 tables and 46 feature rows; no changed identifiers, link targets, status labels or fenced code blocks. Git whitespace check exit0. These results validate the documentation update only.
+
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

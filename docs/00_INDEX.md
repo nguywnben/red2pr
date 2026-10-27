@@ -1,13 +1,13 @@
-# Tài liệu chuẩn của Red2PR
+# Red2PR specification index
 
-**Phiên bản tài liệu:** SPEC-2026-10-27-v5 (P2 review) · **Trạng thái:** design baseline, không phải triển khai · **Language:** VI + technical identifiers EN.
+**Specification version:** SPEC-2026-10-27-v5 (P2 review) · **Status:** design baseline, not an implementation · **Language:** English.
 
-## Đọc theo thứ tự
-| File | Nội dung |
+## Recommended reading order
+| File | Contents |
 |---|---|
 | [01_PRODUCT_VISION.md](01_PRODUCT_VISION.md) | Product positioning, users, principles, scope |
-| [02_FEATURE_CATALOG.md](02_FEATURE_CATALOG.md) | Danh mục chức năng, ID, quyền, priority, acceptance |
-| [03_PERSONAS_JOURNEYS.md](03_PERSONAS_JOURNEYS.md) | User stories, journeys và edge cases |
+| [02_FEATURE_CATALOG.md](02_FEATURE_CATALOG.md) | Feature catalog, IDs, permissions, priorities and acceptance |
+| [03_PERSONAS_JOURNEYS.md](03_PERSONAS_JOURNEYS.md) | User stories, journeys and edge cases |
 | [04_UI_UX_SPEC.md](04_UI_UX_SPEC.md) | IA, sitemap, screen specs, states, accessibility |
 | [05_SYSTEM_ARCHITECTURE.md](05_SYSTEM_ARCHITECTURE.md) | Modules, trust zones, topology, protocols |
 | [06_DATA_MODEL.md](06_DATA_MODEL.md) | Entities, ER relationships, constraints, retention |
@@ -45,14 +45,14 @@
 | [38_REQUIREMENTS_TRACEABILITY.md](38_REQUIREMENTS_TRACEABILITY.md) |46feature positive/negative acceptance and reverse15release gates |
 | [39_SPEC_AUDIT.md](39_SPEC_AUDIT.md) | Full read inventory, before/after gaps, actual repo state, review decisions |
 
-## Trạng thái quyết định
-- **Chốt:** rõ ràng từ trao đổi, được ghi `ACCEPTED` trong ADR. Đặc biệt frontend React 19/Vite/TypeScript/Astryx + backend Python ở ADR-025.
-- **Thiết kế chờ duyệt:** đây là **product-wide contract**, còn ADR đề xuất và kiểm chứng vendor chưa hoàn tất; mọi nhóm chức năng trong phạm vi v1.0.0 phải có acceptance/evidence trước release, không thể dùng mock làm minh chứng.
-- **Proposed default:** phương án kỹ thuật đề xuất, được kiểm chứng và có thể thay thế trước code.
-- **Open:** bắt buộc xác minh hoặc người sở hữu dự án quyết định.
+## Decision status
+- **Accepted:** explicitly settled by the owner and recorded as `ACCEPTED` in the ADRs. In particular, ADR-025 selects React 19/Vite/TypeScript/Astryx for the frontend and Python for the backend.
+- **Design pending review:** this is a **product-wide contract**, with proposed ADRs and vendor verification still outstanding. Every feature family within v1.0.0 scope requires acceptance evidence before release; mocks are not sufficient proof.
+- **Proposed default:** a recommended technical choice to validate, which may be replaced before implementation.
+- **Open:** requires verification or a decision by the project owner.
 
 ## Scope vs implementation
-Thiết kế bao phủ toàn bộ nền tảng; phát hành chỉ được công nhận production-ready sau khi release gate pass với **support matrix công khai**. Không hứa sửa mọi lỗi CI hay cài mọi máy không điều kiện. Không làm test toàn bộ vào phút cuối; testing đồng hành với code.
+The design covers the entire platform. A release may be called production-ready only after its gates pass against a **published support matrix**. Do not promise to repair every CI failure or install on every machine without prerequisites. Testing accompanies implementation rather than being postponed until the end.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

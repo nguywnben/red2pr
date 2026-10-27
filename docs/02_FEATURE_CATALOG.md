@@ -1,8 +1,8 @@
-# Feature catalog và acceptance tiêu chuẩn
+# Feature catalog and acceptance standards
 
-**Trạng thái:** Mọi ID là feature **được thiết kế**, chưa triển khai. `P0` = điều kiện bắt buộc trước v1.0.0; `P1` = tính năng mở rộng **được thiết kế đầy đủ từ đầu**, phải có trạng thái v1.0.0 rõ ràng và chỉ tuyên bố support khi đã kiểm thử; `P2` = extension ngoài bản release đầu. Chủ dự án có thể nâng P1 lên P0 trong specification review, không được tự ý âm thầm hạ hạng mục xuống P2. Không đồng nghĩa phải triển khai code tất cả trong một lượt hoặc trì hoãn test đến cuối.
+**Status:** Every ID represents a **designed** feature, not an implementation. `P0` = mandatory before v1.0.0; `P1` = extensions **designed fully from the outset**, with an explicit v1.0.0 status and support claims only after testing; `P2` = extensions outside the initial release. The owner may promote P1 to P0 during specification review; never silently demote an item to P2. This does not require implementing everything in one pass or postponing testing until the end.
 
-| ID | P | Module / chức năng | Acceptance (rút gọn) |
+| ID | P | Module / feature | Acceptance summary |
 |---|---|---|---|
 | INS-01 | P0 | One-command installer Windows, Linux, macOS | OS prereq + idempotent rerun + verified release + healthy UI URL |
 | INS-02 | P0 | Bootstrap wizard | unique admin bootstrap, license/egress disclosure, checks |
@@ -51,10 +51,10 @@
 | EXT-01 | P0 | API tokens / outgoing events | scoped tokens, signed delivery and quotas |
 | EXT-02 | P2 | MCP server adapter exposing read/status/actions | least privilege; not runtime dependency |
 
-## Common acceptance rule cho mọi feature
+## Common acceptance rule for every feature
 - Positive + negative cases, role matrix, audit, retry/timeout/cancellation, accessible UI states, redaction, migrations, observability, contract checks.
 - Feature not installed/configured => honest `not_configured`/`unsupported`, not false success.
-- Tất cả có owner module tại architecture docs và test ID ở [18_TESTING_ACCEPTANCE.md](18_TESTING_ACCEPTANCE.md).
+- Every feature has an owning module in the architecture documents and test IDs in [18_TESTING_ACCEPTANCE.md](18_TESTING_ACCEPTANCE.md).
 
 ## Product modes
 - `monitor`: ingest + diagnose/report only, no sandbox mutation or publish.
@@ -69,4 +69,4 @@ The following feature families have detailed contracts in annex documents: front
 **Scope control:** P0 features are v1.0.0 release gates, including channel adapters NOT-04. P1 extensions are designed and tracked but never represented as supported before independent E2E evidence. Any reprioritization requires owner approval and ADR.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

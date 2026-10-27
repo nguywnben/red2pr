@@ -43,4 +43,4 @@ Local invitation lifecycle belongs to IAM-02 P0 under ADR-034 PROPOSED; IAM-03 P
 Approval service records authenticated decision but cannot change verifier result; publisher executes eligible intent and has no ability to grant its own approval. Test/config-sensitive patch proposer cannot self-approve under proposed separation-of-duties policy; small teams need another reviewer or remain blocked, never weaken baseline invariant. API tokens are hashed, scoped, expiring and constrained by issuer's current grants; no token-based MFA/approval shortcut.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

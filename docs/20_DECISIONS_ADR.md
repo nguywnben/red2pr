@@ -39,40 +39,40 @@ Any change to an ACCEPTED principle requires explicit owner approval and PR to t
 
 ## P2 decision records — 2026-10-27
 
-Các dòng ADR-001…029 phía trên được giữ nguyên như lịch sử quyết định. Những record sau ghi rõ phần giải quyết/thay thế; không tự biến đề xuất thành quyết định của owner.
+ADR-001…029 above are retained as decision history. The following records explicitly identify what they resolve or supersede; proposals are not automatically promoted to owner decisions.
 
 | ID | Status | Decision | Rationale / consequences |
 |---|---|---|---|
-| ADR-030 | ACCEPTED | 1.0.0 có nhiều workspace mỗi instance | Owner trả lời trực tiếp 2026-10-27. Giải quyết phần tenancy của ADR-023; SSO vẫn OPEN. Mọi tenant entity/query/cache/artifact/event/job bắt buộc scope; R-06 phải kiểm thử chéo workspace. Không đồng nghĩa SaaS công cộng hoặc container chung đủ cách ly code thù địch. |
-| ADR-031 | ACCEPTED | Baseline không tái hiện: chỉ diagnosis + human handoff, tuyệt đối không tạo draft PR/MR | Owner trả lời trực tiếp 2026-10-27. Thay thế tùy chọn provisional của docs 11/25; V-01 không có waiver, approval không vượt invariant. Khả năng sửa tự động thấp hơn nhưng không bán kết luận chưa có bằng chứng. |
-| ADR-032 | ACCEPTED | Critical phải đóng; High chỉ ngoại lệ có thời hạn, owner và mitigation | Owner trả lời trực tiếp 2026-10-27. Invariant vi phạm (secret, vượt quyền, false-green, rò workspace, escape) luôn chặn release. Ngoại lệ hết hạn tự chặn; đánh giá lại mỗi release. |
+| ADR-030 | ACCEPTED | Multiple workspaces per instance in 1.0.0 | Explicit owner answer on 2026-10-27. Resolves the tenancy portion of ADR-023; SSO remains OPEN. Every tenant entity/query/cache/artifact/event/job must be scoped; R-06 must test cross-workspace isolation. This does not imply public SaaS or that shared containers sufficiently isolate hostile code. |
+| ADR-031 | ACCEPTED | If the baseline cannot be reproduced, provide diagnosis and human handoff only; never create a draft PR/MR | Explicit owner answer on 2026-10-27. Replaces the provisional option in docs 11/25; V-01 cannot be waived and approval cannot override an invariant. This reduces automatic repair coverage but prevents claims without evidence. |
+| ADR-032 | ACCEPTED | Critical findings must be closed; High exceptions require an expiry, owner and mitigation | Explicit owner answer on 2026-10-27. Invariant failures (secret exposure, unauthorized access, false-green, workspace leakage, escape) always block release. Expired exceptions automatically block release; reassess every release. |
 
 ### ADR-033 — PROPOSED: canonical modes, contracts and identifiers
-Conflict: monitor ở docs 02 cấm sandbox nhưng docs 31 từng cho phép; state/event/config/tool names khác nhau. Đề xuất monitor chỉ ingest/diagnose, chuyển sang approval bằng web để execute; pause là override riêng. Dùng schema/event/tool thống nhất ở [36](36_CANONICAL_CONTRACTS.md), workflow ở [08](08_EVENTS_STATE_MACHINES.md). Lợi ích: testable contract, không có execute ẩn; tác động: canonical names trong draft thay tên cũ, chưa có code/data cần migrate. Alternative: thêm explicit reproduction mode làm UI/policy phức tạp hơn. Owner duyệt trước implementation.
+Conflict: monitor mode prohibits sandbox execution in doc02 but previously permitted it in doc31; state/event/config/tool names also differ. Proposal: monitor only ingests and diagnoses; switch to approval mode through the web to execute. Pause is a separate override. Use the canonical schemas/events/tools in [36](36_CANONICAL_CONTRACTS.md) and workflows in [08](08_EVENTS_STATE_MACHINES.md). Benefit: a testable contract without hidden execution. Impact: canonical draft names replace earlier names; no existing code/data needs migration. Alternative: an explicit reproduction mode would add UI/policy complexity. Owner approval is required before implementation.
 
 ### ADR-034 — PROPOSED: multi-workspace identity and mandatory isolation baseline
-Giữ local onboarding/invitations của IAM-02 ở P0; IAM-03 P1 là federation/OIDC provisioning. Đề xuất TOTP + single-use recovery ở P0 cho owner/admin và người publish/approve, step-up 5 phút cho thao tác đặc quyền; passkey và OIDC vẫn P1. Server owner quản trị instance không mặc nhiên đọc repo của mọi workspace; break-glass có grant tạm thời, reason, audit và thông báo.
-ADR-030 buộc SAN-01 P0 có worker host/VM tách control plane cho code chưa tin cậy; SAN-04 P1 là fleet hardening/backend nâng cao, không phải hoãn isolation cơ bản. Workspace không có trust claim mặc định; pooled hostile workloads cần ephemeral VM/job hoặc dedicated worker trust domain được chứng minh. Alternative: một shared Docker host rẻ hơn nhưng không đủ boundary cho hostile tenancy. Tác động: vận hành, recovery MFA và capacity cần R-05/R-06; không đổi priority SAN-04.
+Keep local onboarding/invitations under IAM-02 at P0; IAM-03 P1 covers federation/OIDC provisioning. Propose TOTP and single-use recovery at P0 for owners/admins and publishers/approvers, with a 5-minute step-up window for privileged operations; passkeys and OIDC remain P1. An instance owner does not automatically gain read access to every workspace's repositories; break-glass access requires a temporary grant, reason, audit and notification.
+ADR-030 requires SAN-01 P0 to separate the worker host/VM from the control plane for untrusted code. SAN-04 P1 covers advanced fleet hardening/backends, not postponement of basic isolation. Workspaces are not trusted by default; pooled hostile workloads require an ephemeral VM per job or a proven dedicated worker trust domain. Alternative: a shared Docker host is cheaper but provides insufficient boundaries for hostile tenancy. Impact: operations, MFA recovery and capacity require R-05/R-06; SAN-04 priority is unchanged.
 
 ### ADR-035 — PROPOSED: durable control plane and evidence trust
-Cụ thể hóa ADR-012/013: Python/FastAPI modular monolith, PostgreSQL source of truth, transactional inbox/outbox; Redis + Dramatiq chỉ transport, mất Redis không mất accepted jobs. Local encrypted object store cho local; S3-compatible cho distributed. Không buộc Temporal khi chưa chứng minh nhu cầu.
-Trusted supervisor ngoài guest ký manifest; control verifier xác thực, append audit hash chain + signed checkpoints và bảo quản checkpoint ngoài writer. Hash đơn lẻ không chứng minh tác giả; chữ ký không chứng minh host bị compromise báo đúng. Alternative Temporal giảm logic orchestration tự viết nhưng tăng operational footprint. Các crash/replay/forgery tests bắt buộc trước quyết định pin runtime.
+Refines ADR-012/013: Python/FastAPI modular monolith, PostgreSQL as source of truth, transactional inbox/outbox. Redis + Dramatiq is transport only; losing Redis must not lose accepted jobs. Use a local encrypted object store for local deployments and S3-compatible storage for distributed deployments. Do not require Temporal without demonstrating the need.
+A trusted supervisor outside the guest signs manifests; the control verifier authenticates them, appends an audit hash chain and signed checkpoints, and stores checkpoints beyond the writer's control. A hash alone does not prove authorship; a signature does not prove that a compromised host reported truthfully. Temporal is an alternative that reduces custom orchestration logic but increases the operational footprint. Crash/replay/forgery tests are required before pinning the runtime.
 
 ### ADR-036 — PROPOSED: operating targets and certification envelope
-Các số ở [37](37_NFR_AND_RECOVERY.md) là TARGET, chưa measured SLA. Candidate profiles ở [27](27_SUPPORT_MATRIX.md) chỉ thành CERTIFIED sau R-09/R-10/R-13; không hỗ trợ mọi OS/CPU/job. Local single control node không hứa HA; distributed chỉ worker separation, không tự động HA PostgreSQL.
-High waiver đề xuất tối đa 30 ngày, security reviewer + release owner ký, tái duyệt khi thay artifact; owner cần duyệt duration, không phải nới ADR-032.
+Values in [37](37_NFR_AND_RECOVERY.md) are TARGETS, not measured SLAs. Candidate profiles in [27](27_SUPPORT_MATRIX.md) become CERTIFIED only after R-09/R-10/R-13; not every OS/CPU/job is supported. A single local control node does not promise HA; distributed means worker separation, not automatic PostgreSQL HA.
+Propose a maximum 30-day High waiver, signed by the security reviewer and release owner and reassessed when the artifact changes. The owner must approve the duration; this does not relax ADR-032.
 
 ### ADR-037 — PROPOSED: private integration endpoints and outbound consent
-Giải quyết private GitLab/S3/SMTP với SSRF: owner đăng ký service endpoint và CIDR/CA riêng qua step-up; egress proxy chỉ cấp đúng adapter, không mở cho URL từ repo/model/artifact. Link-local/metadata/loopback luôn cấm ở fetcher từ xa. Redirect không kế thừa credential. External channel opt-in per destination; inbox security/audit events không bị unsubscribe để xóa dấu vết.
-Tác động: private deployment khả thi nhưng thêm registry/audit/network tests; không blanket allow private IP.
+Resolve private GitLab/S3/SMTP access versus SSRF protection through owner-registered service endpoints and explicit CIDR/CA settings authorized by step-up. The egress proxy grants access only to the intended adapter, never arbitrary URLs from repositories/models/artifacts. Remote fetchers always deny link-local, metadata and loopback destinations. Redirects do not inherit credentials. External channels require per-destination opt-in; security/audit inbox events cannot be unsubscribed from to erase their trace.
+Impact: enables private deployments but adds endpoint-registry, audit and network tests; it is not blanket permission for private IPs.
 
 ### Review order (decisions, not implementation plan)
-1. ADR-034 identity/isolation và mức trust giữa workspace.
+1. ADR-034 identity/isolation and trust levels between workspaces.
 2. ADR-035/012/013 queue, storage, signing/recovery ownership.
 3. ADR-033 canonical contracts; ADR-037 egress/consent policy.
 4. ADR-036 operating budgets/retention/support envelope.
-5. ADR-021 license/domain/publisher và ADR-024 relay operating model.
-Vendor version/capability phải tự xác minh theo [22](22_OFFICIAL_REFERENCES.md), không yêu cầu owner đoán API. No source implementation is authorized by this document update.
+5. ADR-021 license/domain/publisher and ADR-024 relay operating model.
+Verify vendor versions/capabilities through [22](22_OFFICIAL_REFERENCES.md); do not ask the owner to guess API behavior. No source implementation is authorized by this document update.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

@@ -1,46 +1,46 @@
-# Tầm nhìn, giá trị, phạm vi
+# Vision, value and scope
 
-## Tuyên bố sản phẩm
-**Red2PR** = self-hosted **autonomous CI failure investigation and evidence-backed repair platform**. Input: run/job CI thất bại từ GitHub/GitLab. Output: phân loại đúng, bằng chứng tái hiện, diff sửa lỗi trong phạm vi cho phép, verification và draft PR/MR minh bạch; tiếp tục theo dõi remote CI.
+## Product statement
+**Red2PR** is a self-hosted **autonomous CI failure investigation and evidence-backed repair platform**. Input: failed CI runs/jobs from GitHub/GitLab. Output: accurate classification, reproduction evidence, a patch within the permitted scope, verification and a transparent draft PR/MR, followed by remote CI monitoring.
 
-## Persona / người mua
-- Solo developer / maintainer: muốn rút ngắn thời gian CI đỏ, không thuê hạ tầng phức tạp, cài một lệnh.
-- Engineering lead / DevOps: quản lý nhiều repo, quy tắc riêng, độ tin cậy và throughput.
-- Security / platform admin: kiểm soát dữ liệu, quyền, chi phí, sandbox, worker, audits, lifecycle.
-- Reviewer: xem nguyên nhân, proof, patch và quyết định merge ở provider.
+## Personas and buyers
+- Solo developer / maintainer: shorten the time CI stays red, avoid complex infrastructure and install through one command.
+- Engineering lead / DevOps: manage multiple repositories, per-repository policies, reliability and throughput.
+- Security / platform admin: control data, permissions, costs, sandboxes, workers, audits and lifecycle operations.
+- Reviewer: inspect the cause, proof and patch, then decide whether to merge in the provider.
 
 ## Core jobs-to-be-done
-1. Kết nối GitHub/GitLab an toàn; chọn repo, branches, modes.
-2. Nhận thất bại; loại bỏ lỗi transient/không thể sửa thay vì cố patch.
-3. Lưu bền workflow ngay cả khi restart, retry hoặc đến webhook trùng.
-4. Reproduce với đúng SHA và môi trường có kiểm soát, lưu fidelity report.
-5. Patch code/config, xác minh red→green và regressions; từ chối test tampering.
-6. Tạo draft PR/MR + căn cứ, theo dõi remote validation; người dùng review.
-7. Quan sát cost/latency/success, cảnh báo qua Telegram/email, quản trị bằng dashboard/CLI.
+1. Connect GitHub/GitLab securely; select repositories, branches and modes.
+2. Ingest failures; rule out transient or unrepairable issues instead of forcing a patch.
+3. Persist workflows across restarts, retries and duplicate webhooks.
+4. Reproduce at the exact SHA in a controlled environment and retain a fidelity report.
+5. Patch code/configuration, verify red→green and regression results, and reject test tampering.
+6. Create a draft PR/MR with supporting evidence, monitor remote validation and leave review to the user.
+7. Observe cost, latency and success; alert through Telegram/email and administer through the dashboard/CLI.
 
-## Lợi thế cạnh tranh cần chứng minh
+## Differentiators that must be demonstrated
 - **Proof package:** baseline failure, patched outcome, artifact hashes, command, image digest, limitations.
-- **Correct abstention:** nhận biết credential/outage/infra/flaky/unsupported; không tạo patch bừa.
-- **Operationally self-hosted:** wizard, auth, lifecycle, safety, backups, monitoring và support matrix.
+- **Correct abstention:** recognize credential, outage, infrastructure, flaky and unsupported cases; do not generate unjustified patches.
+- **Operationally self-hosted:** wizard, authentication, lifecycle, safety, backups, monitoring and support matrix.
 
-## Nguyên tắc UX
-- Zero-confusions install: khởi tạo bằng một lệnh **khi điều kiện hệ thống đáp ứng**, sau đó setup browser.
-- Safe by default: Monitor Only cho repo mới, draft PR, no merge, budgets hữu hạn.
-- Progressive disclosure: trang tổng quan ngắn, evidence chi tiết khi cần.
+## UX principles
+- Clear installation: begin with one command **when system prerequisites are met**, then complete setup in the browser.
+- Safe defaults: Monitor Only for new repositories, draft PRs, no merge and finite budgets.
+- Progressive disclosure: a concise overview with detailed evidence available when needed.
 - Every mutation has actor, time, reason, irreversible-warning, audit ID.
 
-## Không thuộc mục tiêu sản phẩm
-- Không thay thế GitHub/GitLab hay CI runner gốc.
-- Không tự merge, release hay deploy production.
-- Không hứa sửa mọi ngôn ngữ, runner, integration, private secret-backed pipeline.
-- Không biến Telegram thành kênh cấp quyền không kiểm soát.
-- Không coi LLM hallucination là bằng chứng; không cần camera/voice.
+## Non-goals
+- Do not replace GitHub/GitLab or the original CI runner.
+- Do not merge, release or deploy to production autonomously.
+- Do not promise repairs for every language, runner, integration or private pipeline requiring secrets.
+- Do not turn Telegram into an uncontrolled authorization channel.
+- Do not treat LLM hallucinations as evidence; camera/voice capabilities are not required.
 
-## Đường đua hackathon
-Meta Muse đóng vai trò reason/patch; deterministic modules làm policy và test. Hackathon checkpoint quan trọng nhưng không phải tiêu chuẩn kết luận production; giữ benchmark và demo chân thực.
+## Hackathon context
+Meta Muse supplies reasoning and patch proposals; deterministic modules enforce policy and run tests. Hackathon checkpoints matter but do not establish production readiness. Keep benchmarks and demonstrations truthful.
 
 ## P2 product contract
 1.0.0 serves teams with multiple workspaces per self-hosted instance (ADR-030), with explicit repository grants and isolated execution. “Repair with proof” means diagnosis grounded in immutable CI evidence, confirmed baseline, bounded patch, independent verification, policy-authorized draft PR/MR and separate remote-CI verdict. No baseline reproduction means diagnosis/human handling only (ADR-031). Self-hosted control/data custody does not imply offline Meta inference; owner outbound consent remains mandatory. No reduction to chatbot/demo/MVP or removal of production capabilities is authorized.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

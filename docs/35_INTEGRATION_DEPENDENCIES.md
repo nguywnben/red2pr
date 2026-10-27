@@ -29,4 +29,4 @@ Product may fully design relay/distributed/future runtime extensions while relea
 Capability probe inputs: workspace/connection/model/profile, requested capability, expected version, allowed maxcost/timeout, consent record and correlation. Output: available/unavailable/unknown plus sanitized observed facts/time/version, reason and evidence ref. Unsupported or auth failure cannot become “available” by retrying a weaker auth mode. Network probes do not write resources by default; live create-hook/push/message/paid inference require exact operator authorization. No such probes were run during P2.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

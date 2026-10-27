@@ -1,12 +1,12 @@
 # Full-scope engineering delivery plan (not an MVP specification)
 
 ## Principle
-**Đóng băng mục tiêu tính năng tổng thể; giao hàng theo vertical slices và test liên tục.** Một slice hoàn thành khi có migrations, API, authorization, UI basic, telemetry, security and negative tests. Chỉ release production khi tất cả `P0` thuộc certified support matrix đạt gate. Hackathon checkpoint có thể dùng demo chứng minh một đường end-to-end nhưng không được gọi toàn bộ scope hoàn thành nếu chưa xong.
+**Freeze the overall feature scope; deliver vertical slices with continuous testing.** A slice is complete only with migrations, API, authorization, basic UI, telemetry, security and negative tests. Release to production only when all `P0` features in the certified support matrix pass their gates. A hackathon checkpoint may demonstrate an end-to-end path, but must not claim that the entire scope is complete while work remains.
 
 ## Sequence by dependency
-| Milestone | Deliverable và phụ thuộc | Exit criteria |
+| Milestone | Deliverable and dependencies | Exit criteria |
 |---|---|---|
-| D0: spec & threat review | Duyệt ADR, open questions, support matrix và release plan | chủ repo duyệt; không còn blocker ảnh hưởng nền tảng |
+| D0: spec & threat review | Review ADRs, open questions, support matrix and release plan | Repository owner approves; no unresolved platform-level blockers |
 | D1: foundations | repo scaffold, lint/type CI, DB migrations, auth, config, events/outbox, health/telemetry | tests unit/contract + install developer environment |
 | D2: source providers | GitHub App + GitLab connection, repo sync, hook/polling, log collector | event fixtures, E2E provider test repos, signature/replay |
 | D3: triage/inference | Meta model probe, diagnostics, typed tools, evidence store, budgets | diagnosis/abstention benchmark and secret filters |
@@ -37,4 +37,4 @@ At each milestone: implement+test+review, then proceed. Unverified P0 failures b
 This document's existing D0…D10 outline is retained as history and orientation, **not a newly approved detailed master plan**. D7 UI consolidation cannot mean postponing authentication, accessible states, API contracts or tests from earlier slices. Owner must approve a later integrated plan and exact execution unit; P2 only updates specification and traceability. No implementation tasks/schedule are added here.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

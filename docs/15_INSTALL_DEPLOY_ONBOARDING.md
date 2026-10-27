@@ -61,4 +61,4 @@ Wizard: (1) bootstrap one-use owner, (2) topology/base URL/TLS, (3) storage/back
 Readiness splits ready_monitor (identity/provider ingestion) and ready_repair (consent,model,budget,worker,profile,policy/proof checks). A failed Meta quota probe cannot be presented as installed repair-ready. Reboot/resume validates saved config digest and reauth, never reuses expired bootstrap. Enrollment/bot/model test incurs external action only after operator confirms scope/cost/recipient.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

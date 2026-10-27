@@ -78,4 +78,4 @@ TARGET defaults proposed: max30 calls,120k total tokens,2 patch attempts,30min s
 Structured-output and tool calling source docs establish API shapes only; host still validates schema and fields, forbids extra args and quarantines invalid tool/result transitions. Persist redacted request/response IDs/hashes and selected model/adapter revision, never require or store hidden chain-of-thought. Evals report correct abstention, false-positive publication, wrong-SHA proofs, prompt-injection/tool-policy violations and cost including failed attempts, not only best successful patches.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

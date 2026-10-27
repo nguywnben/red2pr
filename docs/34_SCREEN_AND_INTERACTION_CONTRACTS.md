@@ -67,4 +67,4 @@ Dark/light/system preference persists per user without losing contrast; contrast
 All UI IDs require empty/loading/error/stale/reconnect/revoked-role/keyboard/dark-light assertions in T-UI-01-P/N and T-UI-02-P/N; exact production component libraries beyond Astryx are PROPOSED, not preinstalled.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

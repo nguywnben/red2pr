@@ -1,4 +1,4 @@
-# Logical data model, relationships và integrity
+# Logical data model, relationships and integrity
 
 ## Cross-entity design
 All IDs UUIDv7/ULID or opaque UUID; provider IDs stored as strings (can exceed signed int). Common: `id`, `created_at`, `updated_at`, `version` (optimistic concurrency), `deleted_at` only where soft-delete safe. Encrypt secrets, never expose columns in APIs. `workspace_id` must be enforced with repository grants on every relevant query; include composite indexes and DB constraints.
@@ -76,4 +76,4 @@ Delete behavior: no cascade delete of immutable evidence/audit from deleting use
 Migration contract: expand/backfill/validate/contract in separate bounded steps; constraints checked before enforcing. Compatible N/N-1 binaries only while explicitly declared; incompatible worker drained before upgrade. Backup before irreversible migration; failed migration leaves maintenance/read-only status. Rollback binary only if schema compatible; otherwise restore entire consistent backup. Physical partitioning and exact ORM remain vendor/performance decisions, not fabricated implemented indexes. R-06/R-07/R-10 require migration, FK escape, pool-context leakage and interrupted purge tests.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

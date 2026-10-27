@@ -97,4 +97,4 @@ Audit append transaction includes previous hash; periodic signed checkpoint repl
 Versioned schema changes: additive optional fields within v1; required field/removal/semantics change v2 + migration and replay tests. Client unknown enums display unknown, never green. Control rejects unsupported worker protocol before leasing; N/N-1 overlap only for explicitly compatible versions. Deferred JSON/OpenAPI generation must reproduce this catalogue, with schema round-trip, adversarial extra-fields, cross-tenant FK, idempotency and event replay tests. IDs A/S are traced via features in [38](38_REQUIREMENTS_TRACEABILITY.md); none represent code already present.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

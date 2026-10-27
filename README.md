@@ -1,24 +1,24 @@
 # Red2PR — CI Repair with Proof
 
-> **Trạng thái:** BỘ ĐẶC TẢ SẢN PHẨM / CHƯA TRIỂN KHAI. Đây không phải source code hay bằng chứng sản phẩm đạt production readiness.
+> **Status:** PRODUCT SPECIFICATION / NOT IMPLEMENTED. These documents are neither product source code nor evidence of production readiness.
 >
-> **Định hướng:** production-first, self-hosted, dành cho cá nhân/nhóm/doanh nghiệp quản lý CI repair với AI Meta Muse. **Frontend:** React 19 + TypeScript + Vite + Meta Astryx Design System. **Backend/agents:** Python + FastAPI; phiên bản chính thức v1.0.0 chỉ được phát hành sau khi release gates có bằng chứng kiểm thử đạt.
+> **Direction:** A production-first, self-hosted platform for individuals, teams and businesses managing CI repair with Meta Muse AI. **Frontend:** React 19 + TypeScript + Vite + Meta Astryx Design System. **Backend/agents:** Python + FastAPI. The official v1.0.0 release requires evidence that all release gates pass.
 
-Red2PR tiếp nhận thất bại CI từ GitHub Actions/GitLab CI, phân tích nguyên nhân, tái hiện trong sandbox cô lập, đề xuất/apply bản vá, xác minh bằng các bài kiểm thử thật và mở **draft Pull Request / Merge Request** kèm evidence, sau đó theo dõi CI từ xa. Tất cả side effects đều đi qua policy/approval; **không auto-merge**.
+Red2PR is designed to ingest CI failures from GitHub Actions/GitLab CI, diagnose their causes, reproduce them in isolated sandboxes, propose and apply patches, verify them with real tests, and open **draft Pull Requests / Merge Requests** with evidence before monitoring remote CI. All side effects pass through policy/approval controls; **no auto-merge**.
 
-## Quy tắc làm việc
-- `AGENTS.md` là hướng dẫn an toàn cho coding agents; **không phải prompt gửi chat**.
-- `docs/00_INDEX.md` dẫn tới toàn bộ đặc tả; `docs/20_DECISIONS_ADR.md` lưu quyết định có hiệu lực.
-- Thiết kế toàn diện trước, triển khai theo vertical slices có test liên tục. Không thay scope mục tiêu bằng bản demo; cũng không được gọi một hệ thống chưa test là production.
-- Không chứa API keys, thông tin cá nhân, tài nguyên cloud hoặc mã triển khai trong bộ tài liệu này.
-- Tài liệu là **specification/contract**, không phải một mệnh lệnh triển khai tất cả không kiểm thử. UI chỉ sử dụng thành phần Astryx được tài liệu/CLI chính thức xác nhận; backend vẫn là Python.
-- Để làm việc với AI coding agent: ingestion → deep review/spec consolidation → frozen integrated implementation plan → execute exact approved unit → independently audited release. Các prompt vận hành nằm **ngoài repository**, không kèm vào ZIP này.
+## Working rules
+- `AGENTS.md` provides safety instructions for coding agents; it is **not a chat prompt**.
+- `docs/00_INDEX.md` indexes the complete specification; `docs/20_DECISIONS_ADR.md` records governing decisions.
+- Design the whole product first, then implement vertical slices with continuous testing. Do not replace the target scope with a demo or call an untested system production-ready.
+- This documentation package contains no API keys, personal information, cloud resources or deployment code.
+- The documents are a **specification/contract**, not an instruction to implement everything without testing. Use only Astryx UI components confirmed by official documentation/CLI; the backend remains Python.
+- The coding-agent workflow is: ingestion → deep review/spec consolidation → frozen integrated implementation plan → execute the exact approved unit → independently audited release. Operating prompts remain **outside the repository** and are not included in the documentation archive.
 
-## Trạng thái và phạm vi hỗ trợ
-Tất cả tính năng trong `docs/02_FEATURE_CATALOG.md` là **yêu cầu mục tiêu**. Phạm vi phiên bản phát hành đầu, ma trận support và gates xem `docs/24_RELEASE_READINESS.md`, `docs/27_SUPPORT_MATRIX.md`. Các vấn đề chưa chốt cần được chứng thực tại `docs/21_OPEN_QUESTIONS.md`.
+## Status and support scope
+Every feature in `docs/02_FEATURE_CATALOG.md` is a **target requirement**. Initial release scope, the support matrix and gates are defined in `docs/24_RELEASE_READINESS.md` and `docs/27_SUPPORT_MATRIX.md`. Unresolved issues are tracked in `docs/21_OPEN_QUESTIONS.md` and require verification or an owner decision.
 
-## Mục lục
-Xem [docs/00_INDEX.md](docs/00_INDEX.md).
+## Documentation
+See [docs/00_INDEX.md](docs/00_INDEX.md).
 
 ## Specification review P2 — 2026-10-27
 Current artifact is a **design under owner review**, not working product code. [Specification index](docs/00_INDEX.md), [before/after audit](docs/39_SPEC_AUDIT.md), [46-feature traceability](docs/38_REQUIREMENTS_TRACEABILITY.md) and [decisions](docs/20_DECISIONS_ADR.md) record the production scope, accepted owner choices, proposed contracts and unverified vendor/runtime dependencies. Frontend remains React19 + TypeScript + Vite + Astryx; backend/agents Python/FastAPI. No implementation master plan or product execution is authorized by this documentation update.

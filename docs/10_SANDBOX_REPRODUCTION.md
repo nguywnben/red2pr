@@ -49,4 +49,4 @@ F1_TARGETED proves only selected failure under documented approximation; F2_APPR
 Result/signature/upload/lease/cancel protocol is S-21/22 in [36](36_CANONICAL_CONTRACTS.md). Cleanup confirmed by supervisor and tested after crash; failed cleanup quarantines worker, never recycled to next tenant. R-05 checks guest cannot reach model broker, publisher, signing keys, metadata endpoints or control store.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

@@ -43,4 +43,4 @@ Use [38](38_REQUIREMENTS_TRACEABILITY.md) for forward/reverse mapping and [37](3
 High exception fields: finding ID, original severity/reachability, affected build digest/scope, business rationale, compensating control and its test proof, remediation owner, expiry, security reviewer, release owner, retest trigger. Critical/invariant exception rejected. Proposed maximum30days requires ADR-036 approval; expiry automatically blocks next release/renewal until explicitly re-reviewed. Runtime vulnerability alerts require containment/revoke guidance even after release.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

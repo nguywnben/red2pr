@@ -56,4 +56,4 @@ Headers: Red2PR-Event-Id, Red2PR-Delivery-Id, Red2PR-Timestamp (Unix seconds), R
 Key material never appears in notification body/config export/audit. Signing establishes sender/integrity, not authorization to execute arbitrary operations at recipient. No automatic remote command callbacks.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

@@ -58,4 +58,4 @@ Egress policy default denies private/reserved/link-local/metadata and redirects 
 Supply-chain controls: reviewed source/lockfiles, pinned dependency/image digests, SBOM, signature trust root independent of download checksum, reproducible provenance and vulnerability triage for runtime/build/install paths. Artifact/archives treated as hostile even with valid provider signature. Critical closure and High expiry follow ADR-032; no policy waiver for invariant failure.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)

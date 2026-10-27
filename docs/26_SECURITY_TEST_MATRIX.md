@@ -74,4 +74,4 @@ S/T/R/I/D/E mean spoofing, tampering, repudiation, disclosure, denial of service
 Each fixture records tested build/profile, actor/grants, input hash, expected/actual deny code, no-side-effect evidence, relevant audit/event/metric and reviewer. Independent reviewer must attempt bypass beyond happy-path test. Passing a mock unit test alone cannot establish sandbox boundary or provider semantics. Existing SEC-001…025 remain required, not replaced by this extension.
 
 
-[← Mục lục đặc tả](00_INDEX.md) · [Quyết định](20_DECISIONS_ADR.md) · [Truy vết](38_REQUIREMENTS_TRACEABILITY.md)
+[← Specification index](00_INDEX.md) · [Decisions](20_DECISIONS_ADR.md) · [Traceability](38_REQUIREMENTS_TRACEABILITY.md)
