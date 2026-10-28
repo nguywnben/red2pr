@@ -916,11 +916,15 @@ name = "red2pr-worker"
 version = "0.1.0"
 source = { editable = "apps/worker-supervisor" }
 dependencies = [
+    { name = "httpx" },
     { name = "py-contracts" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "py-contracts", editable = "packages/py-contracts" }]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.0,<1.0.0" },
+    { name = "py-contracts", editable = "packages/py-contracts" },
+]
 
 [[package]]
 name = "red2pr-workspace"

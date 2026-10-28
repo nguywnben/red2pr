@@ -2464,3 +2464,248 @@ class CiJobModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class WorkerModel(Base):
+    """S-15 / SAN-01 / U14 enrolled isolated worker supervisor node (instance-scoped)."""
+
+    __tablename__ = "workers"
+    __table_args__ = (
+        UniqueConstraint(
+            "mtls_cert_fingerprint_sha256",
+            name="uq_workers_mtls_cert_fingerprint",
+        ),
+        CheckConstraint(
+            "status IN ('online', 'offline', 'draining', 'quarantined')",
+            name="worker_status_valid",
+        ),
+        CheckConstraint(
+            "isolation_mode IN ('oci_rootless', 'vm_isolated', 'oci_trusted_local')",
+            name="worker_isolation_mode_valid",
+        ),
+        CheckConstraint("cpu_limit >= 1 AND cpu_limit <= 256", name="worker_cpu_bounds"),
+        CheckConstraint("memory_limit_bytes >= 1", name="worker_memory_pos"),
+        CheckConstraint("disk_limit_bytes >= 1", name="worker_disk_pos"),
+        CheckConstraint("pids_limit >= 1 AND pids_limit <= 65536", name="worker_pids_bounds"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_workers_status_heartbeat", "status", "heartbeat_at", "id"),
+        Index("ix_workers_trust_domain", "trust_domain", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    host_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    trust_domain: Mapped[str] = mapped_column(String(120), nullable=False)
+    isolation_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="oci_rootless")
+    runtime_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    profile_ids_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    capabilities_json: Mapped[dict[str, bool]] = mapped_column(JSONB, nullable=False, default=dict)
+    cpu_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
+    memory_limit_bytes: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=8_589_934_592
+    )
+    disk_limit_bytes: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=42_949_672_960
+    )
+    pids_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=512)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="online")
+    heartbeat_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    mtls_cert_serial: Mapped[str] = mapped_column(String(64), nullable=False)
+    mtls_cert_fingerprint_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    mtls_cert_pem: Mapped[str] = mapped_column(Text, nullable=False)
+    mtls_cert_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    mtls_cert_revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    active_signer_key_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_workspace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    host_escape_risk_acknowledged: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    quarantine_reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    drain_reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class WorkerEnrollmentModel(Base):
+    """A-13 / U14 one-time mTLS worker enrollment token ledger (raw token never stored)."""
+
+    __tablename__ = "worker_enrollments"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_worker_enrollments_token_hash"),
+        ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+            name="fk_worker_enrollments_created_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["enrolled_worker_id"],
+            ["workers.id"],
+            name="fk_worker_enrollments_enrolled_worker_id_workers",
+            ondelete="SET NULL",
+        ),
+        CheckConstraint(
+            "isolation_mode IN ('oci_rootless', 'vm_isolated', 'oci_trusted_local')",
+            name="worker_enrollment_isolation_mode_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_worker_enrollments_expires_at", "expires_at", "used_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    trust_domain: Mapped[str] = mapped_column(String(120), nullable=False)
+    profile_ids_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    isolation_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="oci_rootless")
+    host_escape_risk_acknowledged: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    created_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    enrolled_worker_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class SigningKeyModel(Base):
+    """S-21 / S-22 / SEC-030 / U14 Ed25519 verification public key registry."""
+
+    __tablename__ = "signing_keys"
+    __table_args__ = (
+        UniqueConstraint("key_id", name="uq_signing_keys_key_id"),
+        ForeignKeyConstraint(
+            ["worker_id"],
+            ["workers.id"],
+            name="fk_signing_keys_worker_id_workers",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("algorithm = 'ed25519'", name="signing_key_algorithm_ed25519"),
+        CheckConstraint(
+            "purpose IN ("
+            "'worker_result', 'evidence_manifest', 'audit_checkpoint', 'release_manifest'"
+            ")",
+            name="signing_key_purpose_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_signing_keys_worker_purpose", "worker_id", "purpose", "revoked_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    key_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    algorithm: Mapped[str] = mapped_column(String(32), nullable=False, default="ed25519")
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False, default="worker_result")
+    public_key_b64: Mapped[str] = mapped_column(String(256), nullable=False)
+    worker_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    trust_domain: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    not_before: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoke_reason: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class SandboxLeaseModel(Base):
+    """S-21 / SAN-01 / U14 workspace-scoped fenced sandbox execution lease."""
+
+    __tablename__ = "sandbox_leases"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_sandbox_leases_workspace_id_id"),
+        UniqueConstraint("job_id", "lease_epoch", name="uq_sandbox_leases_job_lease_epoch"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_sandbox_leases_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_sandbox_leases_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "job_id"],
+            ["task_jobs.workspace_id", "task_jobs.id"],
+            name="fk_sandbox_leases_tenant_job_task_jobs",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["worker_id"],
+            ["workers.id"],
+            name="fk_sandbox_leases_worker_id_workers",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "status IN ("
+            "'leased', 'running', 'completed', 'cancel_requested', "
+            "'cancelled', 'expired', 'quarantined'"
+            ")",
+            name="sandbox_lease_status_valid",
+        ),
+        CheckConstraint("lease_epoch >= 1", name="sandbox_lease_epoch_pos"),
+        CheckConstraint("profile_revision >= 1", name="sandbox_lease_profile_rev_pos"),
+        CheckConstraint("output_bytes_uploaded >= 0", name="sandbox_lease_output_nonneg"),
+        CheckConstraint("lease_expires_at > issued_at", name="sandbox_lease_expiry_after_issue"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_sandbox_leases_ws_status_exp", "workspace_id", "status", "lease_expires_at"),
+        Index("ix_sandbox_leases_worker_status", "worker_id", "status", "lease_expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    worker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    lease_epoch: Mapped[int] = mapped_column(Integer, nullable=False)
+    capability_nonce: Mapped[str] = mapped_column(String(120), nullable=False)
+    expected_worker_trust_domain: Mapped[str] = mapped_column(String(120), nullable=False)
+    profile_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    profile_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    image_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    base_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_archive_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    patch_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    network_policy_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    supervisor_policy_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    sandbox_job_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    upload_slots_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    uploaded_artifacts_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    output_bytes_uploaded: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="leased")
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    heartbeat_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    lease_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    result_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    cleanup_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

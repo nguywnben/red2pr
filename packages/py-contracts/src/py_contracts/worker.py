@@ -12,6 +12,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, StrictBool, StrictInt, model_validator
 
+from py_contracts.crypto import PublicKeyRecord
 from py_contracts.integrations import GitSha
 from py_contracts.primitives import (
     BoundedName,
@@ -30,6 +31,17 @@ from py_contracts.primitives import (
 
 # S-15 Worker & TaskJob
 WorkerStatus = Literal["online", "offline", "draining", "quarantined"]
+WorkerIsolationMode = Literal["oci_rootless", "vm_isolated", "oci_trusted_local"]
+WorkerAction = Literal["drain", "quarantine", "revoke", "resume"]
+SandboxLeaseStatus = Literal[
+    "leased",
+    "running",
+    "completed",
+    "cancel_requested",
+    "cancelled",
+    "expired",
+    "quarantined",
+]
 TaskJobState = Literal[
     "queued",
     "leased",
@@ -62,6 +74,105 @@ class Worker(InstanceResourceBase):
     capabilities: dict[BoundedName, StrictBool] = Field(default_factory=dict)
     heartbeat_at: UtcTimestamp
     status: WorkerStatus
+    host_id: BoundedName | None = None
+    isolation_mode: WorkerIsolationMode = "oci_rootless"
+    runtime_name: BoundedName | None = None
+    cpu_limit: Annotated[StrictInt, Field(ge=1, le=256)] = 4
+    memory_limit_bytes: Annotated[StrictInt, Field(ge=1)] = 8_589_934_592
+    disk_limit_bytes: Annotated[StrictInt, Field(ge=1)] = 42_949_672_960
+    pids_limit: Annotated[StrictInt, Field(ge=1, le=65536)] = 512
+    signer_key_id: BoundedName | None = None
+    mtls_cert_fingerprint_sha256: Sha256Digest | None = None
+    mtls_cert_expires_at: UtcTimestamp | None = None
+    quarantine_reason: BoundedText | None = None
+    drain_reason: BoundedText | None = None
+    active_leases: Annotated[StrictInt, Field(ge=0)] = 0
+    host_escape_warning: StrictBool = False
+
+
+class WorkerFleetSummary(StrictContractModel):
+    """UI-S13 / A-13 global isolated worker fleet health and isolation posture counts."""
+
+    total_count: Annotated[StrictInt, Field(ge=0)]
+    online_count: Annotated[StrictInt, Field(ge=0)]
+    draining_count: Annotated[StrictInt, Field(ge=0)]
+    quarantined_count: Annotated[StrictInt, Field(ge=0)]
+    offline_count: Annotated[StrictInt, Field(ge=0)]
+    vm_isolated_count: Annotated[StrictInt, Field(ge=0)]
+    trusted_local_warning_count: Annotated[StrictInt, Field(ge=0)]
+    active_leases_count: Annotated[StrictInt, Field(ge=0)]
+
+
+class WorkerPage(Page[Worker]):
+    """A-13 S-04 cursor-paginated worker registry listing with fleet posture summary."""
+
+    summary: WorkerFleetSummary | None = None
+
+
+class WorkerEnrollmentCreateRequest(StrictContractModel):
+    """A-13 instance-owner request to mint a one-use mTLS worker enrollment token."""
+
+    trust_domain: BoundedName
+    profile_ids: Annotated[list[BoundedName], Field(min_length=1, max_length=32)]
+    isolation_mode: WorkerIsolationMode = "oci_rootless"
+    ttl_minutes: Annotated[StrictInt, Field(ge=5, le=120)] = 15
+    host_escape_risk_acknowledged: StrictBool = False
+
+    @model_validator(mode="after")
+    def _validate_trusted_local_acknowledgement(self) -> Self:
+        if self.isolation_mode == "oci_trusted_local" and not self.host_escape_risk_acknowledged:
+            raise ValueError(
+                "host_escape_risk_acknowledged=true is required for oci_trusted_local (ADR-016)"
+            )
+        return self
+
+
+class WorkerEnrollmentCreateResponse(StrictContractModel):
+    """A-13 one-time worker enrollment token response (raw token returned once only)."""
+
+    enrollment_id: InternalId
+    enrollment_token: BoundedText
+    trust_domain: BoundedName
+    profile_ids: list[BoundedName]
+    isolation_mode: WorkerIsolationMode
+    expires_at: UtcTimestamp
+    ca_cert_pem: BoundedText
+
+
+class WorkerActionRequest(StrictContractModel):
+    """A-13 operator worker control action (`drain | quarantine | revoke | resume`)."""
+
+    action: WorkerAction
+    reason: BoundedReason
+    expected_version: PositiveVersion | None = None
+
+
+class WorkspaceSandboxLeaseSummary(StrictContractModel):
+    """UI-S13 workspace-scoped active sandbox lease summary (zero global host leakage)."""
+
+    id: InternalId
+    job_id: InternalId
+    repository_id: InternalId
+    repair_id: InternalId
+    profile_id: BoundedName
+    lease_epoch: PositiveVersion
+    status: SandboxLeaseStatus
+    issued_at: UtcTimestamp
+    lease_expires_at: UtcTimestamp
+
+
+class WorkspaceWorkerReadinessResponse(StrictContractModel):
+    """UI-S13 scoped sandbox readiness view for non-owner workspace members (`doc34`)."""
+
+    workspace_id: InternalId
+    ready: StrictBool
+    eligible_online_workers: Annotated[StrictInt, Field(ge=0)]
+    available_profiles: list[BoundedName]
+    vm_isolation_available: StrictBool
+    trusted_local_warning: StrictBool
+    active_workspace_leases: list[WorkspaceSandboxLeaseSummary] = Field(default_factory=list)
+    degraded_reason: BoundedText | None = None
+    snapshot_at: UtcTimestamp
 
 
 class TaskJob(WorkspaceResourceBase):
@@ -289,3 +400,130 @@ class ResultV1(StrictContractModel):
             and self.exit_code == 0
             and all(chk.passed for chk in self.isolation_checks)
         )
+
+
+class WorkerSelfTestResponse(StrictContractModel):
+    """UI-S13 / INS-02 deterministic isolated worker confinement & signing self-test report."""
+
+    worker_id: InternalId
+    passed: StrictBool
+    isolation_mode: WorkerIsolationMode
+    checks: Annotated[list[IsolationCheckResult], Field(min_length=1)]
+    checked_at: UtcTimestamp
+    detail: BoundedText
+
+
+class WorkerIsolationAttestation(StrictContractModel):
+    """S-21 worker supervisor preflight isolation & quota attestation."""
+
+    host_id: BoundedName
+    runtime_name: BoundedName
+    isolation_mode: WorkerIsolationMode
+    rootless_verified: StrictBool
+    seccomp_verified: StrictBool
+    no_new_privileges_verified: StrictBool
+    network_none_supported: StrictBool
+    cpu_limit: Annotated[StrictInt, Field(ge=1, le=256)]
+    memory_limit_bytes: Annotated[StrictInt, Field(ge=1)]
+    disk_limit_bytes: Annotated[StrictInt, Field(ge=1)]
+    pids_limit: Annotated[StrictInt, Field(ge=1, le=65536)]
+
+
+class WorkerEnrollHandshakeRequest(StrictContractModel):
+    """S-21 one-time enrollment token + PKCS#10 CSR + Ed25519 public key exchange."""
+
+    enrollment_token: BoundedText
+    csr_pem: BoundedText
+    signer_public_key: PublicKeyRecord
+    attestation: WorkerIsolationAttestation
+    profile_ids: Annotated[list[BoundedName], Field(min_length=1, max_length=32)]
+
+
+class WorkerEnrollHandshakeResponse(StrictContractModel):
+    """S-21 issued mTLS client certificate, Worker CA bundle, and enrolled Worker record."""
+
+    worker: Worker
+    client_cert_pem: BoundedText
+    ca_cert_pem: BoundedText
+    cert_expires_at: UtcTimestamp
+
+
+class WorkerPollRequest(StrictContractModel):
+    """S-21 mTLS worker poll & node heartbeat payload."""
+
+    status_hint: Literal["ready", "draining"] = "ready"
+    capabilities: dict[BoundedName, StrictBool] = Field(default_factory=dict)
+
+
+class WorkerPollResponse(StrictContractModel):
+    """S-21 mTLS worker poll response optionally leasing one `SandboxJobV1`."""
+
+    worker_status: WorkerStatus
+    sandbox_job: SandboxJobV1 | None = None
+    source_archive_b64: str | None = Field(default=None, max_length=16_777_216)
+    patch_diff_text: BoundedText | None = None
+    heartbeat_interval_seconds: Annotated[StrictInt, Field(ge=1, le=300)] = 15
+
+
+class WorkerJobHeartbeatRequest(StrictContractModel):
+    """S-21 per-job 15s heartbeat payload fenced by `lease_epoch` and `capability_nonce`."""
+
+    lease_epoch: PositiveVersion
+    capability_nonce: BoundedName
+
+
+class WorkerJobHeartbeatResponse(StrictContractModel):
+    """S-21 per-job heartbeat renewal & live cancellation signal."""
+
+    job_id: InternalId
+    lease_epoch: PositiveVersion
+    lease_expires_at: UtcTimestamp
+    cancel_requested: StrictBool
+
+
+class WorkerArtifactUploadRequest(StrictContractModel):
+    """S-21 write-only per-job artifact slot upload payload (`<=100MiB` total output cap)."""
+
+    lease_epoch: PositiveVersion
+    capability_nonce: BoundedName
+    slot_name: BoundedName
+    mime: BoundedName = "text/plain"
+    content_b64: str = Field(max_length=140_000_000)
+    digest: Sha256Digest
+
+
+class WorkerArtifactUploadResponse(StrictContractModel):
+    """S-21 verified encrypted artifact upload receipt."""
+
+    artifact_ref: ResultArtifactRef
+    remaining_output_bytes: Annotated[StrictInt, Field(ge=0)]
+
+
+class WorkerJobResultReceipt(StrictContractModel):
+    """S-21 control-plane receipt for a verified `ResultV1` submission."""
+
+    job_id: InternalId
+    lease_epoch: PositiveVersion
+    accepted: StrictBool
+    idempotent_replay: StrictBool = False
+    worker_quarantined: StrictBool = False
+
+
+class WorkerCancelAckRequest(StrictContractModel):
+    """S-21 worker confirmation of guest process teardown and ephemeral cleanup."""
+
+    lease_epoch: PositiveVersion
+    capability_nonce: BoundedName
+    ended_at: UtcTimestamp
+    container_killed: StrictBool
+    cleanup_verified: StrictBool
+    isolation_checks: Annotated[list[IsolationCheckResult], Field(min_length=1)]
+
+
+class WorkerCancelAckResponse(StrictContractModel):
+    """S-21 control-plane receipt for job cancellation acknowledgement."""
+
+    job_id: InternalId
+    lease_epoch: PositiveVersion
+    state: TaskJobState
+    worker_quarantined: StrictBool = False

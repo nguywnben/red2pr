@@ -130,6 +130,19 @@ export type Publication = SchemaOf<"Publication">;
 export type RemoteCheck = SchemaOf<"RemoteCheck">;
 export type Artifact = SchemaOf<"Artifact">;
 export type Worker = SchemaOf<"Worker">;
+export type WorkerStatus = Worker["status"];
+export type WorkerIsolationMode = NonNullable<Worker["isolation_mode"]>;
+export type WorkerFleetSummary = SchemaOf<"WorkerFleetSummary">;
+export type WorkerPage = SchemaOf<"WorkerPage">;
+export type WorkerEnrollmentCreateRequest = SchemaOf<"WorkerEnrollmentCreateRequest">;
+export type WorkerEnrollmentCreateResponse = SchemaOf<"WorkerEnrollmentCreateResponse">;
+export type WorkerActionRequest = SchemaOf<"WorkerActionRequest">;
+export type WorkerAction = WorkerActionRequest["action"];
+export type WorkerSelfTestResponse = SchemaOf<"WorkerSelfTestResponse">;
+export type IsolationCheckResult = SchemaOf<"IsolationCheckResult">;
+export type WorkspaceSandboxLeaseSummary = SchemaOf<"WorkspaceSandboxLeaseSummary">;
+export type SandboxLeaseStatus = WorkspaceSandboxLeaseSummary["status"];
+export type WorkspaceWorkerReadinessResponse = SchemaOf<"WorkspaceWorkerReadinessResponse">;
 export type TaskJob = SchemaOf<"TaskJob">;
 export type TaskJobState = TaskJob["state"];
 export type TaskAttemptSummary = SchemaOf<"TaskAttemptSummary">;
@@ -233,6 +246,13 @@ export interface ListWorkspaceTaskJobsQuery {
   readonly state?: TaskJobState | null;
   readonly kind?: string | null;
   readonly repository_id?: string | null;
+  readonly cursor?: string | null;
+  readonly limit?: number;
+}
+
+export interface ListSystemWorkersQuery {
+  readonly status?: WorkerStatus | null;
+  readonly isolation_mode?: WorkerIsolationMode | null;
   readonly cursor?: string | null;
   readonly limit?: number;
 }
@@ -585,6 +605,27 @@ export interface Red2PrClient {
     artifactId: string,
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<DownloadedArtifactPayload>>;
+  listSystemWorkers(
+    query?: ListSystemWorkersQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<WorkerPage>>;
+  createWorkerEnrollment(
+    body: WorkerEnrollmentCreateRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<WorkerEnrollmentCreateResponse>>;
+  performWorkerAction(
+    workerId: string,
+    body: WorkerActionRequest,
+    options: IdempotentOptimisticMutationOptions,
+  ): Promise<ApiEnvelope<ActionReceipt>>;
+  runWorkerSelfTest(
+    workerId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<WorkerSelfTestResponse>>;
+  getWorkspaceWorkerReadiness(
+    ws: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<WorkspaceWorkerReadinessResponse>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -1593,6 +1634,77 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         },
         response,
       );
+    },
+    async listSystemWorkers(query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/system/workers", {
+        params: { query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async createWorkerEnrollment(body, reqOptions) {
+      const { data, error, response } = await raw.POST("/api/v1/system/workers/enrollments", {
+        body,
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async performWorkerAction(workerId, body, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/system/workers/{worker_id}/actions",
+        {
+          params: {
+            path: { worker_id: workerId },
+            header: {
+              "Idempotency-Key": reqOptions.idempotencyKey,
+              ...(reqOptions.ifMatch ? { "If-Match": reqOptions.ifMatch } : {}),
+            },
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async runWorkerSelfTest(workerId, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/system/workers/{worker_id}/self-test",
+        {
+          params: { path: { worker_id: workerId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async getWorkspaceWorkerReadiness(ws, reqOptions) {
+      const { data, error, response } = await raw.GET(
+        "/api/v1/workspaces/{ws}/workers/readiness",
+        {
+          params: { path: { ws } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
     },
   };
 }

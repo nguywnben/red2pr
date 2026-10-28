@@ -10,7 +10,21 @@ from py_contracts.events import EventEnvelope
 from py_contracts.evidence import EvidenceManifestV1
 from py_contracts.primitives import StrictContractModel
 from py_contracts.tools import ToolCallRequest, ToolCallResponse
-from py_contracts.worker import ResultV1, SandboxJobV1
+from py_contracts.worker import (
+    ResultV1,
+    SandboxJobV1,
+    WorkerArtifactUploadRequest,
+    WorkerArtifactUploadResponse,
+    WorkerCancelAckRequest,
+    WorkerCancelAckResponse,
+    WorkerEnrollHandshakeRequest,
+    WorkerEnrollHandshakeResponse,
+    WorkerJobHeartbeatRequest,
+    WorkerJobHeartbeatResponse,
+    WorkerJobResultReceipt,
+    WorkerPollRequest,
+    WorkerPollResponse,
+)
 
 
 class AgentToolProtocolSchemaBundle(StrictContractModel):
@@ -21,10 +35,21 @@ class AgentToolProtocolSchemaBundle(StrictContractModel):
 
 
 class SandboxWorkerSchemaBundle(StrictContractModel):
-    """Combined JSON Schema root for S-21 SandboxJobV1 and ResultV1."""
+    """Combined JSON Schema root for S-21 SandboxJobV1, ResultV1, and mTLS worker wire DTOs."""
 
     job: SandboxJobV1
     result: ResultV1
+    enroll_request: WorkerEnrollHandshakeRequest | None = None
+    enroll_response: WorkerEnrollHandshakeResponse | None = None
+    poll_request: WorkerPollRequest | None = None
+    poll_response: WorkerPollResponse | None = None
+    heartbeat_request: WorkerJobHeartbeatRequest | None = None
+    heartbeat_response: WorkerJobHeartbeatResponse | None = None
+    upload_request: WorkerArtifactUploadRequest | None = None
+    upload_response: WorkerArtifactUploadResponse | None = None
+    result_receipt: WorkerJobResultReceipt | None = None
+    cancel_ack_request: WorkerCancelAckRequest | None = None
+    cancel_ack_response: WorkerCancelAckResponse | None = None
 
 
 def _format_schema_json(schema: dict[str, Any], *, schema_id: str) -> str:

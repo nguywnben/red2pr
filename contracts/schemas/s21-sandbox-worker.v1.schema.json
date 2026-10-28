@@ -35,6 +35,68 @@
       "title": "IsolationCheckResult",
       "type": "object"
     },
+    "PublicKeyRecord": {
+      "additionalProperties": false,
+      "description": "Enrolled verification public key metadata retained across rotations (S-22).",
+      "properties": {
+        "algorithm": {
+          "const": "ed25519",
+          "default": "ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "key_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Key Id",
+          "type": "string"
+        },
+        "not_before": {
+          "format": "date-time",
+          "title": "Not Before",
+          "type": "string"
+        },
+        "public_key_b64": {
+          "maxLength": 4096,
+          "title": "Public Key B64",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "trust_domain": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trust Domain"
+        }
+      },
+      "required": [
+        "key_id",
+        "public_key_b64",
+        "not_before"
+      ],
+      "title": "PublicKeyRecord",
+      "type": "object"
+    },
     "ResultArtifactRef": {
       "additionalProperties": false,
       "description": "S-21 content-addressed execution output artifact descriptor.",
@@ -435,18 +497,854 @@
       ],
       "title": "SandboxResourceUsage",
       "type": "object"
+    },
+    "Worker": {
+      "additionalProperties": false,
+      "description": "S-15 enrolled isolated sandbox worker supervisor node.",
+      "properties": {
+        "active_leases": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Active Leases",
+          "type": "integer"
+        },
+        "capabilities": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "propertyNames": {
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "title": "Capabilities",
+          "type": "object"
+        },
+        "cpu_limit": {
+          "default": 4,
+          "maximum": 256,
+          "minimum": 1,
+          "title": "Cpu Limit",
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "disk_limit_bytes": {
+          "default": 42949672960,
+          "minimum": 1,
+          "title": "Disk Limit Bytes",
+          "type": "integer"
+        },
+        "drain_reason": {
+          "anyOf": [
+            {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Drain Reason"
+        },
+        "heartbeat_at": {
+          "format": "date-time",
+          "title": "Heartbeat At",
+          "type": "string"
+        },
+        "host_escape_warning": {
+          "default": false,
+          "title": "Host Escape Warning",
+          "type": "boolean"
+        },
+        "host_id": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Host Id"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "isolation_mode": {
+          "default": "oci_rootless",
+          "enum": [
+            "oci_rootless",
+            "vm_isolated",
+            "oci_trusted_local"
+          ],
+          "title": "Isolation Mode",
+          "type": "string"
+        },
+        "memory_limit_bytes": {
+          "default": 8589934592,
+          "minimum": 1,
+          "title": "Memory Limit Bytes",
+          "type": "integer"
+        },
+        "mtls_cert_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mtls Cert Expires At"
+        },
+        "mtls_cert_fingerprint_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mtls Cert Fingerprint Sha256"
+        },
+        "pids_limit": {
+          "default": 512,
+          "maximum": 65536,
+          "minimum": 1,
+          "title": "Pids Limit",
+          "type": "integer"
+        },
+        "profile_ids": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Profile Ids",
+          "type": "array"
+        },
+        "quarantine_reason": {
+          "anyOf": [
+            {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quarantine Reason"
+        },
+        "runtime_name": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Name"
+        },
+        "signer_key_id": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Signer Key Id"
+        },
+        "status": {
+          "enum": [
+            "online",
+            "offline",
+            "draining",
+            "quarantined"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "trust_domain": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Trust Domain",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "trust_domain",
+        "profile_ids",
+        "heartbeat_at",
+        "status"
+      ],
+      "title": "Worker",
+      "type": "object"
+    },
+    "WorkerArtifactUploadRequest": {
+      "additionalProperties": false,
+      "description": "S-21 write-only per-job artifact slot upload payload (`<=100MiB` total output cap).",
+      "properties": {
+        "capability_nonce": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Capability Nonce",
+          "type": "string"
+        },
+        "content_b64": {
+          "maxLength": 140000000,
+          "title": "Content B64",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        },
+        "mime": {
+          "default": "text/plain",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Mime",
+          "type": "string"
+        },
+        "slot_name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Slot Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lease_epoch",
+        "capability_nonce",
+        "slot_name",
+        "content_b64",
+        "digest"
+      ],
+      "title": "WorkerArtifactUploadRequest",
+      "type": "object"
+    },
+    "WorkerArtifactUploadResponse": {
+      "additionalProperties": false,
+      "description": "S-21 verified encrypted artifact upload receipt.",
+      "properties": {
+        "artifact_ref": {
+          "$ref": "#/$defs/ResultArtifactRef"
+        },
+        "remaining_output_bytes": {
+          "minimum": 0,
+          "title": "Remaining Output Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "artifact_ref",
+        "remaining_output_bytes"
+      ],
+      "title": "WorkerArtifactUploadResponse",
+      "type": "object"
+    },
+    "WorkerCancelAckRequest": {
+      "additionalProperties": false,
+      "description": "S-21 worker confirmation of guest process teardown and ephemeral cleanup.",
+      "properties": {
+        "capability_nonce": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Capability Nonce",
+          "type": "string"
+        },
+        "cleanup_verified": {
+          "title": "Cleanup Verified",
+          "type": "boolean"
+        },
+        "container_killed": {
+          "title": "Container Killed",
+          "type": "boolean"
+        },
+        "ended_at": {
+          "format": "date-time",
+          "title": "Ended At",
+          "type": "string"
+        },
+        "isolation_checks": {
+          "items": {
+            "$ref": "#/$defs/IsolationCheckResult"
+          },
+          "minItems": 1,
+          "title": "Isolation Checks",
+          "type": "array"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "lease_epoch",
+        "capability_nonce",
+        "ended_at",
+        "container_killed",
+        "cleanup_verified",
+        "isolation_checks"
+      ],
+      "title": "WorkerCancelAckRequest",
+      "type": "object"
+    },
+    "WorkerCancelAckResponse": {
+      "additionalProperties": false,
+      "description": "S-21 control-plane receipt for job cancellation acknowledgement.",
+      "properties": {
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "queued",
+            "leased",
+            "running",
+            "succeeded",
+            "failed",
+            "cancel_requested",
+            "cancelled",
+            "dead_letter"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "worker_quarantined": {
+          "default": false,
+          "title": "Worker Quarantined",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "lease_epoch",
+        "state"
+      ],
+      "title": "WorkerCancelAckResponse",
+      "type": "object"
+    },
+    "WorkerEnrollHandshakeRequest": {
+      "additionalProperties": false,
+      "description": "S-21 one-time enrollment token + PKCS#10 CSR + Ed25519 public key exchange.",
+      "properties": {
+        "attestation": {
+          "$ref": "#/$defs/WorkerIsolationAttestation"
+        },
+        "csr_pem": {
+          "maxLength": 4096,
+          "title": "Csr Pem",
+          "type": "string"
+        },
+        "enrollment_token": {
+          "maxLength": 4096,
+          "title": "Enrollment Token",
+          "type": "string"
+        },
+        "profile_ids": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Profile Ids",
+          "type": "array"
+        },
+        "signer_public_key": {
+          "$ref": "#/$defs/PublicKeyRecord"
+        }
+      },
+      "required": [
+        "enrollment_token",
+        "csr_pem",
+        "signer_public_key",
+        "attestation",
+        "profile_ids"
+      ],
+      "title": "WorkerEnrollHandshakeRequest",
+      "type": "object"
+    },
+    "WorkerEnrollHandshakeResponse": {
+      "additionalProperties": false,
+      "description": "S-21 issued mTLS client certificate, Worker CA bundle, and enrolled Worker record.",
+      "properties": {
+        "ca_cert_pem": {
+          "maxLength": 4096,
+          "title": "Ca Cert Pem",
+          "type": "string"
+        },
+        "cert_expires_at": {
+          "format": "date-time",
+          "title": "Cert Expires At",
+          "type": "string"
+        },
+        "client_cert_pem": {
+          "maxLength": 4096,
+          "title": "Client Cert Pem",
+          "type": "string"
+        },
+        "worker": {
+          "$ref": "#/$defs/Worker"
+        }
+      },
+      "required": [
+        "worker",
+        "client_cert_pem",
+        "ca_cert_pem",
+        "cert_expires_at"
+      ],
+      "title": "WorkerEnrollHandshakeResponse",
+      "type": "object"
+    },
+    "WorkerIsolationAttestation": {
+      "additionalProperties": false,
+      "description": "S-21 worker supervisor preflight isolation & quota attestation.",
+      "properties": {
+        "cpu_limit": {
+          "maximum": 256,
+          "minimum": 1,
+          "title": "Cpu Limit",
+          "type": "integer"
+        },
+        "disk_limit_bytes": {
+          "minimum": 1,
+          "title": "Disk Limit Bytes",
+          "type": "integer"
+        },
+        "host_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Host Id",
+          "type": "string"
+        },
+        "isolation_mode": {
+          "enum": [
+            "oci_rootless",
+            "vm_isolated",
+            "oci_trusted_local"
+          ],
+          "title": "Isolation Mode",
+          "type": "string"
+        },
+        "memory_limit_bytes": {
+          "minimum": 1,
+          "title": "Memory Limit Bytes",
+          "type": "integer"
+        },
+        "network_none_supported": {
+          "title": "Network None Supported",
+          "type": "boolean"
+        },
+        "no_new_privileges_verified": {
+          "title": "No New Privileges Verified",
+          "type": "boolean"
+        },
+        "pids_limit": {
+          "maximum": 65536,
+          "minimum": 1,
+          "title": "Pids Limit",
+          "type": "integer"
+        },
+        "rootless_verified": {
+          "title": "Rootless Verified",
+          "type": "boolean"
+        },
+        "runtime_name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Runtime Name",
+          "type": "string"
+        },
+        "seccomp_verified": {
+          "title": "Seccomp Verified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "host_id",
+        "runtime_name",
+        "isolation_mode",
+        "rootless_verified",
+        "seccomp_verified",
+        "no_new_privileges_verified",
+        "network_none_supported",
+        "cpu_limit",
+        "memory_limit_bytes",
+        "disk_limit_bytes",
+        "pids_limit"
+      ],
+      "title": "WorkerIsolationAttestation",
+      "type": "object"
+    },
+    "WorkerJobHeartbeatRequest": {
+      "additionalProperties": false,
+      "description": "S-21 per-job 15s heartbeat payload fenced by `lease_epoch` and `capability_nonce`.",
+      "properties": {
+        "capability_nonce": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Capability Nonce",
+          "type": "string"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "lease_epoch",
+        "capability_nonce"
+      ],
+      "title": "WorkerJobHeartbeatRequest",
+      "type": "object"
+    },
+    "WorkerJobHeartbeatResponse": {
+      "additionalProperties": false,
+      "description": "S-21 per-job heartbeat renewal & live cancellation signal.",
+      "properties": {
+        "cancel_requested": {
+          "title": "Cancel Requested",
+          "type": "boolean"
+        },
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        },
+        "lease_expires_at": {
+          "format": "date-time",
+          "title": "Lease Expires At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id",
+        "lease_epoch",
+        "lease_expires_at",
+        "cancel_requested"
+      ],
+      "title": "WorkerJobHeartbeatResponse",
+      "type": "object"
+    },
+    "WorkerJobResultReceipt": {
+      "additionalProperties": false,
+      "description": "S-21 control-plane receipt for a verified `ResultV1` submission.",
+      "properties": {
+        "accepted": {
+          "title": "Accepted",
+          "type": "boolean"
+        },
+        "idempotent_replay": {
+          "default": false,
+          "title": "Idempotent Replay",
+          "type": "boolean"
+        },
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        },
+        "worker_quarantined": {
+          "default": false,
+          "title": "Worker Quarantined",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "lease_epoch",
+        "accepted"
+      ],
+      "title": "WorkerJobResultReceipt",
+      "type": "object"
+    },
+    "WorkerPollRequest": {
+      "additionalProperties": false,
+      "description": "S-21 mTLS worker poll & node heartbeat payload.",
+      "properties": {
+        "capabilities": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "propertyNames": {
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "title": "Capabilities",
+          "type": "object"
+        },
+        "status_hint": {
+          "default": "ready",
+          "enum": [
+            "ready",
+            "draining"
+          ],
+          "title": "Status Hint",
+          "type": "string"
+        }
+      },
+      "title": "WorkerPollRequest",
+      "type": "object"
+    },
+    "WorkerPollResponse": {
+      "additionalProperties": false,
+      "description": "S-21 mTLS worker poll response optionally leasing one `SandboxJobV1`.",
+      "properties": {
+        "heartbeat_interval_seconds": {
+          "default": 15,
+          "maximum": 300,
+          "minimum": 1,
+          "title": "Heartbeat Interval Seconds",
+          "type": "integer"
+        },
+        "patch_diff_text": {
+          "anyOf": [
+            {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Patch Diff Text"
+        },
+        "sandbox_job": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SandboxJobV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_archive_b64": {
+          "anyOf": [
+            {
+              "maxLength": 16777216,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Archive B64"
+        },
+        "worker_status": {
+          "enum": [
+            "online",
+            "offline",
+            "draining",
+            "quarantined"
+          ],
+          "title": "Worker Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "worker_status"
+      ],
+      "title": "WorkerPollResponse",
+      "type": "object"
     }
   },
   "$id": "https://red2pr.local/schemas/s21-sandbox-worker.v1.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Combined JSON Schema root for S-21 SandboxJobV1 and ResultV1.",
+  "description": "Combined JSON Schema root for S-21 SandboxJobV1, ResultV1, and mTLS worker wire DTOs.",
   "properties": {
+    "cancel_ack_request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerCancelAckRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "cancel_ack_response": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerCancelAckResponse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "enroll_request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerEnrollHandshakeRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "enroll_response": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerEnrollHandshakeResponse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "heartbeat_request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerJobHeartbeatRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "heartbeat_response": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerJobHeartbeatResponse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "job": {
       "$ref": "#/$defs/SandboxJobV1"
     },
+    "poll_request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerPollRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "poll_response": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerPollResponse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "result": {
       "$ref": "#/$defs/ResultV1"
+    },
+    "result_receipt": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerJobResultReceipt"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "upload_request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerArtifactUploadRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "upload_response": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerArtifactUploadResponse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [

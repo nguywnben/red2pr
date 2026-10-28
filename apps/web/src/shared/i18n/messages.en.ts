@@ -490,6 +490,25 @@ export const EN_MESSAGES = {
     "Upstream or retained job log bytes have expired. Run evidence remains incomplete and is never treated as passing.",
   "pipelines.singlePassNotice":
     "Single green rerun after 1 failure is unproven (TRI-03): Red2PR requires >= 2 historical failures before classifying a signature as flaky.",
+
+  "workers.title": "Isolated Sandbox Workers & Fleet Posture",
+  "workers.subtitle":
+    "Zero-egress OCI/microVM sandbox readiness, mTLS worker enrollment, external Ed25519 signing status, and workspace lease isolation.",
+  "workers.trustedLocalWarning":
+    "Trusted local Docker mode (ADR-016) shares the host kernel without hypervisor isolation. Do not run untrusted repository code or multi-workspace jobs on shared container daemons.",
+  "workers.ownerBoundaryNotice":
+    "Global worker enrollment, mTLS certificate rotation, and fleet quarantine/revoke actions are restricted to the instance owner (ADR-034).",
+  "workers.leasesTableLabel": "Active workspace sandbox leases",
+  "workers.leasesEmptyTitle": "No active sandbox leases in this workspace",
+  "workers.leasesEmptyDesc":
+    "Active isolated verification and reproduction containers or microVMs appear here while leased.",
+  "workers.fleetTableLabel": "Global enrolled isolated workers",
+  "workers.fleetEmptyTitle": "No isolated workers enrolled yet",
+  "workers.fleetEmptyDesc":
+    "Mint a one-time mTLS enrollment token to register a rootless OCI or microVM worker supervisor.",
+  "workers.enrollAction": "Enroll worker",
+  "workers.staleConflictBanner":
+    "Worker state changed concurrently (HTTP 409/412). Reload the fleet table before retrying this action.",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

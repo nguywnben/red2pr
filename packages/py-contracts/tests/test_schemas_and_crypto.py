@@ -1969,3 +1969,111 @@ def test_u12_repository_policy_and_preview_contracts_reject_unsafe_globs_and_enf
     assert bulk_upd_req.expected_versions[repo_id] == 2
     assert len(bulk_upd_resp.updated_repositories) == 1
     assert detail_resp.connection_status == "ready"
+
+
+def test_u14_worker_mtls_pki_upload_capability_and_a13_contracts() -> None:
+    """Verify `U14` X.509 mTLS PKI, upload capability HMAC tickets & `A-13`/`S-15`/`S-21` DTOs."""
+    from py_contracts.crypto import (
+        CryptoVerificationError,
+        build_worker_spiffe_uri,
+        generate_worker_ca_keypair,
+        generate_worker_csr,
+        issue_worker_client_certificate,
+        mint_upload_capability_ticket,
+        parse_worker_spiffe_uri,
+        verify_upload_capability_ticket,
+        verify_worker_client_certificate,
+    )
+    from py_contracts.worker import (
+        WorkerEnrollmentCreateRequest,
+        WorkspaceWorkerReadinessResponse,
+    )
+
+    worker_id = new_uuid7()
+    spiffe = build_worker_spiffe_uri(trust_domain="worker-supervisor", worker_id=worker_id)
+    assert parse_worker_spiffe_uri(spiffe) == ("worker-supervisor", worker_id)
+
+    ca_cert_pem, ca_key_pem = generate_worker_ca_keypair(now=FIXED_NOW)
+    csr_pem, _ = generate_worker_csr(host_id="vm-01.internal", trust_domain="worker-supervisor")
+    leaf_pem, serial_hex, fp_hex, expires_at = issue_worker_client_certificate(
+        ca_cert_pem=ca_cert_pem,
+        ca_private_key_pem=ca_key_pem,
+        csr_pem=csr_pem,
+        worker_id=worker_id,
+        trust_domain="worker-supervisor",
+        valid_hours=24,
+        now=FIXED_NOW,
+    )
+    verified = verify_worker_client_certificate(
+        cert_der_or_pem=leaf_pem,
+        ca_cert_pem=ca_cert_pem,
+        now=FIXED_NOW + timedelta(hours=1),
+    )
+    assert verified.worker_id == worker_id
+    assert verified.trust_domain == "worker-supervisor"
+    assert verified.serial_hex == serial_hex
+    assert verified.fingerprint_sha256 == fp_hex
+    assert verified.not_valid_after == expires_at
+
+    # Rogue CA rejection:
+    rogue_ca, _ = generate_worker_ca_keypair(now=FIXED_NOW)
+    with pytest.raises(CryptoVerificationError):
+        verify_worker_client_certificate(
+            cert_der_or_pem=leaf_pem,
+            ca_cert_pem=rogue_ca,
+            now=FIXED_NOW + timedelta(hours=1),
+        )
+
+    # Scoped write-only upload capability ticket (`S-21`):
+    signing_key = b"\x55" * 32
+    job_id = new_uuid7()
+    ws_id = new_uuid7()
+    repo_id = new_uuid7()
+    ticket = mint_upload_capability_ticket(
+        signing_key=signing_key,
+        job_id=job_id,
+        workspace_id=ws_id,
+        repository_id=repo_id,
+        lease_epoch=2,
+        capability_nonce="nonce_u14_01",
+        allowed_slots=("stdout", "stderr"),
+        max_output_bytes=65536,
+        expires_at=FIXED_NOW + timedelta(seconds=60),
+    )
+    cap = verify_upload_capability_ticket(
+        signing_key=signing_key,
+        ticket=ticket,
+        expected_job_id=job_id,
+        now=FIXED_NOW + timedelta(seconds=10),
+    )
+    assert cap.lease_epoch == 2
+    assert cap.allowed_slots == ("stderr", "stdout")
+
+    with pytest.raises(CryptoVerificationError):
+        verify_upload_capability_ticket(
+            signing_key=signing_key,
+            ticket=ticket,
+            expected_job_id=job_id,
+            now=FIXED_NOW + timedelta(seconds=61),
+        )
+
+    # ADR-016: `oci_trusted_local` requires `host_escape_risk_acknowledged=True`:
+    with pytest.raises(ValidationError):
+        WorkerEnrollmentCreateRequest(
+            trust_domain="worker-supervisor",
+            profile_ids=["python-3.12-node-22"],
+            isolation_mode="oci_trusted_local",
+            host_escape_risk_acknowledged=False,
+        )
+
+    readiness = WorkspaceWorkerReadinessResponse(
+        workspace_id=ws_id,
+        ready=True,
+        eligible_online_workers=1,
+        available_profiles=["python-3.12-node-22"],
+        vm_isolation_available=True,
+        trusted_local_warning=False,
+        active_workspace_leases=[],
+        snapshot_at=FIXED_NOW,
+    )
+    assert readiness.ready is True

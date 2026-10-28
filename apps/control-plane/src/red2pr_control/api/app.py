@@ -1,8 +1,9 @@
-"""FastAPI /api/v1 application shell, S-03 Problem handlers, and OpenAPI v1 exporter (U02..U06).
+"""FastAPI /api/v1 application shell, S-03 Problem handlers, and OpenAPI v1 exporter (U02..U14).
 
 Provides:
 - Public minimal liveness route GET /api/v1/system/health (A-18).
-- ASGI request correlation ID binding (X-Correlation-Id) and 1 MiB JSON body ceiling (S-01).
+- ASGI request correlation ID binding (X-Correlation-Id), 1 MiB JSON body ceiling (S-01),
+  and 100 MiB worker artifact upload ceiling on `/internal/v1/jobs/{job_id}/upload` (NFR-14).
 - Consistent S-03 application/problem+json handlers across 400..503 without traceback leaks.
 - Deterministic OpenAPI 3.1 contract export registering all canonical S-01..S-22 DTO schemas.
 """
@@ -154,13 +155,21 @@ from py_contracts import (
     Verification,
     WebhookIngressReceipt,
     Worker,
+    WorkerActionRequest,
+    WorkerEnrollmentCreateRequest,
+    WorkerEnrollmentCreateResponse,
+    WorkerFleetSummary,
+    WorkerPage,
+    WorkerSelfTestResponse,
     WorkflowHazardFinding,
     Workspace,
     WorkspaceCreateRequest,
     WorkspaceDeleteRequest,
     WorkspacePage,
     WorkspaceQueueFairnessSummary,
+    WorkspaceSandboxLeaseSummary,
     WorkspaceUpdateRequest,
+    WorkspaceWorkerReadinessResponse,
     new_uuid7,
 )
 from red2pr_control.core.errors import (
@@ -191,8 +200,11 @@ from red2pr_control.operations.setup_wizard import (
     build_setup_router,
 )
 from red2pr_control.orchestrator import (
+    MAX_SANDBOX_UPLOAD_WIRE_BYTES,
     DurableTaskQueueService,
     OperationReceiptService,
+    WorkerBrokerService,
+    build_internal_worker_router,
     build_orchestrator_router,
 )
 from red2pr_control.repositories import (
@@ -207,6 +219,7 @@ from red2pr_control.triage_evidence import (
 
 CORRELATION_HEADER = "X-Correlation-Id"
 _SAFE_CORR_RE = re.compile(r"^[A-Za-z0-9._:-]{1,120}$")
+_INTERNAL_UPLOAD_PATH_RE = re.compile(r"^/internal/v1/jobs/[^/]+/upload$")
 _LOGGER = get_structured_logger("red2pr_control.api")
 
 CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
@@ -313,6 +326,14 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     RemoteCheck,
     Artifact,
     Worker,
+    WorkerFleetSummary,
+    WorkerPage,
+    WorkerEnrollmentCreateRequest,
+    WorkerEnrollmentCreateResponse,
+    WorkerActionRequest,
+    WorkerSelfTestResponse,
+    WorkspaceSandboxLeaseSummary,
+    WorkspaceWorkerReadinessResponse,
     TaskJob,
     TaskAttemptSummary,
     DeadLetterJobSummary,
@@ -376,11 +397,18 @@ def _problem_json_response(
 
 
 class _CorrelationAndBodyLimitMiddleware:
-    """Enforces S-01 1 MiB JSON body ceiling and binds correlation_id at HTTP ingress."""
+    """Enforces S-01 1 MiB JSON body ceiling (100 MiB on mTLS upload) and correlation ID."""
 
     def __init__(self, app: ASGIApp, *, max_body_bytes: int = MAX_JSON_BODY_BYTES) -> None:
         self._app = app
         self._max_body_bytes = max_body_bytes
+
+    def _effective_limit_for_scope(self, scope: Scope) -> int:
+        method = str(scope.get("method", "")).upper()
+        path = str(scope.get("path", ""))
+        if method == "POST" and _INTERNAL_UPLOAD_PATH_RE.fullmatch(path):
+            return MAX_SANDBOX_UPLOAD_WIRE_BYTES
+        return self._max_body_bytes
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -390,6 +418,7 @@ class _CorrelationAndBodyLimitMiddleware:
         raw_headers: list[tuple[bytes, bytes]] = list(scope.get("headers", []))
         corr_id = _extract_safe_correlation_id(raw_headers)
         scope.setdefault("state", {})["correlation_id"] = corr_id
+        max_bytes = self._effective_limit_for_scope(scope)
 
         with bind_telemetry_context(correlation_id=corr_id, entry_point="api"):
             for h_name, h_val in raw_headers:
@@ -407,11 +436,9 @@ class _CorrelationAndBodyLimitMiddleware:
                         resp = _problem_json_response(prob, correlation_id=corr_id)
                         await resp(scope, receive, send)
                         return
-                    if declared_len > self._max_body_bytes:
+                    if declared_len > max_bytes:
                         too_large = PayloadTooLargeError(
-                            detail=(
-                                f"Request body exceeds maximum {self._max_body_bytes} bytes (S-01)."
-                            )
+                            detail=f"Request body exceeds maximum {max_bytes} bytes (S-01/NFR-14)."
                         )
                         prob = problem_from_exception(too_large, correlation_id=corr_id)
                         resp = _problem_json_response(prob, correlation_id=corr_id)
@@ -428,11 +455,9 @@ class _CorrelationAndBodyLimitMiddleware:
                 if msg["type"] == "http.request":
                     chunk: bytes = msg.get("body", b"")
                     seen_bytes += len(chunk)
-                    if seen_bytes > self._max_body_bytes:
+                    if seen_bytes > max_bytes:
                         too_large = PayloadTooLargeError(
-                            detail=(
-                                f"Request body exceeds maximum {self._max_body_bytes} bytes (S-01)."
-                            )
+                            detail=f"Request body exceeds maximum {max_bytes} bytes (S-01/NFR-14)."
                         )
                         prob = problem_from_exception(too_large, correlation_id=corr_id)
                         resp = _problem_json_response(prob, correlation_id=corr_id)
@@ -483,6 +508,7 @@ def create_app(
     setup_step_registry: SetupStepRegistry | None = None,
     task_queue_service: DurableTaskQueueService | None = None,
     operation_receipt_service: OperationReceiptService | None = None,
+    worker_broker_service: WorkerBrokerService | None = None,
     github_integration_service: GitHubIntegrationService | None = None,
     webhook_ingest_service: WebhookIngestService | None = None,
     polling_service: LocalPollingService | None = None,
@@ -507,11 +533,14 @@ def create_app(
         github_integration_service.register_setup_probe(setup_step_registry)
     if repository_catalog_service is not None and setup_step_registry is not None:
         repository_catalog_service.register_setup_probe(setup_step_registry)
+    if worker_broker_service is not None and setup_step_registry is not None:
+        worker_broker_service.register_setup_probe(setup_step_registry)
     app.state.iam_service = iam_service
     app.state.setup_wizard_service = setup_wizard_service
     app.state.setup_step_registry = setup_step_registry
     app.state.task_queue_service = task_queue_service
     app.state.operation_receipt_service = operation_receipt_service
+    app.state.worker_broker_service = worker_broker_service
     app.state.github_integration_service = github_integration_service
     app.state.webhook_ingest_service = webhook_ingest_service
     app.state.polling_service = polling_service
@@ -539,6 +568,7 @@ def create_app(
     app.include_router(build_iam_router())
     app.include_router(build_setup_router())
     app.include_router(build_orchestrator_router())
+    app.include_router(build_internal_worker_router())
     app.include_router(build_integrations_router())
     app.include_router(build_webhooks_router())
     app.include_router(build_repositories_router())

@@ -20,12 +20,16 @@ import hashlib
 import hmac
 import json
 import os
+import re
 from collections.abc import Iterable, Mapping, Sequence
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
+from cryptography import x509
 from cryptography.exceptions import InvalidSignature, InvalidTag
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
@@ -35,10 +39,13 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPubl
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
+    NoEncryption,
+    PrivateFormat,
     PublicFormat,
     load_pem_private_key,
     load_pem_public_key,
 )
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 from py_contracts.primitives import (
     BoundedName,
@@ -721,3 +728,568 @@ def verify_gitlab_legacy_token(
         if secret_bytes and hmac.compare_digest(secret_bytes, provided):
             matched = True
     return matched
+
+
+# ---------------------------------------------------------------------------
+# Worker mTLS X.509 PKI & Scoped Upload Capability Tickets (SAN-01, A-13, S-21)
+# ---------------------------------------------------------------------------
+
+WORKER_SPIFFE_PREFIX = "spiffe://red2pr.internal/ns/workers/td/"
+DOMAIN_UPLOAD_CAPABILITY_V1 = "red2pr.worker.upload_ticket.v1"
+_SAFE_TRUST_DOMAIN_RE = re.compile(r"^[A-Za-z0-9._-]{1,120}$")
+_UUID_LIKE_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedWorkerCertIdentity:
+    """Cryptographically verified X.509 mTLS leaf certificate identity for a Z3 worker."""
+
+    worker_id: str
+    trust_domain: str
+    serial_hex: str
+    fingerprint_sha256: str
+    not_valid_before: datetime
+    not_valid_after: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedUploadCapability:
+    """Verified write-only per-job artifact upload capability claims (`S-21`)."""
+
+    job_id: str
+    workspace_id: str
+    repository_id: str
+    lease_epoch: int
+    capability_nonce: str
+    allowed_slots: tuple[str, ...]
+    max_output_bytes: int
+    expires_at_unix: int
+
+
+def build_worker_spiffe_uri(*, trust_domain: str, worker_id: str) -> str:
+    """Build canonical SPIFFE URI binding `trust_domain` and `worker_id` in X.509 SAN."""
+    td = trust_domain.strip()
+    wid = worker_id.strip().lower()
+    if not _SAFE_TRUST_DOMAIN_RE.fullmatch(td):
+        raise ValueError(f"Invalid worker trust_domain for SPIFFE URI: {trust_domain!r}")
+    if not _UUID_LIKE_RE.fullmatch(wid):
+        raise ValueError(f"Invalid UUID worker_id for SPIFFE URI: {worker_id!r}")
+    return f"{WORKER_SPIFFE_PREFIX}{td}/id/{wid}"
+
+
+def parse_worker_spiffe_uri(uri: str) -> tuple[str, str]:
+    """Parse `(trust_domain, worker_id)` from canonical worker SPIFFE URI."""
+    cleaned = uri.strip()
+    if not cleaned.startswith(WORKER_SPIFFE_PREFIX):
+        raise CryptoVerificationError(
+            code="invalid_worker_spiffe_uri",
+            detail="X.509 SAN URI does not match canonical Red2PR worker SPIFFE namespace.",
+        )
+    rest = cleaned[len(WORKER_SPIFFE_PREFIX) :]
+    parts = rest.split("/id/")
+    if len(parts) != 2:
+        raise CryptoVerificationError(
+            code="invalid_worker_spiffe_uri",
+            detail="X.509 SAN URI is missing '/id/' worker segment.",
+        )
+    td, wid = parts[0], parts[1].lower()
+    if not _SAFE_TRUST_DOMAIN_RE.fullmatch(td) or not _UUID_LIKE_RE.fullmatch(wid):
+        raise CryptoVerificationError(
+            code="invalid_worker_spiffe_uri",
+            detail="X.509 SAN URI contains malformed trust_domain or worker_id.",
+        )
+    return td, wid
+
+
+def generate_worker_ca_keypair(
+    *,
+    common_name: str = "Red2PR Internal Worker Root CA",
+    valid_days: int = 3650,
+    now: datetime | None = None,
+) -> tuple[str, str]:
+    """Generate an internal ECDSA P-256 X.509 v3 Root CA for worker mTLS authentication."""
+    ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+    ca_key = ec.generate_private_key(ec.SECP256R1())
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Red2PR Self-Hosted Control Plane"),
+            x509.NameAttribute(NameOID.COMMON_NAME, common_name[:64]),
+        ]
+    )
+    ski = x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key())
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(ca_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(ref_now - timedelta(minutes=5))
+        .not_valid_after(ref_now + timedelta(days=max(1, valid_days)))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=True,
+                content_commitment=False,
+                key_encipherment=False,
+                data_encipherment=False,
+                key_agreement=False,
+                key_cert_sign=True,
+                crl_sign=True,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
+        .add_extension(ski, critical=False)
+        .sign(private_key=ca_key, algorithm=hashes.SHA256())
+    )
+    cert_pem = cert.public_bytes(Encoding.PEM).decode("ascii")
+    key_pem = ca_key.private_bytes(
+        Encoding.PEM,
+        PrivateFormat.PKCS8,
+        NoEncryption(),
+    ).decode("ascii")
+    return cert_pem, key_pem
+
+
+def issue_worker_server_certificate(
+    *,
+    ca_cert_pem: str,
+    ca_private_key_pem: str,
+    hostnames: Sequence[str] = ("localhost",),
+    ip_addresses: Sequence[str] = ("127.0.0.1",),
+    valid_days: int = 365,
+    now: datetime | None = None,
+) -> tuple[str, str]:
+    """Issue a TLS 1.3 server certificate signed by the Worker CA for internal mTLS ingress."""
+    import ipaddress
+
+    ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+    ca_cert = x509.load_pem_x509_certificate(ca_cert_pem.encode("ascii"))
+    ca_key = load_pem_private_key(ca_private_key_pem.encode("ascii"), password=None)
+    if not isinstance(ca_key, ec.EllipticCurvePrivateKey):
+        raise CryptoVerificationError(
+            code="invalid_ca_private_key",
+            detail="Worker CA private key must be an ECDSA private key.",
+        )
+
+    srv_key = ec.generate_private_key(ec.SECP256R1())
+    san_entries: list[x509.GeneralName] = [x509.DNSName(h) for h in hostnames]
+    for raw_ip in ip_addresses:
+        san_entries.append(x509.IPAddress(ipaddress.ip_address(raw_ip)))
+
+    cn_value = (hostnames[0] if hostnames else "localhost")[:64]
+    subject = x509.Name(
+        [
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Red2PR Control Plane Internal mTLS"),
+            x509.NameAttribute(NameOID.COMMON_NAME, cn_value),
+        ]
+    )
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(ca_cert.subject)
+        .public_key(srv_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(ref_now - timedelta(minutes=5))
+        .not_valid_after(ref_now + timedelta(days=max(1, valid_days)))
+        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=True,
+                content_commitment=False,
+                key_encipherment=True,
+                data_encipherment=False,
+                key_agreement=True,
+                key_cert_sign=False,
+                crl_sign=False,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
+        .add_extension(
+            x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),
+            critical=True,
+        )
+        .add_extension(x509.SubjectAlternativeName(san_entries), critical=False)
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
+            critical=False,
+        )
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(srv_key.public_key()),
+            critical=False,
+        )
+        .sign(private_key=ca_key, algorithm=hashes.SHA256())
+    )
+    cert_pem = cert.public_bytes(Encoding.PEM).decode("ascii")
+    key_pem = srv_key.private_bytes(
+        Encoding.PEM,
+        PrivateFormat.PKCS8,
+        NoEncryption(),
+    ).decode("ascii")
+    return cert_pem, key_pem
+
+
+def generate_worker_csr(*, host_id: str, trust_domain: str) -> tuple[str, str]:
+    """Generate a fresh ECDSA P-256 private key and PKCS#10 CSR for Z3 worker enrollment."""
+    td = trust_domain.strip()
+    hid = host_id.strip()
+    if not _SAFE_TRUST_DOMAIN_RE.fullmatch(td) or not hid:
+        raise ValueError("host_id and trust_domain must be non-empty safe identifiers.")
+    priv_key = ec.generate_private_key(ec.SECP256R1())
+    csr = (
+        x509.CertificateSigningRequestBuilder()
+        .subject_name(
+            x509.Name(
+                [
+                    x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Red2PR Isolated Worker"),
+                    x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, td[:64]),
+                    x509.NameAttribute(NameOID.COMMON_NAME, hid[:64]),
+                ]
+            )
+        )
+        .sign(priv_key, hashes.SHA256())
+    )
+    csr_pem = csr.public_bytes(Encoding.PEM).decode("ascii")
+    key_pem = priv_key.private_bytes(
+        Encoding.PEM,
+        PrivateFormat.PKCS8,
+        NoEncryption(),
+    ).decode("ascii")
+    return csr_pem, key_pem
+
+
+def issue_worker_client_certificate(
+    *,
+    ca_cert_pem: str,
+    ca_private_key_pem: str,
+    csr_pem: str,
+    worker_id: str,
+    trust_domain: str,
+    valid_hours: int = 24 * 7,
+    now: datetime | None = None,
+) -> tuple[str, str, str, datetime]:
+    """Validate worker PKCS#10 CSR and sign a short-lived mTLS client certificate (`A-13`)."""
+    ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+    try:
+        csr = x509.load_pem_x509_csr(csr_pem.encode("ascii"))
+    except Exception as exc:
+        raise CryptoVerificationError(
+            code="malformed_worker_csr",
+            detail="Failed to parse PEM PKCS#10 certificate signing request.",
+        ) from exc
+
+    if not csr.is_signature_valid:
+        raise CryptoVerificationError(
+            code="invalid_csr_signature",
+            detail="PKCS#10 CSR proof-of-possession signature is invalid.",
+        )
+
+    pub_key = csr.public_key()
+    if isinstance(pub_key, ec.EllipticCurvePublicKey):
+        if pub_key.curve.name not in {"secp256r1", "secp384r1"}:
+            raise CryptoVerificationError(
+                code="unsupported_csr_key",
+                detail="ECDSA CSR public key must use P-256 (secp256r1) or P-384 (secp384r1).",
+            )
+    elif isinstance(pub_key, RSAPublicKey):
+        if pub_key.key_size < 2048:
+            raise CryptoVerificationError(
+                code="weak_csr_key",
+                detail="RSA CSR public key must be at least 2048 bits.",
+            )
+    elif not isinstance(pub_key, Ed25519PublicKey):
+        raise CryptoVerificationError(
+            code="unsupported_csr_key",
+            detail="CSR public key must be ECDSA P-256/P-384, Ed25519, or RSA >= 2048.",
+        )
+
+    ca_cert = x509.load_pem_x509_certificate(ca_cert_pem.encode("ascii"))
+    ca_key = load_pem_private_key(ca_private_key_pem.encode("ascii"), password=None)
+    if not isinstance(ca_key, ec.EllipticCurvePrivateKey):
+        raise CryptoVerificationError(
+            code="invalid_ca_private_key",
+            detail="Worker CA private key must be an ECDSA private key.",
+        )
+
+    spiffe_uri = build_worker_spiffe_uri(trust_domain=trust_domain, worker_id=worker_id)
+    not_before = ref_now - timedelta(minutes=2)
+    not_after = ref_now + timedelta(hours=max(1, valid_hours))
+    serial = x509.random_serial_number()
+
+    subject = x509.Name(
+        [
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Red2PR Isolated Worker"),
+            x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, trust_domain.strip()[:64]),
+            x509.NameAttribute(NameOID.COMMON_NAME, worker_id.strip().lower()[:64]),
+        ]
+    )
+    leaf = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(ca_cert.subject)
+        .public_key(pub_key)
+        .serial_number(serial)
+        .not_valid_before(not_before)
+        .not_valid_after(not_after)
+        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=True,
+                content_commitment=False,
+                key_encipherment=False,
+                data_encipherment=False,
+                key_agreement=isinstance(pub_key, ec.EllipticCurvePublicKey),
+                key_cert_sign=False,
+                crl_sign=False,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
+        .add_extension(
+            x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]),
+            critical=True,
+        )
+        .add_extension(
+            x509.SubjectAlternativeName([x509.UniformResourceIdentifier(spiffe_uri)]),
+            critical=True,
+        )
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
+            critical=False,
+        )
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(pub_key),
+            critical=False,
+        )
+        .sign(private_key=ca_key, algorithm=hashes.SHA256())
+    )
+    leaf_pem = leaf.public_bytes(Encoding.PEM).decode("ascii")
+    leaf_der = leaf.public_bytes(Encoding.DER)
+    fingerprint_sha256 = hashlib.sha256(leaf_der).hexdigest()
+    serial_hex = format(serial, "x")
+    return leaf_pem, serial_hex, fingerprint_sha256, not_after
+
+
+def verify_worker_client_certificate(
+    *,
+    cert_der_or_pem: bytes | str,
+    ca_cert_pem: str,
+    now: datetime | None = None,
+) -> VerifiedWorkerCertIdentity:
+    """Verify worker mTLS leaf certificate against Worker CA, validity window, EKU, and SAN."""
+    ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+    try:
+        ca_cert = x509.load_pem_x509_certificate(ca_cert_pem.encode("ascii"))
+    except Exception as exc:
+        raise CryptoVerificationError(
+            code="invalid_worker_ca",
+            detail="Failed to parse internal Worker CA certificate.",
+        ) from exc
+
+    try:
+        if isinstance(cert_der_or_pem, str):
+            leaf = x509.load_pem_x509_certificate(cert_der_or_pem.encode("ascii"))
+        elif cert_der_or_pem.lstrip().startswith(b"-----BEGIN"):
+            leaf = x509.load_pem_x509_certificate(cert_der_or_pem)
+        else:
+            leaf = x509.load_der_x509_certificate(cert_der_or_pem)
+    except Exception as exc:
+        raise CryptoVerificationError(
+            code="malformed_client_certificate",
+            detail="Failed to parse worker mTLS client certificate.",
+        ) from exc
+
+    try:
+        leaf.verify_directly_issued_by(ca_cert)
+    except Exception as exc:
+        raise CryptoVerificationError(
+            code="untrusted_client_certificate",
+            detail="Worker client certificate was not issued by the active Red2PR Worker CA.",
+        ) from exc
+
+    try:
+        bc = leaf.extensions.get_extension_for_class(x509.BasicConstraints).value
+    except x509.ExtensionNotFound as exc:
+        raise CryptoVerificationError(
+            code="missing_basic_constraints",
+            detail="Worker client certificate is missing BasicConstraints.",
+        ) from exc
+    if bc.ca:
+        raise CryptoVerificationError(
+            code="ca_certificate_forbidden_as_leaf",
+            detail="CA certificate cannot authenticate as a worker leaf identity.",
+        )
+
+    try:
+        eku = leaf.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value
+    except x509.ExtensionNotFound as exc:
+        raise CryptoVerificationError(
+            code="missing_client_auth_eku",
+            detail="Worker client certificate is missing ExtendedKeyUsage.",
+        ) from exc
+    if ExtendedKeyUsageOID.CLIENT_AUTH not in eku:
+        raise CryptoVerificationError(
+            code="missing_client_auth_eku",
+            detail="Worker client certificate does not carry id-kp-clientAuth EKU.",
+        )
+
+    not_before = leaf.not_valid_before_utc
+    not_after = leaf.not_valid_after_utc
+    if ref_now < not_before:
+        raise CryptoVerificationError(
+            code="client_certificate_not_yet_valid",
+            detail="Worker client certificate is not yet valid.",
+        )
+    if ref_now >= not_after:
+        raise CryptoVerificationError(
+            code="client_certificate_expired",
+            detail="Worker client certificate has expired.",
+        )
+
+    try:
+        san = leaf.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+    except x509.ExtensionNotFound as exc:
+        raise CryptoVerificationError(
+            code="missing_worker_san",
+            detail="Worker client certificate is missing SubjectAlternativeName.",
+        ) from exc
+
+    uris = san.get_values_for_type(x509.UniformResourceIdentifier)
+    if len(uris) != 1:
+        raise CryptoVerificationError(
+            code="invalid_worker_san",
+            detail="Worker client certificate must carry exactly one SPIFFE URI SAN.",
+        )
+    trust_domain, worker_id = parse_worker_spiffe_uri(uris[0])
+    leaf_der = leaf.public_bytes(Encoding.DER)
+    return VerifiedWorkerCertIdentity(
+        worker_id=worker_id,
+        trust_domain=trust_domain,
+        serial_hex=format(leaf.serial_number, "x"),
+        fingerprint_sha256=hashlib.sha256(leaf_der).hexdigest(),
+        not_valid_before=not_before,
+        not_valid_after=not_after,
+    )
+
+
+def mint_upload_capability_ticket(
+    *,
+    signing_key: bytes,
+    job_id: str,
+    workspace_id: str,
+    repository_id: str,
+    lease_epoch: int,
+    capability_nonce: str,
+    allowed_slots: Sequence[str],
+    max_output_bytes: int,
+    expires_at: datetime,
+) -> str:
+    """Mint a short-lived HMAC-signed write-only per-job artifact upload ticket (`S-21`)."""
+    if len(signing_key) < 32:
+        raise ValueError("Upload capability signing_key must be at least 32 bytes.")
+    slots = sorted({s.strip() for s in allowed_slots if s.strip()})
+    if not slots:
+        raise ValueError("allowed_slots must contain at least one artifact slot.")
+    claims = {
+        "v": 1,
+        "job_id": job_id,
+        "workspace_id": workspace_id,
+        "repository_id": repository_id,
+        "lease_epoch": int(lease_epoch),
+        "nonce": capability_nonce,
+        "slots": slots,
+        "max_bytes": int(max_output_bytes),
+        "exp": int(expires_at.astimezone(UTC).timestamp()),
+    }
+    body_bytes = canonical_json_bytes(claims)
+    msg = DOMAIN_UPLOAD_CAPABILITY_V1.encode("ascii") + b"\x00" + body_bytes
+    mac = hmac.new(signing_key, msg, hashlib.sha256).digest()
+    return f"upltkt_v1.{_b64url_encode(body_bytes)}.{_b64url_encode(mac)}"
+
+
+def verify_upload_capability_ticket(
+    *,
+    signing_key: bytes,
+    ticket: str,
+    expected_job_id: str,
+    now: datetime | None = None,
+) -> VerifiedUploadCapability:
+    """Verify HMAC signature, job binding, and expiry of an `S-21` upload capability ticket."""
+    ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+    parts = ticket.strip().split(".")
+    if len(parts) != 3 or parts[0] != "upltkt_v1":
+        raise CryptoVerificationError(
+            code="malformed_upload_capability",
+            detail="Malformed S-21 artifact upload capability ticket.",
+        )
+    body_bytes = _b64url_decode(parts[1])
+    sig_bytes = _b64url_decode(parts[2])
+    expected_mac = hmac.new(
+        signing_key,
+        DOMAIN_UPLOAD_CAPABILITY_V1.encode("ascii") + b"\x00" + body_bytes,
+        hashlib.sha256,
+    ).digest()
+    if not hmac.compare_digest(expected_mac, sig_bytes):
+        raise CryptoVerificationError(
+            code="invalid_upload_capability_signature",
+            detail="Artifact upload capability signature verification failed.",
+        )
+    try:
+        claims = json.loads(body_bytes.decode("utf-8"))
+    except Exception as exc:
+        raise CryptoVerificationError(
+            code="malformed_upload_capability",
+            detail="Upload capability payload is not valid UTF-8 JSON.",
+        ) from exc
+    if not isinstance(claims, dict) or claims.get("v") != 1:
+        raise CryptoVerificationError(
+            code="malformed_upload_capability",
+            detail="Unsupported upload capability version.",
+        )
+    job_id = claims.get("job_id")
+    workspace_id = claims.get("workspace_id")
+    repository_id = claims.get("repository_id")
+    lease_epoch = claims.get("lease_epoch")
+    nonce = claims.get("nonce")
+    slots = claims.get("slots")
+    max_bytes = claims.get("max_bytes")
+    exp = claims.get("exp")
+    if (
+        not isinstance(job_id, str)
+        or not isinstance(workspace_id, str)
+        or not isinstance(repository_id, str)
+        or not isinstance(lease_epoch, int)
+        or not isinstance(nonce, str)
+        or not isinstance(slots, list)
+        or not all(isinstance(s, str) and s for s in slots)
+        or not isinstance(max_bytes, int)
+        or not isinstance(exp, int)
+    ):
+        raise CryptoVerificationError(
+            code="malformed_upload_capability",
+            detail="Upload capability claims failed structural validation.",
+        )
+    if job_id != expected_job_id:
+        raise CryptoVerificationError(
+            code="upload_capability_job_mismatch",
+            detail="Upload capability ticket is bound to a different job_id.",
+        )
+    if int(ref_now.timestamp()) >= exp:
+        raise CryptoVerificationError(
+            code="upload_capability_expired",
+            detail="Artifact upload capability ticket has expired.",
+        )
+    return VerifiedUploadCapability(
+        job_id=job_id,
+        workspace_id=workspace_id,
+        repository_id=repository_id,
+        lease_epoch=lease_epoch,
+        capability_nonce=nonce,
+        allowed_slots=tuple(slots),
+        max_output_bytes=max_bytes,
+        expires_at_unix=exp,
+    )

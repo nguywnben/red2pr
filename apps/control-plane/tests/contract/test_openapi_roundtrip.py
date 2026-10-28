@@ -65,9 +65,7 @@ def _build_probe_client() -> TestClient:
             503: DependencyUnavailableError(detail="Upstream dependency unavailable"),
         }
         if status_code == 500:
-            raise RuntimeError(
-                "Unhandled crash at /var/lib/red2pr/db.sock token=ghp_" + "X" * 36
-            )
+            raise RuntimeError("Unhandled crash at /var/lib/red2pr/db.sock token=ghp_" + "X" * 36)
         raise mapping[status_code]
 
     app.include_router(probe)

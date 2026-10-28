@@ -381,6 +381,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List global enrolled isolated workers (instance owner only, A-13) */
+        get: operations["listSystemWorkers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/workers/enrollments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mint one-time worker mTLS enrollment token (step-up gated, A-13) */
+        post: operations["createWorkerEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/workers/{worker_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Drain, quarantine, revoke, or resume an enrolled worker (A-13) */
+        post: operations["performWorkerAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/workers/{worker_id}/self-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify mTLS certificate, external signer, and sandbox isolation posture (A-13) */
+        post: operations["runWorkerSelfTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces": {
         parameters: {
             query?: never;
@@ -896,6 +964,23 @@ export interface paths {
         put?: never;
         /** Cancel, requeue, or reconcile a workspace task job (A-14) */
         post: operations["performWorkspaceTaskJobAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/workers/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get workspace-scoped sandbox worker readiness & active leases (UI-S13) */
+        get: operations["getWorkspaceWorkerReadiness"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2539,11 +2624,8 @@ export interface components {
         IsolationCheckResult: {
             /** Check Id */
             check_id: string;
-            /**
-             * Detail
-             * @default null
-             */
-            detail: string | null;
+            /** Detail */
+            detail?: string | null;
             /** Passed */
             passed: boolean;
         };
@@ -5228,18 +5310,68 @@ export interface components {
          * @description S-15 enrolled isolated sandbox worker supervisor node.
          */
         Worker: {
+            /**
+             * Active Leases
+             * @default 0
+             */
+            active_leases: number;
             /** Capabilities */
             capabilities?: {
                 [key: string]: boolean;
             };
+            /**
+             * Cpu Limit
+             * @default 4
+             */
+            cpu_limit: number;
             /** Created At */
             created_at: string;
+            /**
+             * Disk Limit Bytes
+             * @default 42949672960
+             */
+            disk_limit_bytes: number;
+            /** Drain Reason */
+            drain_reason?: string | null;
             /** Heartbeat At */
             heartbeat_at: string;
+            /**
+             * Host Escape Warning
+             * @default false
+             */
+            host_escape_warning: boolean;
+            /** Host Id */
+            host_id?: string | null;
             /** Id */
             id: string;
+            /**
+             * Isolation Mode
+             * @default oci_rootless
+             * @enum {string}
+             */
+            isolation_mode: "oci_rootless" | "vm_isolated" | "oci_trusted_local";
+            /**
+             * Memory Limit Bytes
+             * @default 8589934592
+             */
+            memory_limit_bytes: number;
+            /** Mtls Cert Expires At */
+            mtls_cert_expires_at?: string | null;
+            /** Mtls Cert Fingerprint Sha256 */
+            mtls_cert_fingerprint_sha256?: string | null;
+            /**
+             * Pids Limit
+             * @default 512
+             */
+            pids_limit: number;
             /** Profile Ids */
             profile_ids: string[];
+            /** Quarantine Reason */
+            quarantine_reason?: string | null;
+            /** Runtime Name */
+            runtime_name?: string | null;
+            /** Signer Key Id */
+            signer_key_id?: string | null;
             /**
              * Status
              * @enum {string}
@@ -5252,10 +5384,130 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * WorkerActionRequest
+         * @description A-13 operator worker control action (`drain | quarantine | revoke | resume`).
+         */
+        WorkerActionRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "drain" | "quarantine" | "revoke" | "resume";
+            /** Expected Version */
+            expected_version?: number | null;
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * WorkerEnrollmentCreateRequest
+         * @description A-13 instance-owner request to mint a one-use mTLS worker enrollment token.
+         */
+        WorkerEnrollmentCreateRequest: {
+            /**
+             * Host Escape Risk Acknowledged
+             * @default false
+             */
+            host_escape_risk_acknowledged: boolean;
+            /**
+             * Isolation Mode
+             * @default oci_rootless
+             * @enum {string}
+             */
+            isolation_mode: "oci_rootless" | "vm_isolated" | "oci_trusted_local";
+            /** Profile Ids */
+            profile_ids: string[];
+            /** Trust Domain */
+            trust_domain: string;
+            /**
+             * Ttl Minutes
+             * @default 15
+             */
+            ttl_minutes: number;
+        };
+        /**
+         * WorkerEnrollmentCreateResponse
+         * @description A-13 one-time worker enrollment token response (raw token returned once only).
+         */
+        WorkerEnrollmentCreateResponse: {
+            /** Ca Cert Pem */
+            ca_cert_pem: string;
+            /** Enrollment Id */
+            enrollment_id: string;
+            /** Enrollment Token */
+            enrollment_token: string;
+            /** Expires At */
+            expires_at: string;
+            /**
+             * Isolation Mode
+             * @enum {string}
+             */
+            isolation_mode: "oci_rootless" | "vm_isolated" | "oci_trusted_local";
+            /** Profile Ids */
+            profile_ids: string[];
+            /** Trust Domain */
+            trust_domain: string;
+        };
         /** WorkerEventPayload */
         WorkerEventPayload: {
             /** Status */
             status: string;
+            /** Worker Id */
+            worker_id: string;
+        };
+        /**
+         * WorkerFleetSummary
+         * @description UI-S13 / A-13 global isolated worker fleet health and isolation posture counts.
+         */
+        WorkerFleetSummary: {
+            /** Active Leases Count */
+            active_leases_count: number;
+            /** Draining Count */
+            draining_count: number;
+            /** Offline Count */
+            offline_count: number;
+            /** Online Count */
+            online_count: number;
+            /** Quarantined Count */
+            quarantined_count: number;
+            /** Total Count */
+            total_count: number;
+            /** Trusted Local Warning Count */
+            trusted_local_warning_count: number;
+            /** Vm Isolated Count */
+            vm_isolated_count: number;
+        };
+        /**
+         * WorkerPage
+         * @description A-13 S-04 cursor-paginated worker registry listing with fleet posture summary.
+         */
+        WorkerPage: {
+            /** Items */
+            items: components["schemas"]["Worker"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+            summary?: components["schemas"]["WorkerFleetSummary"] | null;
+        };
+        /**
+         * WorkerSelfTestResponse
+         * @description UI-S13 / INS-02 deterministic isolated worker confinement & signing self-test report.
+         */
+        WorkerSelfTestResponse: {
+            /** Checked At */
+            checked_at: string;
+            /** Checks */
+            checks: components["schemas"]["IsolationCheckResult"][];
+            /** Detail */
+            detail: string;
+            /**
+             * Isolation Mode
+             * @enum {string}
+             */
+            isolation_mode: "oci_rootless" | "vm_isolated" | "oci_trusted_local";
+            /** Passed */
+            passed: boolean;
             /** Worker Id */
             worker_id: string;
         };
@@ -5359,6 +5611,33 @@ export interface components {
             workspace_paused: boolean;
         };
         /**
+         * WorkspaceSandboxLeaseSummary
+         * @description UI-S13 workspace-scoped active sandbox lease summary (zero global host leakage).
+         */
+        WorkspaceSandboxLeaseSummary: {
+            /** Id */
+            id: string;
+            /** Issued At */
+            issued_at: string;
+            /** Job Id */
+            job_id: string;
+            /** Lease Epoch */
+            lease_epoch: number;
+            /** Lease Expires At */
+            lease_expires_at: string;
+            /** Profile Id */
+            profile_id: string;
+            /** Repair Id */
+            repair_id: string;
+            /** Repository Id */
+            repository_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "leased" | "running" | "completed" | "cancel_requested" | "cancelled" | "expired" | "quarantined";
+        };
+        /**
          * WorkspaceUpdateRequest
          * @description A-04 workspace admin settings patch request with optimistic concurrency.
          */
@@ -5369,6 +5648,30 @@ export interface components {
             name?: string | null;
             /** Paused */
             paused?: boolean | null;
+        };
+        /**
+         * WorkspaceWorkerReadinessResponse
+         * @description UI-S13 scoped sandbox readiness view for non-owner workspace members (`doc34`).
+         */
+        WorkspaceWorkerReadinessResponse: {
+            /** Active Workspace Leases */
+            active_workspace_leases?: components["schemas"]["WorkspaceSandboxLeaseSummary"][];
+            /** Available Profiles */
+            available_profiles: string[];
+            /** Degraded Reason */
+            degraded_reason?: string | null;
+            /** Eligible Online Workers */
+            eligible_online_workers: number;
+            /** Ready */
+            ready: boolean;
+            /** Snapshot At */
+            snapshot_at: string;
+            /** Trusted Local Warning */
+            trusted_local_warning: boolean;
+            /** Vm Isolation Available */
+            vm_isolation_available: boolean;
+            /** Workspace Id */
+            workspace_id: string;
         };
     };
     responses: never;
@@ -8237,6 +8540,506 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemHealthResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    listSystemWorkers: {
+        parameters: {
+            query?: {
+                status?: ("online" | "offline" | "draining" | "quarantined") | null;
+                isolation_mode?: ("oci_rootless" | "vm_isolated" | "oci_trusted_local") | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    createWorkerEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkerEnrollmentCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerEnrollmentCreateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    performWorkerAction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "If-Match"?: string | null;
+            };
+            path: {
+                worker_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkerActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    runWorkerSelfTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worker_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerSelfTestResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Too Many Requests */
@@ -13271,6 +14074,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionReceipt"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getWorkspaceWorkerReadiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceWorkerReadinessResponse"];
                 };
             };
             /** @description Bad Request */

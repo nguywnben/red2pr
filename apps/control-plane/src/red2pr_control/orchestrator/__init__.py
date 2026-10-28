@@ -1,4 +1,4 @@
-"""Z1 Orchestrator: durable PostgreSQL task queue, Dramatiq wakeup transport, and sweeper."""
+"""Z1 Orchestrator: durable PostgreSQL task queue, Dramatiq wakeup transport, and workers."""
 
 from red2pr_control.orchestrator.dramatiq_broker import (
     WAKEUP_QUEUE_NAME,
@@ -7,7 +7,10 @@ from red2pr_control.orchestrator.dramatiq_broker import (
     QueueWakeupTransport,
     Red2PrQueueTransport,
 )
-from red2pr_control.orchestrator.operations_router import build_orchestrator_router
+from red2pr_control.orchestrator.operations_router import (
+    build_internal_worker_router,
+    build_orchestrator_router,
+)
 from red2pr_control.orchestrator.queue import (
     DEFAULT_HEARTBEAT_INTERVAL,
     DEFAULT_LEASE_TTL,
@@ -27,25 +30,46 @@ from red2pr_control.orchestrator.sweeper import (
     SweepReport,
     TransportRebuildReport,
 )
+from red2pr_control.orchestrator.worker_broker import (
+    DEFAULT_WORKER_CERT_VALID_HOURS,
+    DEFAULT_WORKER_STALE_TIMEOUT,
+    MAX_SANDBOX_UPLOAD_BYTES,
+    MAX_SANDBOX_UPLOAD_WIRE_BYTES,
+    SANDBOX_TASK_KIND,
+    MtlsH11Protocol,
+    ServerTlsMaterial,
+    WorkerBrokerService,
+    WorkerCertificateAuthority,
+)
 
 __all__ = [
     "DEFAULT_HEARTBEAT_INTERVAL",
     "DEFAULT_LEASE_TTL",
     "DEFAULT_MAX_RUNNING_REPAIRS_PER_WORKSPACE",
     "DEFAULT_SWEEPER_INTERVAL_SECONDS",
+    "DEFAULT_WORKER_CERT_VALID_HOURS",
+    "DEFAULT_WORKER_STALE_TIMEOUT",
+    "MAX_SANDBOX_UPLOAD_BYTES",
+    "MAX_SANDBOX_UPLOAD_WIRE_BYTES",
     "QUEUE_OPERATOR_ROLES",
+    "SANDBOX_TASK_KIND",
     "WAKEUP_QUEUE_NAME",
     "DurableTaskQueueService",
     "HeartbeatOutcome",
     "LeasedTaskJob",
+    "MtlsH11Protocol",
     "NullQueueTransport",
     "OperationReceiptService",
     "QueueLeaseSweeper",
     "QueueWakeupHint",
     "QueueWakeupTransport",
     "Red2PrQueueTransport",
+    "ServerTlsMaterial",
     "SweepReport",
     "TransportRebuildReport",
+    "WorkerBrokerService",
+    "WorkerCertificateAuthority",
+    "build_internal_worker_router",
     "build_orchestrator_router",
     "to_dead_letter_dto",
     "to_task_attempt_dto",

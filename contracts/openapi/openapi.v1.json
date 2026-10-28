@@ -4630,7 +4630,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Detail"
           },
           "passed": {
@@ -12424,6 +12423,12 @@
         "additionalProperties": false,
         "description": "S-15 enrolled isolated sandbox worker supervisor node.",
         "properties": {
+          "active_leases": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Active Leases",
+            "type": "integer"
+          },
           "capabilities": {
             "additionalProperties": {
               "type": "boolean"
@@ -12435,17 +12440,106 @@
             "title": "Capabilities",
             "type": "object"
           },
+          "cpu_limit": {
+            "default": 4,
+            "maximum": 256.0,
+            "minimum": 1.0,
+            "title": "Cpu Limit",
+            "type": "integer"
+          },
           "created_at": {
             "title": "Created At",
             "type": "string"
+          },
+          "disk_limit_bytes": {
+            "default": 42949672960,
+            "minimum": 1.0,
+            "title": "Disk Limit Bytes",
+            "type": "integer"
+          },
+          "drain_reason": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drain Reason"
           },
           "heartbeat_at": {
             "title": "Heartbeat At",
             "type": "string"
           },
+          "host_escape_warning": {
+            "default": false,
+            "title": "Host Escape Warning",
+            "type": "boolean"
+          },
+          "host_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host Id"
+          },
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "isolation_mode": {
+            "default": "oci_rootless",
+            "enum": [
+              "oci_rootless",
+              "vm_isolated",
+              "oci_trusted_local"
+            ],
+            "title": "Isolation Mode",
+            "type": "string"
+          },
+          "memory_limit_bytes": {
+            "default": 8589934592,
+            "minimum": 1.0,
+            "title": "Memory Limit Bytes",
+            "type": "integer"
+          },
+          "mtls_cert_expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mtls Cert Expires At"
+          },
+          "mtls_cert_fingerprint_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mtls Cert Fingerprint Sha256"
+          },
+          "pids_limit": {
+            "default": 512,
+            "maximum": 65536.0,
+            "minimum": 1.0,
+            "title": "Pids Limit",
+            "type": "integer"
           },
           "profile_ids": {
             "items": {
@@ -12455,6 +12549,44 @@
             },
             "title": "Profile Ids",
             "type": "array"
+          },
+          "quarantine_reason": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quarantine Reason"
+          },
+          "runtime_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Name"
+          },
+          "signer_key_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signer Key Id"
           },
           "status": {
             "enum": [
@@ -12477,7 +12609,7 @@
             "type": "string"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           }
@@ -12493,6 +12625,156 @@
           "status"
         ],
         "title": "Worker",
+        "type": "object"
+      },
+      "WorkerActionRequest": {
+        "additionalProperties": false,
+        "description": "A-13 operator worker control action (`drain | quarantine | revoke | resume`).",
+        "properties": {
+          "action": {
+            "enum": [
+              "drain",
+              "quarantine",
+              "revoke",
+              "resume"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "reason"
+        ],
+        "title": "WorkerActionRequest",
+        "type": "object"
+      },
+      "WorkerEnrollmentCreateRequest": {
+        "additionalProperties": false,
+        "description": "A-13 instance-owner request to mint a one-use mTLS worker enrollment token.",
+        "properties": {
+          "host_escape_risk_acknowledged": {
+            "default": false,
+            "title": "Host Escape Risk Acknowledged",
+            "type": "boolean"
+          },
+          "isolation_mode": {
+            "default": "oci_rootless",
+            "enum": [
+              "oci_rootless",
+              "vm_isolated",
+              "oci_trusted_local"
+            ],
+            "title": "Isolation Mode",
+            "type": "string"
+          },
+          "profile_ids": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Profile Ids",
+            "type": "array"
+          },
+          "trust_domain": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Trust Domain",
+            "type": "string"
+          },
+          "ttl_minutes": {
+            "default": 15,
+            "maximum": 120.0,
+            "minimum": 5.0,
+            "title": "Ttl Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "trust_domain",
+          "profile_ids"
+        ],
+        "title": "WorkerEnrollmentCreateRequest",
+        "type": "object"
+      },
+      "WorkerEnrollmentCreateResponse": {
+        "additionalProperties": false,
+        "description": "A-13 one-time worker enrollment token response (raw token returned once only).",
+        "properties": {
+          "ca_cert_pem": {
+            "maxLength": 4096,
+            "title": "Ca Cert Pem",
+            "type": "string"
+          },
+          "enrollment_id": {
+            "title": "Enrollment Id",
+            "type": "string"
+          },
+          "enrollment_token": {
+            "maxLength": 4096,
+            "title": "Enrollment Token",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "isolation_mode": {
+            "enum": [
+              "oci_rootless",
+              "vm_isolated",
+              "oci_trusted_local"
+            ],
+            "title": "Isolation Mode",
+            "type": "string"
+          },
+          "profile_ids": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Profile Ids",
+            "type": "array"
+          },
+          "trust_domain": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Trust Domain",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enrollment_id",
+          "enrollment_token",
+          "trust_domain",
+          "profile_ids",
+          "isolation_mode",
+          "expires_at",
+          "ca_cert_pem"
+        ],
+        "title": "WorkerEnrollmentCreateResponse",
         "type": "object"
       },
       "WorkerEventPayload": {
@@ -12514,6 +12796,159 @@
           "status"
         ],
         "title": "WorkerEventPayload",
+        "type": "object"
+      },
+      "WorkerFleetSummary": {
+        "additionalProperties": false,
+        "description": "UI-S13 / A-13 global isolated worker fleet health and isolation posture counts.",
+        "properties": {
+          "active_leases_count": {
+            "minimum": 0.0,
+            "title": "Active Leases Count",
+            "type": "integer"
+          },
+          "draining_count": {
+            "minimum": 0.0,
+            "title": "Draining Count",
+            "type": "integer"
+          },
+          "offline_count": {
+            "minimum": 0.0,
+            "title": "Offline Count",
+            "type": "integer"
+          },
+          "online_count": {
+            "minimum": 0.0,
+            "title": "Online Count",
+            "type": "integer"
+          },
+          "quarantined_count": {
+            "minimum": 0.0,
+            "title": "Quarantined Count",
+            "type": "integer"
+          },
+          "total_count": {
+            "minimum": 0.0,
+            "title": "Total Count",
+            "type": "integer"
+          },
+          "trusted_local_warning_count": {
+            "minimum": 0.0,
+            "title": "Trusted Local Warning Count",
+            "type": "integer"
+          },
+          "vm_isolated_count": {
+            "minimum": 0.0,
+            "title": "Vm Isolated Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_count",
+          "online_count",
+          "draining_count",
+          "quarantined_count",
+          "offline_count",
+          "vm_isolated_count",
+          "trusted_local_warning_count",
+          "active_leases_count"
+        ],
+        "title": "WorkerFleetSummary",
+        "type": "object"
+      },
+      "WorkerPage": {
+        "additionalProperties": false,
+        "description": "A-13 S-04 cursor-paginated worker registry listing with fleet posture summary.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Worker"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkerFleetSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "snapshot_at"
+        ],
+        "title": "WorkerPage",
+        "type": "object"
+      },
+      "WorkerSelfTestResponse": {
+        "additionalProperties": false,
+        "description": "UI-S13 / INS-02 deterministic isolated worker confinement & signing self-test report.",
+        "properties": {
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/IsolationCheckResult"
+            },
+            "minItems": 1,
+            "title": "Checks",
+            "type": "array"
+          },
+          "detail": {
+            "maxLength": 4096,
+            "title": "Detail",
+            "type": "string"
+          },
+          "isolation_mode": {
+            "enum": [
+              "oci_rootless",
+              "vm_isolated",
+              "oci_trusted_local"
+            ],
+            "title": "Isolation Mode",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "worker_id": {
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id",
+          "passed",
+          "isolation_mode",
+          "checks",
+          "checked_at",
+          "detail"
+        ],
+        "title": "WorkerSelfTestResponse",
         "type": "object"
       },
       "WorkflowHazardFinding": {
@@ -12765,6 +13200,73 @@
         "title": "WorkspaceQueueFairnessSummary",
         "type": "object"
       },
+      "WorkspaceSandboxLeaseSummary": {
+        "additionalProperties": false,
+        "description": "UI-S13 workspace-scoped active sandbox lease summary (zero global host leakage).",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "issued_at": {
+            "title": "Issued At",
+            "type": "string"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "lease_epoch": {
+            "minimum": 1.0,
+            "title": "Lease Epoch",
+            "type": "integer"
+          },
+          "lease_expires_at": {
+            "title": "Lease Expires At",
+            "type": "string"
+          },
+          "profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "leased",
+              "running",
+              "completed",
+              "cancel_requested",
+              "cancelled",
+              "expired",
+              "quarantined"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "job_id",
+          "repository_id",
+          "repair_id",
+          "profile_id",
+          "lease_epoch",
+          "status",
+          "issued_at",
+          "lease_expires_at"
+        ],
+        "title": "WorkspaceSandboxLeaseSummary",
+        "type": "object"
+      },
       "WorkspaceUpdateRequest": {
         "additionalProperties": false,
         "description": "A-04 workspace admin settings patch request with optimistic concurrency.",
@@ -12807,6 +13309,76 @@
           }
         },
         "title": "WorkspaceUpdateRequest",
+        "type": "object"
+      },
+      "WorkspaceWorkerReadinessResponse": {
+        "additionalProperties": false,
+        "description": "UI-S13 scoped sandbox readiness view for non-owner workspace members (`doc34`).",
+        "properties": {
+          "active_workspace_leases": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceSandboxLeaseSummary"
+            },
+            "title": "Active Workspace Leases",
+            "type": "array"
+          },
+          "available_profiles": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Available Profiles",
+            "type": "array"
+          },
+          "degraded_reason": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degraded Reason"
+          },
+          "eligible_online_workers": {
+            "minimum": 0.0,
+            "title": "Eligible Online Workers",
+            "type": "integer"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          },
+          "trusted_local_warning": {
+            "title": "Trusted Local Warning",
+            "type": "boolean"
+          },
+          "vm_isolation_available": {
+            "title": "Vm Isolation Available",
+            "type": "boolean"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "ready",
+          "eligible_online_workers",
+          "available_profiles",
+          "vm_isolation_available",
+          "trusted_local_warning",
+          "snapshot_at"
+        ],
+        "title": "WorkspaceWorkerReadinessResponse",
         "type": "object"
       }
     }
@@ -16203,6 +16775,684 @@
         "summary": "Public minimal instance liveness probe (A-18)",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/v1/system/workers": {
+      "get": {
+        "operationId": "listSystemWorkers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "online",
+                    "offline",
+                    "draining",
+                    "quarantined"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "isolation_mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "oci_rootless",
+                    "vm_isolated",
+                    "oci_trusted_local"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Isolation Mode"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List global enrolled isolated workers (instance owner only, A-13)",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/v1/system/workers/enrollments": {
+      "post": {
+        "operationId": "createWorkerEnrollment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkerEnrollmentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerEnrollmentCreateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Mint one-time worker mTLS enrollment token (step-up gated, A-13)",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/v1/system/workers/{worker_id}/actions": {
+      "post": {
+        "operationId": "performWorkerAction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "worker_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Worker Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkerActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Drain, quarantine, revoke, or resume an enrolled worker (A-13)",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/v1/system/workers/{worker_id}/self-test": {
+      "post": {
+        "operationId": "runWorkerSelfTest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "worker_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Worker Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerSelfTestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Verify mTLS certificate, external signer, and sandbox isolation posture (A-13)",
+        "tags": [
+          "workers"
         ]
       }
     },
@@ -23404,6 +24654,150 @@
         "summary": "Cancel, requeue, or reconcile a workspace task job (A-14)",
         "tags": [
           "queues"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/workers/readiness": {
+      "get": {
+        "operationId": "getWorkspaceWorkerReadiness",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceWorkerReadinessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get workspace-scoped sandbox worker readiness & active leases (UI-S13)",
+        "tags": [
+          "workers"
         ]
       }
     }

@@ -27,6 +27,7 @@ import { PipelinesPage } from "../features/pipelines";
 import { QueuesPage } from "../features/queues";
 import { RepositoriesPage, RepositoryDetailPage } from "../features/repositories";
 import { SetupWizardPage } from "../features/setup";
+import { WorkersPage } from "../features/workers";
 import {
   ApiClientProvider,
   invalidateWorkspaceQueries,
@@ -72,6 +73,7 @@ function WorkspaceSectionOutlet({
       <Route path="members" element={<MembersPage workspace={workspace} me={meData} />} />
       <Route path="pipelines" element={<PipelinesPage workspace={workspace} me={meData} />} />
       <Route path="failures" element={<Navigate to="../pipelines" replace />} />
+      <Route path="workers" element={<WorkersPage workspace={workspace} me={meData} />} />
       <Route path="queues" element={<QueuesPage workspace={workspace} me={meData} />} />
       <Route
         path="repositories"

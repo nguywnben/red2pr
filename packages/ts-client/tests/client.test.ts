@@ -1181,4 +1181,166 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(downloaded.data.filename, "junit-results.zip");
     assert.equal(downloaded.data.bytes.byteLength, 4);
   });
+
+  it("serializes U14 A-13 isolated worker fleet, enrollment, actions, self-test & UI-S13 readiness", async () => {
+    const workerId = "019a2900-0000-7000-8000-000000000101";
+    const enrollId = "019a2900-0000-7000-8000-000000000202";
+    const opId = "019a2900-0000-7000-8000-000000000303";
+    const wsId = "019a2900-0000-7000-8000-000000000001";
+    const seenHeaders: Array<{ idemKey: string | null; ifMatch: string | null; csrf: string | null }> =
+      [];
+
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u14-token",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        seenHeaders.push({
+          idemKey: request.headers.get("Idempotency-Key"),
+          ifMatch: request.headers.get("If-Match"),
+          csrf: request.headers.get("X-CSRF-Token"),
+        });
+
+        if (request.method === "GET" && url.pathname === "/api/v1/system/workers") {
+          assert.equal(url.searchParams.get("status"), "online");
+          return new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: workerId,
+                  version: 1,
+                  created_at: "2026-10-28T06:00:00Z",
+                  updated_at: "2026-10-28T06:00:00Z",
+                  trust_domain: "red2pr.internal",
+                  profile_ids: ["python-3.12-node-22"],
+                  status: "online",
+                  isolation_mode: "vm_isolated",
+                  runtime_name: "firecracker-rootless",
+                  heartbeat_at: "2026-10-28T06:00:10Z",
+                  cpu_limit: 4,
+                  memory_limit_bytes: 8589934592,
+                  disk_limit_bytes: 42949672960,
+                  pids_limit: 512,
+                  signer_key_id: "ed25519-worker-01",
+                  mtls_cert_fingerprint_sha256: "a".repeat(64),
+                  mtls_cert_expires_at: "2026-10-29T06:00:00Z",
+                  active_leases: 0,
+                  host_escape_warning: false,
+                },
+              ],
+              next_cursor: null,
+              snapshot_at: "2026-10-28T06:00:12Z",
+              summary: {
+                total_count: 1,
+                online_count: 1,
+                draining_count: 0,
+                quarantined_count: 0,
+                offline_count: 0,
+                vm_isolated_count: 1,
+                trusted_local_warning_count: 0,
+                active_leases_count: 0,
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (request.method === "POST" && url.pathname === "/api/v1/system/workers/enrollments") {
+          return new Response(
+            JSON.stringify({
+              enrollment_id: enrollId,
+              enrollment_token: "r2p_wenr_onetime_token_value_123456",
+              expires_at: "2026-10-28T06:15:00Z",
+              ca_cert_pem: "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n",
+              trust_domain: "red2pr.internal",
+              isolation_mode: "vm_isolated",
+              profile_ids: ["python-3.12-node-22"],
+              host_escape_warning: false,
+            }),
+            { status: 201, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (
+          request.method === "POST" &&
+          url.pathname === `/api/v1/system/workers/${workerId}/actions`
+        ) {
+          return new Response(
+            JSON.stringify({
+              operation_id: opId,
+              resource_id: workerId,
+              state: "succeeded",
+              correlation_id: "corr-u14-act",
+              status_url: `/api/v1/operations/${opId}`,
+              result_id: workerId,
+            }),
+            { status: 202, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (
+          request.method === "POST" &&
+          url.pathname === `/api/v1/system/workers/${workerId}/self-test`
+        ) {
+          return new Response(
+            JSON.stringify({
+              worker_id: workerId,
+              passed: true,
+              checked_at: "2026-10-28T06:01:00Z",
+              isolation_mode: "vm_isolated",
+              detail: "All worker mTLS and confinement checks passed.",
+              checks: [
+                { check_id: "mtls_identity", passed: true, detail: "Active X.509 SPIFFE cert." },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (request.method === "GET" && url.pathname === "/api/v1/workspaces/acme/workers/readiness") {
+          return new Response(
+            JSON.stringify({
+              workspace_id: wsId,
+              ready: true,
+              eligible_online_workers: 1,
+              available_profiles: ["python-3.12-node-22"],
+              vm_isolation_available: true,
+              trusted_local_warning: false,
+              active_workspace_leases: [],
+              degraded_reason: null,
+              snapshot_at: "2026-10-28T06:01:05Z",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        throw new Error(`Unexpected ${request.method} ${url.pathname}`);
+      },
+    });
+
+    const workers = await client.listSystemWorkers({ status: "online" });
+    assert.equal(workers.data.items.length, 1);
+    assert.equal(workers.data.summary?.vm_isolated_count, 1);
+
+    const enrollment = await client.createWorkerEnrollment({
+      trust_domain: "red2pr.internal",
+      profile_ids: ["python-3.12-node-22"],
+      isolation_mode: "vm_isolated",
+      ttl_minutes: 15,
+      host_escape_risk_acknowledged: false,
+    });
+    assert.equal(enrollment.data.enrollment_id, enrollId);
+    assert.equal(seenHeaders[1]?.csrf, "csrf-u14-token");
+
+    const actionReceipt = await client.performWorkerAction(
+      workerId,
+      { action: "drain", reason: "Planned hypervisor kernel maintenance", expected_version: 1 },
+      { idempotencyKey: "019a2900-0000-7000-8000-000000000999", ifMatch: '"v1"' },
+    );
+    assert.equal(actionReceipt.data.operation_id, opId);
+    assert.equal(seenHeaders[2]?.idemKey, "019a2900-0000-7000-8000-000000000999");
+    assert.equal(seenHeaders[2]?.ifMatch, '"v1"');
+
+    const selfTest = await client.runWorkerSelfTest(workerId);
+    assert.equal(selfTest.data.passed, true);
+
+    const readiness = await client.getWorkspaceWorkerReadiness("acme");
+    assert.equal(readiness.data.ready, true);
+    assert.equal(readiness.data.vm_isolation_available, true);
+  });
 });
