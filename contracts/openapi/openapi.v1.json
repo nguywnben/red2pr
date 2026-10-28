@@ -126,6 +126,551 @@
         "title": "AffectedInFlightItem",
         "type": "object"
       },
+      "AgentProfile": {
+        "additionalProperties": false,
+        "description": "A-20 / UI-S11 bounded workspace agent profile (no arbitrary prompt-power switch).",
+        "properties": {
+          "allowed_tools": {
+            "items": {
+              "enum": [
+                "read_file",
+                "search_repo",
+                "read_log_excerpt",
+                "read_commit_diff",
+                "request_reproduction",
+                "apply_patch",
+                "run_targeted_test",
+                "get_execution_result"
+              ],
+              "type": "string"
+            },
+            "title": "Allowed Tools",
+            "type": "array"
+          },
+          "arbitrary_prompt_override_allowed": {
+            "const": false,
+            "default": false,
+            "title": "Arbitrary Prompt Override Allowed",
+            "type": "boolean"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 4096,
+            "title": "Description",
+            "type": "string"
+          },
+          "display_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "escalation_model_id": {
+            "anyOf": [
+              {
+                "enum": [
+                  "muse-spark-1.3",
+                  "muse-wonder-1.0"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Model Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "immutable_role_tool_ceiling": {
+            "items": {
+              "enum": [
+                "read_file",
+                "search_repo",
+                "read_log_excerpt",
+                "read_commit_diff",
+                "request_reproduction",
+                "apply_patch",
+                "run_targeted_test",
+                "get_execution_result"
+              ],
+              "type": "string"
+            },
+            "title": "Immutable Role Tool Ceiling",
+            "type": "array"
+          },
+          "max_schema_repair_retries": {
+            "default": 2,
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Max Schema Repair Retries",
+            "type": "integer"
+          },
+          "max_steps": {
+            "maximum": 16.0,
+            "minimum": 1.0,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "max_tool_calls_per_step": {
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Max Tool Calls Per Step",
+            "type": "integer"
+          },
+          "model_id": {
+            "enum": [
+              "muse-spark-1.3",
+              "muse-wonder-1.0"
+            ],
+            "title": "Model Id",
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Reasoning Effort",
+            "type": "string"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Id"
+          },
+          "role_key": {
+            "enum": [
+              "triage_diagnosis",
+              "bounded_patch"
+            ],
+            "title": "Role Key",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By User Id"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "role_key",
+          "display_name",
+          "description",
+          "model_id",
+          "reasoning_effort",
+          "allowed_tools",
+          "immutable_role_tool_ceiling",
+          "max_steps",
+          "max_tool_calls_per_step"
+        ],
+        "title": "AgentProfile",
+        "type": "object"
+      },
+      "AgentProfileUpdateRequest": {
+        "additionalProperties": false,
+        "description": "A-20 / UI-S11 bounded agent profile mutation request.",
+        "properties": {
+          "allowed_tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Tools"
+          },
+          "clear_escalation_model": {
+            "default": false,
+            "title": "Clear Escalation Model",
+            "type": "boolean"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "escalation_model_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Model Id"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
+          "max_schema_repair_retries": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Schema Repair Retries"
+          },
+          "max_steps": {
+            "anyOf": [
+              {
+                "maximum": 16.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Steps"
+          },
+          "max_tool_calls_per_step": {
+            "anyOf": [
+              {
+                "maximum": 8.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tool Calls Per Step"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
+          }
+        },
+        "title": "AgentProfileUpdateRequest",
+        "type": "object"
+      },
+      "AgentProfileUpdateResponse": {
+        "additionalProperties": false,
+        "description": "A-20 idempotent S-05 receipt + updated workspace agent profile state.",
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/AgentProfile"
+          },
+          "profiles_state": {
+            "$ref": "#/components/schemas/WorkspaceAgentProfilesResponse"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/ActionReceipt"
+          }
+        },
+        "required": [
+          "receipt",
+          "profile",
+          "profiles_state"
+        ],
+        "title": "AgentProfileUpdateResponse",
+        "type": "object"
+      },
+      "AgentStepRecord": {
+        "additionalProperties": false,
+        "description": "Immutable audit record of a bounded model call, tool invocation, or policy denial.",
+        "properties": {
+          "agent_role": {
+            "enum": [
+              "diagnosis",
+              "patch"
+            ],
+            "title": "Agent Role",
+            "type": "string"
+          },
+          "args_redacted_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Args Redacted Digest"
+          },
+          "attempt_number": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Attempt Number",
+            "type": "integer"
+          },
+          "context_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Context Digest",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "deny_explanation": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deny Explanation"
+          },
+          "deny_reason_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deny Reason Code"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "provider_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Request Id"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "result_redacted_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Redacted Digest"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "denied",
+              "failed",
+              "pending"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "step_kind": {
+            "enum": [
+              "model_call",
+              "tool_call",
+              "schema_repair",
+              "abstention",
+              "policy_denial"
+            ],
+            "title": "Step Kind",
+            "type": "string"
+          },
+          "step_number": {
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Step Number",
+            "type": "integer"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Name"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "usage_record_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Record Id"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "agent_role",
+          "attempt_number",
+          "step_number",
+          "step_kind",
+          "status",
+          "context_digest"
+        ],
+        "title": "AgentStepRecord",
+        "type": "object"
+      },
       "ApplyPatchArgs": {
         "additionalProperties": false,
         "properties": {
@@ -3348,6 +3893,140 @@
         "title": "ConsentRevokeRequest",
         "type": "object"
       },
+      "ContextManifest": {
+        "additionalProperties": false,
+        "description": "Immutable redacted context manifest isolated by workspace/repo/SHA/policy/redaction.",
+        "properties": {
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "cache_key": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Cache Key",
+            "type": "string"
+          },
+          "context_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Context Digest",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ContextManifestEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "policy_revision": {
+            "minimum": 1,
+            "title": "Policy Revision",
+            "type": "integer"
+          },
+          "redaction_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Redaction Version",
+            "type": "string"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "base_sha",
+          "policy_revision",
+          "redaction_version",
+          "cache_key",
+          "context_digest"
+        ],
+        "title": "ContextManifest",
+        "type": "object"
+      },
+      "ContextManifestEntry": {
+        "additionalProperties": false,
+        "description": "Single redacted context slice included in an agent session context manifest.",
+        "properties": {
+          "byte_length": {
+            "minimum": 0,
+            "title": "Byte Length",
+            "type": "integer"
+          },
+          "digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "ci_log",
+              "repo_file",
+              "commit_diff",
+              "policy_summary",
+              "profile_manifest"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref_id": {
+            "maxLength": 4096,
+            "title": "Ref Id",
+            "type": "string"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "ref_id",
+          "digest",
+          "byte_length"
+        ],
+        "title": "ContextManifestEntry",
+        "type": "object"
+      },
       "CsrfBootstrapResponse": {
         "additionalProperties": false,
         "description": "CSRF synchronizer/double-submit bootstrap state for pre-auth and session forms.",
@@ -3568,6 +4247,27 @@
             "title": "Decision",
             "type": "string"
           },
+          "deterministic_rule_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Deterministic Rule Id"
+          },
+          "evidence_citations": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceLineCitation"
+            },
+            "title": "Evidence Citations",
+            "type": "array"
+          },
           "evidence_refs": {
             "items": {
               "type": "string"
@@ -3575,9 +4275,52 @@
             "title": "Evidence Refs",
             "type": "array"
           },
+          "fingerprint_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fingerprint Hash"
+          },
+          "hypotheses": {
+            "items": {
+              "$ref": "#/components/schemas/DiagnosisHypothesis"
+            },
+            "title": "Hypotheses",
+            "type": "array"
+          },
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model Id"
+          },
+          "proposed_command_ids": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Proposed Command Ids",
+            "type": "array"
           },
           "proposed_profile": {
             "anyOf": [
@@ -3600,6 +4343,13 @@
           "repository_id": {
             "title": "Repository Id",
             "type": "string"
+          },
+          "schema_repair_retries_used": {
+            "default": 0,
+            "maximum": 2,
+            "minimum": 0,
+            "title": "Schema Repair Retries Used",
+            "type": "integer"
           },
           "summary": {
             "maxLength": 4096,
@@ -3642,6 +4392,47 @@
           "decision"
         ],
         "title": "Diagnosis",
+        "type": "object"
+      },
+      "DiagnosisHypothesis": {
+        "additionalProperties": false,
+        "description": "Structured root-cause hypothesis proposed by the diagnosis agent (`AGT-02`).",
+        "properties": {
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "statement": {
+            "maxLength": 4096,
+            "title": "Statement",
+            "type": "string"
+          },
+          "suspected_paths": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "title": "Suspected Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "statement",
+          "confidence"
+        ],
+        "title": "DiagnosisHypothesis",
         "type": "object"
       },
       "EffectiveRepositoryPolicy": {
@@ -4254,6 +5045,39 @@
           "payload"
         ],
         "title": "EventEnvelope",
+        "type": "object"
+      },
+      "EvidenceLineCitation": {
+        "additionalProperties": false,
+        "description": "Immutable session-verified artifact line-range citation (`TRI-02`, `SEC-024`).",
+        "properties": {
+          "artifact_id": {
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "end_line": {
+            "minimum": 1,
+            "title": "End Line",
+            "type": "integer"
+          },
+          "excerpt_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Excerpt Digest",
+            "type": "string"
+          },
+          "start_line": {
+            "minimum": 1,
+            "title": "Start Line",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "start_line",
+          "end_line",
+          "excerpt_digest"
+        ],
+        "title": "EvidenceLineCitation",
         "type": "object"
       },
       "EvidenceManifestV1": {
@@ -7350,6 +8174,146 @@
           "attempt"
         ],
         "title": "Patch",
+        "type": "object"
+      },
+      "PatchAttemptRecord": {
+        "additionalProperties": false,
+        "description": "S-12 / AGT-02 bounded patch candidate attempt with S-22 provenance.",
+        "properties": {
+          "attempt": {
+            "maximum": 5,
+            "minimum": 1,
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "changed_paths": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "title": "Changed Paths",
+            "type": "array"
+          },
+          "claimed_root_cause": {
+            "maxLength": 4096,
+            "title": "Claimed Root Cause",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "diff_artifact_id": {
+            "title": "Diff Artifact Id",
+            "type": "string"
+          },
+          "diff_lines_added": {
+            "minimum": 0,
+            "title": "Diff Lines Added",
+            "type": "integer"
+          },
+          "diff_lines_removed": {
+            "minimum": 0,
+            "title": "Diff Lines Removed",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "integrity_outcome": {
+            "enum": [
+              "accepted",
+              "rejected_policy",
+              "rejected_integrity"
+            ],
+            "title": "Integrity Outcome",
+            "type": "string"
+          },
+          "patch_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Patch Digest",
+            "type": "string"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/ModelToolProvenance"
+            },
+            "title": "Provenance",
+            "type": "array"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "sandbox_reproduction_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sandbox Reproduction Id"
+          },
+          "target_test_selection_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target Test Selection Id"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "attempt",
+          "base_sha",
+          "patch_digest",
+          "diff_artifact_id",
+          "changed_paths",
+          "diff_lines_added",
+          "diff_lines_removed",
+          "claimed_root_cause",
+          "integrity_outcome"
+        ],
+        "title": "PatchAttemptRecord",
         "type": "object"
       },
       "PathPolicyEvaluation": {
@@ -13670,6 +14634,56 @@
         "title": "ToolCallResponse",
         "type": "object"
       },
+      "ToolCapabilityPolicyItem": {
+        "additionalProperties": false,
+        "description": "UI-S11 / SEC-028 tool capability matrix item (allowlisted S-20 vs prohibited).",
+        "properties": {
+          "category": {
+            "enum": [
+              "s20_allowed",
+              "prohibited"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "immutable_reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Immutable Reason",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "permitted_for_diagnosis": {
+            "title": "Permitted For Diagnosis",
+            "type": "boolean"
+          },
+          "permitted_for_patch": {
+            "title": "Permitted For Patch",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "description",
+          "permitted_for_diagnosis",
+          "permitted_for_patch",
+          "immutable_reason"
+        ],
+        "title": "ToolCapabilityPolicyItem",
+        "type": "object"
+      },
       "TrustedExecutionResultRef": {
         "additionalProperties": false,
         "properties": {
@@ -14656,6 +15670,77 @@
           "status"
         ],
         "title": "Workspace",
+        "type": "object"
+      },
+      "WorkspaceAgentProfilesResponse": {
+        "additionalProperties": false,
+        "description": "A-20 / UI-S11 workspace agent profiles, immutable S-20 matrix & recent step audit.",
+        "properties": {
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/AgentProfile"
+            },
+            "title": "Profiles",
+            "type": "array"
+          },
+          "prohibited_capabilities": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Prohibited Capabilities",
+            "type": "array"
+          },
+          "ready_for_repair_inference": {
+            "title": "Ready For Repair Inference",
+            "type": "boolean"
+          },
+          "recent_steps": {
+            "items": {
+              "$ref": "#/components/schemas/AgentStepRecord"
+            },
+            "title": "Recent Steps",
+            "type": "array"
+          },
+          "suspension_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "maintenance",
+                  "model_unavailable",
+                  "quota",
+                  "worker_unavailable",
+                  "operator_pause"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suspension Reason"
+          },
+          "tool_matrix": {
+            "items": {
+              "$ref": "#/components/schemas/ToolCapabilityPolicyItem"
+            },
+            "title": "Tool Matrix",
+            "type": "array"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "profiles",
+          "tool_matrix",
+          "prohibited_capabilities",
+          "ready_for_repair_inference"
+        ],
+        "title": "WorkspaceAgentProfilesResponse",
         "type": "object"
       },
       "WorkspaceCreateRequest": {
@@ -20243,6 +21328,502 @@
         "summary": "Update workspace settings (`admin` only) with If-Match concurrency (A-04)",
         "tags": [
           "workspaces"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/agent-profiles": {
+      "get": {
+        "operationId": "listWorkspaceAgentProfiles",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceAgentProfilesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List bounded workspace agent profiles, S-20 tool matrix & recent steps (A-20)",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/agent-profiles/{profile_id}": {
+      "get": {
+        "operationId": "getWorkspaceAgentProfile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Profile Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get a workspace agent profile by ID or role_key (A-20)",
+        "tags": [
+          "agents"
+        ]
+      },
+      "patch": {
+        "operationId": "updateWorkspaceAgentProfile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Profile Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentProfileUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentProfileUpdateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Update bounded workspace agent profile within immutable S-20 ceilings (A-20)",
+        "tags": [
+          "agents"
         ]
       }
     },

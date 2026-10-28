@@ -131,6 +131,31 @@ DiagnosisClass = Literal[
     "unknown",
 ]
 DiagnosisDecision = Literal["continue", "abstain", "human"]
+HypothesisConfidence = Literal["high", "medium", "low"]
+
+
+class EvidenceLineCitation(StrictContractModel):
+    """Immutable session-verified artifact line-range citation (`TRI-02`, `SEC-024`)."""
+
+    artifact_id: InternalId
+    start_line: Annotated[StrictInt, Field(ge=1)]
+    end_line: Annotated[StrictInt, Field(ge=1)]
+    excerpt_digest: Sha256Digest
+
+    @model_validator(mode="after")
+    def _validate_line_bounds(self) -> EvidenceLineCitation:
+        if self.end_line < self.start_line:
+            raise ValueError("end_line must be greater than or equal to start_line")
+        return self
+
+
+class DiagnosisHypothesis(StrictContractModel):
+    """Structured root-cause hypothesis proposed by the diagnosis agent (`AGT-02`)."""
+
+    id: BoundedName
+    statement: BoundedText
+    confidence: HypothesisConfidence
+    suspected_paths: list[BoundedText] = Field(default_factory=list)
 
 
 class Diagnosis(WorkspaceResourceBase):
@@ -143,7 +168,80 @@ class Diagnosis(WorkspaceResourceBase):
     evidence_refs: list[InternalId]
     uncertainties: list[BoundedText] = Field(default_factory=list)
     proposed_profile: BoundedName | None = None
+    proposed_command_ids: list[BoundedName] = Field(default_factory=list)
+    hypotheses: list[DiagnosisHypothesis] = Field(default_factory=list)
+    evidence_citations: list[EvidenceLineCitation] = Field(default_factory=list)
+    fingerprint_hash: Sha256Digest | None = None
+    model_id: BoundedName | None = None
+    schema_repair_retries_used: Annotated[StrictInt, Field(ge=0, le=2)] = 0
+    deterministic_rule_id: BoundedName | None = None
     decision: DiagnosisDecision
+
+
+ContextManifestEntryKind = Literal[
+    "ci_log",
+    "repo_file",
+    "commit_diff",
+    "policy_summary",
+    "profile_manifest",
+]
+
+
+class ContextManifestEntry(StrictContractModel):
+    """Single redacted context slice included in an agent session context manifest."""
+
+    kind: ContextManifestEntryKind
+    ref_id: BoundedText
+    digest: Sha256Digest
+    byte_length: Annotated[StrictInt, Field(ge=0)]
+    truncated: StrictBool = False
+
+
+class ContextManifest(WorkspaceResourceBase):
+    """Immutable redacted context manifest isolated by workspace/repo/SHA/policy/redaction."""
+
+    repository_id: InternalId
+    repair_id: InternalId
+    base_sha: GitSha
+    policy_revision: PositiveVersion
+    redaction_version: BoundedName
+    cache_key: Sha256Digest
+    context_digest: Sha256Digest
+    entries: list[ContextManifestEntry] = Field(default_factory=list)
+    truncated: StrictBool = False
+
+
+AgentExecutionRole = Literal["diagnosis", "patch"]
+AgentStepKind = Literal[
+    "model_call",
+    "tool_call",
+    "schema_repair",
+    "abstention",
+    "policy_denial",
+]
+AgentStepStatus = Literal["ok", "denied", "failed", "pending"]
+
+
+class AgentStepRecord(WorkspaceResourceBase):
+    """Immutable audit record of a bounded model call, tool invocation, or policy denial."""
+
+    repository_id: InternalId
+    repair_id: InternalId
+    agent_role: AgentExecutionRole
+    attempt_number: Annotated[StrictInt, Field(ge=0, le=10)]
+    step_number: Annotated[StrictInt, Field(ge=1, le=500)]
+    step_kind: AgentStepKind
+    status: AgentStepStatus
+    tool_call_id: InternalId | None = None
+    tool_name: BoundedName | None = None
+    args_redacted_digest: Sha256Digest | None = None
+    result_redacted_digest: Sha256Digest | None = None
+    context_digest: Sha256Digest
+    deny_reason_code: BoundedName | None = None
+    deny_explanation: BoundedText | None = None
+    model_id: BoundedName | None = None
+    provider_request_id: OpaqueProviderId | None = None
+    usage_record_id: InternalId | None = None
 
 
 # S-12 Patch, Verification & Approval

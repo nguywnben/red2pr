@@ -60,6 +60,70 @@ AgentToolName = Literal[
     "get_execution_result",
 ]
 
+AGENT_TOOL_NAMES: tuple[AgentToolName, ...] = (
+    "read_file",
+    "search_repo",
+    "read_log_excerpt",
+    "read_commit_diff",
+    "request_reproduction",
+    "apply_patch",
+    "run_targeted_test",
+    "get_execution_result",
+)
+
+DIAGNOSIS_ALLOWED_TOOLS: tuple[AgentToolName, ...] = (
+    "read_file",
+    "search_repo",
+    "read_log_excerpt",
+    "read_commit_diff",
+    "request_reproduction",
+    "get_execution_result",
+)
+
+PATCH_ALLOWED_TOOLS: tuple[AgentToolName, ...] = AGENT_TOOL_NAMES
+
+FORBIDDEN_AGENT_CAPABILITIES: tuple[str, ...] = (
+    "publish",
+    "merge",
+    "approve",
+    "rotate_secret",
+    "edit_policy",
+    "send_network_request",
+    "run_host_shell",
+)
+
+RETIRED_AGENT_TOOL_ALIASES: frozenset[str] = frozenset(
+    {
+        "run_targeted_tests",
+        "get_run_result",
+    }
+)
+
+TOOL_DESCRIPTIONS: dict[AgentToolName, str] = {
+    "read_file": (
+        "Read a bounded UTF-8 slice of a policy-allowlisted repository file at the pinned SHA."
+    ),
+    "search_repo": (
+        "Search policy-allowlisted repository files for a bounded literal substring query."
+    ),
+    "read_log_excerpt": (
+        "Read a redacted, bounded byte slice from a session-scoped CI or sandbox log artifact."
+    ),
+    "read_commit_diff": ("Inspect a bounded commit diff summary between two repository commits."),
+    "request_reproduction": (
+        "Propose a reviewed runner profile and command IDs for unpatched Sandbox A reproduction."
+    ),
+    "apply_patch": (
+        "Validate and stage a unified diff artifact against the pinned base SHA and path policy."
+    ),
+    "run_targeted_test": (
+        "Request targeted test execution in Sandbox B against an accepted candidate patch digest."
+    ),
+    "get_execution_result": (
+        "Read the signed deterministic execution result reference for a session sandbox operation."
+    ),
+}
+
 
 # Typed Tool Argument Schemas (S-20)
 class ReadFileArgs(StrictContractModel):
@@ -225,3 +289,45 @@ class ToolCallResponse(StrictContractModel):
     result: ToolResult | None = None
     operation_id: InternalId | None = None
     problem: Problem | None = None
+
+
+def get_tool_args_model(tool_name: str) -> type[StrictContractModel] | None:
+    """Return the strict Pydantic argument model for an allowlisted S-20 tool name."""
+    return _TOOL_NAME_TO_ARGS_MODEL.get(tool_name)
+
+
+def _inline_json_schema_defs(node: Any, defs: dict[str, Any]) -> Any:
+    if isinstance(node, dict):
+        if "$ref" in node and isinstance(node["$ref"], str):
+            prefix = "#/$defs/"
+            if node["$ref"].startswith(prefix):
+                ref_name = node["$ref"][len(prefix) :]
+                if ref_name in defs:
+                    resolved = dict(defs[ref_name])
+                    for key, value in node.items():
+                        if key != "$ref":
+                            resolved[key] = value
+                    return _inline_json_schema_defs(resolved, defs)
+        inlined = {
+            key: _inline_json_schema_defs(value, defs)
+            for key, value in node.items()
+            if key != "$defs"
+        }
+        if inlined.get("type") == "object" and "additionalProperties" not in inlined:
+            inlined["additionalProperties"] = False
+        return inlined
+    if isinstance(node, list):
+        return [_inline_json_schema_defs(item, defs) for item in node]
+    return node
+
+
+def build_s20_tool_parameter_schema(tool_name: AgentToolName) -> dict[str, Any]:
+    """Export a flat, strict (`additionalProperties: false`) JSON Schema for Meta Muse."""
+    args_cls = _TOOL_NAME_TO_ARGS_MODEL[tool_name]
+    raw_schema = args_cls.model_json_schema()
+    defs = raw_schema.get("$defs", {})
+    flat_schema = _inline_json_schema_defs(raw_schema, defs if isinstance(defs, dict) else {})
+    if not isinstance(flat_schema, dict):
+        raise TypeError("Expected JSON Schema object dictionary")
+    flat_schema["additionalProperties"] = False
+    return flat_schema

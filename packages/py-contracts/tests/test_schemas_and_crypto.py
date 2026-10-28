@@ -2191,3 +2191,142 @@ def test_u15_runner_profile_manifests_and_adr031_reproduction_contract() -> None
     )
     assert valid_confirmed.allow_patching is True
     assert valid_confirmed.allow_publication is False
+
+
+def test_u17_s20_tool_schemas_s11_s12_and_agent_profile_contracts() -> None:
+    """Verify U17 S-20 closed 8-tool schemas, S-11/S-12 DTOs, and AgentProfile guardrails."""
+    from py_contracts import (
+        AGENT_TOOL_NAMES,
+        DIAGNOSIS_ALLOWED_TOOLS,
+        FORBIDDEN_AGENT_CAPABILITIES,
+        PATCH_ALLOWED_TOOLS,
+        AgentProfile,
+        AgentProfileUpdateRequest,
+        ContextManifest,
+        ContextManifestEntry,
+        Diagnosis,
+        DiagnosisHypothesis,
+        EvidenceLineCitation,
+        PatchAttemptRecord,
+    )
+
+    assert len(AGENT_TOOL_NAMES) == 8
+    assert len(DIAGNOSIS_ALLOWED_TOOLS) == 6
+    assert "apply_patch" not in DIAGNOSIS_ALLOWED_TOOLS
+    assert "run_targeted_test" not in DIAGNOSIS_ALLOWED_TOOLS
+    assert set(PATCH_ALLOWED_TOOLS) == set(AGENT_TOOL_NAMES)
+    assert {
+        "publish",
+        "merge",
+        "approve",
+        "rotate_secret",
+        "edit_policy",
+        "send_network_request",
+        "run_host_shell",
+    } == set(FORBIDDEN_AGENT_CAPABILITIES)
+
+    # AgentProfile rejects granting apply_patch to triage_diagnosis and arbitrary prompt overrides
+    with pytest.raises(ValidationError):
+        AgentProfile(
+            id=new_uuid7(now=FIXED_NOW),
+            workspace_id=new_uuid7(now=FIXED_NOW),
+            version=1,
+            created_at=FIXED_NOW,
+            updated_at=FIXED_NOW,
+            role_key="triage_diagnosis",
+            display_name="Bad Diagnosis Profile",
+            description="Invalid tool ceiling",
+            model_id="muse-spark-1.3",
+            reasoning_effort="medium",
+            allowed_tools=["read_file", "apply_patch"],
+            immutable_role_tool_ceiling=list(DIAGNOSIS_ALLOWED_TOOLS),
+            max_steps=8,
+            max_tool_calls_per_step=4,
+            max_schema_repair_retries=2,
+            enabled=True,
+        )
+
+    with pytest.raises(ValidationError):
+        AgentProfileUpdateRequest.model_validate(
+            {"reasoning_effort": "high", "system_prompt": "override"}
+        )
+
+    repo_id = new_uuid7(now=FIXED_NOW)
+    art_id = new_uuid7(now=FIXED_NOW)
+    citation = EvidenceLineCitation(
+        artifact_id=art_id,
+        start_line=10,
+        end_line=15,
+        excerpt_digest=SAMPLE_DIGEST,
+    )
+    diag = Diagnosis.model_validate(
+        {
+            "id": new_uuid7(now=FIXED_NOW),
+            "workspace_id": new_uuid7(now=FIXED_NOW),
+            "version": 1,
+            "created_at": FIXED_NOW,
+            "updated_at": FIXED_NOW,
+            "repository_id": repo_id,
+            "repair_id": new_uuid7(now=FIXED_NOW),
+            "class": "code_regression",
+            "decision": "continue",
+            "summary": "Operator bug in calc.py",
+            "evidence_refs": [art_id],
+            "evidence_citations": [citation.model_dump(mode="json")],
+            "hypotheses": [
+                DiagnosisHypothesis(
+                    id="h1",
+                    statement="Wrong operator",
+                    confidence="high",
+                    suspected_paths=["src/calc.py"],
+                ).model_dump(mode="json")
+            ],
+            "proposed_profile": "python-pytest-linux",
+            "proposed_command_ids": ["pytest-repro"],
+        }
+    )
+    assert diag.evidence_citations[0].start_line == 10
+
+    manifest = ContextManifest(
+        id=new_uuid7(now=FIXED_NOW),
+        workspace_id=diag.workspace_id,
+        version=1,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        repository_id=repo_id,
+        repair_id=diag.repair_id,
+        base_sha=SAMPLE_SHA,
+        policy_revision=1,
+        redaction_version="v1",
+        cache_key=SAMPLE_DIGEST,
+        context_digest=SAMPLE_DIGEST,
+        entries=[
+            ContextManifestEntry(
+                kind="ci_log",
+                ref_id=art_id,
+                digest=SAMPLE_DIGEST,
+                byte_length=128,
+            )
+        ],
+    )
+    assert manifest.entries[0].byte_length == 128
+
+    patch_rec = PatchAttemptRecord(
+        id=new_uuid7(now=FIXED_NOW),
+        workspace_id=diag.workspace_id,
+        version=1,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        repository_id=manifest.repository_id,
+        repair_id=diag.repair_id,
+        attempt=1,
+        base_sha=SAMPLE_SHA,
+        patch_digest=SAMPLE_DIGEST,
+        diff_artifact_id=new_uuid7(now=FIXED_NOW),
+        changed_paths=["src/calc.py"],
+        diff_lines_added=1,
+        diff_lines_removed=1,
+        claimed_root_cause="Fix operator",
+        integrity_outcome="accepted",
+    )
+    assert patch_rec.attempt == 1

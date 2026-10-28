@@ -28,6 +28,10 @@ from py_contracts import (
     MAX_JSON_BODY_BYTES,
     ActionReceipt,
     AffectedInFlightItem,
+    AgentProfile,
+    AgentProfileUpdateRequest,
+    AgentProfileUpdateResponse,
+    AgentStepRecord,
     Approval,
     Artifact,
     AuditRecord,
@@ -62,15 +66,19 @@ from py_contracts import (
     ConsentRecord,
     ConsentRecordPage,
     ConsentRevokeRequest,
+    ContextManifest,
+    ContextManifestEntry,
     CsrfBootstrapResponse,
     DeadLetterJobSummary,
     Diagnosis,
+    DiagnosisHypothesis,
     EffectiveRepositoryPolicy,
     EndpointRegistration,
     EndpointRegistrationCreateRequest,
     EndpointRegistrationPage,
     EscalationPolicy,
     EventEnvelope,
+    EvidenceLineCitation,
     EvidenceManifestV1,
     FailureFingerprintObservation,
     FailureFingerprintSummary,
@@ -109,6 +117,7 @@ from py_contracts import (
     NotificationPreference,
     PageParams,
     Patch,
+    PatchAttemptRecord,
     PathPolicyEvaluation,
     PolicyDenialItem,
     PolicyReadinessGates,
@@ -163,6 +172,7 @@ from py_contracts import (
     TelegramLinkSummary,
     ToolCallRequest,
     ToolCallResponse,
+    ToolCapabilityPolicyItem,
     User,
     Verification,
     WebhookIngressReceipt,
@@ -175,6 +185,7 @@ from py_contracts import (
     WorkerSelfTestResponse,
     WorkflowHazardFinding,
     Workspace,
+    WorkspaceAgentProfilesResponse,
     WorkspaceCreateRequest,
     WorkspaceDeleteRequest,
     WorkspaceInferenceConsentCreateRequest,
@@ -204,6 +215,7 @@ from red2pr_control.core.logging import (
 from red2pr_control.iam.router import build_iam_router
 from red2pr_control.iam.sessions import IamService
 from red2pr_control.inference import (
+    AgentProfileService,
     MetaMuseInferenceService,
     build_inference_router,
 )
@@ -340,7 +352,13 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     JobLogChunkResponse,
     Repair,
     Diagnosis,
+    DiagnosisHypothesis,
+    EvidenceLineCitation,
+    ContextManifestEntry,
+    ContextManifest,
+    AgentStepRecord,
     Patch,
+    PatchAttemptRecord,
     Verification,
     Approval,
     Publication,
@@ -381,6 +399,11 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     WorkspaceModelsConfigUpdateRequest,
     WorkspaceModelsConfigUpdateResponse,
     WorkspaceModelsResponse,
+    ToolCapabilityPolicyItem,
+    AgentProfile,
+    WorkspaceAgentProfilesResponse,
+    AgentProfileUpdateRequest,
+    AgentProfileUpdateResponse,
     ReportExportRequest,
     ConsentCreateRequest,
     ConsentRevokeRequest,
@@ -554,6 +577,7 @@ def create_app(
     repository_catalog_service: RepositoryCatalogService | None = None,
     triage_evidence_service: TriageEvidenceService | None = None,
     meta_inference_service: MetaMuseInferenceService | None = None,
+    agent_profile_service: AgentProfileService | None = None,
     artifact_store: ArtifactStoreProtocol | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
@@ -589,6 +613,19 @@ def create_app(
     app.state.repository_catalog_service = repository_catalog_service
     app.state.triage_evidence_service = triage_evidence_service
     app.state.meta_inference_service = meta_inference_service
+    app.state.agent_profile_service = (
+        agent_profile_service
+        if agent_profile_service is not None
+        else (
+            AgentProfileService(
+                session_factory=iam_service.session_factory,
+                iam_service=iam_service,
+                meta_inference_service=meta_inference_service,
+            )
+            if iam_service is not None and meta_inference_service is not None
+            else None
+        )
+    )
     app.state.artifact_store = artifact_store
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])

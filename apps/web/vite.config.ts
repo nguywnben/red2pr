@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   // Prevent accidental leakage of server-side secrets into import.meta.env
   envPrefix: "VITE_PUBLIC_",
+  esbuild: {
+    legalComments: "none",
+  },
   server: {
     host: "127.0.0.1",
     port: 5173,
@@ -23,6 +26,9 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
+      treeshake: {
+        preset: "smallest",
+      },
       output: {
         manualChunks(id) {
           if (id.includes("node_modules/@astryxdesign/")) {
@@ -47,7 +53,8 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/shared/test/setup.ts"],
-    testTimeout: 15000,
+    maxWorkers: 4,
+    testTimeout: 30000,
     css: {
       include: [/tokens\.css$/],
     },

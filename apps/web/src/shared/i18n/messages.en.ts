@@ -18,6 +18,7 @@ export const EN_MESSAGES = {
   "app.nav.workers": "Workers",
   "app.nav.queues": "Task Queues",
   "app.nav.models": "Models & Budgets",
+  "app.nav.agents": "Agents & Tools",
   "app.nav.notifications": "Notifications",
   "app.nav.analytics": "Analytics & Cost",
   "app.nav.audit": "Audit Log",

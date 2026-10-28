@@ -1647,4 +1647,151 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(calls[1]?.ifMatch, '"2"');
     assert.equal(calls[2]?.idem, "019a2b00-0000-7000-8000-000000000902");
   });
+
+  it("serializes U17 A-20 & S-20 workspace agent profiles and immutable capability matrix", async () => {
+    const wsId = "019a2c00-0000-7000-8000-000000000001";
+    const profileId = "019a2c00-0000-7000-8000-000000000101";
+    const opId = "019a2c00-0000-7000-8000-000000000202";
+    const calls: Array<{ method: string; path: string; idem: string | null; ifMatch: string | null }> = [];
+
+    const diagProfile = {
+      id: profileId,
+      workspace_id: wsId,
+      version: 1,
+      created_at: "2026-10-28T16:00:00Z",
+      updated_at: "2026-10-28T16:00:00Z",
+      role_key: "triage_diagnosis" as const,
+      display_name: "Triage & Diagnosis Agent",
+      description: "Evidence-cited failure triage, abstention, and Sandbox A reproduction planning.",
+      model_id: "muse-spark-1.3" as const,
+      escalation_model_id: null,
+      reasoning_effort: "medium" as const,
+      allowed_tools: [
+        "read_file",
+        "search_repo",
+        "read_log_excerpt",
+        "read_commit_diff",
+        "request_reproduction",
+        "get_execution_result",
+      ] as const,
+      immutable_role_tool_ceiling: [
+        "read_file",
+        "search_repo",
+        "read_log_excerpt",
+        "read_commit_diff",
+        "request_reproduction",
+        "get_execution_result",
+      ] as const,
+      max_steps: 6,
+      max_tool_calls_per_step: 4,
+      max_schema_repair_retries: 2,
+      arbitrary_prompt_override_allowed: false as const,
+      enabled: true,
+      updated_by_user_id: null,
+    };
+
+    const profilesPayload = {
+      workspace_id: wsId,
+      profiles: [diagProfile],
+      tool_matrix: [
+        {
+          name: "read_file",
+          category: "s20_allowed" as const,
+          description: "Read bounded pinned file slice.",
+          permitted_for_diagnosis: true,
+          permitted_for_patch: true,
+          immutable_reason: "Allowlisted S-20 read tool.",
+        },
+        {
+          name: "publish",
+          category: "prohibited" as const,
+          description: "Create or update remote PRs/MRs.",
+          permitted_for_diagnosis: false,
+          permitted_for_patch: false,
+          immutable_reason: "Forbidden by SEC-028; only Z2 publisher after policy + approval.",
+        },
+      ],
+      prohibited_capabilities: [
+        "publish",
+        "merge",
+        "approve",
+        "rotate_secret",
+        "edit_policy",
+        "send_network_request",
+        "run_host_shell",
+      ],
+      recent_steps: [],
+      ready_for_repair_inference: true,
+      suspension_reason: null,
+    };
+
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u17-token",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        calls.push({
+          method: request.method,
+          path: url.pathname,
+          idem: request.headers.get("Idempotency-Key"),
+          ifMatch: request.headers.get("If-Match"),
+        });
+        if (request.method === "GET" && url.pathname === "/api/v1/workspaces/acme/agent-profiles") {
+          return new Response(JSON.stringify(profilesPayload), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (
+          request.method === "GET" &&
+          url.pathname === `/api/v1/workspaces/acme/agent-profiles/${profileId}`
+        ) {
+          return new Response(JSON.stringify(diagProfile), {
+            status: 200,
+            headers: { "Content-Type": "application/json", ETag: '"1"' },
+          });
+        }
+        if (
+          request.method === "PATCH" &&
+          url.pathname === `/api/v1/workspaces/acme/agent-profiles/${profileId}`
+        ) {
+          const updated = { ...diagProfile, version: 2, reasoning_effort: "high" as const };
+          return new Response(
+            JSON.stringify({
+              receipt: {
+                operation_id: opId,
+                resource_id: profileId,
+                state: "succeeded",
+                correlation_id: "corr-u17-prof",
+                status_url: `/api/v1/operations/${opId}`,
+                result_id: profileId,
+              },
+              profile: updated,
+              profiles_state: { ...profilesPayload, profiles: [updated] },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json", ETag: '"2"' } },
+          );
+        }
+        throw new Error(`Unexpected ${request.method} ${url.pathname}`);
+      },
+    });
+
+    const listed = await client.listWorkspaceAgentProfiles("acme");
+    assert.equal(listed.data.prohibited_capabilities.includes("publish"), true);
+    assert.equal(listed.data.profiles[0]?.arbitrary_prompt_override_allowed, false);
+
+    const detail = await client.getWorkspaceAgentProfile("acme", profileId);
+    assert.equal(detail.etag, '"1"');
+
+    const updated = await client.updateWorkspaceAgentProfile(
+      "acme",
+      profileId,
+      { expected_version: 1, reasoning_effort: "high", clear_escalation_model: false },
+      { idempotencyKey: "019a2c00-0000-7000-8000-000000000901", ifMatch: '"1"' },
+    );
+    assert.equal(updated.data.profile.version, 2);
+    assert.equal(updated.etag, '"2"');
+    assert.equal(calls[2]?.ifMatch, '"1"');
+    assert.equal(calls[2]?.idem, "019a2c00-0000-7000-8000-000000000901");
+  });
 });

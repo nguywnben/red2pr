@@ -1,6 +1,6 @@
 import type { EventEnvelope } from "@red2pr/ts-client";
 import { useEffect, useRef, useState } from "react";
-import { z } from "zod";
+import * as z from "zod/v4-mini";
 import type { SseConnectionStatus } from "../ui/AppShell";
 
 const S19_EVENT_TYPES = [
@@ -31,18 +31,18 @@ const S19_EVENT_TYPES = [
 ] as const;
 
 export const EventEnvelopeRuntimeSchema = z.object({
-  schema_version: z.literal(1).default(1),
-  event_id: z.string().min(1),
+  schema_version: z._default(z.literal(1), 1),
+  event_id: z.string().check(z.minLength(1)),
   type: z.enum(S19_EVENT_TYPES),
-  occurred_at: z.string().min(1),
-  workspace_id: z.string().nullable().default(null),
-  repository_id: z.string().nullable().default(null),
-  session_id: z.string().nullable().default(null),
-  aggregate_id: z.string().min(1),
-  aggregate_version: z.number().int().min(1),
-  correlation_id: z.string().min(1).max(120),
-  causation_id: z.string().nullable().default(null),
-  payload: z.record(z.unknown()),
+  occurred_at: z.string().check(z.minLength(1)),
+  workspace_id: z._default(z.nullable(z.string()), null),
+  repository_id: z._default(z.nullable(z.string()), null),
+  session_id: z._default(z.nullable(z.string()), null),
+  aggregate_id: z.string().check(z.minLength(1)),
+  aggregate_version: z.int().check(z.minimum(1)),
+  correlation_id: z.string().check(z.minLength(1), z.maxLength(120)),
+  causation_id: z._default(z.nullable(z.string()), null),
+  payload: z.record(z.string(), z.unknown()),
 });
 
 export type SnapshotRefreshReason =

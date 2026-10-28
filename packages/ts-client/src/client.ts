@@ -218,6 +218,20 @@ export type WorkspaceInferenceConsentCreateRequest =
   SchemaOf<"WorkspaceInferenceConsentCreateRequest">;
 export type ModelProbeRequest = SchemaOf<"ModelProbeRequest">;
 export type ModelProbeResponse = SchemaOf<"ModelProbeResponse">;
+export type AgentToolName = ToolCallRequest["tool_name"];
+export type AgentProfile = SchemaOf<"AgentProfile">;
+export type AgentProfileRoleKey = AgentProfile["role_key"];
+export type ReasoningEffortLevel = AgentProfile["reasoning_effort"];
+export type ToolCapabilityPolicyItem = SchemaOf<"ToolCapabilityPolicyItem">;
+export type WorkspaceAgentProfilesResponse = SchemaOf<"WorkspaceAgentProfilesResponse">;
+export type AgentProfileUpdateRequest = SchemaOf<"AgentProfileUpdateRequest">;
+export type AgentProfileUpdateResponse = SchemaOf<"AgentProfileUpdateResponse">;
+export type AgentStepRecord = SchemaOf<"AgentStepRecord">;
+export type ContextManifestEntry = SchemaOf<"ContextManifestEntry">;
+export type ContextManifest = SchemaOf<"ContextManifest">;
+export type PatchAttemptRecord = SchemaOf<"PatchAttemptRecord">;
+export type DiagnosisHypothesis = SchemaOf<"DiagnosisHypothesis">;
+export type EvidenceLineCitation = SchemaOf<"EvidenceLineCitation">;
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const CSRF_COOKIE_NAME = "red2pr_csrf";
@@ -679,6 +693,21 @@ export interface Red2PrClient {
     body: ModelProbeRequest,
     options: IdempotentMutationOptions,
   ): Promise<ApiEnvelope<ModelProbeResponse>>;
+  listWorkspaceAgentProfiles(
+    ws: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<WorkspaceAgentProfilesResponse>>;
+  getWorkspaceAgentProfile(
+    ws: string,
+    profileId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<AgentProfile>>;
+  updateWorkspaceAgentProfile(
+    ws: string,
+    profileId: string,
+    body: AgentProfileUpdateRequest,
+    options: IdempotentOptimisticMutationOptions,
+  ): Promise<ApiEnvelope<AgentProfileUpdateResponse>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -832,698 +861,317 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
     memoryCsrfToken = data.csrf_token;
   };
 
+  type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  type AnyCallOptions = RequestCallOptions & {
+    readonly ifMatch?: string;
+    readonly idempotencyKey?: string;
+  };
+
+  const callJson = async <TData>(
+    method: HttpMethod,
+    url: string,
+    init?: {
+      readonly path?: Record<string, unknown>;
+      readonly query?: unknown;
+      readonly body?: unknown;
+      readonly options?: AnyCallOptions;
+    },
+  ): Promise<ApiEnvelope<TData>> => {
+    const fn = raw[method] as unknown as (
+      u: string,
+      o: Record<string, unknown>,
+    ) => Promise<{
+      readonly data?: TData;
+      readonly error?: unknown;
+      readonly response: Response;
+    }>;
+    return unwrapEnvelope(
+      await fn(url, {
+        ...(init?.path !== undefined || init?.query !== undefined
+          ? {
+              params: {
+                ...(init?.path !== undefined ? { path: init.path } : {}),
+                ...(init?.query !== undefined ? { query: init.query } : {}),
+              },
+            }
+          : {}),
+        ...(init?.body !== undefined ? { body: init.body } : {}),
+        headers: buildOptionalHeaders(init?.options),
+        signal: init?.options?.signal,
+      }),
+    );
+  };
+
+  const callVoid = async (
+    method: HttpMethod,
+    url: string,
+    init?: {
+      readonly path?: Record<string, unknown>;
+      readonly body?: unknown;
+      readonly options?: AnyCallOptions;
+    },
+  ): Promise<{ readonly correlationId: string | null }> => {
+    const fn = raw[method] as unknown as (
+      u: string,
+      o: Record<string, unknown>,
+    ) => Promise<{
+      readonly error?: unknown;
+      readonly response: Response;
+    }>;
+    const { error, response } = await fn(url, {
+      ...(init?.path !== undefined ? { params: { path: init.path } } : {}),
+      ...(init?.body !== undefined ? { body: init.body } : {}),
+      headers: buildOptionalHeaders(init?.options),
+      signal: init?.options?.signal,
+    });
+    if (!response.ok) {
+      throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+    }
+    return { correlationId: response.headers.get("X-Correlation-Id") };
+  };
+
+  const syncCsrf = <T extends { readonly csrf_token?: string | null }>(
+    env: ApiEnvelope<T>,
+  ): ApiEnvelope<T> => {
+    if (typeof env.data.csrf_token === "string" && env.data.csrf_token.length > 0) {
+      memoryCsrfToken = env.data.csrf_token;
+    }
+    return env;
+  };
+
   return {
     raw,
     setCsrfToken(token: string | null) {
       memoryCsrfToken = token;
     },
-    async getSystemHealth(reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/system/health", {
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+    getSystemHealth: (options) => callJson("GET", "/api/v1/system/health", { options }),
+    getAuthCsrf: async (options) => syncCsrf(await callJson("GET", "/api/v1/auth/csrf", { options })),
+    async claimInstanceOwner(body, options) {
+      await ensurePreAuthCsrf(options);
+      return syncCsrf(await callJson("POST", "/api/v1/setup/claim", { body, options }));
     },
-    async getAuthCsrf(reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/auth/csrf", {
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      memoryCsrfToken = data.csrf_token;
-      return toEnvelope(data, response);
-    },
-    async claimInstanceOwner(body, reqOptions) {
-      await ensurePreAuthCsrf(reqOptions);
-      const { data, error, response } = await raw.POST("/api/v1/setup/claim", {
+    getSetupState: (options) => callJson("GET", "/api/v1/setup", { options }),
+    submitSetupStep: (phase, body, options) =>
+      callJson("POST", "/api/v1/setup/steps/{phase}", { path: { phase }, body, options }),
+    listSetupConsents: (query, options) =>
+      callJson("GET", "/api/v1/setup/consents", { query, options }),
+    grantSetupConsent: (body, options) =>
+      callJson("POST", "/api/v1/setup/consents", { body, options }),
+    revokeSetupConsent: (consentId, body = {}, options) =>
+      callJson("DELETE", "/api/v1/setup/consents/{consent_id}", {
+        path: { consent_id: consentId },
         body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      memoryCsrfToken = data.csrf_token;
-      return toEnvelope(data, response);
+        options,
+      }),
+    listEndpointRegistrations: (query, options) =>
+      callJson("GET", "/api/v1/setup/endpoints", { query, options }),
+    registerPrivateEndpoint: (body, options) =>
+      callJson("POST", "/api/v1/setup/endpoints", { body, options }),
+    revokePrivateEndpoint: (endpointId, options) =>
+      callJson("DELETE", "/api/v1/setup/endpoints/{endpoint_id}", {
+        path: { endpoint_id: endpointId },
+        options,
+      }),
+    async login(body, options) {
+      await ensurePreAuthCsrf(options);
+      return syncCsrf(await callJson("POST", "/api/v1/auth/login", { body, options }));
     },
-    async getSetupState(reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/setup", {
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async submitSetupStep(phase, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/setup/steps/{phase}", {
-          params: { path: { phase } },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async listSetupConsents(query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/setup/consents", {
-          params: { query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async grantSetupConsent(body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/setup/consents", {
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async revokeSetupConsent(consentId, body = {}, reqOptions) {
-      return unwrapEnvelope(
-        await raw.DELETE("/api/v1/setup/consents/{consent_id}", {
-          params: { path: { consent_id: consentId } },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async listEndpointRegistrations(query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/setup/endpoints", {
-          params: { query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async registerPrivateEndpoint(body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/setup/endpoints", {
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async revokePrivateEndpoint(endpointId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.DELETE("/api/v1/setup/endpoints/{endpoint_id}", {
-          params: { path: { endpoint_id: endpointId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async login(body, reqOptions) {
-      await ensurePreAuthCsrf(reqOptions);
-      const { data, error, response } = await raw.POST("/api/v1/auth/login", {
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      if (typeof data.csrf_token === "string" && data.csrf_token.length > 0) {
-        memoryCsrfToken = data.csrf_token;
-      }
-      return toEnvelope(data, response);
-    },
-    async logout(reqOptions) {
-      const { error, response } = await raw.POST("/api/v1/auth/logout", {
-        body: {},
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (!response.ok) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
+    async logout(options) {
+      const res = await callVoid("POST", "/api/v1/auth/logout", { body: {}, options });
       memoryCsrfToken = null;
-      return {
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
+      return res;
     },
-    async stepUp(body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/auth/step-up", {
+    stepUp: async (body, options) =>
+      syncCsrf(await callJson("POST", "/api/v1/auth/step-up", { body, options })),
+    async recoverAccount(body, options) {
+      await ensurePreAuthCsrf(options);
+      return syncCsrf(await callJson("POST", "/api/v1/auth/recovery", { body, options }));
+    },
+    getMe: async (options) => syncCsrf(await callJson("GET", "/api/v1/me", { options })),
+    listMySessions: (options) => callJson("GET", "/api/v1/me/sessions", { options }),
+    revokeMySession: (sessionId, options) =>
+      callVoid("DELETE", "/api/v1/me/sessions/{session_id}", {
+        path: { session_id: sessionId },
+        options,
+      }),
+    enrollMyMfa: async (body = {}, options) =>
+      syncCsrf(await callJson("POST", "/api/v1/me/mfa", { body, options })),
+    deleteMyMfa: (body, options) => callVoid("DELETE", "/api/v1/me/mfa", { body, options }),
+    listWorkspaces: (query, options) =>
+      callJson("GET", "/api/v1/workspaces", { query, options }),
+    createWorkspace: (body, options) =>
+      callJson("POST", "/api/v1/workspaces", { body, options }),
+    getWorkspace: (ws, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}", { path: { ws }, options }),
+    updateWorkspace: (ws, body, options) =>
+      callJson("PATCH", "/api/v1/workspaces/{ws}", { path: { ws }, body, options }),
+    deleteWorkspace: (ws, body, options) =>
+      callJson("DELETE", "/api/v1/workspaces/{ws}", { path: { ws }, body, options }),
+    listBreakGlassGrants: (ws, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/break-glass", { path: { ws }, options }),
+    createBreakGlassGrant: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/break-glass", { path: { ws }, body, options }),
+    revokeBreakGlassGrant: (ws, grantId, options) =>
+      callVoid("DELETE", "/api/v1/workspaces/{ws}/break-glass/{grant_id}", {
+        path: { ws, grant_id: grantId },
+        options,
+      }),
+    listWorkspaceMembers: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/members", { path: { ws }, query, options }),
+    updateWorkspaceMember: (ws, memberId, body, options) =>
+      callJson("PATCH", "/api/v1/workspaces/{ws}/members/{member_id}", {
+        path: { ws, member_id: memberId },
         body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      memoryCsrfToken = data.csrf_token;
-      return toEnvelope(data, response);
-    },
-    async recoverAccount(body, reqOptions) {
-      await ensurePreAuthCsrf(reqOptions);
-      const { data, error, response } = await raw.POST("/api/v1/auth/recovery", {
+        options,
+      }),
+    removeWorkspaceMember: (ws, memberId, options) =>
+      callVoid("DELETE", "/api/v1/workspaces/{ws}/members/{member_id}", {
+        path: { ws, member_id: memberId },
+        options,
+      }),
+    listWorkspaceInvitations: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/invitations", { path: { ws }, query, options }),
+    createWorkspaceInvitation: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/invitations", { path: { ws }, body, options }),
+    revokeWorkspaceInvitation: (ws, inviteId, options) =>
+      callVoid("DELETE", "/api/v1/workspaces/{ws}/invitations/{invite_id}", {
+        path: { ws, invite_id: inviteId },
+        options,
+      }),
+    acceptWorkspaceInvitation: (body, options) =>
+      callJson("POST", "/api/v1/invitations/accept", { body, options }),
+    listTaskJobs: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/task-jobs", { path: { ws }, query, options }),
+    getTaskJob: (ws, jobId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/task-jobs/{job_id}", {
+        path: { ws, job_id: jobId },
+        options,
+      }),
+    performTaskJobAction: (ws, jobId, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/task-jobs/{job_id}/actions", {
+        path: { ws, job_id: jobId },
         body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      memoryCsrfToken = data.csrf_token;
-      return toEnvelope(data, response);
-    },
-    async getMe(reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/me", {
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      memoryCsrfToken = data.csrf_token;
-      return toEnvelope(data, response);
-    },
-    async listMySessions(reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/me/sessions", {
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async revokeMySession(sessionId, reqOptions) {
-      const { error, response } = await raw.DELETE("/api/v1/me/sessions/{session_id}", {
-        params: { path: { session_id: sessionId } },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (!response.ok) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return {
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
-    },
-    async enrollMyMfa(body = {}, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/me/mfa", {
+        options,
+      }),
+    getOperationReceipt: (operationId, options) =>
+      callJson("GET", "/api/v1/operations/{operation_id}", {
+        path: { operation_id: operationId },
+        options,
+      }),
+    listConnections: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/integrations", { path: { ws }, query, options }),
+    createConnection: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/integrations", { path: { ws }, body, options }),
+    getConnection: (ws, connectionId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/integrations/{connection_id}", {
+        path: { ws, connection_id: connectionId },
+        options,
+      }),
+    updateConnection: (ws, connectionId, body, options) =>
+      callJson("PATCH", "/api/v1/workspaces/{ws}/integrations/{connection_id}", {
+        path: { ws, connection_id: connectionId },
         body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      if (typeof data.csrf_token === "string" && data.csrf_token.length > 0) {
-        memoryCsrfToken = data.csrf_token;
-      }
-      return toEnvelope(data, response);
-    },
-    async deleteMyMfa(body, reqOptions) {
-      const { error, response } = await raw.DELETE("/api/v1/me/mfa", {
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (!response.ok) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return {
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
-    },
-    async listWorkspaces(query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces", {
-          params: { query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async createWorkspace(body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces", {
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async getWorkspace(ws, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}", {
-          params: { path: { ws } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async updateWorkspace(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.PATCH("/api/v1/workspaces/{ws}", {
-          params: {
-            path: { ws },
-            header: reqOptions?.ifMatch ? { "If-Match": reqOptions.ifMatch } : undefined,
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async deleteWorkspace(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.DELETE("/api/v1/workspaces/{ws}", {
-          params: {
-            path: { ws },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async listBreakGlassGrants(ws, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/break-glass", {
-          params: { path: { ws } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async createBreakGlassGrant(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/break-glass", {
-          params: { path: { ws } },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async revokeBreakGlassGrant(ws, grantId, reqOptions) {
-      const { error, response } = await raw.DELETE(
-        "/api/v1/workspaces/{ws}/break-glass/{grant_id}",
-        {
-          params: { path: { ws, grant_id: grantId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
+        options,
+      }),
+    deleteConnection: (ws, connectionId, options) =>
+      callJson("DELETE", "/api/v1/workspaces/{ws}/integrations/{connection_id}", {
+        path: { ws, connection_id: connectionId },
+        options,
+      }),
+    probeConnection: (ws, connectionId, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/integrations/{connection_id}/probes", {
+        path: { ws, connection_id: connectionId },
+        options,
+      }),
+    syncConnection: (ws, connectionId, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/integrations/{connection_id}/sync", {
+        path: { ws, connection_id: connectionId },
+        options,
+      }),
+    reconcileConnectionRuns: (ws, connectionId, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/integrations/{connection_id}/reconcile", {
+        path: { ws, connection_id: connectionId },
+        body: {
+          repository_ids: body?.repository_ids ?? null,
+          acknowledge_history_gap: body?.acknowledge_history_gap ?? false,
+          force_poll: body?.force_poll ?? false,
         },
-      );
-      if (!response.ok) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return {
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
-    },
-    async listWorkspaceMembers(ws, query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/members", {
-          params: { path: { ws }, query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async updateWorkspaceMember(ws, memberId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.PATCH("/api/v1/workspaces/{ws}/members/{member_id}", {
-          params: {
-            path: { ws, member_id: memberId },
-            header: reqOptions?.ifMatch ? { "If-Match": reqOptions.ifMatch } : undefined,
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async removeWorkspaceMember(ws, memberId, reqOptions) {
-      const { error, response } = await raw.DELETE("/api/v1/workspaces/{ws}/members/{member_id}", {
-        params: { path: { ws, member_id: memberId } },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (!response.ok) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return {
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
-    },
-    async listWorkspaceInvitations(ws, query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/invitations", {
-          params: { path: { ws }, query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async createWorkspaceInvitation(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/invitations", {
-          params: { path: { ws } },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async revokeWorkspaceInvitation(ws, inviteId, reqOptions) {
-      const { error, response } = await raw.DELETE(
-        "/api/v1/workspaces/{ws}/invitations/{invite_id}",
-        {
-          params: { path: { ws, invite_id: inviteId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        },
-      );
-      if (!response.ok) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return {
-        correlationId: response.headers.get("X-Correlation-Id"),
-      };
-    },
-    async acceptWorkspaceInvitation(body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/invitations/accept", {
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async listTaskJobs(ws, query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/task-jobs", {
-          params: { path: { ws }, query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async getTaskJob(ws, jobId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/task-jobs/{job_id}", {
-          params: { path: { ws, job_id: jobId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async performTaskJobAction(ws, jobId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/task-jobs/{job_id}/actions", {
-          params: {
-            path: { ws, job_id: jobId },
-            header: {
-              "Idempotency-Key": reqOptions.idempotencyKey,
-              ...(reqOptions.ifMatch ? { "If-Match": reqOptions.ifMatch } : {}),
-            },
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async getOperationReceipt(operationId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/operations/{operation_id}", {
-          params: { path: { operation_id: operationId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async listConnections(ws, query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/integrations", {
-          params: { path: { ws }, query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async createConnection(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/integrations", {
-          params: {
-            path: { ws },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async getConnection(ws, connectionId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/integrations/{connection_id}", {
-          params: { path: { ws, connection_id: connectionId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async updateConnection(ws, connectionId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.PATCH("/api/v1/workspaces/{ws}/integrations/{connection_id}", {
-          params: {
-            path: { ws, connection_id: connectionId },
-            header: {
-              "Idempotency-Key": reqOptions.idempotencyKey,
-              ...(reqOptions.ifMatch ? { "If-Match": reqOptions.ifMatch } : {}),
-            },
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async deleteConnection(ws, connectionId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.DELETE("/api/v1/workspaces/{ws}/integrations/{connection_id}", {
-          params: {
-            path: { ws, connection_id: connectionId },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
-          },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async probeConnection(ws, connectionId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/integrations/{connection_id}/probes", {
-          params: {
-            path: { ws, connection_id: connectionId },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
-          },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async syncConnection(ws, connectionId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/integrations/{connection_id}/sync", {
-          params: {
-            path: { ws, connection_id: connectionId },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
-          },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async reconcileConnectionRuns(ws, connectionId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/integrations/{connection_id}/reconcile", {
-          params: {
-            path: { ws, connection_id: connectionId },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
-          },
-          body: {
-            repository_ids: body?.repository_ids ?? null,
-            acknowledge_history_gap: body?.acknowledge_history_gap ?? false,
-            force_poll: body?.force_poll ?? false,
-          },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async mintGitHubInstallState(ws, connectionId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/state", {
-          params: {
-            path: { ws, connection_id: connectionId },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
-          },
-          body: body ?? {},
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async handleGitHubCallback(query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/integrations/github/callback", {
-          params: { query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async confirmGitHubInstallation(ws, connectionId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST(
-          "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/confirm",
-          {
-            params: {
-              path: { ws, connection_id: connectionId },
-              header: { "Idempotency-Key": reqOptions.idempotencyKey },
-            },
-            body,
-            headers: buildOptionalHeaders(reqOptions),
-            signal: reqOptions.signal,
-          },
-        ),
-      );
-    },
-    async listRepositories(ws, query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/repositories", {
-          params: { path: { ws }, query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async getRepository(ws, repositoryId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/repositories/{repository_id}", {
-          params: { path: { ws, repository_id: repositoryId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async updateRepository(ws, repositoryId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.PATCH("/api/v1/workspaces/{ws}/repositories/{repository_id}", {
-          params: {
-            path: { ws, repository_id: repositoryId },
-            header: reqOptions?.ifMatch !== undefined ? { "If-Match": reqOptions.ifMatch } : {},
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async getRepositoryPolicy(ws, repositoryId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/repositories/{repository_id}/policy", {
-          params: { path: { ws, repository_id: repositoryId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async updateRepositoryPolicy(ws, repositoryId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.PATCH("/api/v1/workspaces/{ws}/repositories/{repository_id}/policy", {
-          params: {
-            path: { ws, repository_id: repositoryId },
-            header: reqOptions?.ifMatch !== undefined ? { "If-Match": reqOptions.ifMatch } : {},
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async previewRepositoryPolicy(ws, repositoryId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/repositories/{repository_id}/policy/previews", {
-          params: { path: { ws, repository_id: repositoryId } },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async previewBulkRepositoryPolicies(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/repositories/policy-previews", {
-          params: { path: { ws } },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async bulkUpdateRepositories(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/repositories/bulk-update", {
-          params: { path: { ws } },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async listRuns(ws, query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/runs", {
-          params: { path: { ws }, query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async getRun(ws, runId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/runs/{run_id}", {
-          params: { path: { ws, run_id: runId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async listRunJobs(ws, runId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/runs/{run_id}/jobs", {
-          params: { path: { ws, run_id: runId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async getJobLog(ws, jobId, query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/jobs/{job_id}/log", {
-          params: { path: { ws, job_id: jobId }, query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
+        options,
+      }),
+    mintGitHubInstallState: (ws, connectionId, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/state", {
+        path: { ws, connection_id: connectionId },
+        body: body ?? {},
+        options,
+      }),
+    handleGitHubCallback: (query, options) =>
+      callJson("GET", "/api/v1/integrations/github/callback", { query, options }),
+    confirmGitHubInstallation: (ws, connectionId, body, options) =>
+      callJson(
+        "POST",
+        "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/confirm",
+        { path: { ws, connection_id: connectionId }, body, options },
+      ),
+    listRepositories: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/repositories", { path: { ws }, query, options }),
+    getRepository: (ws, repositoryId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/repositories/{repository_id}", {
+        path: { ws, repository_id: repositoryId },
+        options,
+      }),
+    updateRepository: (ws, repositoryId, body, options) =>
+      callJson("PATCH", "/api/v1/workspaces/{ws}/repositories/{repository_id}", {
+        path: { ws, repository_id: repositoryId },
+        body,
+        options,
+      }),
+    getRepositoryPolicy: (ws, repositoryId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy", {
+        path: { ws, repository_id: repositoryId },
+        options,
+      }),
+    updateRepositoryPolicy: (ws, repositoryId, body, options) =>
+      callJson("PATCH", "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy", {
+        path: { ws, repository_id: repositoryId },
+        body,
+        options,
+      }),
+    previewRepositoryPolicy: (ws, repositoryId, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy/previews", {
+        path: { ws, repository_id: repositoryId },
+        body,
+        options,
+      }),
+    previewBulkRepositoryPolicies: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/repositories/policy-previews", {
+        path: { ws },
+        body,
+        options,
+      }),
+    bulkUpdateRepositories: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/repositories/bulk-update", {
+        path: { ws },
+        body,
+        options,
+      }),
+    listRuns: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/runs", { path: { ws }, query, options }),
+    getRun: (ws, runId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/runs/{run_id}", {
+        path: { ws, run_id: runId },
+        options,
+      }),
+    listRunJobs: (ws, runId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/runs/{run_id}/jobs", {
+        path: { ws, run_id: runId },
+        options,
+      }),
+    getJobLog: (ws, jobId, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/jobs/{job_id}/log", {
+        path: { ws, job_id: jobId },
+        query,
+        options,
+      }),
     async downloadArtifact(ws, artifactId, reqOptions) {
       const { data, error, response } = await raw.GET(
         "/api/v1/workspaces/{ws}/artifacts/{artifact_id}/download",
@@ -1549,119 +1197,50 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         response,
       );
     },
-    async listSystemWorkers(query, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/system/workers", {
-          params: { query },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async createWorkerEnrollment(body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/system/workers/enrollments", {
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async performWorkerAction(workerId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/system/workers/{worker_id}/actions", {
-          params: {
-            path: { worker_id: workerId },
-            header: {
-              "Idempotency-Key": reqOptions.idempotencyKey,
-              ...(reqOptions.ifMatch ? { "If-Match": reqOptions.ifMatch } : {}),
-            },
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async runWorkerSelfTest(workerId, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/system/workers/{worker_id}/self-test", {
-          params: { path: { worker_id: workerId } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async getWorkspaceWorkerReadiness(ws, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/workers/readiness", {
-          params: { path: { ws } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async listWorkspaceModels(ws, reqOptions) {
-      return unwrapEnvelope(
-        await raw.GET("/api/v1/workspaces/{ws}/models", {
-          params: { path: { ws } },
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async updateWorkspaceModelsConfig(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.PATCH("/api/v1/workspaces/{ws}/models/config", {
-          params: {
-            path: { ws },
-            header: {
-              "Idempotency-Key": reqOptions.idempotencyKey,
-              ...(reqOptions.ifMatch ? { "If-Match": reqOptions.ifMatch } : {}),
-            },
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async grantWorkspaceInferenceConsent(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/models/consents", {
-          params: {
-            path: { ws },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
-    async revokeWorkspaceInferenceConsent(ws, consentId, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.DELETE("/api/v1/workspaces/{ws}/models/consents/{consent_id}", {
-          params: { path: { ws, consent_id: consentId } },
-          body: body ?? {},
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions?.signal,
-        }),
-      );
-    },
-    async createWorkspaceModelProbe(ws, body, reqOptions) {
-      return unwrapEnvelope(
-        await raw.POST("/api/v1/workspaces/{ws}/model-probes", {
-          params: {
-            path: { ws },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
-          },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        }),
-      );
-    },
+    listSystemWorkers: (query, options) =>
+      callJson("GET", "/api/v1/system/workers", { query, options }),
+    createWorkerEnrollment: (body, options) =>
+      callJson("POST", "/api/v1/system/workers/enrollments", { body, options }),
+    performWorkerAction: (workerId, body, options) =>
+      callJson("POST", "/api/v1/system/workers/{worker_id}/actions", {
+        path: { worker_id: workerId },
+        body,
+        options,
+      }),
+    runWorkerSelfTest: (workerId, options) =>
+      callJson("POST", "/api/v1/system/workers/{worker_id}/self-test", {
+        path: { worker_id: workerId },
+        options,
+      }),
+    getWorkspaceWorkerReadiness: (ws, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/workers/readiness", { path: { ws }, options }),
+    listWorkspaceModels: (ws, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/models", { path: { ws }, options }),
+    updateWorkspaceModelsConfig: (ws, body, options) =>
+      callJson("PATCH", "/api/v1/workspaces/{ws}/models/config", { path: { ws }, body, options }),
+    grantWorkspaceInferenceConsent: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/models/consents", { path: { ws }, body, options }),
+    revokeWorkspaceInferenceConsent: (ws, consentId, body, options) =>
+      callJson("DELETE", "/api/v1/workspaces/{ws}/models/consents/{consent_id}", {
+        path: { ws, consent_id: consentId },
+        body: body ?? {},
+        options,
+      }),
+    createWorkspaceModelProbe: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/model-probes", { path: { ws }, body, options }),
+    listWorkspaceAgentProfiles: (ws, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/agent-profiles", { path: { ws }, options }),
+    getWorkspaceAgentProfile: (ws, profileId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/agent-profiles/{profile_id}", {
+        path: { ws, profile_id: profileId },
+        options,
+      }),
+    updateWorkspaceAgentProfile: (ws, profileId, body, options) =>
+      callJson("PATCH", "/api/v1/workspaces/{ws}/agent-profiles/{profile_id}", {
+        path: { ws, profile_id: profileId },
+        body,
+        options,
+      }),
   };
 }
 

@@ -135,6 +135,7 @@ function buildDefaultNavItems(workspaceSlug: string | undefined): readonly Shell
     { id: "workers", labelKey: "app.nav.workers", href: `${prefix}/workers` },
     { id: "queues", labelKey: "app.nav.queues", href: `${prefix}/queues` },
     { id: "models", labelKey: "app.nav.models", href: `${prefix}/models` },
+    { id: "agents", labelKey: "app.nav.agents", href: `${prefix}/agents` },
     {
       id: "notifications",
       labelKey: "app.nav.notifications",

@@ -34,6 +34,18 @@ from red2pr_control.orchestrator.reproducer import (
     parse_test_execution_output,
     select_profile_for_ci_job,
 )
+from red2pr_control.orchestrator.state_machine import (
+    ALL_REPAIR_STATES,
+    ALLOWED_REPAIR_TRANSITIONS,
+    NON_TERMINAL_REPAIR_STATES,
+    PROOF_GRADE_ORDER,
+    STATES_REQUIRING_BASELINE_PROOF,
+    STATES_REQUIRING_LOCAL_VERIFICATION,
+    TERMINAL_REPAIR_STATES,
+    RepairSessionStateMachine,
+    to_repair_dto,
+    validate_repair_transition,
+)
 from red2pr_control.orchestrator.sweeper import (
     DEFAULT_SWEEPER_INTERVAL_SECONDS,
     QueueLeaseSweeper,
@@ -53,6 +65,8 @@ from red2pr_control.orchestrator.worker_broker import (
 )
 
 __all__ = [
+    "ALLOWED_REPAIR_TRANSITIONS",
+    "ALL_REPAIR_STATES",
     "DEFAULT_HEARTBEAT_INTERVAL",
     "DEFAULT_LEASE_TTL",
     "DEFAULT_MAX_RUNNING_REPAIRS_PER_WORKSPACE",
@@ -62,8 +76,13 @@ __all__ = [
     "MAX_JUNIT_XML_BYTES",
     "MAX_SANDBOX_UPLOAD_BYTES",
     "MAX_SANDBOX_UPLOAD_WIRE_BYTES",
+    "NON_TERMINAL_REPAIR_STATES",
+    "PROOF_GRADE_ORDER",
     "QUEUE_OPERATOR_ROLES",
     "SANDBOX_TASK_KIND",
+    "STATES_REQUIRING_BASELINE_PROOF",
+    "STATES_REQUIRING_LOCAL_VERIFICATION",
+    "TERMINAL_REPAIR_STATES",
     "WAKEUP_QUEUE_NAME",
     "DurableTaskQueueService",
     "HeartbeatOutcome",
@@ -77,6 +96,7 @@ __all__ = [
     "QueueWakeupHint",
     "QueueWakeupTransport",
     "Red2PrQueueTransport",
+    "RepairSessionStateMachine",
     "ReproductionOrchestrator",
     "RunnerProfileRegistry",
     "ServerTlsMaterial",
@@ -90,6 +110,8 @@ __all__ = [
     "parse_test_execution_output",
     "select_profile_for_ci_job",
     "to_dead_letter_dto",
+    "to_repair_dto",
     "to_task_attempt_dto",
     "to_task_job_dto",
+    "validate_repair_transition",
 ]

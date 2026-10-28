@@ -26,6 +26,7 @@ from py_contracts.integrations import (
     CapabilityAvailability,
     ConsentDataClass,
     ConsentRecord,
+    GitSha,
     OpaqueSecretRef,
     SecretPresence,
 )
@@ -44,7 +45,14 @@ from py_contracts.primitives import (
     UtcTimestamp,
     WorkspaceResourceBase,
 )
-from py_contracts.repairs import SanitizedHttpUrl, SuspensionReason
+from py_contracts.repairs import AgentStepRecord, SanitizedHttpUrl, SuspensionReason
+from py_contracts.tools import (
+    AGENT_TOOL_NAMES,
+    DIAGNOSIS_ALLOWED_TOOLS,
+    PATCH_ALLOWED_TOOLS,
+    AgentToolName,
+    PatchIntegrityOutcome,
+)
 
 PRIMARY_META_MODEL_ID: Literal["muse-spark-1.3"] = "muse-spark-1.3"
 ESCALATION_META_MODEL_ID: Literal["muse-wonder-1.0"] = "muse-wonder-1.0"
@@ -493,3 +501,138 @@ class MetaChatCompletionResult(StrictContractModel):
     reservation: BudgetReservationRecord
     provenance: ModelToolProvenance
     late_after_cancel: StrictBool = False
+
+
+# A-20 & UI-S11 Agent Profiles, Tool Matrix & Patch Attempt DTOs (U17)
+DEFAULT_MAX_SCHEMA_REPAIR_RETRIES: int = 2
+AgentProfileRoleKey = Literal["triage_diagnosis", "bounded_patch"]
+ToolCapabilityCategory = Literal["s20_allowed", "prohibited"]
+
+
+class PatchAttemptRecord(WorkspaceResourceBase):
+    """S-12 / AGT-02 bounded patch candidate attempt with S-22 provenance."""
+
+    repository_id: InternalId
+    repair_id: InternalId
+    attempt: Annotated[StrictInt, Field(ge=1, le=5)]
+    base_sha: GitSha
+    patch_digest: Sha256Digest
+    diff_artifact_id: InternalId
+    changed_paths: list[BoundedText]
+    diff_lines_added: Annotated[StrictInt, Field(ge=0)]
+    diff_lines_removed: Annotated[StrictInt, Field(ge=0)]
+    claimed_root_cause: BoundedText
+    target_test_selection_id: BoundedName | None = None
+    integrity_outcome: PatchIntegrityOutcome
+    sandbox_reproduction_id: InternalId | None = None
+    provenance: list[ModelToolProvenance] = Field(default_factory=list)
+
+
+class ToolCapabilityPolicyItem(StrictContractModel):
+    """UI-S11 / SEC-028 tool capability matrix item (allowlisted S-20 vs prohibited)."""
+
+    name: BoundedName
+    category: ToolCapabilityCategory
+    description: BoundedReason
+    permitted_for_diagnosis: StrictBool
+    permitted_for_patch: StrictBool
+    immutable_reason: BoundedReason
+
+
+class AgentProfile(WorkspaceResourceBase):
+    """A-20 / UI-S11 bounded workspace agent profile (no arbitrary prompt-power switch)."""
+
+    role_key: AgentProfileRoleKey
+    display_name: BoundedName
+    description: BoundedText
+    model_id: MetaModelId
+    escalation_model_id: MetaModelId | None = None
+    reasoning_effort: ReasoningEffortLevel
+    allowed_tools: list[AgentToolName]
+    immutable_role_tool_ceiling: list[AgentToolName]
+    max_steps: Annotated[StrictInt, Field(ge=1, le=16)]
+    max_tool_calls_per_step: Annotated[StrictInt, Field(ge=1, le=8)]
+    max_schema_repair_retries: Annotated[StrictInt, Field(ge=0, le=2)] = (
+        DEFAULT_MAX_SCHEMA_REPAIR_RETRIES
+    )
+    arbitrary_prompt_override_allowed: Literal[False] = False
+    enabled: StrictBool = True
+    updated_by_user_id: InternalId | None = None
+
+    @model_validator(mode="after")
+    def _validate_role_tool_ceiling(self) -> Self:
+        ceiling = (
+            set(DIAGNOSIS_ALLOWED_TOOLS)
+            if self.role_key == "triage_diagnosis"
+            else set(PATCH_ALLOWED_TOOLS)
+        )
+        if not set(self.immutable_role_tool_ceiling).issubset(ceiling):
+            raise ValueError(
+                f"immutable_role_tool_ceiling exceeds role boundary for {self.role_key}"
+            )
+        if not set(self.allowed_tools).issubset(ceiling):
+            raise ValueError(f"allowed_tools contains tools forbidden for role {self.role_key}")
+        if not self.allowed_tools:
+            raise ValueError("allowed_tools must retain at least one read/propose tool")
+        return self
+
+
+class WorkspaceAgentProfilesResponse(StrictContractModel):
+    """A-20 / UI-S11 workspace agent profiles, immutable S-20 matrix & recent step audit."""
+
+    workspace_id: InternalId
+    profiles: list[AgentProfile]
+    tool_matrix: list[ToolCapabilityPolicyItem]
+    prohibited_capabilities: list[BoundedName]
+    recent_steps: list[AgentStepRecord] = Field(default_factory=list)
+    ready_for_repair_inference: StrictBool
+    suspension_reason: SuspensionReason | None = None
+
+
+class AgentProfileUpdateRequest(StrictContractModel):
+    """A-20 / UI-S11 bounded agent profile mutation request."""
+
+    expected_version: PositiveVersion | None = None
+    model_id: BoundedName | None = None
+    escalation_model_id: BoundedName | None = None
+    clear_escalation_model: StrictBool = False
+    reasoning_effort: ReasoningEffortLevel | None = None
+    allowed_tools: Annotated[list[BoundedName], Field(min_length=1, max_length=8)] | None = None
+    max_steps: Annotated[StrictInt, Field(ge=1, le=16)] | None = None
+    max_tool_calls_per_step: Annotated[StrictInt, Field(ge=1, le=8)] | None = None
+    max_schema_repair_retries: Annotated[StrictInt, Field(ge=0, le=2)] | None = None
+    enabled: StrictBool | None = None
+
+    @model_validator(mode="after")
+    def _validate_update_inputs(self) -> Self:
+        if self.model_id is not None:
+            validate_supported_meta_model_id(self.model_id)
+        if self.escalation_model_id is not None:
+            if self.clear_escalation_model:
+                raise ValueError(
+                    "Cannot combine escalation_model_id with clear_escalation_model=true"
+                )
+            resolved_esc = validate_supported_meta_model_id(self.escalation_model_id)
+            if resolved_esc != ESCALATION_META_MODEL_ID:
+                raise ValueError("escalation_model_id must be 'muse-wonder-1.0' when specified")
+        if self.allowed_tools is not None:
+            allowed_s20 = set(AGENT_TOOL_NAMES)
+            seen: set[str] = set()
+            for tool in self.allowed_tools:
+                if tool not in allowed_s20:
+                    raise ValueError(
+                        f"tool_not_permitted: {tool!r} is outside the immutable S-20 8-tool "
+                        "registry."
+                    )
+                if tool in seen:
+                    raise ValueError(f"Duplicate tool {tool!r} in allowed_tools")
+                seen.add(tool)
+        return self
+
+
+class AgentProfileUpdateResponse(StrictContractModel):
+    """A-20 idempotent S-05 receipt + updated workspace agent profile state."""
+
+    receipt: ActionReceipt
+    profile: AgentProfile
+    profiles_state: WorkspaceAgentProfilesResponse

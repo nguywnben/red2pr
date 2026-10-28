@@ -3362,3 +3362,545 @@ class UsageLedgerModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class WorkspaceAgentProfileModel(Base):
+    """A-20 / UI-S11 / U17 bounded workspace agent profile (no arbitrary prompt override)."""
+
+    __tablename__ = "workspace_agent_profiles"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_workspace_agent_profiles_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id", "role_key", name="uq_workspace_agent_profiles_ws_role_key"
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_workspace_agent_profiles_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["updated_by_user_id"],
+            ["users.id"],
+            name="fk_workspace_agent_profiles_updated_by_user_id_users",
+            ondelete="SET NULL",
+        ),
+        CheckConstraint(
+            "role_key IN ('triage_diagnosis', 'bounded_patch')",
+            name="agent_profile_role_key_valid",
+        ),
+        CheckConstraint(
+            "model_id IN ('muse-spark-1.3', 'muse-wonder-1.0')",
+            name="agent_profile_model_id_valid",
+        ),
+        CheckConstraint(
+            "escalation_model_id IS NULL OR escalation_model_id = 'muse-wonder-1.0'",
+            name="agent_profile_escalation_model_id_valid",
+        ),
+        CheckConstraint(
+            "reasoning_effort IN ('low', 'medium', 'high')",
+            name="agent_profile_reasoning_effort_valid",
+        ),
+        CheckConstraint(
+            "max_steps >= 1 AND max_steps <= 16",
+            name="agent_profile_max_steps_bounds",
+        ),
+        CheckConstraint(
+            "max_tool_calls_per_step >= 1 AND max_tool_calls_per_step <= 8",
+            name="agent_profile_max_tool_calls_bounds",
+        ),
+        CheckConstraint(
+            "max_schema_repair_retries >= 0 AND max_schema_repair_retries <= 2",
+            name="agent_profile_schema_retries_bounds",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    role_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str] = mapped_column(String(1000), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(120), nullable=False, default="muse-spark-1.3")
+    escalation_model_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    reasoning_effort: Mapped[str] = mapped_column(String(16), nullable=False, default="medium")
+    allowed_tools_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    max_steps: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    max_tool_calls_per_step: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
+    max_schema_repair_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class RepairSessionModel(Base):
+    """S-11 / W-04 / W-05 / ADR-038 autonomous CI repair session aggregate."""
+
+    __tablename__ = "repair_sessions"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_repair_sessions_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "repository_id",
+            "semantic_trigger_key",
+            name="uq_repair_sessions_ws_repo_trigger_key",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_repair_sessions_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_repair_sessions_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "ci_run_id"],
+            ["ci_runs.workspace_id", "ci_runs.id"],
+            name="fk_repair_sessions_tenant_run_ci_runs",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "budget_account_id"],
+            ["budget_accounts.workspace_id", "budget_accounts.id"],
+            name="fk_repair_sessions_tenant_budget_budget_accounts",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "parent_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_repair_sessions_tenant_parent_repair_sessions",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "supersedes_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_repair_sessions_tenant_supersedes_repair_sessions",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "active_reproduction_id"],
+            ["reproduction_runs.workspace_id", "reproduction_runs.id"],
+            name="fk_repair_sessions_tenant_repro_reproduction_runs",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "state IN ("
+            "'received', 'authorized', 'collecting', 'triaging', 'diagnosed_only', "
+            "'unsupported', 'reproducing', 'repro_confirmed', 'repro_unconfirmed', "
+            "'blocked', 'patching', 'verifying', 'rejected', 'policy_gate', "
+            "'awaiting_approval', 'expired', 'publishing', 'publish_reconcile', "
+            "'needs_human', 'remote_validating', 'remote_verified', 'remote_failed', "
+            "'remote_unknown', 'cancel_requested', 'cancelled'"
+            ")",
+            name="repair_session_state_valid",
+        ),
+        CheckConstraint(
+            "proof_grade IN ("
+            "'none', 'baseline_confirmed', 'locally_verified', 'remotely_verified'"
+            ")",
+            name="repair_session_proof_grade_valid",
+        ),
+        CheckConstraint(
+            "remote_status IN ('not_published', 'pending', 'passed', 'failed', 'unknown')",
+            name="repair_session_remote_status_valid",
+        ),
+        CheckConstraint(
+            "state NOT IN ("
+            "'repro_confirmed', 'patching', 'verifying', 'policy_gate', "
+            "'awaiting_approval', 'publishing', 'publish_reconcile', "
+            "'remote_validating', 'remote_verified', 'remote_failed', 'remote_unknown'"
+            ") OR proof_grade <> 'none'",
+            name="repair_session_adr031_proof_grade_gate",
+        ),
+        CheckConstraint("policy_revision >= 1", name="repair_session_policy_revision_pos"),
+        CheckConstraint(
+            "patch_attempts_count >= 0 AND patch_attempts_count <= 5",
+            name="repair_session_patch_attempts_bounds",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_repair_sessions_ws_repo_created",
+            "workspace_id",
+            "repository_id",
+            "created_at",
+            "id",
+        ),
+        Index(
+            "ix_repair_sessions_ws_state_updated",
+            "workspace_id",
+            "state",
+            "updated_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    ci_run_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    parent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    supersedes_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    semantic_trigger_key: Mapped[str] = mapped_column(String(256), nullable=False)
+    base_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_ref: Mapped[str] = mapped_column(String(120), nullable=False)
+    policy_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="received")
+    proof_grade: Mapped[str] = mapped_column(String(32), nullable=False, default="none")
+    remote_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_published")
+    suspension_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    budget_account_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    active_reproduction_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    latest_diagnosis_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    patch_attempts_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    reason_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    status_detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    causation_event_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class ContextManifestModel(Base):
+    """Append-only redacted context manifest isolated by tenant/repo/SHA/policy/redaction."""
+
+    __tablename__ = "context_manifests"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_context_manifests_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_context_manifests_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_context_manifests_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repair_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_context_manifests_tenant_repair_repair_sessions",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("policy_revision >= 1", name="context_manifest_policy_rev_pos"),
+        CheckConstraint("version = 1", name="context_manifest_immutable_version"),
+        Index(
+            "ix_context_manifests_ws_cache_key",
+            "workspace_id",
+            "repository_id",
+            "cache_key",
+        ),
+        Index(
+            "ix_context_manifests_ws_repair",
+            "workspace_id",
+            "repair_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    base_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    policy_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    redaction_version: Mapped[str] = mapped_column(String(120), nullable=False)
+    cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    context_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    entries_json: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+    truncated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class DiagnosticModel(Base):
+    """S-11 / TRI-02 / AGT-02 append-only evidence-backed failure classification & diagnosis."""
+
+    __tablename__ = "diagnostics"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_diagnostics_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_diagnostics_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_diagnostics_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repair_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_diagnostics_tenant_repair_repair_sessions",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "failure_class IN ("
+            "'code_regression', 'test_defect', 'config', 'dependency', "
+            "'flaky', 'infra', 'network', 'auth', 'unsupported', 'unknown'"
+            ")",
+            name="diagnostic_failure_class_valid",
+        ),
+        CheckConstraint(
+            "decision IN ('continue', 'abstain', 'human')",
+            name="diagnostic_decision_valid",
+        ),
+        CheckConstraint(
+            "model_id IS NULL OR model_id IN ('muse-spark-1.3', 'muse-wonder-1.0')",
+            name="diagnostic_model_id_valid",
+        ),
+        CheckConstraint(
+            "schema_repair_retries_used >= 0 AND schema_repair_retries_used <= 2",
+            name="diagnostic_schema_retries_bounds",
+        ),
+        CheckConstraint("version = 1", name="diagnostic_immutable_version"),
+        Index(
+            "ix_diagnostics_ws_repair_created",
+            "workspace_id",
+            "repair_id",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    failure_class: Mapped[str] = mapped_column(String(32), nullable=False)
+    decision: Mapped[str] = mapped_column(String(16), nullable=False)
+    summary: Mapped[str] = mapped_column(String(4000), nullable=False)
+    evidence_refs_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    evidence_citations_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    hypotheses_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    uncertainties_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    proposed_profile: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    proposed_command_ids_json: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    fingerprint_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    model_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    provider_request_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    schema_repair_retries_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    deterministic_rule_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class AgentStepModel(Base):
+    """Append-only audit trail of bounded agent steps, S-20 tool calls, and denials."""
+
+    __tablename__ = "agent_steps"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_agent_steps_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "repair_id",
+            "step_number",
+            name="uq_agent_steps_ws_repair_step_number",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_agent_steps_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_agent_steps_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repair_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_agent_steps_tenant_repair_repair_sessions",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "usage_record_id"],
+            ["usage_ledger.workspace_id", "usage_ledger.id"],
+            name="fk_agent_steps_tenant_usage_usage_ledger",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "agent_role IN ('diagnosis', 'patch')",
+            name="agent_step_role_valid",
+        ),
+        CheckConstraint(
+            "attempt_number >= 0 AND attempt_number <= 10",
+            name="agent_step_attempt_bounds",
+        ),
+        CheckConstraint(
+            "step_number >= 1 AND step_number <= 500",
+            name="agent_step_number_bounds",
+        ),
+        CheckConstraint(
+            "step_kind IN ("
+            "'model_call', 'tool_call', 'schema_repair', 'abstention', 'policy_denial'"
+            ")",
+            name="agent_step_kind_valid",
+        ),
+        CheckConstraint(
+            "status IN ('ok', 'denied', 'failed', 'pending')",
+            name="agent_step_status_valid",
+        ),
+        CheckConstraint("version = 1", name="agent_step_immutable_version"),
+        Index(
+            "ix_agent_steps_ws_created",
+            "workspace_id",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    agent_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    step_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    tool_call_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    tool_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    args_redacted_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    result_redacted_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    context_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    deny_reason_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    deny_explanation: Mapped[str | None] = mapped_column(String(4000), nullable=True)
+    model_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    provider_request_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    usage_record_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class PatchAttemptModel(Base):
+    """S-12 / AGT-02 bounded candidate patch attempt record with S-22 provenance."""
+
+    __tablename__ = "patch_attempts"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_patch_attempts_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "repair_id",
+            "attempt_number",
+            name="uq_patch_attempts_ws_repair_attempt",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_patch_attempts_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_patch_attempts_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repair_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_patch_attempts_tenant_repair_repair_sessions",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "diff_artifact_id"],
+            ["artifacts.workspace_id", "artifacts.id"],
+            name="fk_patch_attempts_tenant_artifact_artifacts",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "sandbox_reproduction_id"],
+            ["reproduction_runs.workspace_id", "reproduction_runs.id"],
+            name="fk_patch_attempts_tenant_repro_reproduction_runs",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "attempt_number >= 1 AND attempt_number <= 5",
+            name="patch_attempt_number_bounds",
+        ),
+        CheckConstraint(
+            "diff_lines_added >= 0 AND diff_lines_removed >= 0",
+            name="patch_attempt_diff_lines_nonneg",
+        ),
+        CheckConstraint(
+            "integrity_outcome IN ('accepted', 'rejected_policy', 'rejected_integrity')",
+            name="patch_attempt_integrity_outcome_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_patch_attempts_ws_repair_created",
+            "workspace_id",
+            "repair_id",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    base_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    patch_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    diff_artifact_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    changed_paths_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    diff_lines_added: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    diff_lines_removed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    claimed_root_cause: Mapped[str] = mapped_column(String(4000), nullable=False)
+    target_test_selection_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    integrity_outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    sandbox_reproduction_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    provenance_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

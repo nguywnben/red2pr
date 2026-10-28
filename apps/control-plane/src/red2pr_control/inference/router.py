@@ -1,4 +1,4 @@
-"""FastAPI `/api/v1` router for `A-20` workspace Meta models, consents, budgets & probes (`U16`)."""
+"""FastAPI `/api/v1` router for `A-20` workspace Meta models, probes & agent profiles (`U17`)."""
 
 from __future__ import annotations
 
@@ -8,8 +8,12 @@ from fastapi import APIRouter, Body, Depends, Header, Path, Request, Response
 
 from py_contracts.integrations import ConsentRecord, ConsentRevokeRequest
 from py_contracts.models import (
+    AgentProfile,
+    AgentProfileUpdateRequest,
+    AgentProfileUpdateResponse,
     ModelProbeRequest,
     ModelProbeResponse,
+    WorkspaceAgentProfilesResponse,
     WorkspaceInferenceConsentCreateRequest,
     WorkspaceModelsConfigUpdateRequest,
     WorkspaceModelsConfigUpdateResponse,
@@ -31,6 +35,7 @@ from red2pr_control.iam.rbac import (
     make_workspace_rbac_dependency,
 )
 from red2pr_control.iam.sessions import IamService, extract_client_ip
+from red2pr_control.inference.agent_profiles import AgentProfileService
 from red2pr_control.inference.meta_client import MetaMuseInferenceService
 
 _COMMON_PROBLEM_RESPONSES: dict[int | str, dict[str, object]] = {
@@ -76,6 +81,21 @@ def _resolve_meta_inference_service(request: Request) -> MetaMuseInferenceServic
     return svc
 
 
+def _resolve_agent_profile_service(request: Request) -> AgentProfileService:
+    svc = getattr(request.app.state, "agent_profile_service", None)
+    if isinstance(svc, AgentProfileService):
+        return svc
+    iam = _resolve_iam(request)
+    meta = _resolve_meta_inference_service(request)
+    created = AgentProfileService(
+        session_factory=iam.session_factory,
+        iam_service=iam,
+        meta_inference_service=meta,
+    )
+    request.app.state.agent_profile_service = created
+    return created
+
+
 def _maybe_refresh_csrf(
     response: Response,
     ws_ctx: WorkspaceAccessContext,
@@ -108,9 +128,23 @@ _require_models_admin = make_workspace_rbac_dependency(
     action="models.mutate",
 )
 
+_require_agent_profiles_read = make_workspace_rbac_dependency(
+    allowed_roles=ALL_WORKSPACE_ROLES,
+    require_csrf=False,
+    allow_break_glass=True,
+    action="agent_profiles.read",
+)
+
+_require_agent_profiles_admin = make_workspace_rbac_dependency(
+    allowed_roles=ADMIN_ONLY_ROLES,
+    require_csrf=True,
+    allow_break_glass=False,
+    action="agent_profiles.mutate",
+)
+
 
 def build_inference_router() -> APIRouter:
-    """Build `/api/v1` router exposing `A-20` workspace Meta models, consents, budgets & probes."""
+    """Build `/api/v1` router exposing `A-20` workspace Meta models, probes & agent profiles."""
     router = APIRouter(prefix="/api/v1")
 
     @router.get(
@@ -267,6 +301,86 @@ def build_inference_router() -> APIRouter:
         )
         _maybe_refresh_csrf(response, ws_ctx, iam)
         return probe_res
+
+    @router.get(
+        "/workspaces/{ws}/agent-profiles",
+        operation_id="listWorkspaceAgentProfiles",
+        tags=["agents"],
+        response_model=WorkspaceAgentProfilesResponse,
+        summary="List bounded workspace agent profiles, S-20 tool matrix & recent steps (A-20)",
+        responses=_COMMON_PROBLEM_RESPONSES,
+    )
+    async def list_workspace_agent_profiles(
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_agent_profiles_read)],
+        iam: Annotated[IamService, Depends(_resolve_iam)],
+        svc: Annotated[AgentProfileService, Depends(_resolve_agent_profile_service)],
+        response: Response,
+    ) -> WorkspaceAgentProfilesResponse:
+        dto = await svc.list_workspace_agent_profiles(access=ws_ctx)
+        _maybe_refresh_csrf(response, ws_ctx, iam)
+        return dto
+
+    @router.get(
+        "/workspaces/{ws}/agent-profiles/{profile_id}",
+        operation_id="getWorkspaceAgentProfile",
+        tags=["agents"],
+        response_model=AgentProfile,
+        summary="Get a workspace agent profile by ID or role_key (A-20)",
+        responses=_COMMON_PROBLEM_RESPONSES,
+    )
+    async def get_workspace_agent_profile(
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_agent_profiles_read)],
+        iam: Annotated[IamService, Depends(_resolve_iam)],
+        svc: Annotated[AgentProfileService, Depends(_resolve_agent_profile_service)],
+        response: Response,
+        profile_id: Annotated[str, Path(min_length=1, max_length=64)],
+    ) -> AgentProfile:
+        dto = await svc.get_workspace_agent_profile(access=ws_ctx, profile_id=profile_id)
+        response.headers["ETag"] = format_version_etag(dto.version)
+        _maybe_refresh_csrf(response, ws_ctx, iam)
+        return dto
+
+    @router.patch(
+        "/workspaces/{ws}/agent-profiles/{profile_id}",
+        operation_id="updateWorkspaceAgentProfile",
+        tags=["agents"],
+        response_model=AgentProfileUpdateResponse,
+        summary="Update bounded workspace agent profile within immutable S-20 ceilings (A-20)",
+        responses=_COMMON_PROBLEM_RESPONSES,
+    )
+    async def update_workspace_agent_profile(
+        payload: AgentProfileUpdateRequest,
+        request: Request,
+        response: Response,
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_agent_profiles_admin)],
+        iam: Annotated[IamService, Depends(_resolve_iam)],
+        svc: Annotated[AgentProfileService, Depends(_resolve_agent_profile_service)],
+        profile_id: Annotated[str, Path(min_length=1, max_length=64)],
+        idempotency_key: Annotated[
+            str | None,
+            Header(alias="Idempotency-Key", max_length=128),
+        ] = None,
+        if_match: Annotated[
+            str | None,
+            Header(alias="If-Match", max_length=64),
+        ] = None,
+    ) -> AgentProfileUpdateResponse:
+        idem = _require_idempotency_key(
+            idempotency_key,
+            endpoint_label="PATCH /api/v1/workspaces/{ws}/agent-profiles/{profile_id}",
+        )
+        updated = await svc.update_workspace_agent_profile(
+            access=ws_ctx,
+            profile_id=profile_id,
+            payload=payload,
+            idempotency_key=idem,
+            if_match=if_match,
+            correlation_id=_req_corr_id(request),
+            client_ip=extract_client_ip(request),
+        )
+        response.headers["ETag"] = format_version_etag(updated.profile.version)
+        _maybe_refresh_csrf(response, ws_ctx, iam)
+        return updated
 
     return router
 

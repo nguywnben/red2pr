@@ -486,6 +486,41 @@ export interface paths {
         patch: operations["updateWorkspace"];
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/agent-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List bounded workspace agent profiles, S-20 tool matrix & recent steps (A-20) */
+        get: operations["listWorkspaceAgentProfiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/agent-profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a workspace agent profile by ID or role_key (A-20) */
+        get: operations["getWorkspaceAgentProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update bounded workspace agent profile within immutable S-20 ceilings (A-20) */
+        patch: operations["updateWorkspaceAgentProfile"];
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/artifacts/{artifact_id}/download": {
         parameters: {
             query?: never;
@@ -1117,6 +1152,168 @@ export interface components {
             repair_id?: string | null;
             /** State */
             state: string;
+        };
+        /**
+         * AgentProfile
+         * @description A-20 / UI-S11 bounded workspace agent profile (no arbitrary prompt-power switch).
+         */
+        AgentProfile: {
+            /** Allowed Tools */
+            allowed_tools: ("read_file" | "search_repo" | "read_log_excerpt" | "read_commit_diff" | "request_reproduction" | "apply_patch" | "run_targeted_test" | "get_execution_result")[];
+            /**
+             * Arbitrary Prompt Override Allowed
+             * @default false
+             * @constant
+             */
+            arbitrary_prompt_override_allowed: false;
+            /** Created At */
+            created_at: string;
+            /** Description */
+            description: string;
+            /** Display Name */
+            display_name: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Escalation Model Id */
+            escalation_model_id?: ("muse-spark-1.3" | "muse-wonder-1.0") | null;
+            /** Id */
+            id: string;
+            /** Immutable Role Tool Ceiling */
+            immutable_role_tool_ceiling: ("read_file" | "search_repo" | "read_log_excerpt" | "read_commit_diff" | "request_reproduction" | "apply_patch" | "run_targeted_test" | "get_execution_result")[];
+            /**
+             * Max Schema Repair Retries
+             * @default 2
+             */
+            max_schema_repair_retries: number;
+            /** Max Steps */
+            max_steps: number;
+            /** Max Tool Calls Per Step */
+            max_tool_calls_per_step: number;
+            /**
+             * Model Id
+             * @enum {string}
+             */
+            model_id: "muse-spark-1.3" | "muse-wonder-1.0";
+            /**
+             * Reasoning Effort
+             * @enum {string}
+             */
+            reasoning_effort: "low" | "medium" | "high";
+            /** Repository Id */
+            repository_id?: string | null;
+            /**
+             * Role Key
+             * @enum {string}
+             */
+            role_key: "triage_diagnosis" | "bounded_patch";
+            /** Updated At */
+            updated_at: string;
+            /** Updated By User Id */
+            updated_by_user_id?: string | null;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * AgentProfileUpdateRequest
+         * @description A-20 / UI-S11 bounded agent profile mutation request.
+         */
+        AgentProfileUpdateRequest: {
+            /** Allowed Tools */
+            allowed_tools?: string[] | null;
+            /**
+             * Clear Escalation Model
+             * @default false
+             */
+            clear_escalation_model: boolean;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Escalation Model Id */
+            escalation_model_id?: string | null;
+            /** Expected Version */
+            expected_version?: number | null;
+            /** Max Schema Repair Retries */
+            max_schema_repair_retries?: number | null;
+            /** Max Steps */
+            max_steps?: number | null;
+            /** Max Tool Calls Per Step */
+            max_tool_calls_per_step?: number | null;
+            /** Model Id */
+            model_id?: string | null;
+            /** Reasoning Effort */
+            reasoning_effort?: ("low" | "medium" | "high") | null;
+        };
+        /**
+         * AgentProfileUpdateResponse
+         * @description A-20 idempotent S-05 receipt + updated workspace agent profile state.
+         */
+        AgentProfileUpdateResponse: {
+            profile: components["schemas"]["AgentProfile"];
+            profiles_state: components["schemas"]["WorkspaceAgentProfilesResponse"];
+            receipt: components["schemas"]["ActionReceipt"];
+        };
+        /**
+         * AgentStepRecord
+         * @description Immutable audit record of a bounded model call, tool invocation, or policy denial.
+         */
+        AgentStepRecord: {
+            /**
+             * Agent Role
+             * @enum {string}
+             */
+            agent_role: "diagnosis" | "patch";
+            /** Args Redacted Digest */
+            args_redacted_digest?: string | null;
+            /** Attempt Number */
+            attempt_number: number;
+            /** Context Digest */
+            context_digest: string;
+            /** Created At */
+            created_at: string;
+            /** Deny Explanation */
+            deny_explanation?: string | null;
+            /** Deny Reason Code */
+            deny_reason_code?: string | null;
+            /** Id */
+            id: string;
+            /** Model Id */
+            model_id?: string | null;
+            /** Provider Request Id */
+            provider_request_id?: string | null;
+            /** Repair Id */
+            repair_id: string;
+            /** Repository Id */
+            repository_id: string;
+            /** Result Redacted Digest */
+            result_redacted_digest?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "denied" | "failed" | "pending";
+            /**
+             * Step Kind
+             * @enum {string}
+             */
+            step_kind: "model_call" | "tool_call" | "schema_repair" | "abstention" | "policy_denial";
+            /** Step Number */
+            step_number: number;
+            /** Tool Call Id */
+            tool_call_id?: string | null;
+            /** Tool Name */
+            tool_name?: string | null;
+            /** Updated At */
+            updated_at: string;
+            /** Usage Record Id */
+            usage_record_id?: string | null;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
         };
         /** ApplyPatchArgs */
         ApplyPatchArgs: {
@@ -2281,6 +2478,65 @@ export interface components {
             reason?: string | null;
         };
         /**
+         * ContextManifest
+         * @description Immutable redacted context manifest isolated by workspace/repo/SHA/policy/redaction.
+         */
+        ContextManifest: {
+            /** Base Sha */
+            base_sha: string;
+            /** Cache Key */
+            cache_key: string;
+            /** Context Digest */
+            context_digest: string;
+            /** Created At */
+            created_at: string;
+            /** Entries */
+            entries?: components["schemas"]["ContextManifestEntry"][];
+            /** Id */
+            id: string;
+            /** Policy Revision */
+            policy_revision: number;
+            /** Redaction Version */
+            redaction_version: string;
+            /** Repair Id */
+            repair_id: string;
+            /** Repository Id */
+            repository_id: string;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * ContextManifestEntry
+         * @description Single redacted context slice included in an agent session context manifest.
+         */
+        ContextManifestEntry: {
+            /** Byte Length */
+            byte_length: number;
+            /** Digest */
+            digest: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "ci_log" | "repo_file" | "commit_diff" | "policy_summary" | "profile_manifest";
+            /** Ref Id */
+            ref_id: string;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+        };
+        /**
          * CsrfBootstrapResponse
          * @description CSRF synchronizer/double-submit bootstrap state for pre-auth and session forms.
          */
@@ -2361,10 +2617,31 @@ export interface components {
              * @enum {string}
              */
             decision: "continue" | "abstain" | "human";
+            /**
+             * Deterministic Rule Id
+             * @default null
+             */
+            deterministic_rule_id: string | null;
+            /** Evidence Citations */
+            evidence_citations?: components["schemas"]["EvidenceLineCitation"][];
             /** Evidence Refs */
             evidence_refs: string[];
+            /**
+             * Fingerprint Hash
+             * @default null
+             */
+            fingerprint_hash: string | null;
+            /** Hypotheses */
+            hypotheses?: components["schemas"]["DiagnosisHypothesis"][];
             /** Id */
             id: string;
+            /**
+             * Model Id
+             * @default null
+             */
+            model_id: string | null;
+            /** Proposed Command Ids */
+            proposed_command_ids?: string[];
             /**
              * Proposed Profile
              * @default null
@@ -2374,6 +2651,11 @@ export interface components {
             repair_id: string;
             /** Repository Id */
             repository_id: string;
+            /**
+             * Schema Repair Retries Used
+             * @default 0
+             */
+            schema_repair_retries_used: number;
             /** Summary */
             summary: string;
             /** Uncertainties */
@@ -2384,6 +2666,23 @@ export interface components {
             version: number;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /**
+         * DiagnosisHypothesis
+         * @description Structured root-cause hypothesis proposed by the diagnosis agent (`AGT-02`).
+         */
+        DiagnosisHypothesis: {
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "high" | "medium" | "low";
+            /** Id */
+            id: string;
+            /** Statement */
+            statement: string;
+            /** Suspected Paths */
+            suspected_paths?: string[];
         };
         /**
          * EffectiveRepositoryPolicy
@@ -2618,6 +2917,20 @@ export interface components {
              * @default null
              */
             workspace_id: string | null;
+        };
+        /**
+         * EvidenceLineCitation
+         * @description Immutable session-verified artifact line-range citation (`TRI-02`, `SEC-024`).
+         */
+        EvidenceLineCitation: {
+            /** Artifact Id */
+            artifact_id: string;
+            /** End Line */
+            end_line: number;
+            /** Excerpt Digest */
+            excerpt_digest: string;
+            /** Start Line */
+            start_line: number;
         };
         /**
          * EvidenceManifestV1
@@ -3702,6 +4015,59 @@ export interface components {
             repair_id: string;
             /** Repository Id */
             repository_id: string;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * PatchAttemptRecord
+         * @description S-12 / AGT-02 bounded patch candidate attempt with S-22 provenance.
+         */
+        PatchAttemptRecord: {
+            /** Attempt */
+            attempt: number;
+            /** Base Sha */
+            base_sha: string;
+            /** Changed Paths */
+            changed_paths: string[];
+            /** Claimed Root Cause */
+            claimed_root_cause: string;
+            /** Created At */
+            created_at: string;
+            /** Diff Artifact Id */
+            diff_artifact_id: string;
+            /** Diff Lines Added */
+            diff_lines_added: number;
+            /** Diff Lines Removed */
+            diff_lines_removed: number;
+            /** Id */
+            id: string;
+            /**
+             * Integrity Outcome
+             * @enum {string}
+             */
+            integrity_outcome: "accepted" | "rejected_policy" | "rejected_integrity";
+            /** Patch Digest */
+            patch_digest: string;
+            /** Provenance */
+            provenance?: components["schemas"]["ModelToolProvenance"][];
+            /** Repair Id */
+            repair_id: string;
+            /** Repository Id */
+            repository_id: string;
+            /**
+             * Sandbox Reproduction Id
+             * @default null
+             */
+            sandbox_reproduction_id: string | null;
+            /**
+             * Target Test Selection Id
+             * @default null
+             */
+            target_test_selection_id: string | null;
             /** Updated At */
             updated_at: string;
             /** Version */
@@ -5938,6 +6304,27 @@ export interface components {
             /** Tool Call Id */
             tool_call_id: string;
         };
+        /**
+         * ToolCapabilityPolicyItem
+         * @description UI-S11 / SEC-028 tool capability matrix item (allowlisted S-20 vs prohibited).
+         */
+        ToolCapabilityPolicyItem: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "s20_allowed" | "prohibited";
+            /** Description */
+            description: string;
+            /** Immutable Reason */
+            immutable_reason: string;
+            /** Name */
+            name: string;
+            /** Permitted For Diagnosis */
+            permitted_for_diagnosis: boolean;
+            /** Permitted For Patch */
+            permitted_for_patch: boolean;
+        };
         /** TrustedExecutionResultRef */
         TrustedExecutionResultRef: {
             /**
@@ -6325,6 +6712,26 @@ export interface components {
             updated_at: string;
             /** Version */
             version: number;
+        };
+        /**
+         * WorkspaceAgentProfilesResponse
+         * @description A-20 / UI-S11 workspace agent profiles, immutable S-20 matrix & recent step audit.
+         */
+        WorkspaceAgentProfilesResponse: {
+            /** Profiles */
+            profiles: components["schemas"]["AgentProfile"][];
+            /** Prohibited Capabilities */
+            prohibited_capabilities: string[];
+            /** Ready For Repair Inference */
+            ready_for_repair_inference: boolean;
+            /** Recent Steps */
+            recent_steps?: components["schemas"]["AgentStepRecord"][];
+            /** Suspension Reason */
+            suspension_reason?: ("maintenance" | "model_unavailable" | "quota" | "worker_unavailable" | "operator_pause") | null;
+            /** Tool Matrix */
+            tool_matrix: components["schemas"]["ToolCapabilityPolicyItem"][];
+            /** Workspace Id */
+            workspace_id: string;
         };
         /**
          * WorkspaceCreateRequest
@@ -10493,6 +10900,381 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Workspace"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    listWorkspaceAgentProfiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceAgentProfilesResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getWorkspaceAgentProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentProfile"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    updateWorkspaceAgentProfile: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "If-Match"?: string | null;
+            };
+            path: {
+                profile_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentProfileUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentProfileUpdateResponse"];
                 };
             };
             /** @description Bad Request */

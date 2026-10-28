@@ -23,6 +23,7 @@ import {
   IntegrationsPage,
 } from "../features/integrations";
 import { AcceptInviteDialog, MembersPage } from "../features/members";
+import { AgentsPage } from "../features/agents";
 import { ModelsPage } from "../features/models";
 import { PipelinesPage } from "../features/pipelines";
 import { QueuesPage } from "../features/queues";
@@ -77,6 +78,7 @@ function WorkspaceSectionOutlet({
       <Route path="workers" element={<WorkersPage workspace={workspace} me={meData} />} />
       <Route path="queues" element={<QueuesPage workspace={workspace} me={meData} />} />
       <Route path="models" element={<ModelsPage workspace={workspace} me={meData} />} />
+      <Route path="agents" element={<AgentsPage workspace={workspace} me={meData} />} />
       <Route
         path="repositories"
         element={<RepositoriesPage workspace={workspace} me={meData} />}

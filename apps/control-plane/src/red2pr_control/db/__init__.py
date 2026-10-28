@@ -1,6 +1,7 @@
 """PostgreSQL 16 persistence spine: ORM models, RLS guards, idempotency, and outbox."""
 
 from red2pr_control.db.base import (
+    AgentStepModel,
     ArtifactBlobModel,
     ArtifactModel,
     AuditCheckpointModel,
@@ -15,7 +16,9 @@ from red2pr_control.db.base import (
     CiJobModel,
     CiRunModel,
     ConsentModel,
+    ContextManifestModel,
     DeadLetterJobModel,
+    DiagnosticModel,
     EffectTombstoneModel,
     EndpointRegistrationModel,
     FailureFingerprintModel,
@@ -28,8 +31,10 @@ from red2pr_control.db.base import (
     OperationReceiptModel,
     OutboxClaimModel,
     OutboxEventModel,
+    PatchAttemptModel,
     ProfileRevisionModel,
     RecoveryCodeModel,
+    RepairSessionModel,
     RepoGrantModel,
     ReproductionRunModel,
     SandboxLeaseModel,
@@ -44,6 +49,7 @@ from red2pr_control.db.base import (
     UserModel,
     WorkerEnrollmentModel,
     WorkerModel,
+    WorkspaceAgentProfileModel,
     WorkspaceModel,
     WorkspaceModelConfigModel,
 )
@@ -81,6 +87,7 @@ from red2pr_control.db.rls import (
 )
 
 __all__ = [
+    "AgentStepModel",
     "ArtifactBlobModel",
     "ArtifactModel",
     "AuditCheckpointModel",
@@ -96,7 +103,9 @@ __all__ = [
     "CiRunModel",
     "ClaimedOutboxEvent",
     "ConsentModel",
+    "ContextManifestModel",
     "DeadLetterJobModel",
+    "DiagnosticModel",
     "EffectTombstoneModel",
     "EndpointRegistrationModel",
     "FailureFingerprintModel",
@@ -110,8 +119,10 @@ __all__ = [
     "OperationReceiptModel",
     "OutboxClaimModel",
     "OutboxEventModel",
+    "PatchAttemptModel",
     "ProfileRevisionModel",
     "RecoveryCodeModel",
+    "RepairSessionModel",
     "RepoGrantModel",
     "ReproductionRunModel",
     "RlsConfigurationError",
@@ -128,6 +139,7 @@ __all__ = [
     "UserModel",
     "WorkerEnrollmentModel",
     "WorkerModel",
+    "WorkspaceAgentProfileModel",
     "WorkspaceModel",
     "WorkspaceModelConfigModel",
     "ack_outbox_claim",

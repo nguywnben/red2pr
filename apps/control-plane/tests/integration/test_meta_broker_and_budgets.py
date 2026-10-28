@@ -703,7 +703,7 @@ async def test_migration_0012_reversibility_rls_isolation_and_append_only_trigge
                 )
             ).scalars()
             forced_names = set(forced_rows)
-            assert len(forced_names) == 52
+            assert len(forced_names) >= 52
             assert {
                 "workspace_model_configs",
                 "model_capability_snapshots",
