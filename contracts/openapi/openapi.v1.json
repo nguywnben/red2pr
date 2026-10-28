@@ -354,9 +354,32 @@
             "title": "Digest",
             "type": "string"
           },
+          "extracted_file_count": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extracted File Count"
+          },
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
           },
           "kind": {
             "maxLength": 120,
@@ -373,7 +396,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Manifest Id"
           },
           "mime": {
@@ -381,6 +403,19 @@
             "minLength": 1,
             "title": "Mime",
             "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "purge_reason": {
             "anyOf": [
@@ -393,7 +428,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Purge Reason"
           },
           "redaction_version": {
@@ -411,15 +445,25 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Repository Id"
           },
           "retention_until": {
             "title": "Retention Until",
             "type": "string"
           },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
           "size_bytes": {
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Size Bytes",
             "type": "integer"
           },
@@ -428,7 +472,7 @@
             "type": "string"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           },
@@ -1200,6 +1244,17 @@
         "additionalProperties": false,
         "description": "S-10 normalized CI job with matrix dimensions and retry lineage.",
         "properties": {
+          "child_pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Child Pipeline Id"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -1209,7 +1264,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Completed At"
           },
           "conclusion": {
@@ -1231,7 +1285,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Conclusion"
           },
           "created_at": {
@@ -1242,9 +1295,96 @@
             "title": "External Id",
             "type": "string"
           },
+          "failure_excerpt": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Excerpt"
+          },
+          "failure_fingerprint_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Fingerprint Hash"
+          },
+          "failure_fingerprint_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Fingerprint Id"
+          },
+          "flaky_classification": {
+            "default": "unknown",
+            "enum": [
+              "flaky",
+              "persistent_failure",
+              "single_pass_unproven",
+              "insufficient_history",
+              "unknown"
+            ],
+            "title": "Flaky Classification",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "is_child_pipeline_job": {
+            "default": false,
+            "title": "Is Child Pipeline Job",
+            "type": "boolean"
+          },
+          "log_artifact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Artifact Id"
+          },
+          "log_size_bytes": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Log Size Bytes",
+            "type": "integer"
+          },
+          "log_status": {
+            "default": "unavailable",
+            "enum": [
+              "pending",
+              "available",
+              "truncated",
+              "expired",
+              "unavailable"
+            ],
+            "title": "Log Status",
+            "type": "string"
+          },
+          "log_truncated": {
+            "default": false,
+            "title": "Log Truncated",
+            "type": "boolean"
           },
           "matrix_dimensions": {
             "additionalProperties": {
@@ -1277,12 +1417,24 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Retry Of Id"
           },
           "run_id": {
             "title": "Run Id",
             "type": "string"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
           },
           "started_at": {
             "anyOf": [
@@ -1293,15 +1445,25 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Started At"
+          },
+          "status": {
+            "default": "completed",
+            "enum": [
+              "queued",
+              "in_progress",
+              "completed",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
           },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           },
@@ -1324,13 +1486,65 @@
         "title": "CiJob",
         "type": "object"
       },
+      "CiJobListResponse": {
+        "additionalProperties": false,
+        "description": "A-08 normalized CI job list for a specific `CiRun` attempt.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CiJob"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "title": "CiJobListResponse",
+        "type": "object"
+      },
       "CiRun": {
         "additionalProperties": false,
         "description": "S-10 normalized CI pipeline/workflow run attempt.",
         "properties": {
+          "artifact_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Artifact Count",
+            "type": "integer"
+          },
           "attempt_key": {
             "title": "Attempt Key",
             "type": "string"
+          },
+          "attempt_number": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Attempt Number",
+            "type": "integer"
+          },
+          "child_pipeline_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Child Pipeline Ids",
+            "type": "array"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
           },
           "conclusion": {
             "anyOf": [
@@ -1351,7 +1565,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Conclusion"
           },
           "created_at": {
@@ -1368,18 +1581,94 @@
             "title": "External Id",
             "type": "string"
           },
+          "failed_job_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Failed Job Count",
+            "type": "integer"
+          },
+          "flaky_classification": {
+            "default": "unknown",
+            "enum": [
+              "flaky",
+              "persistent_failure",
+              "single_pass_unproven",
+              "insufficient_history",
+              "unknown"
+            ],
+            "title": "Flaky Classification",
+            "type": "string"
+          },
           "head_sha": {
             "pattern": "^[0-9a-f]{40}$",
             "title": "Head Sha",
             "type": "string"
           },
+          "head_sha_verified": {
+            "default": true,
+            "title": "Head Sha Verified",
+            "type": "boolean"
+          },
           "id": {
             "title": "Id",
             "type": "string"
           },
+          "incomplete_reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incomplete Reason"
+          },
+          "ingestion_state": {
+            "default": "ingested",
+            "enum": [
+              "pending",
+              "collecting",
+              "ingested",
+              "incomplete",
+              "stale_sha",
+              "failed"
+            ],
+            "title": "Ingestion State",
+            "type": "string"
+          },
+          "is_rerun": {
+            "default": false,
+            "title": "Is Rerun",
+            "type": "boolean"
+          },
           "jobs_complete": {
             "title": "Jobs Complete",
             "type": "boolean"
+          },
+          "observed_head_sha": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Head Sha"
+          },
+          "provider": {
+            "default": "github",
+            "enum": [
+              "github",
+              "gitlab"
+            ],
+            "title": "Provider",
+            "type": "string"
           },
           "raw_vendor_status": {
             "anyOf": [
@@ -1392,7 +1681,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Raw Vendor Status"
           },
           "ref": {
@@ -1405,6 +1693,30 @@
             "title": "Repository Id",
             "type": "string"
           },
+          "repository_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Name"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
           "status": {
             "enum": [
               "queued",
@@ -1415,12 +1727,23 @@
             "title": "Status",
             "type": "string"
           },
+          "total_job_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Total Job Count",
+            "type": "integer"
+          },
+          "untrusted_fork": {
+            "default": false,
+            "title": "Untrusted Fork",
+            "type": "boolean"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           },
@@ -1445,6 +1768,48 @@
           "jobs_complete"
         ],
         "title": "CiRun",
+        "type": "object"
+      },
+      "CiRunDetailResponse": {
+        "additionalProperties": false,
+        "description": "A-08 detailed CI run view with sibling attempts, matrix jobs, S-14 artifacts & flaky data.",
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/Artifact"
+            },
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "fingerprints": {
+            "items": {
+              "$ref": "#/components/schemas/FailureFingerprintSummary"
+            },
+            "title": "Fingerprints",
+            "type": "array"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/CiJob"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "run": {
+            "$ref": "#/components/schemas/CiRun"
+          },
+          "sibling_attempts": {
+            "items": {
+              "$ref": "#/components/schemas/CiRun"
+            },
+            "title": "Sibling Attempts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run"
+        ],
+        "title": "CiRunDetailResponse",
         "type": "object"
       },
       "Connection": {
@@ -3549,6 +3914,191 @@
         "title": "EvidenceManifestV1",
         "type": "object"
       },
+      "FailureFingerprintObservation": {
+        "additionalProperties": false,
+        "description": "Single historical run-attempt outcome recorded against a failure fingerprint (`TRI-03`).",
+        "properties": {
+          "attempt_key": {
+            "title": "Attempt Key",
+            "type": "string"
+          },
+          "conclusion": {
+            "enum": [
+              "success",
+              "failure",
+              "cancelled",
+              "timed_out",
+              "skipped",
+              "neutral",
+              "action_required",
+              "unknown"
+            ],
+            "title": "Conclusion",
+            "type": "string"
+          },
+          "head_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Head Sha",
+            "type": "string"
+          },
+          "observed_at": {
+            "title": "Observed At",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "attempt_key",
+          "head_sha",
+          "conclusion",
+          "observed_at"
+        ],
+        "title": "FailureFingerprintObservation",
+        "type": "object"
+      },
+      "FailureFingerprintSummary": {
+        "additionalProperties": false,
+        "description": "TRI-03 historical failure fingerprint & bounded flaky classification summary.",
+        "properties": {
+          "classification": {
+            "enum": [
+              "flaky",
+              "persistent_failure",
+              "single_pass_unproven",
+              "insufficient_history",
+              "unknown"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "confidence_reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Confidence Reason",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "distinct_sha_count": {
+            "minimum": 0.0,
+            "title": "Distinct Sha Count",
+            "type": "integer"
+          },
+          "error_kind": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Kind"
+          },
+          "failure_count": {
+            "minimum": 0.0,
+            "title": "Failure Count",
+            "type": "integer"
+          },
+          "fingerprint_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Fingerprint Hash",
+            "type": "string"
+          },
+          "first_seen_at": {
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "pass_on_same_sha_count": {
+            "minimum": 0.0,
+            "title": "Pass On Same Sha Count",
+            "type": "integer"
+          },
+          "recent_observations": {
+            "items": {
+              "$ref": "#/components/schemas/FailureFingerprintObservation"
+            },
+            "title": "Recent Observations",
+            "type": "array"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Id"
+          },
+          "signature_label": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Signature Label",
+            "type": "string"
+          },
+          "test_identifier": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Identifier"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "fingerprint_hash",
+          "signature_label",
+          "classification",
+          "confidence_reason",
+          "failure_count",
+          "pass_on_same_sha_count",
+          "distinct_sha_count",
+          "first_seen_at",
+          "last_seen_at"
+        ],
+        "title": "FailureFingerprintSummary",
+        "type": "object"
+      },
       "GetExecutionResultArgs": {
         "additionalProperties": false,
         "properties": {
@@ -4093,6 +4643,104 @@
           "passed"
         ],
         "title": "IsolationCheckResult",
+        "type": "object"
+      },
+      "JobLogChunkResponse": {
+        "additionalProperties": false,
+        "description": "A-08 bounded, redacted CI job log slice (`max_bytes <= 65536`, `NFR-14`).",
+        "properties": {
+          "content": {
+            "maxLength": 65536,
+            "title": "Content",
+            "type": "string"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "incomplete_marker": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incomplete Marker"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "log_complete": {
+            "title": "Log Complete",
+            "type": "boolean"
+          },
+          "log_status": {
+            "enum": [
+              "pending",
+              "available",
+              "truncated",
+              "expired",
+              "unavailable"
+            ],
+            "title": "Log Status",
+            "type": "string"
+          },
+          "next_offset": {
+            "minimum": 0.0,
+            "title": "Next Offset",
+            "type": "integer"
+          },
+          "redaction_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Redaction Version",
+            "type": "string"
+          },
+          "returned_bytes": {
+            "maximum": 65536.0,
+            "minimum": 0.0,
+            "title": "Returned Bytes",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "start_offset": {
+            "minimum": 0.0,
+            "title": "Start Offset",
+            "type": "integer"
+          },
+          "total_bytes": {
+            "minimum": 0.0,
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "job_id",
+          "run_id",
+          "log_status",
+          "content",
+          "start_offset",
+          "next_offset",
+          "returned_bytes",
+          "total_bytes",
+          "has_more",
+          "truncated",
+          "log_complete",
+          "redaction_version"
+        ],
+        "title": "JobLogChunkResponse",
         "type": "object"
       },
       "LifecycleOperation": {
@@ -5382,6 +6030,40 @@
           "snapshot_at"
         ],
         "title": "Page[BreakGlassGrant]",
+        "type": "object"
+      },
+      "Page_CiRun_": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CiRun"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "snapshot_at"
+        ],
+        "title": "Page[CiRun]",
         "type": "object"
       },
       "Page_Connection_": {
@@ -16305,6 +16987,151 @@
         ]
       }
     },
+    "/api/v1/workspaces/{ws}/artifacts/{artifact_id}/download": {
+      "get": {
+        "operationId": "downloadWorkspaceArtifact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Verified decrypted artifact payload"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Download verified artifact with live repo_grants & 410 retention check (A-10)",
+        "tags": [
+          "triage_evidence"
+        ]
+      }
+    },
     "/api/v1/workspaces/{ws}/break-glass": {
       "get": {
         "operationId": "listBreakGlassGrants",
@@ -19263,6 +20090,173 @@
         ]
       }
     },
+    "/api/v1/workspaces/{ws}/jobs/{job_id}/log": {
+      "get": {
+        "operationId": "getWorkspaceJobLog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Start Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_bytes",
+            "required": false,
+            "schema": {
+              "default": 65536,
+              "maximum": 65536,
+              "minimum": 1,
+              "title": "Max Bytes",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobLogChunkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Read redacted UTF-8 CI job log chunk (<= 65536 bytes; 410 if expired) (A-08)",
+        "tags": [
+          "triage_evidence"
+        ]
+      }
+    },
     "/api/v1/workspaces/{ws}/members": {
       "get": {
         "operationId": "listWorkspaceMembers",
@@ -21234,6 +22228,595 @@
         "summary": "Simulate candidate repository policy without saving or mutating rows (A-07)",
         "tags": [
           "repositories"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/runs": {
+      "get": {
+        "operationId": "listWorkspaceRuns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "repository_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repository Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "queued",
+                    "in_progress",
+                    "completed",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conclusion",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "success",
+                    "failure",
+                    "cancelled",
+                    "timed_out",
+                    "skipped",
+                    "neutral",
+                    "action_required",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conclusion"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ingestion_state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "collecting",
+                    "ingested",
+                    "incomplete",
+                    "stale_sha",
+                    "failed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ingestion State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "flaky_classification",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "flaky",
+                    "persistent_failure",
+                    "single_pass_unproven",
+                    "insufficient_history",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Flaky Classification"
+            }
+          },
+          {
+            "in": "query",
+            "name": "head_sha",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Head Sha"
+            }
+          },
+          {
+            "in": "query",
+            "name": "flaky_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Flaky Only",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_CiRun_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List authorized CI runs with attempt keys & flaky badges (A-08)",
+        "tags": [
+          "triage_evidence"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/runs/{run_id}": {
+      "get": {
+        "operationId": "getWorkspaceRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiRunDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get CI run attempt detail with attempts, jobs, S-14 artifacts & flaky (A-08)",
+        "tags": [
+          "triage_evidence"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/runs/{run_id}/jobs": {
+      "get": {
+        "operationId": "listWorkspaceRunJobs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiJobListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List matrix & retry CI jobs for a specific CI run attempt (A-08)",
+        "tags": [
+          "triage_evidence"
         ]
       }
     },

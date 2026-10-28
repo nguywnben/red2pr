@@ -417,6 +417,17 @@ class SourceProviderAdapter(Protocol):
         now: datetime | None = None,
     ) -> Sequence[ProviderArtifactRecord]: ...
 
+    async def download_artifact_archive(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        external_artifact_id: str,
+        max_bytes: int = 104_857_601,
+        now: datetime | None = None,
+    ) -> bytes: ...
+
     async def get_commit_diff(
         self,
         session: AsyncSession,

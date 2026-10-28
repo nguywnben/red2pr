@@ -1179,6 +1179,43 @@ class GitLabAdapter:
                 )
         return tuple(artifacts)
 
+    async def download_artifact_archive(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        external_artifact_id: str,
+        max_bytes: int = 104_857_601,
+        now: datetime | None = None,
+    ) -> bytes:
+        del now
+        token = await self._resolve_token(session, ctx)
+        encoded_proj = self._encode_project_ref(repo_full_name)
+        raw_job_id = external_artifact_id.split(":", 1)[0].strip()
+        if not raw_job_id:
+            raise ProviderError(
+                code="NOT_FOUND",
+                detail="Invalid GitLab artifact identifier.",
+                provider="gitlab",
+                status_code=404,
+            )
+        encoded_job = quote(raw_job_id, safe="")
+        resp = await self._send_request(
+            "GET",
+            self._build_api_url(
+                ctx.base_url,
+                f"/projects/{encoded_proj}/jobs/{encoded_job}/artifacts",
+            ),
+            headers=self._default_headers(
+                access_token=token,
+                extra={"Accept": "application/octet-stream"},
+            ),
+        )
+        self._raise_for_gitlab_status(resp)
+        cap = max(1, max_bytes)
+        return bytes(resp.content[:cap])
+
     async def get_commit_diff(
         self,
         session: AsyncSession,

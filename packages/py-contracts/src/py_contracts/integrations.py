@@ -42,6 +42,7 @@ from py_contracts.primitives import (
     OpaqueProviderId,
     Page,
     PositiveVersion,
+    Sha256Digest,
     StrictContractModel,
     UtcTimestamp,
     WorkspaceResourceBase,
@@ -474,7 +475,31 @@ class GitHubInstallationConfirmResponse(StrictContractModel):
     grant_review_required: StrictBool = False
 
 
-# S-10 CiRun & CiJob
+# S-10 CiRun, CiJob & U13 Triage/Flaky Contracts (`A-08`, `TRI-01`, `TRI-03`)
+FlakyClassification = Literal[
+    "flaky",
+    "persistent_failure",
+    "single_pass_unproven",
+    "insufficient_history",
+    "unknown",
+]
+JobLogStatus = Literal[
+    "pending",
+    "available",
+    "truncated",
+    "expired",
+    "unavailable",
+]
+CiRunIngestionState = Literal[
+    "pending",
+    "collecting",
+    "ingested",
+    "incomplete",
+    "stale_sha",
+    "failed",
+]
+
+
 class CiRun(WorkspaceResourceBase):
     """S-10 normalized CI pipeline/workflow run attempt."""
 
@@ -488,6 +513,22 @@ class CiRun(WorkspaceResourceBase):
     conclusion: CiConclusion | None = None
     jobs_complete: StrictBool
     raw_vendor_status: BoundedName | None = None
+    provider: ProviderKind = "github"
+    repository_name: BoundedName | None = None
+    attempt_number: Annotated[StrictInt, Field(ge=1)] = 1
+    is_rerun: StrictBool = False
+    untrusted_fork: StrictBool = False
+    head_sha_verified: StrictBool = True
+    observed_head_sha: BoundedName | None = None
+    ingestion_state: CiRunIngestionState = "ingested"
+    incomplete_reason: BoundedReason | None = None
+    failed_job_count: Annotated[StrictInt, Field(ge=0)] = 0
+    total_job_count: Annotated[StrictInt, Field(ge=0)] = 0
+    artifact_count: Annotated[StrictInt, Field(ge=0)] = 0
+    flaky_classification: FlakyClassification = "unknown"
+    child_pipeline_ids: list[OpaqueProviderId] = Field(default_factory=list)
+    started_at: UtcTimestamp | None = None
+    completed_at: UtcTimestamp | None = None
 
 
 class CiJob(WorkspaceResourceBase):
@@ -502,6 +543,73 @@ class CiJob(WorkspaceResourceBase):
     started_at: UtcTimestamp | None = None
     completed_at: UtcTimestamp | None = None
     conclusion: CiConclusion | None = None
+    status: CiRunStatus = "completed"
+    stage: BoundedName | None = None
+    is_child_pipeline_job: StrictBool = False
+    child_pipeline_id: OpaqueProviderId | None = None
+    log_artifact_id: InternalId | None = None
+    log_status: JobLogStatus = "unavailable"
+    log_size_bytes: Annotated[StrictInt, Field(ge=0)] = 0
+    log_truncated: StrictBool = False
+    failure_excerpt: BoundedReason | None = None
+    failure_fingerprint_id: InternalId | None = None
+    failure_fingerprint_hash: Sha256Digest | None = None
+    flaky_classification: FlakyClassification = "unknown"
+
+
+CiRunPage = Page[CiRun]
+
+
+class CiJobListResponse(StrictContractModel):
+    """A-08 normalized CI job list for a specific `CiRun` attempt."""
+
+    run_id: InternalId
+    items: list[CiJob] = Field(default_factory=list)
+
+
+class JobLogChunkResponse(StrictContractModel):
+    """A-08 bounded, redacted CI job log slice (`max_bytes <= 65536`, `NFR-14`)."""
+
+    job_id: InternalId
+    run_id: InternalId
+    log_status: JobLogStatus
+    content: Annotated[StrictStr, Field(max_length=65536)]
+    start_offset: Annotated[StrictInt, Field(ge=0)]
+    next_offset: Annotated[StrictInt, Field(ge=0)]
+    returned_bytes: Annotated[StrictInt, Field(ge=0, le=65536)]
+    total_bytes: Annotated[StrictInt, Field(ge=0)]
+    has_more: StrictBool
+    truncated: StrictBool
+    log_complete: StrictBool
+    redaction_version: BoundedName
+    incomplete_marker: BoundedReason | None = None
+
+
+class FailureFingerprintObservation(StrictContractModel):
+    """Single historical run-attempt outcome recorded against a failure fingerprint (`TRI-03`)."""
+
+    run_id: InternalId
+    attempt_key: OpaqueProviderId
+    head_sha: GitSha
+    conclusion: CiConclusion
+    observed_at: UtcTimestamp
+
+
+class FailureFingerprintSummary(WorkspaceResourceBase):
+    """TRI-03 historical failure fingerprint & bounded flaky classification summary."""
+
+    fingerprint_hash: Sha256Digest
+    signature_label: BoundedReason
+    test_identifier: BoundedText | None = None
+    error_kind: BoundedName | None = None
+    classification: FlakyClassification
+    confidence_reason: BoundedReason
+    failure_count: Annotated[StrictInt, Field(ge=0)]
+    pass_on_same_sha_count: Annotated[StrictInt, Field(ge=0)]
+    distinct_sha_count: Annotated[StrictInt, Field(ge=0)]
+    first_seen_at: UtcTimestamp
+    last_seen_at: UtcTimestamp
+    recent_observations: list[FailureFingerprintObservation] = Field(default_factory=list)
 
 
 # S-16 Notification Destination, Delivery & Preference

@@ -110,6 +110,17 @@ export type GitHubInstallationConfirmRequest = SchemaOf<"GitHubInstallationConfi
 export type GitHubInstallationConfirmResponse = SchemaOf<"GitHubInstallationConfirmResponse">;
 export type CiRun = SchemaOf<"CiRun">;
 export type CiJob = SchemaOf<"CiJob">;
+export type CiRunStatus = CiRun["status"];
+export type CiConclusion = NonNullable<CiRun["conclusion"]>;
+export type CiRunIngestionState = NonNullable<CiRun["ingestion_state"]>;
+export type FlakyClassification = NonNullable<CiRun["flaky_classification"]>;
+export type JobLogStatus = NonNullable<CiJob["log_status"]>;
+export type CiRunPage = SchemaOf<"Page_CiRun_">;
+export type CiJobListResponse = SchemaOf<"CiJobListResponse">;
+export type JobLogChunkResponse = SchemaOf<"JobLogChunkResponse">;
+export type FailureFingerprintObservation = SchemaOf<"FailureFingerprintObservation">;
+export type FailureFingerprintSummary = SchemaOf<"FailureFingerprintSummary">;
+export type CiRunDetailResponse = SchemaOf<"CiRunDetailResponse">;
 export type Repair = SchemaOf<"Repair">;
 export type Diagnosis = SchemaOf<"Diagnosis">;
 export type Patch = SchemaOf<"Patch">;
@@ -243,6 +254,29 @@ export interface ListRepositoriesQuery {
   readonly hazard_status?: WorkflowHazardStatus | null;
   readonly tag?: string | null;
   readonly include_inactive?: boolean;
+}
+
+export interface ListRunsQuery {
+  readonly cursor?: string | null;
+  readonly limit?: number;
+  readonly repository_id?: string | null;
+  readonly status?: CiRunStatus | null;
+  readonly conclusion?: CiConclusion | null;
+  readonly ingestion_state?: CiRunIngestionState | null;
+  readonly flaky_classification?: FlakyClassification | null;
+  readonly head_sha?: string | null;
+  readonly flaky_only?: boolean;
+}
+
+export interface GetJobLogQuery {
+  readonly start_offset?: number;
+  readonly max_bytes?: number;
+}
+
+export interface DownloadedArtifactPayload {
+  readonly bytes: ArrayBuffer;
+  readonly contentType: string;
+  readonly filename: string | null;
 }
 
 export interface GitHubCallbackQuery {
@@ -525,6 +559,32 @@ export interface Red2PrClient {
     body: BulkRepositoryUpdateRequest,
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<BulkRepositoryUpdateResponse>>;
+  listRuns(
+    ws: string,
+    query?: ListRunsQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<CiRunPage>>;
+  getRun(
+    ws: string,
+    runId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<CiRunDetailResponse>>;
+  listRunJobs(
+    ws: string,
+    runId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<CiJobListResponse>>;
+  getJobLog(
+    ws: string,
+    jobId: string,
+    query?: GetJobLogQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<JobLogChunkResponse>>;
+  downloadArtifact(
+    ws: string,
+    artifactId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<DownloadedArtifactPayload>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -592,6 +652,15 @@ function buildOptionalHeaders(
     headers["Idempotency-Key"] = reqOptions.idempotencyKey;
   }
   return headers;
+}
+
+function parseAttachmentFilename(response: Response): string | null {
+  const disp = response.headers.get("Content-Disposition");
+  if (disp === null) {
+    return null;
+  }
+  const match = /filename="?([^";\r\n]+)"?/i.exec(disp);
+  return match?.[1] ?? null;
 }
 
 function toEnvelope<TData>(data: TData, response: Response): ApiEnvelope<TData> {
@@ -1449,6 +1518,81 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
       }
       return toEnvelope(data, response);
+    },
+    async listRuns(ws, query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/runs", {
+        params: { path: { ws }, query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async getRun(ws, runId, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/runs/{run_id}", {
+        params: { path: { ws, run_id: runId } },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async listRunJobs(ws, runId, reqOptions) {
+      const { data, error, response } = await raw.GET(
+        "/api/v1/workspaces/{ws}/runs/{run_id}/jobs",
+        {
+          params: { path: { ws, run_id: runId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async getJobLog(ws, jobId, query, reqOptions) {
+      const { data, error, response } = await raw.GET(
+        "/api/v1/workspaces/{ws}/jobs/{job_id}/log",
+        {
+          params: { path: { ws, job_id: jobId }, query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async downloadArtifact(ws, artifactId, reqOptions) {
+      const { data, error, response } = await raw.GET(
+        "/api/v1/workspaces/{ws}/artifacts/{artifact_id}/download",
+        {
+          params: { path: { ws, artifact_id: artifactId } },
+          parseAs: "arrayBuffer",
+          headers: {
+            Accept: "*/*, application/problem+json",
+            ...buildOptionalHeaders(reqOptions),
+          },
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(
+        {
+          bytes: data,
+          contentType: response.headers.get("Content-Type") ?? "application/octet-stream",
+          filename: parseAttachmentFilename(response),
+        },
+        response,
+      );
     },
   };
 }

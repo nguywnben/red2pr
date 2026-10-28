@@ -9,6 +9,7 @@ export const EN_MESSAGES = {
   "app.nav.mobileMenu": "Open navigation menu",
   "app.nav.overview": "Overview",
   "app.nav.failures": "CI Failures",
+  "app.nav.pipelines": "Pipelines",
   "app.nav.repairs": "Repairs",
   "app.nav.approvals": "Approvals",
   "app.nav.repositories": "Repositories",
@@ -470,6 +471,25 @@ export const EN_MESSAGES = {
   "policyEditor.staleConflictBanner":
     "Stale policy revision detected (HTTP 409/412). Reload the latest authoritative snapshot before saving your changes.",
   "policyEditor.reloadAction": "Reload latest policy",
+
+  "pipelines.title": "CI Runs, Logs & Artifacts",
+  "pipelines.subtitle":
+    "Attempt-pinned CI workflow runs, matrix job logs, verified encrypted artifacts, and bounded flaky-test classifications.",
+  "pipelines.tableLabel": "Authorized CI workflow runs",
+  "pipelines.filterRepoLabel": "Repository",
+  "pipelines.filterConclusionLabel": "Conclusion",
+  "pipelines.filterFlakyLabel": "Flaky verdict",
+  "pipelines.filterShaLabel": "Source SHA",
+  "pipelines.filterShaPlaceholder": "40-hex commit SHA...",
+  "pipelines.filterFlakyOnly": "Flaky only",
+  "pipelines.emptyTitle": "No CI runs collected for this filter",
+  "pipelines.emptyDesc":
+    "Ingested GitHub workflow runs and GitLab pipelines appear here once authorized repositories emit webhook or polled CI events.",
+  "pipelines.expiredLogTitle": "CI job log expired (HTTP 410)",
+  "pipelines.expiredLogDesc":
+    "Upstream or retained job log bytes have expired. Run evidence remains incomplete and is never treated as passing.",
+  "pipelines.singlePassNotice":
+    "Single green rerun after 1 failure is unproven (TRI-03): Red2PR requires >= 2 historical failures before classifying a signature as flaky.",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

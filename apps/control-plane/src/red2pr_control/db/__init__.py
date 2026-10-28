@@ -1,6 +1,8 @@
 """PostgreSQL 16 persistence spine: ORM models, RLS guards, idempotency, and outbox."""
 
 from red2pr_control.db.base import (
+    ArtifactBlobModel,
+    ArtifactModel,
     AuditCheckpointModel,
     AuditLogModel,
     AuthChallengeModel,
@@ -8,10 +10,13 @@ from red2pr_control.db.base import (
     Base,
     BootstrapTokenModel,
     BreakGlassGrantModel,
+    CiJobModel,
+    CiRunModel,
     ConsentModel,
     DeadLetterJobModel,
     EffectTombstoneModel,
     EndpointRegistrationModel,
+    FailureFingerprintModel,
     IdempotencyRecordModel,
     InstanceModel,
     InvitationModel,
@@ -65,6 +70,8 @@ from red2pr_control.db.rls import (
 )
 
 __all__ = [
+    "ArtifactBlobModel",
+    "ArtifactModel",
     "AuditCheckpointModel",
     "AuditLogModel",
     "AuthChallengeModel",
@@ -72,11 +79,14 @@ __all__ = [
     "Base",
     "BootstrapTokenModel",
     "BreakGlassGrantModel",
+    "CiJobModel",
+    "CiRunModel",
     "ClaimedOutboxEvent",
     "ConsentModel",
     "DeadLetterJobModel",
     "EffectTombstoneModel",
     "EndpointRegistrationModel",
+    "FailureFingerprintModel",
     "IdempotencyClaimOutcome",
     "IdempotencyRecordModel",
     "InstanceModel",

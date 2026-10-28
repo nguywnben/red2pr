@@ -118,7 +118,7 @@ source_modules = ["red2pr_worker"]
 forbidden_modules = ["red2pr_control", "red2pr_cli", "sqlalchemy"]
 
 [[tool.importlinter.contracts]]
-name = "Z1 orchestrator, verifier, db, audit, iam, operations, integrations and repositories never directly import Z2 raw secret, publisher or inference brokers"
+name = "Z1 orchestrator, verifier, db, audit, iam, operations, integrations, repositories and triage_evidence never directly import Z2 raw secret, publisher or inference brokers"
 id = "control-plane-z1-z2-boundaries"
 type = "forbidden"
 source_modules = [
@@ -130,6 +130,7 @@ source_modules = [
     "red2pr_control.operations",
     "red2pr_control.integrations",
     "red2pr_control.repositories",
+    "red2pr_control.triage_evidence",
 ]
 forbidden_modules = [
     "red2pr_control.secrets",

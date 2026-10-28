@@ -1265,16 +1265,45 @@ class GitHubAppAdapter:
             for item in raw_jobs:
                 if not isinstance(item, Mapping):
                     continue
+                job_name = str(item.get("name") or "job")[:120]
+                matrix_dims: dict[str, str] = {}
+                raw_dims = item.get("matrix_dimensions")
+                if isinstance(raw_dims, Mapping):
+                    for mk, mv in list(raw_dims.items())[:8]:
+                        if mk is not None and mv is not None:
+                            matrix_dims[str(mk).strip()[:120]] = str(mv).strip()[:256]
+                elif "(" in job_name and job_name.endswith(")"):
+                    inner = job_name.rsplit("(", 1)[1][:-1].strip()
+                    if inner:
+                        for idx, part in enumerate(inner.split(",")[:8]):
+                            clean_part = part.strip()
+                            if not clean_part:
+                                continue
+                            if "=" in clean_part:
+                                dk, dv = clean_part.split("=", 1)
+                                matrix_dims[dk.strip()[:120]] = dv.strip()[:256]
+                            else:
+                                matrix_dims[f"matrix_{idx}"] = clean_part[:256]
+                raw_labels = item.get("labels")
+                if isinstance(raw_labels, list) and raw_labels and "runner" not in matrix_dims:
+                    first_lbl = str(raw_labels[0]).strip()
+                    if first_lbl:
+                        matrix_dims["runner"] = first_lbl[:120]
+                raw_retry_of = item.get("retry_of_id")
                 results.append(
                     ProviderJobRecord(
                         external_job_id=str(item.get("id", "")),
-                        name=str(item.get("name") or "job")[:120],
+                        name=job_name,
                         status=str(item.get("status") or "unknown"),
                         conclusion=(
                             str(item["conclusion"]) if item.get("conclusion") is not None else None
                         ),
                         started_at=_parse_iso_dt(item.get("started_at")),
                         completed_at=_parse_iso_dt(item.get("completed_at")),
+                        matrix_dimensions=matrix_dims,
+                        retry_of_id=(
+                            str(raw_retry_of).strip()[:128] if raw_retry_of is not None else None
+                        ),
                     )
                 )
         return tuple(results)
@@ -1308,7 +1337,11 @@ class GitHubAppAdapter:
             headers=self._default_headers(bearer_token=token),
         )
         self._raise_for_github_status(resp)
-        return bytes(resp.content[: max(1, max_bytes)])
+        raw = resp.content
+        cap = max(1, max_bytes)
+        if len(raw) > cap:
+            return bytes(raw[-cap:])
+        return bytes(raw)
 
     async def get_artifact_metadata(
         self,
@@ -1356,6 +1389,38 @@ class GitHubAppAdapter:
                     )
                 )
         return tuple(out)
+
+    async def download_artifact_archive(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        external_artifact_id: str,
+        max_bytes: int = 104_857_601,
+        now: datetime | None = None,
+    ) -> bytes:
+        ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+        owner, repo = _split_repo_full_name(repo_full_name)
+        token = await self._get_jit_installation_token(
+            session,
+            ctx,
+            permissions={"metadata": "read", "actions": "read"},
+            repositories=[repo],
+            now=ref_now,
+        )
+        resp = await self._send_request(
+            "GET",
+            self._build_url(
+                ctx.base_url,
+                f"/repos/{quote(owner, safe='')}/{quote(repo, safe='')}"
+                f"/actions/artifacts/{quote(external_artifact_id.strip(), safe='')}/zip",
+            ),
+            headers=self._default_headers(bearer_token=token),
+        )
+        self._raise_for_github_status(resp)
+        cap = max(1, max_bytes)
+        return bytes(resp.content[:cap])
 
     async def get_commit_diff(
         self,

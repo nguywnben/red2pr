@@ -1027,4 +1027,158 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(preview.data.can_apply, true);
     assert.equal(preview.data.path_evaluations?.[0]?.verdict, "requires_approval");
   });
+
+  it("serializes U13 A-08 runs/jobs/logs and A-10 binary artifact downloads with 410 errors", async () => {
+    const wsId = "019a2500-0000-7000-8000-000000001301";
+    const repoId = "019a2500-0000-7000-8000-000000001302";
+    const runId = "019a2500-0000-7000-8000-000000001303";
+    const jobId = "019a2500-0000-7000-8000-000000001304";
+    const expiredJobId = "019a2500-0000-7000-8000-000000001305";
+    const artifactId = "019a2500-0000-7000-8000-000000001306";
+
+    const sampleRun = {
+      id: runId,
+      workspace_id: wsId,
+      repository_id: repoId,
+      version: 1,
+      created_at: "2026-10-28T04:00:00Z",
+      updated_at: "2026-10-28T04:01:00Z",
+      external_id: "9801001",
+      attempt_key: "attempt:2",
+      attempt_number: 2,
+      provider: "github" as const,
+      repository_name: "acme/core-service",
+      head_sha: "a".repeat(40),
+      head_sha_verified: true,
+      ref: "refs/heads/main",
+      event_type: "push",
+      status: "completed" as const,
+      conclusion: "failure" as const,
+      jobs_complete: true,
+      ingestion_state: "ingested" as const,
+      flaky_classification: "single_pass_unproven" as const,
+      flaky_job_count: 0,
+      failed_job_count: 1,
+      artifact_count: 1,
+      child_pipeline_ids: [],
+    };
+
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      fetch: async (request) => {
+        const url = new URL(request.url);
+        if (request.method === "GET" && url.pathname === "/api/v1/workspaces/acme/runs") {
+          return new Response(
+            JSON.stringify({
+              items: [sampleRun],
+              next_cursor: null,
+              snapshot_at: "2026-10-28T04:02:00Z",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (
+          request.method === "GET" &&
+          url.pathname === `/api/v1/workspaces/acme/runs/${runId}`
+        ) {
+          return new Response(
+            JSON.stringify({
+              run: sampleRun,
+              sibling_attempts: [sampleRun],
+              jobs: [
+                {
+                  id: jobId,
+                  workspace_id: wsId,
+                  repository_id: repoId,
+                  version: 1,
+                  created_at: "2026-10-28T04:00:10Z",
+                  updated_at: "2026-10-28T04:00:55Z",
+                  run_id: runId,
+                  external_id: "7701",
+                  name: "pytest (py312, linux)",
+                  status: "completed",
+                  conclusion: "failure",
+                  matrix_dimensions: { python: "py312", os: "linux" },
+                  log_status: "available",
+                  log_size_bytes: 128,
+                  log_truncated: false,
+                  flaky_classification: "single_pass_unproven",
+                },
+              ],
+              artifacts: [
+                {
+                  id: artifactId,
+                  workspace_id: wsId,
+                  repository_id: repoId,
+                  version: 1,
+                  created_at: "2026-10-28T04:00:58Z",
+                  updated_at: "2026-10-28T04:00:58Z",
+                  kind: "junit_xml",
+                  name: "junit-results.zip",
+                  run_id: runId,
+                  mime: "application/zip",
+                  size_bytes: 4,
+                  digest: "b".repeat(64),
+                  redaction_version: 1,
+                  access_class: "workspace_internal",
+                  retention_until: "2026-11-27T04:00:58Z",
+                  available: true,
+                },
+              ],
+              fingerprints: [],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (
+          request.method === "GET" &&
+          url.pathname === `/api/v1/workspaces/acme/jobs/${expiredJobId}/log`
+        ) {
+          return new Response(
+            JSON.stringify({
+              type: "https://red2pr.local/problems/log_expired",
+              title: "Gone",
+              status: 410,
+              code: "log_expired",
+              detail: "Upstream CI job log has expired.",
+              correlation_id: "corr-u13-410",
+            }),
+            { status: 410, headers: { "Content-Type": "application/problem+json" } },
+          );
+        }
+        if (
+          request.method === "GET" &&
+          url.pathname === `/api/v1/workspaces/acme/artifacts/${artifactId}/download`
+        ) {
+          return new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/zip",
+              "Content-Disposition": 'attachment; filename="junit-results.zip"',
+              "X-Correlation-Id": "corr-u13-dl",
+            },
+          });
+        }
+        throw new Error(`Unexpected ${request.method} ${url.pathname}`);
+      },
+    });
+
+    const runs = await client.listRuns("acme", { repository_id: repoId });
+    assert.equal(runs.data.items.length, 1);
+    assert.equal(runs.data.items[0]?.flaky_classification, "single_pass_unproven");
+
+    const detail = await client.getRun("acme", runId);
+    assert.equal(detail.data.jobs?.[0]?.matrix_dimensions?.python, "py312");
+    assert.equal("storage_ref" in (detail.data.artifacts?.[0] ?? {}), false);
+
+    await assert.rejects(
+      () => client.getJobLog("acme", expiredJobId),
+      (err: unknown) =>
+        err instanceof Red2PrApiError && err.status === 410 && err.problem.code === "log_expired",
+    );
+
+    const downloaded = await client.downloadArtifact("acme", artifactId);
+    assert.equal(downloaded.data.filename, "junit-results.zip");
+    assert.equal(downloaded.data.bytes.byteLength, 4);
+  });
 });

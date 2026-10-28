@@ -179,7 +179,7 @@ export function SafeLogViewer({
         <div
           ref={scrollContainerRef}
           role="region"
-          aria-label={resolvedTitle}
+          aria-label={`${resolvedTitle} viewport`}
           style={{
             height,
             overflow: "auto",
@@ -237,7 +237,7 @@ export function SafeLogViewer({
       ) : (
         <div style={{ padding: 8 }}>
           <ol
-            aria-label={resolvedTitle}
+            aria-label={`${resolvedTitle} viewport`}
             style={{
               margin: 0,
               padding: 0,

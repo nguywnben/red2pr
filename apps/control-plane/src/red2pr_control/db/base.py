@@ -2009,3 +2009,458 @@ class RepositoryPolicyModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class ArtifactBlobModel(Base):
+    """U13 / S-14 / SEC-025 / SEC-032 tenant-scoped physical encrypted blob lifecycle record."""
+
+    __tablename__ = "artifact_blobs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_artifact_blobs_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "digest",
+            name="uq_artifact_blobs_workspace_digest",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_artifact_blobs_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "storage_backend IN ('local_encrypted', 's3_encrypted')",
+            name="artifact_blob_backend_valid",
+        ),
+        CheckConstraint(
+            "blob_state IN ('staged', 'verified', 'finalized', 'quarantined', 'purged')",
+            name="artifact_blob_state_valid",
+        ),
+        CheckConstraint("size_bytes >= 0", name="artifact_blob_size_nonneg"),
+        CheckConstraint("kek_version >= 1", name="artifact_blob_kek_version_pos"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_artifact_blobs_ws_state_created",
+            "workspace_id",
+            "blob_state",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    storage_backend: Mapped[str] = mapped_column(String(32), nullable=False)
+    storage_ref: Mapped[str] = mapped_column(String(1024), nullable=False)
+    staged_ref: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    blob_state: Mapped[str] = mapped_column(String(32), nullable=False, default="staged")
+    kek_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    aad_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    quarantine_reason: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class FailureFingerprintModel(Base):
+    """TRI-03 / U13 historical failure signature & bounded flaky-test observation tracker."""
+
+    __tablename__ = "failure_fingerprints"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_failure_fingerprints_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "repository_id",
+            "fingerprint_hash",
+            name="uq_failure_fingerprints_ws_repo_hash",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_failure_fingerprints_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_failure_fingerprints_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "classification IN ("
+            "'flaky', 'persistent_failure', 'single_pass_unproven', "
+            "'insufficient_history', 'unknown'"
+            ")",
+            name="failure_fingerprint_classification_valid",
+        ),
+        CheckConstraint("failure_count >= 0", name="failure_fingerprint_failures_nonneg"),
+        CheckConstraint(
+            "pass_on_same_sha_count >= 0",
+            name="failure_fingerprint_same_sha_passes_nonneg",
+        ),
+        CheckConstraint(
+            "distinct_sha_count >= 0",
+            name="failure_fingerprint_distinct_shas_nonneg",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_failure_fingerprints_ws_repo_last_seen",
+            "workspace_id",
+            "repository_id",
+            "last_seen_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    fingerprint_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    signature_label: Mapped[str] = mapped_column(String(1000), nullable=False)
+    test_identifier: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    error_kind: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    classification: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="insufficient_history"
+    )
+    confidence_reason: Mapped[str] = mapped_column(String(1000), nullable=False)
+    failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pass_on_same_sha_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    distinct_sha_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    recent_observations_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class CiRunModel(Base):
+    """S-10 / TRI-01 / U13 normalized attempt-pinned CI run/pipeline record."""
+
+    __tablename__ = "ci_runs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_ci_runs_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "repository_id",
+            "external_id",
+            "attempt_key",
+            name="uq_ci_runs_ws_repo_ext_attempt",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_ci_runs_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_ci_runs_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "connection_id"],
+            ["provider_connections.workspace_id", "provider_connections.id"],
+            name="fk_ci_runs_tenant_conn_provider_connections",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "trigger_id"],
+            ["ci_run_triggers.workspace_id", "ci_run_triggers.id"],
+            name="fk_ci_runs_tenant_trigger_ci_run_triggers",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("provider IN ('github', 'gitlab')", name="ci_run_provider_valid"),
+        CheckConstraint(
+            "status IN ('queued', 'in_progress', 'completed', 'unknown')",
+            name="ci_run_status_valid",
+        ),
+        CheckConstraint(
+            "conclusion IS NULL OR conclusion IN ("
+            "'failure', 'timed_out', 'action_required', 'cancelled', "
+            "'success', 'skipped', 'neutral', 'unknown'"
+            ")",
+            name="ci_run_conclusion_valid",
+        ),
+        CheckConstraint(
+            "ingestion_state IN ("
+            "'pending', 'collecting', 'ingested', 'incomplete', 'stale_sha', 'failed'"
+            ")",
+            name="ci_run_ingestion_state_valid",
+        ),
+        CheckConstraint(
+            "flaky_classification IN ("
+            "'flaky', 'persistent_failure', 'single_pass_unproven', "
+            "'insufficient_history', 'unknown'"
+            ")",
+            name="ci_run_flaky_class_valid",
+        ),
+        CheckConstraint("attempt_number >= 1", name="ci_run_attempt_number_pos"),
+        CheckConstraint("failed_job_count >= 0", name="ci_run_failed_jobs_nonneg"),
+        CheckConstraint("total_job_count >= 0", name="ci_run_total_jobs_nonneg"),
+        CheckConstraint("artifact_count >= 0", name="ci_run_artifacts_nonneg"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_ci_runs_ws_repo_created",
+            "workspace_id",
+            "repository_id",
+            "created_at",
+            "id",
+        ),
+        Index(
+            "ix_ci_runs_ws_sha",
+            "workspace_id",
+            "head_sha",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    connection_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    trigger_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    attempt_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    head_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    observed_head_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    head_sha_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    ref: Mapped[str] = mapped_column(String(120), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="completed")
+    conclusion: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    jobs_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    raw_vendor_status: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    is_rerun: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    untrusted_fork: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ingestion_state: Mapped[str] = mapped_column(String(32), nullable=False, default="ingested")
+    incomplete_reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    failed_job_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_job_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    artifact_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    flaky_classification: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    child_pipeline_ids_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class ArtifactModel(Base):
+    """S-14 / A-10 / U13 workspace-scoped artifact metadata record (storage_ref internal only)."""
+
+    __tablename__ = "artifacts"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_artifacts_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_artifacts_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_artifacts_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "run_id"],
+            ["ci_runs.workspace_id", "ci_runs.id"],
+            name="fk_artifacts_tenant_run_ci_runs",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "blob_id"],
+            ["artifact_blobs.workspace_id", "artifact_blobs.id"],
+            name="fk_artifacts_tenant_blob_artifact_blobs",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "access_class IN ('public', 'workspace_internal', 'restricted')",
+            name="artifact_access_class_valid",
+        ),
+        CheckConstraint(
+            "lifecycle_state IN ('staged', 'finalized', 'quarantined', 'expired', 'purged')",
+            name="artifact_lifecycle_state_valid",
+        ),
+        CheckConstraint("size_bytes >= 0", name="artifact_size_nonneg"),
+        CheckConstraint(
+            "extracted_file_count IS NULL OR extracted_file_count >= 0",
+            name="artifact_extracted_files_nonneg",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_artifacts_ws_run_created",
+            "workspace_id",
+            "run_id",
+            "created_at",
+            "id",
+        ),
+        Index(
+            "ix_artifacts_ws_retention",
+            "workspace_id",
+            "retention_until",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    blob_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    manifest_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    external_artifact_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    kind: Mapped[str] = mapped_column(String(120), nullable=False)
+    mime: Mapped[str] = mapped_column(String(120), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    storage_ref: Mapped[str] = mapped_column(String(1024), nullable=False)
+    redaction_version: Mapped[str] = mapped_column(String(64), nullable=False, default="v1")
+    retention_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    access_class: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="workspace_internal"
+    )
+    lifecycle_state: Mapped[str] = mapped_column(String(32), nullable=False, default="finalized")
+    extracted_file_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    purge_reason: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class CiJobModel(Base):
+    """S-10 / TRI-01 / U13 normalized CI job with matrix dimensions, log ref & flaky summary."""
+
+    __tablename__ = "ci_jobs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_ci_jobs_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "run_id",
+            "external_id",
+            name="uq_ci_jobs_ws_run_ext_id",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_ci_jobs_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_ci_jobs_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "run_id"],
+            ["ci_runs.workspace_id", "ci_runs.id"],
+            name="fk_ci_jobs_tenant_run_ci_runs",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "log_artifact_id"],
+            ["artifacts.workspace_id", "artifacts.id"],
+            name="fk_ci_jobs_tenant_log_artifact_artifacts",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "failure_fingerprint_id"],
+            ["failure_fingerprints.workspace_id", "failure_fingerprints.id"],
+            name="fk_ci_jobs_tenant_fp_failure_fingerprints",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "status IN ('queued', 'in_progress', 'completed', 'unknown')",
+            name="ci_job_status_valid",
+        ),
+        CheckConstraint(
+            "conclusion IS NULL OR conclusion IN ("
+            "'failure', 'timed_out', 'action_required', 'cancelled', "
+            "'success', 'skipped', 'neutral', 'unknown'"
+            ")",
+            name="ci_job_conclusion_valid",
+        ),
+        CheckConstraint(
+            "log_status IN ('pending', 'available', 'truncated', 'expired', 'unavailable')",
+            name="ci_job_log_status_valid",
+        ),
+        CheckConstraint(
+            "flaky_classification IN ("
+            "'flaky', 'persistent_failure', 'single_pass_unproven', "
+            "'insufficient_history', 'unknown'"
+            ")",
+            name="ci_job_flaky_class_valid",
+        ),
+        CheckConstraint("log_size_bytes >= 0", name="ci_job_log_size_nonneg"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_ci_jobs_ws_run_created",
+            "workspace_id",
+            "run_id",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    run_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    stage: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    matrix_dimensions_json: Mapped[dict[str, str]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    retry_of_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    is_child_pipeline_job: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    child_pipeline_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="completed")
+    conclusion: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    log_artifact_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    log_status: Mapped[str] = mapped_column(String(32), nullable=False, default="unavailable")
+    log_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    log_truncated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    failure_excerpt: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    failure_fingerprint_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    failure_fingerprint_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    flaky_classification: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

@@ -13,7 +13,12 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, StrictBool, StrictInt, model_validator
 
-from py_contracts.integrations import GitSha
+from py_contracts.integrations import (
+    CiJob,
+    CiRun,
+    FailureFingerprintSummary,
+    GitSha,
+)
 from py_contracts.primitives import (
     BoundedName,
     BoundedText,
@@ -36,6 +41,9 @@ ArtifactAccessClass = Literal["public", "workspace_internal", "restricted"]
 class Artifact(WorkspaceResourceBase):
     """S-14 public artifact metadata DTO (never exposes internal storage_ref or bucket keys)."""
 
+    name: BoundedName | None = None
+    run_id: InternalId | None = None
+    job_id: InternalId | None = None
     kind: BoundedName
     mime: BoundedName
     size_bytes: Annotated[StrictInt, Field(ge=0)]
@@ -44,6 +52,7 @@ class Artifact(WorkspaceResourceBase):
     retention_until: UtcTimestamp
     access_class: ArtifactAccessClass
     manifest_id: InternalId | None = None
+    extracted_file_count: Annotated[StrictInt, Field(ge=0)] | None = None
     available: StrictBool
     purge_reason: BoundedName | None = None
 
@@ -51,6 +60,9 @@ class Artifact(WorkspaceResourceBase):
 class ArtifactRecord(WorkspaceResourceBase):
     """S-14 internal control-plane artifact record including storage_ref."""
 
+    name: BoundedName | None = None
+    run_id: InternalId | None = None
+    job_id: InternalId | None = None
     kind: BoundedName
     mime: BoundedName
     size_bytes: Annotated[StrictInt, Field(ge=0)]
@@ -60,6 +72,7 @@ class ArtifactRecord(WorkspaceResourceBase):
     retention_until: UtcTimestamp
     access_class: ArtifactAccessClass
     manifest_id: InternalId | None = None
+    extracted_file_count: Annotated[StrictInt, Field(ge=0)] | None = None
 
     def to_public_dto(
         self,
@@ -75,6 +88,9 @@ class ArtifactRecord(WorkspaceResourceBase):
             version=self.version,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            name=self.name,
+            run_id=self.run_id,
+            job_id=self.job_id,
             kind=self.kind,
             mime=self.mime,
             size_bytes=self.size_bytes,
@@ -83,9 +99,20 @@ class ArtifactRecord(WorkspaceResourceBase):
             retention_until=self.retention_until,
             access_class=self.access_class,
             manifest_id=self.manifest_id,
+            extracted_file_count=self.extracted_file_count,
             available=available,
             purge_reason=purge_reason,
         )
+
+
+class CiRunDetailResponse(StrictContractModel):
+    """A-08 detailed CI run view with sibling attempts, matrix jobs, S-14 artifacts & flaky data."""
+
+    run: CiRun
+    sibling_attempts: list[CiRun] = Field(default_factory=list)
+    jobs: list[CiJob] = Field(default_factory=list)
+    artifacts: list[Artifact] = Field(default_factory=list)
+    fingerprints: list[FailureFingerprintSummary] = Field(default_factory=list)
 
 
 # S-17 Audit, Model Usage & Report Export

@@ -418,6 +418,23 @@ export interface paths {
         patch: operations["updateWorkspace"];
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/artifacts/{artifact_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download verified artifact with live repo_grants & 410 retention check (A-10) */
+        get: operations["downloadWorkspaceArtifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/break-glass": {
         parameters: {
             query?: never;
@@ -627,6 +644,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/jobs/{job_id}/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read redacted UTF-8 CI job log chunk (<= 65536 bytes; 410 if expired) (A-08) */
+        get: operations["getWorkspaceJobLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/members": {
         parameters: {
             query?: never;
@@ -760,6 +794,57 @@ export interface paths {
         put?: never;
         /** Simulate candidate repository policy without saving or mutating rows (A-07) */
         post: operations["previewWorkspaceRepositoryPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List authorized CI runs with attempt keys & flaky badges (A-08) */
+        get: operations["listWorkspaceRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get CI run attempt detail with attempts, jobs, S-14 artifacts & flaky (A-08) */
+        get: operations["getWorkspaceRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/runs/{run_id}/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List matrix & retry CI jobs for a specific CI run attempt (A-08) */
+        get: operations["listWorkspaceRunJobs"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -957,31 +1042,30 @@ export interface components {
             created_at: string;
             /** Digest */
             digest: string;
+            /** Extracted File Count */
+            extracted_file_count?: number | null;
             /** Id */
             id: string;
+            /** Job Id */
+            job_id?: string | null;
             /** Kind */
             kind: string;
-            /**
-             * Manifest Id
-             * @default null
-             */
-            manifest_id: string | null;
+            /** Manifest Id */
+            manifest_id?: string | null;
             /** Mime */
             mime: string;
-            /**
-             * Purge Reason
-             * @default null
-             */
-            purge_reason: string | null;
+            /** Name */
+            name?: string | null;
+            /** Purge Reason */
+            purge_reason?: string | null;
             /** Redaction Version */
             redaction_version: string;
-            /**
-             * Repository Id
-             * @default null
-             */
-            repository_id: string | null;
+            /** Repository Id */
+            repository_id?: string | null;
             /** Retention Until */
             retention_until: string;
+            /** Run Id */
+            run_id?: string | null;
             /** Size Bytes */
             size_bytes: number;
             /** Updated At */
@@ -1254,22 +1338,53 @@ export interface components {
          * @description S-10 normalized CI job with matrix dimensions and retry lineage.
          */
         CiJob: {
-            /**
-             * Completed At
-             * @default null
-             */
-            completed_at: string | null;
-            /**
-             * Conclusion
-             * @default null
-             */
-            conclusion: ("success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown") | null;
+            /** Child Pipeline Id */
+            child_pipeline_id?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
+            /** Conclusion */
+            conclusion?: ("success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown") | null;
             /** Created At */
             created_at: string;
             /** External Id */
             external_id: string;
+            /** Failure Excerpt */
+            failure_excerpt?: string | null;
+            /** Failure Fingerprint Hash */
+            failure_fingerprint_hash?: string | null;
+            /** Failure Fingerprint Id */
+            failure_fingerprint_id?: string | null;
+            /**
+             * Flaky Classification
+             * @default unknown
+             * @enum {string}
+             */
+            flaky_classification: "flaky" | "persistent_failure" | "single_pass_unproven" | "insufficient_history" | "unknown";
             /** Id */
             id: string;
+            /**
+             * Is Child Pipeline Job
+             * @default false
+             */
+            is_child_pipeline_job: boolean;
+            /** Log Artifact Id */
+            log_artifact_id?: string | null;
+            /**
+             * Log Size Bytes
+             * @default 0
+             */
+            log_size_bytes: number;
+            /**
+             * Log Status
+             * @default unavailable
+             * @enum {string}
+             */
+            log_status: "pending" | "available" | "truncated" | "expired" | "unavailable";
+            /**
+             * Log Truncated
+             * @default false
+             */
+            log_truncated: boolean;
             /** Matrix Dimensions */
             matrix_dimensions?: {
                 [key: string]: string;
@@ -1278,60 +1393,17 @@ export interface components {
             name: string;
             /** Repository Id */
             repository_id: string;
-            /**
-             * Retry Of Id
-             * @default null
-             */
-            retry_of_id: string | null;
+            /** Retry Of Id */
+            retry_of_id?: string | null;
             /** Run Id */
             run_id: string;
-            /**
-             * Started At
-             * @default null
-             */
-            started_at: string | null;
-            /** Updated At */
-            updated_at: string;
-            /** Version */
-            version: number;
-            /** Workspace Id */
-            workspace_id: string;
-        };
-        /**
-         * CiRun
-         * @description S-10 normalized CI pipeline/workflow run attempt.
-         */
-        CiRun: {
-            /** Attempt Key */
-            attempt_key: string;
-            /**
-             * Conclusion
-             * @default null
-             */
-            conclusion: ("success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown") | null;
-            /** Created At */
-            created_at: string;
-            /** Event Type */
-            event_type: string;
-            /** External Id */
-            external_id: string;
-            /** Head Sha */
-            head_sha: string;
-            /** Id */
-            id: string;
-            /** Jobs Complete */
-            jobs_complete: boolean;
-            /**
-             * Raw Vendor Status
-             * @default null
-             */
-            raw_vendor_status: string | null;
-            /** Ref */
-            ref: string;
-            /** Repository Id */
-            repository_id: string;
+            /** Stage */
+            stage?: string | null;
+            /** Started At */
+            started_at?: string | null;
             /**
              * Status
+             * @default completed
              * @enum {string}
              */
             status: "queued" | "in_progress" | "completed" | "unknown";
@@ -1341,6 +1413,135 @@ export interface components {
             version: number;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /**
+         * CiJobListResponse
+         * @description A-08 normalized CI job list for a specific `CiRun` attempt.
+         */
+        CiJobListResponse: {
+            /** Items */
+            items?: components["schemas"]["CiJob"][];
+            /** Run Id */
+            run_id: string;
+        };
+        /**
+         * CiRun
+         * @description S-10 normalized CI pipeline/workflow run attempt.
+         */
+        CiRun: {
+            /**
+             * Artifact Count
+             * @default 0
+             */
+            artifact_count: number;
+            /** Attempt Key */
+            attempt_key: string;
+            /**
+             * Attempt Number
+             * @default 1
+             */
+            attempt_number: number;
+            /** Child Pipeline Ids */
+            child_pipeline_ids?: string[];
+            /** Completed At */
+            completed_at?: string | null;
+            /** Conclusion */
+            conclusion?: ("success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown") | null;
+            /** Created At */
+            created_at: string;
+            /** Event Type */
+            event_type: string;
+            /** External Id */
+            external_id: string;
+            /**
+             * Failed Job Count
+             * @default 0
+             */
+            failed_job_count: number;
+            /**
+             * Flaky Classification
+             * @default unknown
+             * @enum {string}
+             */
+            flaky_classification: "flaky" | "persistent_failure" | "single_pass_unproven" | "insufficient_history" | "unknown";
+            /** Head Sha */
+            head_sha: string;
+            /**
+             * Head Sha Verified
+             * @default true
+             */
+            head_sha_verified: boolean;
+            /** Id */
+            id: string;
+            /** Incomplete Reason */
+            incomplete_reason?: string | null;
+            /**
+             * Ingestion State
+             * @default ingested
+             * @enum {string}
+             */
+            ingestion_state: "pending" | "collecting" | "ingested" | "incomplete" | "stale_sha" | "failed";
+            /**
+             * Is Rerun
+             * @default false
+             */
+            is_rerun: boolean;
+            /** Jobs Complete */
+            jobs_complete: boolean;
+            /** Observed Head Sha */
+            observed_head_sha?: string | null;
+            /**
+             * Provider
+             * @default github
+             * @enum {string}
+             */
+            provider: "github" | "gitlab";
+            /** Raw Vendor Status */
+            raw_vendor_status?: string | null;
+            /** Ref */
+            ref: string;
+            /** Repository Id */
+            repository_id: string;
+            /** Repository Name */
+            repository_name?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "in_progress" | "completed" | "unknown";
+            /**
+             * Total Job Count
+             * @default 0
+             */
+            total_job_count: number;
+            /**
+             * Untrusted Fork
+             * @default false
+             */
+            untrusted_fork: boolean;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * CiRunDetailResponse
+         * @description A-08 detailed CI run view with sibling attempts, matrix jobs, S-14 artifacts & flaky data.
+         */
+        CiRunDetailResponse: {
+            /** Artifacts */
+            artifacts?: components["schemas"]["Artifact"][];
+            /** Fingerprints */
+            fingerprints?: components["schemas"]["FailureFingerprintSummary"][];
+            /** Jobs */
+            jobs?: components["schemas"]["CiJob"][];
+            run: components["schemas"]["CiRun"];
+            /** Sibling Attempts */
+            sibling_attempts?: components["schemas"]["CiRun"][];
         };
         /**
          * Connection
@@ -2071,6 +2272,70 @@ export interface components {
             /** Workspace Id */
             workspace_id: string;
         };
+        /**
+         * FailureFingerprintObservation
+         * @description Single historical run-attempt outcome recorded against a failure fingerprint (`TRI-03`).
+         */
+        FailureFingerprintObservation: {
+            /** Attempt Key */
+            attempt_key: string;
+            /**
+             * Conclusion
+             * @enum {string}
+             */
+            conclusion: "success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown";
+            /** Head Sha */
+            head_sha: string;
+            /** Observed At */
+            observed_at: string;
+            /** Run Id */
+            run_id: string;
+        };
+        /**
+         * FailureFingerprintSummary
+         * @description TRI-03 historical failure fingerprint & bounded flaky classification summary.
+         */
+        FailureFingerprintSummary: {
+            /**
+             * Classification
+             * @enum {string}
+             */
+            classification: "flaky" | "persistent_failure" | "single_pass_unproven" | "insufficient_history" | "unknown";
+            /** Confidence Reason */
+            confidence_reason: string;
+            /** Created At */
+            created_at: string;
+            /** Distinct Sha Count */
+            distinct_sha_count: number;
+            /** Error Kind */
+            error_kind?: string | null;
+            /** Failure Count */
+            failure_count: number;
+            /** Fingerprint Hash */
+            fingerprint_hash: string;
+            /** First Seen At */
+            first_seen_at: string;
+            /** Id */
+            id: string;
+            /** Last Seen At */
+            last_seen_at: string;
+            /** Pass On Same Sha Count */
+            pass_on_same_sha_count: number;
+            /** Recent Observations */
+            recent_observations?: components["schemas"]["FailureFingerprintObservation"][];
+            /** Repository Id */
+            repository_id?: string | null;
+            /** Signature Label */
+            signature_label: string;
+            /** Test Identifier */
+            test_identifier?: string | null;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
         /** GetExecutionResultArgs */
         GetExecutionResultArgs: {
             /** Operation Id */
@@ -2281,6 +2546,41 @@ export interface components {
             detail: string | null;
             /** Passed */
             passed: boolean;
+        };
+        /**
+         * JobLogChunkResponse
+         * @description A-08 bounded, redacted CI job log slice (`max_bytes <= 65536`, `NFR-14`).
+         */
+        JobLogChunkResponse: {
+            /** Content */
+            content: string;
+            /** Has More */
+            has_more: boolean;
+            /** Incomplete Marker */
+            incomplete_marker?: string | null;
+            /** Job Id */
+            job_id: string;
+            /** Log Complete */
+            log_complete: boolean;
+            /**
+             * Log Status
+             * @enum {string}
+             */
+            log_status: "pending" | "available" | "truncated" | "expired" | "unavailable";
+            /** Next Offset */
+            next_offset: number;
+            /** Redaction Version */
+            redaction_version: string;
+            /** Returned Bytes */
+            returned_bytes: number;
+            /** Run Id */
+            run_id: string;
+            /** Start Offset */
+            start_offset: number;
+            /** Total Bytes */
+            total_bytes: number;
+            /** Truncated */
+            truncated: boolean;
         };
         /**
          * LifecycleOperation
@@ -2729,6 +3029,15 @@ export interface components {
         Page_BreakGlassGrant_: {
             /** Items */
             items: components["schemas"]["BreakGlassGrant"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+        };
+        /** Page[CiRun] */
+        Page_CiRun_: {
+            /** Items */
+            items: components["schemas"]["CiRun"][];
             /** Next Cursor */
             next_cursor?: string | null;
             /** Snapshot At */
@@ -8577,6 +8886,119 @@ export interface operations {
             };
         };
     };
+    downloadWorkspaceArtifact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artifact_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verified decrypted artifact payload */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     listBreakGlassGrants: {
         parameters: {
             query?: never;
@@ -10716,6 +11138,122 @@ export interface operations {
             };
         };
     };
+    getWorkspaceJobLog: {
+        parameters: {
+            query?: {
+                start_offset?: number;
+                max_bytes?: number;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobLogChunkResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     listWorkspaceMembers: {
         parameters: {
             query?: {
@@ -12068,6 +12606,354 @@ export interface operations {
             };
             /** @description Precondition Failed */
             412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    listWorkspaceRuns: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+                repository_id?: string | null;
+                status?: ("queued" | "in_progress" | "completed" | "unknown") | null;
+                conclusion?: ("success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown") | null;
+                ingestion_state?: ("pending" | "collecting" | "ingested" | "incomplete" | "stale_sha" | "failed") | null;
+                flaky_classification?: ("flaky" | "persistent_failure" | "single_pass_unproven" | "insufficient_history" | "unknown") | null;
+                head_sha?: string | null;
+                flaky_only?: boolean;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CiRun_"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getWorkspaceRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CiRunDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    listWorkspaceRunJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CiJobListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -41,7 +41,10 @@ from py_contracts import (
     BulkRepositoryUpdateResponse,
     CapabilitySnapshot,
     CiJob,
+    CiJobListResponse,
     CiRun,
+    CiRunDetailResponse,
+    CiRunPage,
     Connection,
     ConnectionDetailResponse,
     ConnectionPage,
@@ -64,6 +67,8 @@ from py_contracts import (
     EndpointRegistrationPage,
     EventEnvelope,
     EvidenceManifestV1,
+    FailureFingerprintObservation,
+    FailureFingerprintSummary,
     GitHubCallbackResponse,
     GitHubInstallationConfirmRequest,
     GitHubInstallationConfirmResponse,
@@ -75,6 +80,7 @@ from py_contracts import (
     InviteCreateRequest,
     InviteCreateResponse,
     InvitePage,
+    JobLogChunkResponse,
     LifecycleOperation,
     LoginRequest,
     LoginResponse,
@@ -193,6 +199,11 @@ from red2pr_control.repositories import (
     RepositoryCatalogService,
     build_repositories_router,
 )
+from red2pr_control.triage_evidence import (
+    ArtifactStoreProtocol,
+    TriageEvidenceService,
+    build_triage_evidence_router,
+)
 
 CORRELATION_HEADER = "X-Correlation-Id"
 _SAFE_CORR_RE = re.compile(r"^[A-Za-z0-9._:-]{1,120}$")
@@ -286,7 +297,13 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     PolicyReadinessGates,
     PolicyRuleChange,
     CiRun,
+    CiRunDetailResponse,
+    CiRunPage,
     CiJob,
+    CiJobListResponse,
+    FailureFingerprintObservation,
+    FailureFingerprintSummary,
+    JobLogChunkResponse,
     Repair,
     Diagnosis,
     Patch,
@@ -471,6 +488,8 @@ def create_app(
     polling_service: LocalPollingService | None = None,
     reconciler_service: MissedEventReconciler | None = None,
     repository_catalog_service: RepositoryCatalogService | None = None,
+    triage_evidence_service: TriageEvidenceService | None = None,
+    artifact_store: ArtifactStoreProtocol | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     app = FastAPI(
@@ -498,6 +517,8 @@ def create_app(
     app.state.polling_service = polling_service
     app.state.reconciler_service = reconciler_service
     app.state.repository_catalog_service = repository_catalog_service
+    app.state.triage_evidence_service = triage_evidence_service
+    app.state.artifact_store = artifact_store
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -521,6 +542,7 @@ def create_app(
     app.include_router(build_integrations_router())
     app.include_router(build_webhooks_router())
     app.include_router(build_repositories_router())
+    app.include_router(build_triage_evidence_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:
