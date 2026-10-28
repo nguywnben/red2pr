@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
+import unicodedata
 from typing import Annotated, Any, Literal
 
 from pydantic import (
@@ -28,6 +29,7 @@ from pydantic import (
 )
 
 from py_contracts.events import EventType
+from py_contracts.iam import WorkspaceRole
 from py_contracts.primitives import (
     ActionReceipt,
     BoundedName,
@@ -36,6 +38,7 @@ from py_contracts.primitives import (
     BoundedUrl,
     InstanceResourceBase,
     InternalId,
+    Money,
     OpaqueProviderId,
     Page,
     PositiveVersion,
@@ -45,6 +48,8 @@ from py_contracts.primitives import (
 )
 
 _OPAQUE_SECRET_REF_RE = re.compile(r"^(?:sec_[A-Za-z0-9_-]{3,120}|ref:[A-Za-z0-9_.:/-]{3,120})$")
+_GLOB_CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
+_WINDOWS_DRIVE_PREFIX_RE = re.compile(r"^[A-Za-z]:")
 
 
 def _validate_opaque_secret_ref(value: Any) -> str:
@@ -58,13 +63,23 @@ def _validate_opaque_secret_ref(value: Any) -> str:
 def _validate_canonical_glob(value: Any) -> str:
     if not isinstance(value, str):
         raise ValueError("Glob pattern must be a string")
-    cleaned = value.strip().replace("\\", "/")
-    if not cleaned or len(cleaned) > 256 or "\x00" in cleaned:
-        raise ValueError("Glob pattern must be 1..256 characters without null bytes")
-    segments = [seg for seg in cleaned.split("/") if seg]
-    if ".." in segments:
-        raise ValueError("Glob pattern must not contain '..' path traversal segments")
-    return cleaned
+    if "\\" in value:
+        raise ValueError("Glob pattern must use POSIX '/' separators without backslashes")
+    normalized = unicodedata.normalize("NFC", value).strip()
+    if (
+        not normalized
+        or len(normalized) > 256
+        or _GLOB_CONTROL_CHAR_RE.search(normalized) is not None
+    ):
+        raise ValueError("Glob pattern must be 1..256 characters without control bytes")
+    if normalized.startswith("/") or _WINDOWS_DRIVE_PREFIX_RE.match(normalized) is not None:
+        raise ValueError("Glob pattern must be repository-relative without root or drive prefixes")
+    raw_segments = normalized.split("/")
+    if any(seg == "" for seg in raw_segments):
+        raise ValueError("Glob pattern must not contain empty '//' path segments")
+    if any(seg in {".", ".."} for seg in raw_segments):
+        raise ValueError("Glob pattern must not contain '.' or '..' path traversal segments")
+    return normalized
 
 
 OpaqueSecretRef = Annotated[StrictStr, BeforeValidator(_validate_opaque_secret_ref)]
@@ -215,6 +230,29 @@ WorkflowHazardSeverity = Literal["high", "medium", "low"]
 WorkflowHazardStatus = Literal["clean", "flagged", "unscanned"]
 
 
+# S-10 CI Run/Conclusion Status Literals (shared with S-09 catalog summaries)
+CiRunStatus = Literal["queued", "in_progress", "completed", "unknown"]
+CiConclusion = Literal[
+    "success",
+    "failure",
+    "cancelled",
+    "timed_out",
+    "skipped",
+    "neutral",
+    "action_required",
+    "unknown",
+]
+SyncCursorStatus = Literal[
+    "idle",
+    "ok",
+    "not_modified",
+    "rate_limited",
+    "gap_detected",
+    "error",
+    "revoked",
+]
+
+
 class WorkflowHazardFinding(StrictContractModel):
     """Structured workflow hazard finding from `.github/workflows` inspection (`SEC-031`)."""
 
@@ -228,10 +266,18 @@ class RepositoryPolicy(StrictContractModel):
     """S-09 repository repair automation policy (require_baseline=True invariant per ADR-031)."""
 
     branch_allowlist: list[CanonicalGlobPattern] = Field(default_factory=list)
+    branch_denylist: list[CanonicalGlobPattern] = Field(default_factory=list)
+    file_allowlist: list[CanonicalGlobPattern] = Field(default_factory=list)
     file_denylist: list[CanonicalGlobPattern] = Field(default_factory=list)
     sensitive_rules: list[CanonicalGlobPattern] = Field(default_factory=list)
+    allow_test_edits: StrictBool = False
+    allow_config_edits: StrictBool = False
     max_attempts: Annotated[StrictInt, Field(ge=1, le=5)] = 2
     max_diff_lines: Annotated[StrictInt, Field(ge=1, le=2000)] = 500
+    max_calls_per_session: Annotated[StrictInt, Field(ge=1, le=100)] | None = None
+    max_tokens_per_session: Annotated[StrictInt, Field(ge=1, le=1_000_000)] | None = None
+    max_wall_seconds: Annotated[StrictInt, Field(ge=60, le=7200)] | None = None
+    max_cost_per_session: Money | None = None
     require_baseline: Literal[True] = True
     inference_consent_id: InternalId | None = None
     runtime_profile_id: BoundedName
@@ -254,6 +300,14 @@ class Repository(WorkspaceResourceBase):
     workflow_hazard_status: WorkflowHazardStatus = "unscanned"
     workflow_hazards: list[WorkflowHazardFinding] = Field(default_factory=list)
     auto_repair_blocked: StrictBool = False
+    provider: ProviderKind | None = None
+    organization: BoundedName | None = None
+    active: StrictBool = True
+    grant_review_required: StrictBool = False
+    sync_status: SyncCursorStatus | None = None
+    last_synced_at: UtcTimestamp | None = None
+    last_ci_conclusion: CiConclusion | None = None
+    last_ci_at: UtcTimestamp | None = None
 
 
 # U11 Webhook Ingress, Resumable Polling & Reconciliation (`SRC-03`, `SRC-04`, `A-22`)
@@ -276,15 +330,6 @@ WebhookIngressDisposition = Literal[
     "ignored_repository_paused",
     "ignored_stale_replay",
     "installation_revoked",
-]
-SyncCursorStatus = Literal[
-    "idle",
-    "ok",
-    "not_modified",
-    "rate_limited",
-    "gap_detected",
-    "error",
-    "revoked",
 ]
 
 
@@ -430,19 +475,6 @@ class GitHubInstallationConfirmResponse(StrictContractModel):
 
 
 # S-10 CiRun & CiJob
-CiRunStatus = Literal["queued", "in_progress", "completed", "unknown"]
-CiConclusion = Literal[
-    "success",
-    "failure",
-    "cancelled",
-    "timed_out",
-    "skipped",
-    "neutral",
-    "action_required",
-    "unknown",
-]
-
-
 class CiRun(WorkspaceResourceBase):
     """S-10 normalized CI pipeline/workflow run attempt."""
 
@@ -764,3 +796,354 @@ class EndpointRegistration(InstanceResourceBase):
 
 
 EndpointRegistrationPage = Page[EndpointRegistration]
+
+
+# U12 Repository Catalog, Versioned Policy Engine & Dry-Run Simulator (`A-07`, `REP-01..03`)
+PolicyScopeLayer = Literal["hard_invariant", "instance", "workspace", "repository"]
+PolicyEvaluationVerdict = Literal["allow", "requires_approval", "deny"]
+RunEligibilityDisposition = Literal[
+    "eligible_auto_repair",
+    "eligible_approval_gated",
+    "diagnose_only_monitor",
+    "blocked_paused",
+    "blocked_branch_policy",
+    "blocked_untrusted_fork",
+    "blocked_workflow_hazard",
+    "blocked_grant_review",
+    "blocked_worker_unready",
+    "blocked_missing_consent",
+]
+
+
+class RepositoryFacetSummary(StrictContractModel):
+    """Scoped catalog facets computed over the caller's authorized repositories (`UX-02`)."""
+
+    tags: list[BoundedName] = Field(default_factory=list)
+    organizations: list[BoundedName] = Field(default_factory=list)
+    mode_counts: dict[BoundedName, Annotated[StrictInt, Field(ge=0)]] = Field(default_factory=dict)
+    paused_count: Annotated[StrictInt, Field(ge=0)] = 0
+    hazard_flagged_count: Annotated[StrictInt, Field(ge=0)] = 0
+    partial_sync_connection_ids: list[InternalId] = Field(default_factory=list)
+
+
+class RepositoryCatalogPage(Page[Repository]):
+    """A-07 cursor-paginated repository catalog page (`S-04`) with strictly scoped facets."""
+
+    facets: RepositoryFacetSummary = Field(default_factory=RepositoryFacetSummary)
+
+
+class RepositoryUpdateRequest(StrictContractModel):
+    """A-07 partial repository mode, pause, tag, and W-02 grant-review update (`S-02`)."""
+
+    expected_version: PositiveVersion | None = None
+    mode: RepositoryMode | None = None
+    paused: StrictBool | None = None
+    tags: Annotated[list[BoundedName], Field(max_length=32)] | None = None
+    acknowledge_grant_review: StrictBool = False
+    reason: BoundedReason | None = None
+
+
+class PolicyReadinessGates(StrictContractModel):
+    """Authoritative safety & operational readiness prerequisites for repository automation."""
+
+    worker_isolation_ready: StrictBool
+    inference_consent_ready: StrictBool
+    workflow_hazard_blocked: StrictBool
+    grant_review_required: StrictBool
+    instance_paused: StrictBool = False
+    workspace_paused: StrictBool = False
+    blocking_reasons: list[BoundedReason] = Field(default_factory=list)
+
+
+class EffectiveRepositoryPolicy(StrictContractModel):
+    """Resolved policy after `hard_invariant > instance > workspace > repository` merge."""
+
+    mode: RepositoryMode
+    effective_mode: RepositoryMode
+    paused: StrictBool
+    effective_paused: StrictBool
+    allow_sandbox_execution: StrictBool
+    allow_auto_publication: StrictBool
+    require_baseline: Literal[True] = True
+    auto_merge: Literal[False] = False
+    branch_allowlist: list[CanonicalGlobPattern] = Field(default_factory=list)
+    branch_denylist: list[CanonicalGlobPattern] = Field(default_factory=list)
+    file_allowlist: list[CanonicalGlobPattern] = Field(default_factory=list)
+    file_denylist: list[CanonicalGlobPattern] = Field(default_factory=list)
+    hard_denied_paths: list[CanonicalGlobPattern] = Field(default_factory=list)
+    sensitive_rules: list[CanonicalGlobPattern] = Field(default_factory=list)
+    protected_paths: list[CanonicalGlobPattern] = Field(default_factory=list)
+    allow_test_edits: StrictBool = False
+    allow_config_edits: StrictBool = False
+    max_attempts: Annotated[StrictInt, Field(ge=1, le=5)]
+    max_diff_lines: Annotated[StrictInt, Field(ge=1, le=2000)]
+    max_calls_per_session: Annotated[StrictInt, Field(ge=1, le=100)]
+    max_tokens_per_session: Annotated[StrictInt, Field(ge=1, le=1_000_000)]
+    max_wall_seconds: Annotated[StrictInt, Field(ge=60, le=7200)]
+    max_cost_per_session: Money
+    inference_consent_id: InternalId | None = None
+    runtime_profile_id: BoundedName
+    field_sources: dict[BoundedName, PolicyScopeLayer] = Field(default_factory=dict)
+
+
+class RepositoryPolicyRevision(WorkspaceResourceBase):
+    """Immutable versioned `repository_policies` snapshot (`S-09`, `REP-02`)."""
+
+    repository_id: InternalId
+    revision: PositiveVersion
+    mode: RepositoryMode
+    paused: StrictBool
+    policy: RepositoryPolicy
+    change_reason: BoundedReason | None = None
+    created_by_user_id: InternalId | None = None
+
+
+class RepositoryPolicyStateResponse(StrictContractModel):
+    """A-07 current policy snapshot, merged effective policy, gates, and revision history."""
+
+    repository_id: InternalId
+    workspace_id: InternalId
+    current_revision: PositiveVersion
+    mode: RepositoryMode
+    paused: StrictBool
+    policy: RepositoryPolicy
+    effective_policy: EffectiveRepositoryPolicy
+    readiness_gates: PolicyReadinessGates
+    revisions: list[RepositoryPolicyRevision] = Field(default_factory=list)
+
+
+class RepositoryPolicyUpdateRequest(StrictContractModel):
+    """A-07 optimistic-concurrency update creating an immutable `repository_policies` revision."""
+
+    expected_revision: PositiveVersion | None = None
+    mode: RepositoryMode | None = None
+    paused: StrictBool | None = None
+    policy: RepositoryPolicy
+    reason: BoundedReason | None = None
+
+
+class PolicyRuleChange(StrictContractModel):
+    """Structured rule diff entry produced during dry-run policy preview (`A-07`)."""
+
+    field: BoundedName
+    before: Any
+    after: Any
+    impact: BoundedReason
+    requires_step_up: StrictBool = False
+
+
+class PolicyDenialItem(StrictContractModel):
+    """Explicit invariant, hazard, readiness, or scope denial reported by the policy engine."""
+
+    code: BoundedName
+    source_layer: PolicyScopeLayer
+    detail: BoundedReason
+    blocking_save: StrictBool = False
+
+
+class BranchPolicyEvaluation(StrictContractModel):
+    """Per-branch dry-run policy decision (`deny` always overrides `allow`)."""
+
+    branch: BoundedText
+    canonical_branch: BoundedName | None = None
+    verdict: PolicyEvaluationVerdict
+    matched_rule: BoundedText | None = None
+    source_layer: PolicyScopeLayer
+    reason: BoundedReason
+
+
+class PathPolicyEvaluation(StrictContractModel):
+    """Per-file-path canonicalization & glob evaluation (`SEC-007`, `SEC-009`)."""
+
+    raw_path: BoundedText
+    canonical_path: BoundedText | None = None
+    verdict: PolicyEvaluationVerdict
+    category: Literal[
+        "standard",
+        "hard_denied",
+        "denied_glob",
+        "outside_allowlist",
+        "protected_sensitive",
+        "test_file",
+        "config_file",
+        "invalid_path",
+    ]
+    matched_rule: BoundedText | None = None
+    source_layer: PolicyScopeLayer
+    reason: BoundedReason
+
+
+class HistoricalRunSimulation(StrictContractModel):
+    """Dry-run simulation of a historical `ci_run_triggers` attempt under candidate policy."""
+
+    trigger_id: InternalId
+    provider_run_id: OpaqueProviderId
+    attempt_key: OpaqueProviderId
+    ref: BoundedName
+    head_sha: BoundedName
+    conclusion: CiConclusion
+    untrusted_fork: StrictBool = False
+    triggered_at: UtcTimestamp
+    disposition: RunEligibilityDisposition
+    allow_sandbox_execution: StrictBool
+    allow_auto_publication: StrictBool
+    reason: BoundedReason
+
+
+class AffectedInFlightItem(StrictContractModel):
+    """Active in-flight job/session summary showing pinned policy revision isolation."""
+
+    job_id: InternalId
+    repair_id: InternalId | None = None
+    kind: BoundedName
+    state: BoundedName
+    pinned_policy_revision: PositiveVersion
+    impact_summary: BoundedReason
+    created_at: UtcTimestamp
+
+
+class RepositoryPolicyPreviewRequest(StrictContractModel):
+    """A-07 zero-mutation dry-run policy simulator input (`UX-POLICY-001`, `T-REP-02-P`)."""
+
+    mode: RepositoryMode | None = None
+    paused: StrictBool | None = None
+    policy: RepositoryPolicy | None = None
+    sample_branches: Annotated[list[BoundedText], Field(max_length=32)] = Field(
+        default_factory=list
+    )
+    sample_paths: Annotated[list[BoundedText], Field(max_length=64)] = Field(default_factory=list)
+    sample_diff_lines: Annotated[StrictInt, Field(ge=0, le=100_000)] | None = None
+
+
+class RepositoryPolicyPreviewResponse(StrictContractModel):
+    """A-07 dry-run policy preview result (mutates zero rows; surfaces diffs & simulations)."""
+
+    repository_id: InternalId
+    current_revision: PositiveVersion
+    next_revision: PositiveVersion
+    requires_step_up: StrictBool
+    can_apply: StrictBool
+    effective_policy: EffectiveRepositoryPolicy
+    readiness_gates: PolicyReadinessGates
+    changed_rules: list[PolicyRuleChange] = Field(default_factory=list)
+    denials: list[PolicyDenialItem] = Field(default_factory=list)
+    branch_evaluations: list[BranchPolicyEvaluation] = Field(default_factory=list)
+    path_evaluations: list[PathPolicyEvaluation] = Field(default_factory=list)
+    historical_run_simulations: list[HistoricalRunSimulation] = Field(default_factory=list)
+    affected_in_flight: list[AffectedInFlightItem] = Field(default_factory=list)
+    diff_lines_verdict: PolicyEvaluationVerdict | None = None
+    diff_lines_reason: BoundedReason | None = None
+
+
+class BulkRepositoryPreviewItem(StrictContractModel):
+    """Per-repository preview outcome for `UI-S04` explicit bulk policy/mode preview."""
+
+    repository_id: InternalId
+    repository_name: BoundedName
+    current_version: PositiveVersion
+    current_mode: RepositoryMode
+    target_mode: RepositoryMode
+    current_paused: StrictBool
+    target_paused: StrictBool
+    can_apply: StrictBool
+    requires_step_up: StrictBool
+    active_job_count: Annotated[StrictInt, Field(ge=0)] = 0
+    denials: list[PolicyDenialItem] = Field(default_factory=list)
+
+
+class BulkRepositoryPreviewRequest(StrictContractModel):
+    """A-07 / `UI-S04` zero-mutation bulk repository mode/pause/tag preview request."""
+
+    repository_ids: Annotated[list[InternalId], Field(min_length=1, max_length=100)]
+    mode: RepositoryMode | None = None
+    paused: StrictBool | None = None
+    add_tags: Annotated[list[BoundedName], Field(max_length=32)] = Field(default_factory=list)
+    remove_tags: Annotated[list[BoundedName], Field(max_length=32)] = Field(default_factory=list)
+
+
+class BulkRepositoryPreviewResponse(StrictContractModel):
+    """A-07 / `UI-S04` zero-mutation bulk repository preview response."""
+
+    can_apply_all: StrictBool
+    requires_step_up: StrictBool
+    items: list[BulkRepositoryPreviewItem] = Field(default_factory=list)
+
+
+class BulkRepositoryUpdateRequest(StrictContractModel):
+    """A-07 / `UI-S04` version-checked bulk repository mode/pause/tag mutation request."""
+
+    repository_ids: Annotated[list[InternalId], Field(min_length=1, max_length=100)]
+    expected_versions: dict[InternalId, PositiveVersion]
+    mode: RepositoryMode | None = None
+    paused: StrictBool | None = None
+    add_tags: Annotated[list[BoundedName], Field(max_length=32)] = Field(default_factory=list)
+    remove_tags: Annotated[list[BoundedName], Field(max_length=32)] = Field(default_factory=list)
+    reason: BoundedReason | None = None
+
+
+class BulkRepositoryUpdateResponse(StrictContractModel):
+    """A-07 / `UI-S04` atomic bulk repository update response."""
+
+    updated_repositories: list[Repository] = Field(default_factory=list)
+
+
+class RepositoryRunTriggerSummary(StrictContractModel):
+    """Normalized CI failure trigger summary for `UI-S05` Overview, Runs & Branches tabs."""
+
+    id: InternalId
+    provider: ProviderKind
+    provider_run_id: OpaqueProviderId
+    attempt_key: OpaqueProviderId
+    head_sha: BoundedName
+    ref: BoundedName
+    event_type: BoundedName
+    status: CiRunStatus
+    conclusion: CiConclusion
+    is_rerun: StrictBool
+    untrusted_fork: StrictBool
+    first_source: Literal["webhook", "poll", "reconcile"]
+    job_id: InternalId | None = None
+    triggered_at: UtcTimestamp
+
+
+class RepositoryAccessGrantSummary(StrictContractModel):
+    """Authorized principal summary for `UI-S05` Access tab (`ADR-030`, `SEC-010`)."""
+
+    membership_id: InternalId
+    user_id: InternalId
+    display_name: BoundedName
+    email: BoundedText
+    role: WorkspaceRole
+    grant_origin: Literal["workspace_admin", "explicit_repo_grant"]
+
+
+class RepositoryHistoryEntry(StrictContractModel):
+    """Audit & policy revision history item for `UI-S05` History tab."""
+
+    id: InternalId
+    occurred_at: UtcTimestamp
+    actor_type: BoundedName
+    actor_id: BoundedName
+    action: BoundedName
+    decision: BoundedName
+    reason_code: BoundedName | None = None
+    policy_revision: PositiveVersion | None = None
+    summary: BoundedReason
+
+
+class RepositoryDetailResponse(StrictContractModel):
+    """A-07 comprehensive repository detail DTO powering all 7 `UI-S05` tabs."""
+
+    repository: Repository
+    connection_display_name: BoundedName | None = None
+    connection_status: ConnectionStatus
+    current_policy_revision: PositiveVersion
+    policy: RepositoryPolicy
+    effective_policy: EffectiveRepositoryPolicy
+    readiness_gates: PolicyReadinessGates
+    sync_cursor: ProviderSyncCursor | None = None
+    recent_runs: list[RepositoryRunTriggerSummary] = Field(default_factory=list)
+    active_jobs: list[AffectedInFlightItem] = Field(default_factory=list)
+    access_grants: list[RepositoryAccessGrantSummary] = Field(default_factory=list)
+    recent_history: list[RepositoryHistoryEntry] = Field(default_factory=list)
+    policy_revisions: list[RepositoryPolicyRevision] = Field(default_factory=list)

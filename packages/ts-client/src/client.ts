@@ -65,6 +65,34 @@ export type RepositoryVisibility = Repository["visibility"];
 export type RepositoryMode = Repository["mode"];
 export type WorkflowHazardStatus = NonNullable<Repository["workflow_hazard_status"]>;
 export type RepositoryPolicy = SchemaOf<"RepositoryPolicy">;
+export type RepositoryFacetSummary = SchemaOf<"RepositoryFacetSummary">;
+export type RepositoryCatalogPage = SchemaOf<"RepositoryCatalogPage">;
+export type RepositoryUpdateRequest = SchemaOf<"RepositoryUpdateRequest">;
+export type PolicyReadinessGates = SchemaOf<"PolicyReadinessGates">;
+export type EffectiveRepositoryPolicy = SchemaOf<"EffectiveRepositoryPolicy">;
+export type RepositoryPolicyRevision = SchemaOf<"RepositoryPolicyRevision">;
+export type RepositoryPolicyStateResponse = SchemaOf<"RepositoryPolicyStateResponse">;
+export type RepositoryPolicyUpdateRequest = SchemaOf<"RepositoryPolicyUpdateRequest">;
+export type PolicyRuleChange = SchemaOf<"PolicyRuleChange">;
+export type PolicyDenialItem = SchemaOf<"PolicyDenialItem">;
+export type PolicyScopeLayer = PolicyDenialItem["source_layer"];
+export type BranchPolicyEvaluation = SchemaOf<"BranchPolicyEvaluation">;
+export type PolicyEvaluationVerdict = BranchPolicyEvaluation["verdict"];
+export type PathPolicyEvaluation = SchemaOf<"PathPolicyEvaluation">;
+export type HistoricalRunSimulation = SchemaOf<"HistoricalRunSimulation">;
+export type RunEligibilityDisposition = HistoricalRunSimulation["disposition"];
+export type AffectedInFlightItem = SchemaOf<"AffectedInFlightItem">;
+export type RepositoryPolicyPreviewRequest = SchemaOf<"RepositoryPolicyPreviewRequest">;
+export type RepositoryPolicyPreviewResponse = SchemaOf<"RepositoryPolicyPreviewResponse">;
+export type BulkRepositoryPreviewItem = SchemaOf<"BulkRepositoryPreviewItem">;
+export type BulkRepositoryPreviewRequest = SchemaOf<"BulkRepositoryPreviewRequest">;
+export type BulkRepositoryPreviewResponse = SchemaOf<"BulkRepositoryPreviewResponse">;
+export type BulkRepositoryUpdateRequest = SchemaOf<"BulkRepositoryUpdateRequest">;
+export type BulkRepositoryUpdateResponse = SchemaOf<"BulkRepositoryUpdateResponse">;
+export type RepositoryRunTriggerSummary = SchemaOf<"RepositoryRunTriggerSummary">;
+export type RepositoryAccessGrantSummary = SchemaOf<"RepositoryAccessGrantSummary">;
+export type RepositoryHistoryEntry = SchemaOf<"RepositoryHistoryEntry">;
+export type RepositoryDetailResponse = SchemaOf<"RepositoryDetailResponse">;
 export type ConnectionDetailResponse = SchemaOf<"ConnectionDetailResponse">;
 export type ConnectionProbeResponse = SchemaOf<"ConnectionProbeResponse">;
 export type ConnectionSyncResponse = SchemaOf<"ConnectionSyncResponse">;
@@ -202,6 +230,19 @@ export interface ListConnectionsQuery {
   readonly provider?: ProviderKind | null;
   readonly cursor?: string | null;
   readonly limit?: number;
+}
+
+export interface ListRepositoriesQuery {
+  readonly cursor?: string | null;
+  readonly limit?: number;
+  readonly q?: string | null;
+  readonly connection_id?: string | null;
+  readonly provider?: ProviderKind | null;
+  readonly mode?: RepositoryMode | null;
+  readonly paused?: boolean | null;
+  readonly hazard_status?: WorkflowHazardStatus | null;
+  readonly tag?: string | null;
+  readonly include_inactive?: boolean;
 }
 
 export interface GitHubCallbackQuery {
@@ -441,6 +482,49 @@ export interface Red2PrClient {
     body: GitHubInstallationConfirmRequest,
     options: IdempotentMutationOptions,
   ): Promise<ApiEnvelope<GitHubInstallationConfirmResponse>>;
+  listRepositories(
+    ws: string,
+    query?: ListRepositoriesQuery,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<RepositoryCatalogPage>>;
+  getRepository(
+    ws: string,
+    repositoryId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<RepositoryDetailResponse>>;
+  updateRepository(
+    ws: string,
+    repositoryId: string,
+    body: RepositoryUpdateRequest,
+    options?: OptimisticMutationOptions,
+  ): Promise<ApiEnvelope<Repository>>;
+  getRepositoryPolicy(
+    ws: string,
+    repositoryId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<RepositoryPolicyStateResponse>>;
+  updateRepositoryPolicy(
+    ws: string,
+    repositoryId: string,
+    body: RepositoryPolicyUpdateRequest,
+    options?: OptimisticMutationOptions,
+  ): Promise<ApiEnvelope<RepositoryPolicyStateResponse>>;
+  previewRepositoryPolicy(
+    ws: string,
+    repositoryId: string,
+    body: RepositoryPolicyPreviewRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<RepositoryPolicyPreviewResponse>>;
+  previewBulkRepositoryPolicies(
+    ws: string,
+    body: BulkRepositoryPreviewRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<BulkRepositoryPreviewResponse>>;
+  bulkUpdateRepositories(
+    ws: string,
+    body: BulkRepositoryUpdateRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<BulkRepositoryUpdateResponse>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -1239,6 +1323,126 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async listRepositories(ws, query, reqOptions) {
+      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/repositories", {
+        params: { path: { ws }, query },
+        headers: buildOptionalHeaders(reqOptions),
+        signal: reqOptions?.signal,
+      });
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async getRepository(ws, repositoryId, reqOptions) {
+      const { data, error, response } = await raw.GET(
+        "/api/v1/workspaces/{ws}/repositories/{repository_id}",
+        {
+          params: { path: { ws, repository_id: repositoryId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async updateRepository(ws, repositoryId, body, reqOptions) {
+      const { data, error, response } = await raw.PATCH(
+        "/api/v1/workspaces/{ws}/repositories/{repository_id}",
+        {
+          params: {
+            path: { ws, repository_id: repositoryId },
+            header: reqOptions?.ifMatch !== undefined ? { "If-Match": reqOptions.ifMatch } : {},
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async getRepositoryPolicy(ws, repositoryId, reqOptions) {
+      const { data, error, response } = await raw.GET(
+        "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy",
+        {
+          params: { path: { ws, repository_id: repositoryId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async updateRepositoryPolicy(ws, repositoryId, body, reqOptions) {
+      const { data, error, response } = await raw.PATCH(
+        "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy",
+        {
+          params: {
+            path: { ws, repository_id: repositoryId },
+            header: reqOptions?.ifMatch !== undefined ? { "If-Match": reqOptions.ifMatch } : {},
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async previewRepositoryPolicy(ws, repositoryId, body, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy/previews",
+        {
+          params: { path: { ws, repository_id: repositoryId } },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async previewBulkRepositoryPolicies(ws, body, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/workspaces/{ws}/repositories/policy-previews",
+        {
+          params: { path: { ws } },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        },
+      );
+      if (data === undefined) {
+        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
+      }
+      return toEnvelope(data, response);
+    },
+    async bulkUpdateRepositories(ws, body, reqOptions) {
+      const { data, error, response } = await raw.POST(
+        "/api/v1/workspaces/{ws}/repositories/bulk-update",
+        {
+          params: { path: { ws } },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
         },
       );
       if (data === undefined) {

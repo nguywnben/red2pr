@@ -13,6 +13,7 @@ Defines the authoritative relational persistence models for Migrations 0001..000
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -24,6 +25,7 @@ from sqlalchemy import (
     Index,
     Integer,
     MetaData,
+    Numeric,
     SmallInteger,
     String,
     Text,
@@ -1589,6 +1591,7 @@ class RepositoryModel(Base):
         JSONB, nullable=False, default=list
     )
     auto_repair_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    grant_review_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
@@ -1887,6 +1890,118 @@ class ProviderSyncCursorModel(Base):
         DateTime(timezone=True), nullable=True
     )
     history_gap_detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class RepositoryPolicyModel(Base):
+    """REP-02 / S-09 immutable versioned repository policy snapshot (`ADR-031`, `SEC-032`)."""
+
+    __tablename__ = "repository_policies"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_repository_policies_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "repository_id",
+            "revision",
+            name="uq_repository_policies_ws_repo_rev",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_repository_policies_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_repository_policies_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+            name="fk_repository_policies_created_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("revision >= 1", name="repository_policy_revision_pos"),
+        CheckConstraint(
+            "mode IN ('monitor', 'approval', 'auto_repair')",
+            name="repository_policy_mode_valid",
+        ),
+        CheckConstraint(
+            "max_attempts >= 1 AND max_attempts <= 5",
+            name="repository_policy_max_attempts_bounds",
+        ),
+        CheckConstraint(
+            "max_diff_lines >= 1 AND max_diff_lines <= 2000",
+            name="repository_policy_max_diff_lines_bounds",
+        ),
+        CheckConstraint(
+            "max_calls_per_session IS NULL "
+            "OR (max_calls_per_session >= 1 AND max_calls_per_session <= 100)",
+            name="repository_policy_max_calls_bounds",
+        ),
+        CheckConstraint(
+            "max_tokens_per_session IS NULL "
+            "OR (max_tokens_per_session >= 1 AND max_tokens_per_session <= 1000000)",
+            name="repository_policy_max_tokens_bounds",
+        ),
+        CheckConstraint(
+            "max_wall_seconds IS NULL OR (max_wall_seconds >= 60 AND max_wall_seconds <= 7200)",
+            name="repository_policy_max_wall_bounds",
+        ),
+        CheckConstraint(
+            "max_cost_per_session_amount IS NULL OR max_cost_per_session_amount >= 0",
+            name="repository_policy_max_cost_nonneg",
+        ),
+        CheckConstraint(
+            "require_baseline IS TRUE",
+            name="repository_policy_require_baseline_true",
+        ),
+        CheckConstraint("version = 1", name="repository_policy_immutable_version"),
+        Index(
+            "ix_repository_policies_ws_repo_rev_desc",
+            "workspace_id",
+            "repository_id",
+            "revision",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False, default="monitor")
+    paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    branch_allowlist_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    branch_denylist_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    file_allowlist_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    file_denylist_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    sensitive_rules_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    allow_test_edits: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allow_config_edits: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    max_diff_lines: Mapped[int] = mapped_column(Integer, nullable=False, default=500)
+    max_calls_per_session: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_tokens_per_session: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_wall_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_cost_per_session_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 4), nullable=True
+    )
+    max_cost_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    require_baseline: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    inference_consent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    runtime_profile_id: Mapped[str] = mapped_column(
+        String(120), nullable=False, default="default-isolated"
+    )
+    change_reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    created_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now

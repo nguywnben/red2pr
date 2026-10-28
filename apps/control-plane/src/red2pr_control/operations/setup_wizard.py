@@ -121,6 +121,11 @@ SetupStepProbeCallable = Callable[
 ]
 
 
+PROBEABLE_SETUP_PHASES: frozenset[SetupWizardPhase] = OPTIONAL_SETUP_PHASES | frozenset(
+    {"repo_policy"}
+)
+
+
 class SetupStepRegistry:
     """Typed registry allowing downstream adapters (`U09`..`U28`) to plug real readiness probes."""
 
@@ -132,9 +137,9 @@ class SetupStepRegistry:
         phase: SetupWizardPhase,
         probe: SetupStepProbeCallable,
     ) -> None:
-        if phase not in OPTIONAL_SETUP_PHASES:
+        if phase not in PROBEABLE_SETUP_PHASES:
             raise ValueError(
-                f"Only adapter/runtime phases {sorted(OPTIONAL_SETUP_PHASES)} accept probes"
+                f"Only adapter/runtime phases {sorted(PROBEABLE_SETUP_PHASES)} accept probes"
             )
         self._probes[phase] = probe
 
@@ -1357,7 +1362,7 @@ class SetupWizardService:
                             ),
                         )
 
-                step_row.draft_payload_json = _scrub_draft_dict(
+                policy_draft = _scrub_draft_dict(
                     {
                         "default_repo_mode": repo_mode,
                         "require_baseline": True,
@@ -1375,15 +1380,31 @@ class SetupWizardService:
                     },
                     redactor=self._redactor,
                 )
-                step_row.status = "completed"
-                step_row.probe_status = "passed"
-                step_row.probe_detail = (
-                    f"Default repository mode '{repo_mode}' saved with require_baseline=true "
-                    "and auto_merge=false."
-                )
-                step_row.blocking_reasons_json = []
-                step_row.completed_by_user_id = auth.user.id
-                step_row.completed_at = ref_now
+                if self._registry.get_probe("repo_policy") is None:
+                    step_row.draft_payload_json = policy_draft
+                    step_row.status = "completed"
+                    step_row.probe_status = "passed"
+                    step_row.probe_detail = (
+                        f"Default repository mode '{repo_mode}' saved with require_baseline=true "
+                        "and auto_merge=false."
+                    )
+                    step_row.blocking_reasons_json = []
+                    step_row.completed_by_user_id = auth.user.id
+                    step_row.completed_at = ref_now
+                else:
+                    st, pr_status, pr_detail, blockers = await self._run_optional_phase_probe(
+                        "repo_policy",
+                        policy_draft,
+                        default_unprobed_detail=(f"Default repository mode '{repo_mode}' saved."),
+                    )
+                    step_row.draft_payload_json = policy_draft
+                    step_row.status = st
+                    step_row.probe_status = pr_status
+                    step_row.probe_detail = pr_detail
+                    step_row.blocking_reasons_json = blockers
+                    step_row.completed_by_user_id = auth.user.id
+                    step_row.completed_at = ref_now if st == "completed" else None
+                    advance_on_save = st == "completed"
 
             elif phase == "notifications":
                 notif_channel = payload.channel or "in_app"

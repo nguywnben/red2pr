@@ -24,6 +24,7 @@ import {
 } from "../features/integrations";
 import { AcceptInviteDialog, MembersPage } from "../features/members";
 import { QueuesPage } from "../features/queues";
+import { RepositoriesPage, RepositoryDetailPage } from "../features/repositories";
 import { SetupWizardPage } from "../features/setup";
 import {
   ApiClientProvider,
@@ -69,6 +70,14 @@ function WorkspaceSectionOutlet({
     <Routes>
       <Route path="members" element={<MembersPage workspace={workspace} me={meData} />} />
       <Route path="queues" element={<QueuesPage workspace={workspace} me={meData} />} />
+      <Route
+        path="repositories"
+        element={<RepositoriesPage workspace={workspace} me={meData} />}
+      />
+      <Route
+        path="repositories/:repoId"
+        element={<RepositoryDetailPage workspace={workspace} me={meData} />}
+      />
       <Route
         path="integrations"
         element={<IntegrationsPage workspace={workspace} me={meData} />}

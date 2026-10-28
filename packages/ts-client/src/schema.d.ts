@@ -662,6 +662,110 @@ export interface paths {
         patch: operations["updateWorkspaceMember"];
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/repositories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List authorized workspace repositories with S-04 cursor & scoped facets (A-07) */
+        get: operations["listWorkspaceRepositories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repositories/bulk-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply all-or-nothing version-checked bulk repository updates (A-07) */
+        post: operations["bulkUpdateWorkspaceRepositories"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repositories/policy-previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview bulk repository mode, pause, or tag changes with zero DB mutations (A-07) */
+        post: operations["previewBulkRepositoryPolicies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repositories/{repository_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get repository overview, effective policy, CI runs, access & audit history (A-07) */
+        get: operations["getWorkspaceRepository"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update repository mode, pause state, tags, or W-02 grant review (A-07) */
+        patch: operations["updateWorkspaceRepository"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get immutable repository policy snapshot, effective merge & revisions (A-07) */
+        get: operations["getWorkspaceRepositoryPolicy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Create a new immutable repository policy revision with concurrency guard (A-07) */
+        patch: operations["updateWorkspaceRepositoryPolicy"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy/previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Simulate candidate repository policy without saving or mutating rows (A-07) */
+        post: operations["previewWorkspaceRepositoryPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/task-jobs": {
         parameters: {
             query?: never;
@@ -738,6 +842,26 @@ export interface components {
             state: "accepted" | "running" | "succeeded" | "failed" | "unknown";
             /** Status Url */
             status_url: string;
+        };
+        /**
+         * AffectedInFlightItem
+         * @description Active in-flight job/session summary showing pinned policy revision isolation.
+         */
+        AffectedInFlightItem: {
+            /** Created At */
+            created_at: string;
+            /** Impact Summary */
+            impact_summary: string;
+            /** Job Id */
+            job_id: string;
+            /** Kind */
+            kind: string;
+            /** Pinned Policy Revision */
+            pinned_policy_revision: number;
+            /** Repair Id */
+            repair_id?: string | null;
+            /** State */
+            state: string;
         };
         /** ApplyPatchArgs */
         ApplyPatchArgs: {
@@ -911,6 +1035,30 @@ export interface components {
             workspace_id: string | null;
         };
         /**
+         * BranchPolicyEvaluation
+         * @description Per-branch dry-run policy decision (`deny` always overrides `allow`).
+         */
+        BranchPolicyEvaluation: {
+            /** Branch */
+            branch: string;
+            /** Canonical Branch */
+            canonical_branch?: string | null;
+            /** Matched Rule */
+            matched_rule?: string | null;
+            /** Reason */
+            reason: string;
+            /**
+             * Source Layer
+             * @enum {string}
+             */
+            source_layer: "hard_invariant" | "instance" | "workspace" | "repository";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "allow" | "requires_approval" | "deny";
+        };
+        /**
          * BreakGlassCreateRequest
          * @description ADR-034 owner step-up temporary workspace break-glass access request.
          */
@@ -957,6 +1105,101 @@ export interface components {
             budget_id: string;
             /** Reason Code */
             reason_code: string;
+        };
+        /**
+         * BulkRepositoryPreviewItem
+         * @description Per-repository preview outcome for `UI-S04` explicit bulk policy/mode preview.
+         */
+        BulkRepositoryPreviewItem: {
+            /**
+             * Active Job Count
+             * @default 0
+             */
+            active_job_count: number;
+            /** Can Apply */
+            can_apply: boolean;
+            /**
+             * Current Mode
+             * @enum {string}
+             */
+            current_mode: "monitor" | "approval" | "auto_repair";
+            /** Current Paused */
+            current_paused: boolean;
+            /** Current Version */
+            current_version: number;
+            /** Denials */
+            denials?: components["schemas"]["PolicyDenialItem"][];
+            /** Repository Id */
+            repository_id: string;
+            /** Repository Name */
+            repository_name: string;
+            /** Requires Step Up */
+            requires_step_up: boolean;
+            /**
+             * Target Mode
+             * @enum {string}
+             */
+            target_mode: "monitor" | "approval" | "auto_repair";
+            /** Target Paused */
+            target_paused: boolean;
+        };
+        /**
+         * BulkRepositoryPreviewRequest
+         * @description A-07 / `UI-S04` zero-mutation bulk repository mode/pause/tag preview request.
+         */
+        BulkRepositoryPreviewRequest: {
+            /** Add Tags */
+            add_tags?: string[];
+            /** Mode */
+            mode?: ("monitor" | "approval" | "auto_repair") | null;
+            /** Paused */
+            paused?: boolean | null;
+            /** Remove Tags */
+            remove_tags?: string[];
+            /** Repository Ids */
+            repository_ids: string[];
+        };
+        /**
+         * BulkRepositoryPreviewResponse
+         * @description A-07 / `UI-S04` zero-mutation bulk repository preview response.
+         */
+        BulkRepositoryPreviewResponse: {
+            /** Can Apply All */
+            can_apply_all: boolean;
+            /** Items */
+            items?: components["schemas"]["BulkRepositoryPreviewItem"][];
+            /** Requires Step Up */
+            requires_step_up: boolean;
+        };
+        /**
+         * BulkRepositoryUpdateRequest
+         * @description A-07 / `UI-S04` version-checked bulk repository mode/pause/tag mutation request.
+         */
+        BulkRepositoryUpdateRequest: {
+            /** Add Tags */
+            add_tags?: string[];
+            /** Expected Versions */
+            expected_versions: {
+                [key: string]: number;
+            };
+            /** Mode */
+            mode?: ("monitor" | "approval" | "auto_repair") | null;
+            /** Paused */
+            paused?: boolean | null;
+            /** Reason */
+            reason?: string | null;
+            /** Remove Tags */
+            remove_tags?: string[];
+            /** Repository Ids */
+            repository_ids: string[];
+        };
+        /**
+         * BulkRepositoryUpdateResponse
+         * @description A-07 / `UI-S04` atomic bulk repository update response.
+         */
+        BulkRepositoryUpdateResponse: {
+            /** Updated Repositories */
+            updated_repositories?: components["schemas"]["Repository"][];
         };
         /**
          * CapabilitySnapshot
@@ -1535,6 +1778,85 @@ export interface components {
             workspace_id: string;
         };
         /**
+         * EffectiveRepositoryPolicy
+         * @description Resolved policy after `hard_invariant > instance > workspace > repository` merge.
+         */
+        EffectiveRepositoryPolicy: {
+            /** Allow Auto Publication */
+            allow_auto_publication: boolean;
+            /**
+             * Allow Config Edits
+             * @default false
+             */
+            allow_config_edits: boolean;
+            /** Allow Sandbox Execution */
+            allow_sandbox_execution: boolean;
+            /**
+             * Allow Test Edits
+             * @default false
+             */
+            allow_test_edits: boolean;
+            /**
+             * Auto Merge
+             * @default false
+             * @constant
+             */
+            auto_merge: false;
+            /** Branch Allowlist */
+            branch_allowlist?: string[];
+            /** Branch Denylist */
+            branch_denylist?: string[];
+            /**
+             * Effective Mode
+             * @enum {string}
+             */
+            effective_mode: "monitor" | "approval" | "auto_repair";
+            /** Effective Paused */
+            effective_paused: boolean;
+            /** Field Sources */
+            field_sources?: {
+                [key: string]: "hard_invariant" | "instance" | "workspace" | "repository";
+            };
+            /** File Allowlist */
+            file_allowlist?: string[];
+            /** File Denylist */
+            file_denylist?: string[];
+            /** Hard Denied Paths */
+            hard_denied_paths?: string[];
+            /** Inference Consent Id */
+            inference_consent_id?: string | null;
+            /** Max Attempts */
+            max_attempts: number;
+            /** Max Calls Per Session */
+            max_calls_per_session: number;
+            max_cost_per_session: components["schemas"]["Money-Output"];
+            /** Max Diff Lines */
+            max_diff_lines: number;
+            /** Max Tokens Per Session */
+            max_tokens_per_session: number;
+            /** Max Wall Seconds */
+            max_wall_seconds: number;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "monitor" | "approval" | "auto_repair";
+            /** Paused */
+            paused: boolean;
+            /** Protected Paths */
+            protected_paths?: string[];
+            /**
+             * Require Baseline
+             * @default true
+             * @constant
+             */
+            require_baseline: true;
+            /** Runtime Profile Id */
+            runtime_profile_id: string;
+            /** Sensitive Rules */
+            sensitive_rules?: string[];
+        };
+        /**
          * EndpointRegistration
          * @description Registered private service endpoint bound to exact adapter, host, port, CIDRs & CA ref.
          */
@@ -1837,6 +2159,45 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HistoricalRunSimulation
+         * @description Dry-run simulation of a historical `ci_run_triggers` attempt under candidate policy.
+         */
+        HistoricalRunSimulation: {
+            /** Allow Auto Publication */
+            allow_auto_publication: boolean;
+            /** Allow Sandbox Execution */
+            allow_sandbox_execution: boolean;
+            /** Attempt Key */
+            attempt_key: string;
+            /**
+             * Conclusion
+             * @enum {string}
+             */
+            conclusion: "success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown";
+            /**
+             * Disposition
+             * @enum {string}
+             */
+            disposition: "eligible_auto_repair" | "eligible_approval_gated" | "diagnose_only_monitor" | "blocked_paused" | "blocked_branch_policy" | "blocked_untrusted_fork" | "blocked_workflow_hazard" | "blocked_grant_review" | "blocked_worker_unready" | "blocked_missing_consent";
+            /** Head Sha */
+            head_sha: string;
+            /** Provider Run Id */
+            provider_run_id: string;
+            /** Reason */
+            reason: string;
+            /** Ref */
+            ref: string;
+            /** Trigger Id */
+            trigger_id: string;
+            /** Triggered At */
+            triggered_at: string;
+            /**
+             * Untrusted Fork
+             * @default false
+             */
+            untrusted_fork: boolean;
         };
         /**
          * Invite
@@ -2182,7 +2543,27 @@ export interface components {
          */
         Money: {
             /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+        };
+        /**
+         * Money
+         * @description S-01 exact decimal monetary representation (never binary floating point).
+         */
+        "Money-Input": {
+            /** Amount */
             amount: number | string;
+            /** Currency */
+            currency: string;
+        };
+        /**
+         * Money
+         * @description S-01 exact decimal monetary representation (never binary floating point).
+         */
+        "Money-Output": {
+            /** Amount */
+            amount: string;
             /** Currency */
             currency: string;
         };
@@ -2445,6 +2826,100 @@ export interface components {
             version: number;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /**
+         * PathPolicyEvaluation
+         * @description Per-file-path canonicalization & glob evaluation (`SEC-007`, `SEC-009`).
+         */
+        PathPolicyEvaluation: {
+            /** Canonical Path */
+            canonical_path?: string | null;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "standard" | "hard_denied" | "denied_glob" | "outside_allowlist" | "protected_sensitive" | "test_file" | "config_file" | "invalid_path";
+            /** Matched Rule */
+            matched_rule?: string | null;
+            /** Raw Path */
+            raw_path: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Source Layer
+             * @enum {string}
+             */
+            source_layer: "hard_invariant" | "instance" | "workspace" | "repository";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "allow" | "requires_approval" | "deny";
+        };
+        /**
+         * PolicyDenialItem
+         * @description Explicit invariant, hazard, readiness, or scope denial reported by the policy engine.
+         */
+        PolicyDenialItem: {
+            /**
+             * Blocking Save
+             * @default false
+             */
+            blocking_save: boolean;
+            /** Code */
+            code: string;
+            /** Detail */
+            detail: string;
+            /**
+             * Source Layer
+             * @enum {string}
+             */
+            source_layer: "hard_invariant" | "instance" | "workspace" | "repository";
+        };
+        /**
+         * PolicyReadinessGates
+         * @description Authoritative safety & operational readiness prerequisites for repository automation.
+         */
+        PolicyReadinessGates: {
+            /** Blocking Reasons */
+            blocking_reasons?: string[];
+            /** Grant Review Required */
+            grant_review_required: boolean;
+            /** Inference Consent Ready */
+            inference_consent_ready: boolean;
+            /**
+             * Instance Paused
+             * @default false
+             */
+            instance_paused: boolean;
+            /** Worker Isolation Ready */
+            worker_isolation_ready: boolean;
+            /** Workflow Hazard Blocked */
+            workflow_hazard_blocked: boolean;
+            /**
+             * Workspace Paused
+             * @default false
+             */
+            workspace_paused: boolean;
+        };
+        /**
+         * PolicyRuleChange
+         * @description Structured rule diff entry produced during dry-run policy preview (`A-07`).
+         */
+        PolicyRuleChange: {
+            /** After */
+            after: unknown;
+            /** Before */
+            before: unknown;
+            /** Field */
+            field: string;
+            /** Impact */
+            impact: string;
+            /**
+             * Requires Step Up
+             * @default false
+             */
+            requires_step_up: boolean;
         };
         /**
          * Problem
@@ -2903,6 +3378,11 @@ export interface components {
          */
         Repository: {
             /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
              * Archived
              * @default false
              */
@@ -2920,6 +3400,11 @@ export interface components {
             default_branch: string;
             /** External Id */
             external_id: string;
+            /**
+             * Grant Review Required
+             * @default false
+             */
+            grant_review_required: boolean;
             /** Id */
             id: string;
             /**
@@ -2927,6 +3412,12 @@ export interface components {
              * @default false
              */
             is_fork: boolean;
+            /** Last Ci At */
+            last_ci_at?: string | null;
+            /** Last Ci Conclusion */
+            last_ci_conclusion?: ("success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown") | null;
+            /** Last Synced At */
+            last_synced_at?: string | null;
             /**
              * Mode
              * @enum {string}
@@ -2934,6 +3425,8 @@ export interface components {
             mode: "monitor" | "approval" | "auto_repair";
             /** Name */
             name: string;
+            /** Organization */
+            organization?: string | null;
             /**
              * Paused
              * @default false
@@ -2941,8 +3434,12 @@ export interface components {
             paused: boolean;
             /** Policy Revision */
             policy_revision: number;
+            /** Provider */
+            provider?: ("github" | "gitlab") | null;
             /** Repository Id */
             repository_id?: string | null;
+            /** Sync Status */
+            sync_status?: ("idle" | "ok" | "not_modified" | "rate_limited" | "gap_detected" | "error" | "revoked") | null;
             /** Tags */
             tags?: string[];
             /** Updated At */
@@ -2966,12 +3463,143 @@ export interface components {
             workspace_id: string;
         };
         /**
+         * RepositoryAccessGrantSummary
+         * @description Authorized principal summary for `UI-S05` Access tab (`ADR-030`, `SEC-010`).
+         */
+        RepositoryAccessGrantSummary: {
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /**
+             * Grant Origin
+             * @enum {string}
+             */
+            grant_origin: "workspace_admin" | "explicit_repo_grant";
+            /** Membership Id */
+            membership_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "maintainer" | "reviewer" | "viewer" | "auditor";
+            /** User Id */
+            user_id: string;
+        };
+        /**
+         * RepositoryCatalogPage
+         * @description A-07 cursor-paginated repository catalog page (`S-04`) with strictly scoped facets.
+         */
+        RepositoryCatalogPage: {
+            facets?: components["schemas"]["RepositoryFacetSummary"];
+            /** Items */
+            items: components["schemas"]["Repository"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+        };
+        /**
+         * RepositoryDetailResponse
+         * @description A-07 comprehensive repository detail DTO powering all 7 `UI-S05` tabs.
+         */
+        RepositoryDetailResponse: {
+            /** Access Grants */
+            access_grants?: components["schemas"]["RepositoryAccessGrantSummary"][];
+            /** Active Jobs */
+            active_jobs?: components["schemas"]["AffectedInFlightItem"][];
+            /** Connection Display Name */
+            connection_display_name?: string | null;
+            /**
+             * Connection Status
+             * @enum {string}
+             */
+            connection_status: "not_configured" | "checking" | "ready" | "degraded" | "revoked" | "unsupported";
+            /** Current Policy Revision */
+            current_policy_revision: number;
+            effective_policy: components["schemas"]["EffectiveRepositoryPolicy"];
+            policy: components["schemas"]["RepositoryPolicy-Output"];
+            /** Policy Revisions */
+            policy_revisions?: components["schemas"]["RepositoryPolicyRevision"][];
+            readiness_gates: components["schemas"]["PolicyReadinessGates"];
+            /** Recent History */
+            recent_history?: components["schemas"]["RepositoryHistoryEntry"][];
+            /** Recent Runs */
+            recent_runs?: components["schemas"]["RepositoryRunTriggerSummary"][];
+            repository: components["schemas"]["Repository"];
+            sync_cursor?: components["schemas"]["ProviderSyncCursor"] | null;
+        };
+        /**
+         * RepositoryFacetSummary
+         * @description Scoped catalog facets computed over the caller's authorized repositories (`UX-02`).
+         */
+        RepositoryFacetSummary: {
+            /**
+             * Hazard Flagged Count
+             * @default 0
+             */
+            hazard_flagged_count: number;
+            /** Mode Counts */
+            mode_counts?: {
+                [key: string]: number;
+            };
+            /** Organizations */
+            organizations?: string[];
+            /** Partial Sync Connection Ids */
+            partial_sync_connection_ids?: string[];
+            /**
+             * Paused Count
+             * @default 0
+             */
+            paused_count: number;
+            /** Tags */
+            tags?: string[];
+        };
+        /**
+         * RepositoryHistoryEntry
+         * @description Audit & policy revision history item for `UI-S05` History tab.
+         */
+        RepositoryHistoryEntry: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string;
+            /** Actor Type */
+            actor_type: string;
+            /** Decision */
+            decision: string;
+            /** Id */
+            id: string;
+            /** Occurred At */
+            occurred_at: string;
+            /** Policy Revision */
+            policy_revision?: number | null;
+            /** Reason Code */
+            reason_code?: string | null;
+            /** Summary */
+            summary: string;
+        };
+        /**
          * RepositoryPolicy
          * @description S-09 repository repair automation policy (require_baseline=True invariant per ADR-031).
          */
         RepositoryPolicy: {
+            /**
+             * Allow Config Edits
+             * @default false
+             */
+            allow_config_edits: boolean;
+            /**
+             * Allow Test Edits
+             * @default false
+             */
+            allow_test_edits: boolean;
             /** Branch Allowlist */
             branch_allowlist?: string[];
+            /** Branch Denylist */
+            branch_denylist?: string[];
+            /** File Allowlist */
+            file_allowlist?: string[];
             /** File Denylist */
             file_denylist?: string[];
             /**
@@ -2985,10 +3613,27 @@ export interface components {
              */
             max_attempts: number;
             /**
+             * Max Calls Per Session
+             * @default null
+             */
+            max_calls_per_session: number | null;
+            /** @default null */
+            max_cost_per_session: components["schemas"]["Money"] | null;
+            /**
              * Max Diff Lines
              * @default 500
              */
             max_diff_lines: number;
+            /**
+             * Max Tokens Per Session
+             * @default null
+             */
+            max_tokens_per_session: number | null;
+            /**
+             * Max Wall Seconds
+             * @default null
+             */
+            max_wall_seconds: number | null;
             /**
              * Require Baseline
              * @default true
@@ -2999,6 +3644,301 @@ export interface components {
             runtime_profile_id: string;
             /** Sensitive Rules */
             sensitive_rules?: string[];
+        };
+        /**
+         * RepositoryPolicy
+         * @description S-09 repository repair automation policy (require_baseline=True invariant per ADR-031).
+         */
+        "RepositoryPolicy-Input": {
+            /**
+             * Allow Config Edits
+             * @default false
+             */
+            allow_config_edits: boolean;
+            /**
+             * Allow Test Edits
+             * @default false
+             */
+            allow_test_edits: boolean;
+            /** Branch Allowlist */
+            branch_allowlist?: string[];
+            /** Branch Denylist */
+            branch_denylist?: string[];
+            /** File Allowlist */
+            file_allowlist?: string[];
+            /** File Denylist */
+            file_denylist?: string[];
+            /** Inference Consent Id */
+            inference_consent_id?: string | null;
+            /**
+             * Max Attempts
+             * @default 2
+             */
+            max_attempts: number;
+            /** Max Calls Per Session */
+            max_calls_per_session?: number | null;
+            max_cost_per_session?: components["schemas"]["Money-Input"] | null;
+            /**
+             * Max Diff Lines
+             * @default 500
+             */
+            max_diff_lines: number;
+            /** Max Tokens Per Session */
+            max_tokens_per_session?: number | null;
+            /** Max Wall Seconds */
+            max_wall_seconds?: number | null;
+            /**
+             * Require Baseline
+             * @default true
+             * @constant
+             */
+            require_baseline: true;
+            /** Runtime Profile Id */
+            runtime_profile_id: string;
+            /** Sensitive Rules */
+            sensitive_rules?: string[];
+        };
+        /**
+         * RepositoryPolicy
+         * @description S-09 repository repair automation policy (require_baseline=True invariant per ADR-031).
+         */
+        "RepositoryPolicy-Output": {
+            /**
+             * Allow Config Edits
+             * @default false
+             */
+            allow_config_edits: boolean;
+            /**
+             * Allow Test Edits
+             * @default false
+             */
+            allow_test_edits: boolean;
+            /** Branch Allowlist */
+            branch_allowlist?: string[];
+            /** Branch Denylist */
+            branch_denylist?: string[];
+            /** File Allowlist */
+            file_allowlist?: string[];
+            /** File Denylist */
+            file_denylist?: string[];
+            /** Inference Consent Id */
+            inference_consent_id?: string | null;
+            /**
+             * Max Attempts
+             * @default 2
+             */
+            max_attempts: number;
+            /** Max Calls Per Session */
+            max_calls_per_session?: number | null;
+            max_cost_per_session?: components["schemas"]["Money-Output"] | null;
+            /**
+             * Max Diff Lines
+             * @default 500
+             */
+            max_diff_lines: number;
+            /** Max Tokens Per Session */
+            max_tokens_per_session?: number | null;
+            /** Max Wall Seconds */
+            max_wall_seconds?: number | null;
+            /**
+             * Require Baseline
+             * @default true
+             * @constant
+             */
+            require_baseline: true;
+            /** Runtime Profile Id */
+            runtime_profile_id: string;
+            /** Sensitive Rules */
+            sensitive_rules?: string[];
+        };
+        /**
+         * RepositoryPolicyPreviewRequest
+         * @description A-07 zero-mutation dry-run policy simulator input (`UX-POLICY-001`, `T-REP-02-P`).
+         */
+        RepositoryPolicyPreviewRequest: {
+            /** Mode */
+            mode?: ("monitor" | "approval" | "auto_repair") | null;
+            /** Paused */
+            paused?: boolean | null;
+            policy?: components["schemas"]["RepositoryPolicy-Input"] | null;
+            /** Sample Branches */
+            sample_branches?: string[];
+            /** Sample Diff Lines */
+            sample_diff_lines?: number | null;
+            /** Sample Paths */
+            sample_paths?: string[];
+        };
+        /**
+         * RepositoryPolicyPreviewResponse
+         * @description A-07 dry-run policy preview result (mutates zero rows; surfaces diffs & simulations).
+         */
+        RepositoryPolicyPreviewResponse: {
+            /** Affected In Flight */
+            affected_in_flight?: components["schemas"]["AffectedInFlightItem"][];
+            /** Branch Evaluations */
+            branch_evaluations?: components["schemas"]["BranchPolicyEvaluation"][];
+            /** Can Apply */
+            can_apply: boolean;
+            /** Changed Rules */
+            changed_rules?: components["schemas"]["PolicyRuleChange"][];
+            /** Current Revision */
+            current_revision: number;
+            /** Denials */
+            denials?: components["schemas"]["PolicyDenialItem"][];
+            /** Diff Lines Reason */
+            diff_lines_reason?: string | null;
+            /** Diff Lines Verdict */
+            diff_lines_verdict?: ("allow" | "requires_approval" | "deny") | null;
+            effective_policy: components["schemas"]["EffectiveRepositoryPolicy"];
+            /** Historical Run Simulations */
+            historical_run_simulations?: components["schemas"]["HistoricalRunSimulation"][];
+            /** Next Revision */
+            next_revision: number;
+            /** Path Evaluations */
+            path_evaluations?: components["schemas"]["PathPolicyEvaluation"][];
+            readiness_gates: components["schemas"]["PolicyReadinessGates"];
+            /** Repository Id */
+            repository_id: string;
+            /** Requires Step Up */
+            requires_step_up: boolean;
+        };
+        /**
+         * RepositoryPolicyRevision
+         * @description Immutable versioned `repository_policies` snapshot (`S-09`, `REP-02`).
+         */
+        RepositoryPolicyRevision: {
+            /** Change Reason */
+            change_reason?: string | null;
+            /** Created At */
+            created_at: string;
+            /** Created By User Id */
+            created_by_user_id?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "monitor" | "approval" | "auto_repair";
+            /** Paused */
+            paused: boolean;
+            policy: components["schemas"]["RepositoryPolicy-Output"];
+            /** Repository Id */
+            repository_id: string;
+            /** Revision */
+            revision: number;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * RepositoryPolicyStateResponse
+         * @description A-07 current policy snapshot, merged effective policy, gates, and revision history.
+         */
+        RepositoryPolicyStateResponse: {
+            /** Current Revision */
+            current_revision: number;
+            effective_policy: components["schemas"]["EffectiveRepositoryPolicy"];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "monitor" | "approval" | "auto_repair";
+            /** Paused */
+            paused: boolean;
+            policy: components["schemas"]["RepositoryPolicy-Output"];
+            readiness_gates: components["schemas"]["PolicyReadinessGates"];
+            /** Repository Id */
+            repository_id: string;
+            /** Revisions */
+            revisions?: components["schemas"]["RepositoryPolicyRevision"][];
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * RepositoryPolicyUpdateRequest
+         * @description A-07 optimistic-concurrency update creating an immutable `repository_policies` revision.
+         */
+        RepositoryPolicyUpdateRequest: {
+            /** Expected Revision */
+            expected_revision?: number | null;
+            /** Mode */
+            mode?: ("monitor" | "approval" | "auto_repair") | null;
+            /** Paused */
+            paused?: boolean | null;
+            policy: components["schemas"]["RepositoryPolicy-Input"];
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * RepositoryRunTriggerSummary
+         * @description Normalized CI failure trigger summary for `UI-S05` Overview, Runs & Branches tabs.
+         */
+        RepositoryRunTriggerSummary: {
+            /** Attempt Key */
+            attempt_key: string;
+            /**
+             * Conclusion
+             * @enum {string}
+             */
+            conclusion: "success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown";
+            /** Event Type */
+            event_type: string;
+            /**
+             * First Source
+             * @enum {string}
+             */
+            first_source: "webhook" | "poll" | "reconcile";
+            /** Head Sha */
+            head_sha: string;
+            /** Id */
+            id: string;
+            /** Is Rerun */
+            is_rerun: boolean;
+            /** Job Id */
+            job_id?: string | null;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "github" | "gitlab";
+            /** Provider Run Id */
+            provider_run_id: string;
+            /** Ref */
+            ref: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "in_progress" | "completed" | "unknown";
+            /** Triggered At */
+            triggered_at: string;
+            /** Untrusted Fork */
+            untrusted_fork: boolean;
+        };
+        /**
+         * RepositoryUpdateRequest
+         * @description A-07 partial repository mode, pause, tag, and W-02 grant-review update (`S-02`).
+         */
+        RepositoryUpdateRequest: {
+            /**
+             * Acknowledge Grant Review
+             * @default false
+             */
+            acknowledge_grant_review: boolean;
+            /** Expected Version */
+            expected_version?: number | null;
+            /** Mode */
+            mode?: ("monitor" | "approval" | "auto_repair") | null;
+            /** Paused */
+            paused?: boolean | null;
+            /** Reason */
+            reason?: string | null;
+            /** Tags */
+            tags?: string[] | null;
         };
         /** ReproVerificationEventPayload */
         ReproVerificationEventPayload: {
@@ -3443,7 +4383,7 @@ export interface components {
             max_attempts?: number | null;
             /** Max Calls Per Session */
             max_calls_per_session?: number | null;
-            max_cost_per_session?: components["schemas"]["Money"] | null;
+            max_cost_per_session?: components["schemas"]["Money-Input"] | null;
             /** Max Diff Lines */
             max_diff_lines?: number | null;
             /** Max Tokens Per Session */
@@ -10048,6 +10988,1022 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Membership"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    listWorkspaceRepositories: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+                q?: string | null;
+                connection_id?: string | null;
+                provider?: ("github" | "gitlab") | null;
+                mode?: ("monitor" | "approval" | "auto_repair") | null;
+                paused?: boolean | null;
+                hazard_status?: ("clean" | "flagged" | "unscanned") | null;
+                tag?: string | null;
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryCatalogPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    bulkUpdateWorkspaceRepositories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkRepositoryUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkRepositoryUpdateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    previewBulkRepositoryPolicies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkRepositoryPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkRepositoryPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getWorkspaceRepository: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repository_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    updateWorkspaceRepository: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                repository_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepositoryUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Repository"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getWorkspaceRepositoryPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repository_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryPolicyStateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    updateWorkspaceRepositoryPolicy: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                repository_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepositoryPolicyUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryPolicyStateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    previewWorkspaceRepositoryPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repository_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepositoryPolicyPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryPolicyPreviewResponse"];
                 };
             };
             /** @description Bad Request */

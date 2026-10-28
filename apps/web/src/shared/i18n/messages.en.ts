@@ -419,6 +419,57 @@ export const EN_MESSAGES = {
   "integrations.syncCursorsTableLabel": "Repository polling cursors and history-gap status",
   "integrations.reconcileRunsAction": "Reconcile runs",
   "integrations.acknowledgeGapAction": "Acknowledge gap & resync",
+
+  "repositories.pageTitle": "Repository Catalog & Safety Posture",
+  "repositories.pageSubtitle":
+    "Authorized repository catalog with scoped tag facets, SEC-031 workflow hazard posture, per-repo pause/mode governance, and version-checked bulk previews.",
+  "repositories.tableLabel": "Authorized workspace repositories",
+  "repositories.searchLabel": "Search repositories",
+  "repositories.searchPlaceholder": "Filter by name, org, or branch...",
+  "repositories.filterProviderLabel": "Provider",
+  "repositories.filterModeLabel": "Operating mode",
+  "repositories.filterHazardLabel": "Workflow hazard",
+  "repositories.filterTagLabel": "Scoped tag",
+  "repositories.filterPausedLabel": "Pause state",
+  "repositories.groupByOrgLabel": "Group by organization",
+  "repositories.emptyAdminTitle": "No repositories synchronized yet",
+  "repositories.emptyAdminDesc":
+    "Connect a GitHub App or GitLab instance under Integrations to discover and synchronize repositories in safe Monitor mode.",
+  "repositories.emptyMemberTitle": "No repositories granted to your membership",
+  "repositories.emptyMemberDesc":
+    "Repository access is deny-by-default. Ask a workspace admin to grant repository access under Members & Access.",
+  "repositories.partialSyncBanner":
+    "Partial sync warning: one or more provider connections reported incomplete pagination during the latest sync; unreturned repositories were preserved safely.",
+  "repositories.bulkPreviewAction": "Preview bulk policy change ({count})",
+  "repositories.bulkDialogTitle": "Bulk Repository Mode, Pause & Tag Preview",
+  "repositories.bulkDialogSubtitle":
+    "Inspect per-repository eligibility, active job counts, and blocking safety denials before applying an atomic version-checked update.",
+  "repositories.bulkApplyAction": "Apply bulk update",
+
+  "repoDetail.backToCatalog": "Back to repositories",
+  "repoDetail.tabsLabel": "Repository detail sections",
+  "repoDetail.tab.overview": "Overview",
+  "repoDetail.tab.runs": "Runs",
+  "repoDetail.tab.repairs": "Repairs",
+  "repoDetail.tab.policies": "Policies",
+  "repoDetail.tab.branches": "Branches",
+  "repoDetail.tab.access": "Access",
+  "repoDetail.tab.history": "History",
+  "repoDetail.pauseAction": "Pause repository",
+  "repoDetail.resumeAction": "Resume repository",
+  "repoDetail.ackGrantReviewAction": "Acknowledge W-02 reconnect grant review",
+  "repoDetail.repairsEmptyTitle": "No autonomous repair sessions recorded yet",
+  "repoDetail.repairsEmptyDesc":
+    "Active CI triage and pinned in-flight task jobs appear above; verified sandbox repair sessions populate once P5/P6 repair execution runs.",
+
+  "policyEditor.title": "Versioned Repository Policy & Guardrails",
+  "policyEditor.subtitle":
+    "Immutable repository_policies snapshots governed by hard_invariant > instance > workspace > repository precedence where deny always overrides allow.",
+  "policyEditor.saveAction": "Save new policy revision",
+  "policyEditor.simulateAction": "Run dry-run policy simulation",
+  "policyEditor.staleConflictBanner":
+    "Stale policy revision detected (HTTP 409/412). Reload the latest authoritative snapshot before saving your changes.",
+  "policyEditor.reloadAction": "Reload latest policy",
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

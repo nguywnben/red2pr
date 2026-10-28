@@ -90,6 +90,7 @@ from red2pr_control.db.base import (
     ProviderInstallStateModel,
     ProviderSyncCursorModel,
     RepositoryModel,
+    RepositoryPolicyModel,
     TaskJobModel,
     WorkspaceModel,
 )
@@ -2056,9 +2057,12 @@ def _to_repository_dto(row: RepositoryModel) -> Repository:
         tags=list(row.tags_json or []),
         archived=row.archived,
         is_fork=row.is_fork,
+        active=row.active,
+        grant_review_required=row.grant_review_required,
         workflow_hazard_status=cast(WorkflowHazardStatus, row.workflow_hazard_status),
         workflow_hazards=hazards,
         auto_repair_blocked=row.auto_repair_blocked,
+        last_synced_at=row.last_synced_at,
     )
 
 
@@ -2319,6 +2323,7 @@ class GitHubIntegrationService:
                     active=False,
                     paused=True,
                     mode="monitor",
+                    grant_review_required=True,
                     version=RepositoryModel.version + 1,
                     updated_at=now,
                 )
@@ -3507,8 +3512,9 @@ class GitHubIntegrationService:
             hazards_json = [h.model_dump(mode="json") for h in rec.workflow_hazards]
             existing = by_ext_id.get(rec.external_repo_id)
             if existing is None:
+                repo_id = new_uuid7(now=now)
                 new_repo = RepositoryModel(
-                    id=new_uuid7(now=now),
+                    id=repo_id,
                     workspace_id=ws_id,
                     provider_connection_id=conn_row.id,
                     external_repo_id=rec.external_repo_id,
@@ -3520,6 +3526,7 @@ class GitHubIntegrationService:
                     active=not rec.disabled,
                     archived=rec.archived,
                     is_fork=rec.is_fork,
+                    grant_review_required=force_monitor_reset,
                     policy_revision=1,
                     tags_json=[],
                     workflow_hazard_status=rec.workflow_hazard_status,
@@ -3531,8 +3538,34 @@ class GitHubIntegrationService:
                     updated_at=now,
                 )
                 db.add(new_repo)
+                db.add(
+                    RepositoryPolicyModel(
+                        id=new_uuid7(now=now),
+                        workspace_id=ws_id,
+                        repository_id=repo_id,
+                        revision=1,
+                        mode="monitor",
+                        paused=False,
+                        branch_allowlist_json=[],
+                        branch_denylist_json=[],
+                        file_allowlist_json=[],
+                        file_denylist_json=[],
+                        sensitive_rules_json=[],
+                        allow_test_edits=False,
+                        allow_config_edits=False,
+                        max_attempts=3,
+                        max_diff_lines=500,
+                        require_baseline=True,
+                        change_reason="Initial repository policy snapshot on provider sync.",
+                        created_by_user_id=None,
+                        version=1,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
                 active_models.append(new_repo)
             else:
+                old_mode = existing.mode
                 existing.name = rec.full_name
                 existing.default_branch = rec.default_branch
                 existing.visibility = rec.visibility
@@ -3547,8 +3580,74 @@ class GitHubIntegrationService:
                 if force_monitor_reset:
                     existing.mode = "monitor"
                     existing.paused = False
+                    existing.grant_review_required = True
                 elif existing.auto_repair_blocked and existing.mode == "auto_repair":
                     existing.mode = "monitor"
+                if existing.mode != old_mode:
+                    prev_pol = await db.scalar(
+                        select(RepositoryPolicyModel)
+                        .where(
+                            RepositoryPolicyModel.workspace_id == ws_id,
+                            RepositoryPolicyModel.repository_id == existing.id,
+                        )
+                        .order_by(RepositoryPolicyModel.revision.desc())
+                        .limit(1)
+                    )
+                    next_rev = existing.policy_revision + 1
+                    existing.policy_revision = next_rev
+                    db.add(
+                        RepositoryPolicyModel(
+                            id=new_uuid7(now=now),
+                            workspace_id=ws_id,
+                            repository_id=existing.id,
+                            revision=next_rev,
+                            mode=existing.mode,
+                            paused=existing.paused,
+                            branch_allowlist_json=(
+                                list(prev_pol.branch_allowlist_json) if prev_pol else []
+                            ),
+                            branch_denylist_json=(
+                                list(prev_pol.branch_denylist_json) if prev_pol else []
+                            ),
+                            file_allowlist_json=(
+                                list(prev_pol.file_allowlist_json) if prev_pol else []
+                            ),
+                            file_denylist_json=(
+                                list(prev_pol.file_denylist_json) if prev_pol else []
+                            ),
+                            sensitive_rules_json=(
+                                list(prev_pol.sensitive_rules_json) if prev_pol else []
+                            ),
+                            allow_test_edits=prev_pol.allow_test_edits if prev_pol else False,
+                            allow_config_edits=prev_pol.allow_config_edits if prev_pol else False,
+                            max_attempts=prev_pol.max_attempts if prev_pol else 3,
+                            max_diff_lines=prev_pol.max_diff_lines if prev_pol else 500,
+                            max_calls_per_session=(
+                                prev_pol.max_calls_per_session if prev_pol else None
+                            ),
+                            max_tokens_per_session=(
+                                prev_pol.max_tokens_per_session if prev_pol else None
+                            ),
+                            max_wall_seconds=prev_pol.max_wall_seconds if prev_pol else None,
+                            max_cost_per_session_amount=(
+                                prev_pol.max_cost_per_session_amount if prev_pol else None
+                            ),
+                            max_cost_currency=prev_pol.max_cost_currency if prev_pol else None,
+                            require_baseline=True,
+                            inference_consent_id=(
+                                prev_pol.inference_consent_id if prev_pol else None
+                            ),
+                            runtime_profile_id=prev_pol.runtime_profile_id if prev_pol else None,
+                            change_reason=(
+                                "Reset to monitor mode during provider sync safety or "
+                                "revocation check."
+                            ),
+                            created_by_user_id=None,
+                            version=1,
+                            created_at=now,
+                            updated_at=now,
+                        )
+                    )
                 existing.last_synced_at = now
                 existing.version += 1
                 existing.updated_at = now

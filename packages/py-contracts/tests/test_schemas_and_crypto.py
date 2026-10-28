@@ -57,18 +57,34 @@ from py_contracts.evidence import (
 )
 from py_contracts.iam import Invite, Membership, Session, User, Workspace
 from py_contracts.integrations import (
+    BulkRepositoryPreviewItem,
+    BulkRepositoryPreviewRequest,
+    BulkRepositoryPreviewResponse,
+    BulkRepositoryUpdateRequest,
+    BulkRepositoryUpdateResponse,
     CiJob,
     CiRun,
     Connection,
     ConnectionWrite,
     ConsentCreateRequest,
+    EffectiveRepositoryPolicy,
     EndpointRegistrationCreateRequest,
     NotificationDelivery,
     NotificationDestination,
     NotificationPreference,
+    PolicyReadinessGates,
     QuietHoursWindow,
     Repository,
+    RepositoryCatalogPage,
+    RepositoryDetailResponse,
+    RepositoryFacetSummary,
     RepositoryPolicy,
+    RepositoryPolicyPreviewRequest,
+    RepositoryPolicyPreviewResponse,
+    RepositoryPolicyRevision,
+    RepositoryPolicyStateResponse,
+    RepositoryPolicyUpdateRequest,
+    RepositoryUpdateRequest,
     SecretPresence,
 )
 from py_contracts.primitives import Money, new_uuid7
@@ -1719,3 +1735,237 @@ def test_u11_webhook_ingress_sync_cursor_and_reconcile_contracts() -> None:
                 "raw_secret_leak": "forbidden",
             }
         )
+
+
+def test_u12_repository_policy_and_preview_contracts_reject_unsafe_globs_and_enforce_baseline() -> (
+    None
+):
+    ws_id = new_uuid7()
+    conn_id = new_uuid7()
+    repo_id = new_uuid7()
+    user_id = new_uuid7()
+
+    # CanonicalGlobPattern normalizes Unicode NFC and accepts clean POSIX globs
+    policy = RepositoryPolicy(
+        branch_allowlist=["main", "release/*", "feature/**"],
+        branch_denylist=["experimental/**"],
+        file_allowlist=["src/**", "cafe\u0301/*.py"],
+        file_denylist=["secrets/**"],
+        sensitive_rules=["migrations/**"],
+        allow_test_edits=False,
+        allow_config_edits=False,
+        max_attempts=3,
+        max_diff_lines=400,
+        max_calls_per_session=40,
+        max_tokens_per_session=250_000,
+        max_wall_seconds=1800,
+        max_cost_per_session=Money(amount=Decimal("2.50"), currency="USD"),
+        require_baseline=True,
+        runtime_profile_id="python-3.12-isolated",
+    )
+    assert "caf\u00e9/*.py" in policy.file_allowlist
+    assert policy.require_baseline is True
+
+    # ADR-031 invariant: require_baseline=False is rejected at the schema boundary
+    with pytest.raises(ValidationError):
+        RepositoryPolicy.model_validate(
+            {
+                **policy.model_dump(mode="json"),
+                "require_baseline": False,
+            }
+        )
+
+    # SEC-007: CanonicalGlobPattern rejects absolute, Windows drive, backslash, double-slash,
+    # dot-segment traversal, and control characters
+    for unsafe_glob in (
+        "/etc/passwd",
+        "C:/Windows/System32/**",
+        "src\\main.py",
+        "src//nested.py",
+        "../outside/**",
+        "src/../secret.py",
+        "./src/app.py",
+        "src/\x00bad.py",
+    ):
+        with pytest.raises(ValidationError):
+            RepositoryPolicy(
+                file_allowlist=[unsafe_glob],
+                runtime_profile_id="python-3.12-isolated",
+            )
+
+    repo = Repository(
+        id=repo_id,
+        workspace_id=ws_id,
+        version=2,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        connection_id=conn_id,
+        provider="github",
+        external_id="700101",
+        name="acme/payments-service",
+        organization="acme",
+        default_branch="main",
+        visibility="private",
+        mode="monitor",
+        paused=False,
+        tags=["tier-1"],
+        policy_revision=2,
+        grant_review_required=True,
+        workflow_hazard_status="clean",
+    )
+    assert repo.grant_review_required is True
+    assert repo.organization == "acme"
+
+    catalog = RepositoryCatalogPage(
+        items=[repo],
+        next_cursor=None,
+        snapshot_at=FIXED_NOW,
+        facets=RepositoryFacetSummary(
+            tags=["tier-1"],
+            organizations=["acme"],
+            mode_counts={"monitor": 1},
+            paused_count=0,
+            hazard_flagged_count=0,
+            partial_sync_connection_ids=[],
+        ),
+    )
+    assert catalog.facets.tags == ["tier-1"]
+
+    upd = RepositoryUpdateRequest(
+        expected_version=2,
+        mode="approval",
+        paused=False,
+        tags=["tier-1", "payments"],
+        acknowledge_grant_review=True,
+        reason="Reviewed grants after GitHub App reconnect.",
+    )
+    assert upd.acknowledge_grant_review is True
+
+    gates = PolicyReadinessGates(
+        worker_isolation_ready=True,
+        inference_consent_ready=True,
+        workflow_hazard_blocked=False,
+        grant_review_required=False,
+    )
+    effective = EffectiveRepositoryPolicy(
+        mode="approval",
+        effective_mode="approval",
+        paused=False,
+        effective_paused=False,
+        allow_sandbox_execution=True,
+        allow_auto_publication=False,
+        branch_allowlist=["main"],
+        max_attempts=3,
+        max_diff_lines=400,
+        max_calls_per_session=40,
+        max_tokens_per_session=250_000,
+        max_wall_seconds=1800,
+        max_cost_per_session=Money(amount=Decimal("2.50"), currency="USD"),
+        runtime_profile_id="python-3.12-isolated",
+        field_sources={"mode": "repository", "require_baseline": "hard_invariant"},
+    )
+    rev_snap = RepositoryPolicyRevision(
+        id=new_uuid7(),
+        workspace_id=ws_id,
+        version=1,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        repository_id=repo_id,
+        revision=2,
+        mode="approval",
+        paused=False,
+        policy=policy,
+        change_reason="Enable approval mode.",
+        created_by_user_id=user_id,
+    )
+    state_resp = RepositoryPolicyStateResponse(
+        repository_id=repo_id,
+        workspace_id=ws_id,
+        current_revision=2,
+        mode="approval",
+        paused=False,
+        policy=policy,
+        effective_policy=effective,
+        readiness_gates=gates,
+        revisions=[rev_snap],
+    )
+    assert state_resp.current_revision == 2
+
+    pol_upd = RepositoryPolicyUpdateRequest(
+        expected_revision=2,
+        mode="approval",
+        paused=False,
+        policy=policy,
+        reason="Tighten file allowlist.",
+    )
+    assert pol_upd.expected_revision == 2
+
+    prev_req = RepositoryPolicyPreviewRequest(
+        mode="auto_repair",
+        paused=False,
+        policy=policy,
+        sample_branches=["main"],
+        sample_paths=["src/app.py", ".github/workflows/ci.yml", ".env"],
+        sample_diff_lines=120,
+    )
+    prev_resp = RepositoryPolicyPreviewResponse(
+        repository_id=repo_id,
+        current_revision=2,
+        next_revision=3,
+        can_apply=True,
+        requires_step_up=True,
+        readiness_gates=gates,
+        effective_policy=effective,
+        diff_lines_verdict="allow",
+        diff_lines_reason="Within max_diff_lines (400).",
+    )
+    assert prev_req.sample_diff_lines == 120
+    assert prev_resp.next_revision == 3
+
+    bulk_prev_req = BulkRepositoryPreviewRequest(
+        repository_ids=[repo_id],
+        mode="approval",
+        add_tags=["critical"],
+    )
+    bulk_prev_resp = BulkRepositoryPreviewResponse(
+        can_apply_all=True,
+        requires_step_up=False,
+        items=[
+            BulkRepositoryPreviewItem(
+                repository_id=repo_id,
+                repository_name=repo.name,
+                current_version=2,
+                current_mode="monitor",
+                target_mode="approval",
+                current_paused=False,
+                target_paused=False,
+                can_apply=True,
+                requires_step_up=False,
+                active_job_count=0,
+            )
+        ],
+    )
+    assert bulk_prev_req.repository_ids == [repo_id]
+    assert bulk_prev_resp.can_apply_all is True
+
+    bulk_upd_req = BulkRepositoryUpdateRequest(
+        repository_ids=[repo_id],
+        expected_versions={repo_id: 2},
+        mode="approval",
+        add_tags=["critical"],
+        reason="Roll out approval mode.",
+    )
+    bulk_upd_resp = BulkRepositoryUpdateResponse(
+        updated_repositories=[repo],
+    )
+    detail_resp = RepositoryDetailResponse(
+        repository=repo,
+        connection_status="ready",
+        current_policy_revision=2,
+        policy=policy,
+        effective_policy=effective,
+        readiness_gates=gates,
+    )
+    assert bulk_upd_req.expected_versions[repo_id] == 2
+    assert len(bulk_upd_resp.updated_repositories) == 1
+    assert detail_resp.connection_status == "ready"

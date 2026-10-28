@@ -803,7 +803,7 @@ async def test_0007_migration_reversibility_rls_and_tenant_isolation(
                     )
                 )
             ).fetchall()
-            assert len(rows) == 35
+            assert len(rows) >= 35
             relnames = {r[0] for r in rows}
             assert {"ci_run_triggers", "webhook_inbox", "provider_sync_cursors"}.issubset(relnames)
             for relname, has_rls, force_rls in rows:

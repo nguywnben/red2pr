@@ -68,6 +68,64 @@
         "title": "ActionReceipt",
         "type": "object"
       },
+      "AffectedInFlightItem": {
+        "additionalProperties": false,
+        "description": "Active in-flight job/session summary showing pinned policy revision isolation.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "impact_summary": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Impact Summary",
+            "type": "string"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Kind",
+            "type": "string"
+          },
+          "pinned_policy_revision": {
+            "minimum": 1.0,
+            "title": "Pinned Policy Revision",
+            "type": "integer"
+          },
+          "repair_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Id"
+          },
+          "state": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "kind",
+          "state",
+          "pinned_policy_revision",
+          "impact_summary",
+          "created_at"
+        ],
+        "title": "AffectedInFlightItem",
+        "type": "object"
+      },
       "ApplyPatchArgs": {
         "additionalProperties": false,
         "properties": {
@@ -509,6 +567,75 @@
         "title": "AuditRecord",
         "type": "object"
       },
+      "BranchPolicyEvaluation": {
+        "additionalProperties": false,
+        "description": "Per-branch dry-run policy decision (`deny` always overrides `allow`).",
+        "properties": {
+          "branch": {
+            "maxLength": 4096,
+            "title": "Branch",
+            "type": "string"
+          },
+          "canonical_branch": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Branch"
+          },
+          "matched_rule": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Rule"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_layer": {
+            "enum": [
+              "hard_invariant",
+              "instance",
+              "workspace",
+              "repository"
+            ],
+            "title": "Source Layer",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "allow",
+              "requires_approval",
+              "deny"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch",
+          "verdict",
+          "source_layer",
+          "reason"
+        ],
+        "title": "BranchPolicyEvaluation",
+        "type": "object"
+      },
       "BreakGlassCreateRequest": {
         "additionalProperties": false,
         "description": "ADR-034 owner step-up temporary workspace break-glass access request.",
@@ -632,6 +759,285 @@
           "reason_code"
         ],
         "title": "BudgetEventPayload",
+        "type": "object"
+      },
+      "BulkRepositoryPreviewItem": {
+        "additionalProperties": false,
+        "description": "Per-repository preview outcome for `UI-S04` explicit bulk policy/mode preview.",
+        "properties": {
+          "active_job_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Active Job Count",
+            "type": "integer"
+          },
+          "can_apply": {
+            "title": "Can Apply",
+            "type": "boolean"
+          },
+          "current_mode": {
+            "enum": [
+              "monitor",
+              "approval",
+              "auto_repair"
+            ],
+            "title": "Current Mode",
+            "type": "string"
+          },
+          "current_paused": {
+            "title": "Current Paused",
+            "type": "boolean"
+          },
+          "current_version": {
+            "minimum": 1.0,
+            "title": "Current Version",
+            "type": "integer"
+          },
+          "denials": {
+            "items": {
+              "$ref": "#/components/schemas/PolicyDenialItem"
+            },
+            "title": "Denials",
+            "type": "array"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "repository_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Repository Name",
+            "type": "string"
+          },
+          "requires_step_up": {
+            "title": "Requires Step Up",
+            "type": "boolean"
+          },
+          "target_mode": {
+            "enum": [
+              "monitor",
+              "approval",
+              "auto_repair"
+            ],
+            "title": "Target Mode",
+            "type": "string"
+          },
+          "target_paused": {
+            "title": "Target Paused",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "repository_id",
+          "repository_name",
+          "current_version",
+          "current_mode",
+          "target_mode",
+          "current_paused",
+          "target_paused",
+          "can_apply",
+          "requires_step_up"
+        ],
+        "title": "BulkRepositoryPreviewItem",
+        "type": "object"
+      },
+      "BulkRepositoryPreviewRequest": {
+        "additionalProperties": false,
+        "description": "A-07 / `UI-S04` zero-mutation bulk repository mode/pause/tag preview request.",
+        "properties": {
+          "add_tags": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Add Tags",
+            "type": "array"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "monitor",
+                  "approval",
+                  "auto_repair"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "paused": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused"
+          },
+          "remove_tags": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Remove Tags",
+            "type": "array"
+          },
+          "repository_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Repository Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "repository_ids"
+        ],
+        "title": "BulkRepositoryPreviewRequest",
+        "type": "object"
+      },
+      "BulkRepositoryPreviewResponse": {
+        "additionalProperties": false,
+        "description": "A-07 / `UI-S04` zero-mutation bulk repository preview response.",
+        "properties": {
+          "can_apply_all": {
+            "title": "Can Apply All",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BulkRepositoryPreviewItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "requires_step_up": {
+            "title": "Requires Step Up",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "can_apply_all",
+          "requires_step_up"
+        ],
+        "title": "BulkRepositoryPreviewResponse",
+        "type": "object"
+      },
+      "BulkRepositoryUpdateRequest": {
+        "additionalProperties": false,
+        "description": "A-07 / `UI-S04` version-checked bulk repository mode/pause/tag mutation request.",
+        "properties": {
+          "add_tags": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Add Tags",
+            "type": "array"
+          },
+          "expected_versions": {
+            "additionalProperties": {
+              "minimum": 1.0,
+              "type": "integer"
+            },
+            "title": "Expected Versions",
+            "type": "object"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "monitor",
+                  "approval",
+                  "auto_repair"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "paused": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "remove_tags": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Remove Tags",
+            "type": "array"
+          },
+          "repository_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Repository Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "repository_ids",
+          "expected_versions"
+        ],
+        "title": "BulkRepositoryUpdateRequest",
+        "type": "object"
+      },
+      "BulkRepositoryUpdateResponse": {
+        "additionalProperties": false,
+        "description": "A-07 / `UI-S04` atomic bulk repository update response.",
+        "properties": {
+          "updated_repositories": {
+            "items": {
+              "$ref": "#/components/schemas/Repository"
+            },
+            "title": "Updated Repositories",
+            "type": "array"
+          }
+        },
+        "title": "BulkRepositoryUpdateResponse",
         "type": "object"
       },
       "CapabilitySnapshot": {
@@ -2336,6 +2742,201 @@
         "title": "Diagnosis",
         "type": "object"
       },
+      "EffectiveRepositoryPolicy": {
+        "additionalProperties": false,
+        "description": "Resolved policy after `hard_invariant > instance > workspace > repository` merge.",
+        "properties": {
+          "allow_auto_publication": {
+            "title": "Allow Auto Publication",
+            "type": "boolean"
+          },
+          "allow_config_edits": {
+            "default": false,
+            "title": "Allow Config Edits",
+            "type": "boolean"
+          },
+          "allow_sandbox_execution": {
+            "title": "Allow Sandbox Execution",
+            "type": "boolean"
+          },
+          "allow_test_edits": {
+            "default": false,
+            "title": "Allow Test Edits",
+            "type": "boolean"
+          },
+          "auto_merge": {
+            "const": false,
+            "default": false,
+            "title": "Auto Merge",
+            "type": "boolean"
+          },
+          "branch_allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branch Allowlist",
+            "type": "array"
+          },
+          "branch_denylist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branch Denylist",
+            "type": "array"
+          },
+          "effective_mode": {
+            "enum": [
+              "monitor",
+              "approval",
+              "auto_repair"
+            ],
+            "title": "Effective Mode",
+            "type": "string"
+          },
+          "effective_paused": {
+            "title": "Effective Paused",
+            "type": "boolean"
+          },
+          "field_sources": {
+            "additionalProperties": {
+              "enum": [
+                "hard_invariant",
+                "instance",
+                "workspace",
+                "repository"
+              ],
+              "type": "string"
+            },
+            "propertyNames": {
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "title": "Field Sources",
+            "type": "object"
+          },
+          "file_allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "File Allowlist",
+            "type": "array"
+          },
+          "file_denylist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "File Denylist",
+            "type": "array"
+          },
+          "hard_denied_paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hard Denied Paths",
+            "type": "array"
+          },
+          "inference_consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inference Consent Id"
+          },
+          "max_attempts": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "max_calls_per_session": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Calls Per Session",
+            "type": "integer"
+          },
+          "max_cost_per_session": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "max_diff_lines": {
+            "maximum": 2000.0,
+            "minimum": 1.0,
+            "title": "Max Diff Lines",
+            "type": "integer"
+          },
+          "max_tokens_per_session": {
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Max Tokens Per Session",
+            "type": "integer"
+          },
+          "max_wall_seconds": {
+            "maximum": 7200.0,
+            "minimum": 60.0,
+            "title": "Max Wall Seconds",
+            "type": "integer"
+          },
+          "mode": {
+            "enum": [
+              "monitor",
+              "approval",
+              "auto_repair"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "protected_paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Protected Paths",
+            "type": "array"
+          },
+          "require_baseline": {
+            "const": true,
+            "default": true,
+            "title": "Require Baseline",
+            "type": "boolean"
+          },
+          "runtime_profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Runtime Profile Id",
+            "type": "string"
+          },
+          "sensitive_rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sensitive Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "effective_mode",
+          "paused",
+          "effective_paused",
+          "allow_sandbox_execution",
+          "allow_auto_publication",
+          "max_attempts",
+          "max_diff_lines",
+          "max_calls_per_session",
+          "max_tokens_per_session",
+          "max_wall_seconds",
+          "max_cost_per_session",
+          "runtime_profile_id"
+        ],
+        "title": "EffectiveRepositoryPolicy",
+        "type": "object"
+      },
       "EndpointRegistration": {
         "additionalProperties": false,
         "description": "Registered private service endpoint bound to exact adapter, host, port, CIDRs & CA ref.",
@@ -3188,6 +3789,104 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HistoricalRunSimulation": {
+        "additionalProperties": false,
+        "description": "Dry-run simulation of a historical `ci_run_triggers` attempt under candidate policy.",
+        "properties": {
+          "allow_auto_publication": {
+            "title": "Allow Auto Publication",
+            "type": "boolean"
+          },
+          "allow_sandbox_execution": {
+            "title": "Allow Sandbox Execution",
+            "type": "boolean"
+          },
+          "attempt_key": {
+            "title": "Attempt Key",
+            "type": "string"
+          },
+          "conclusion": {
+            "enum": [
+              "success",
+              "failure",
+              "cancelled",
+              "timed_out",
+              "skipped",
+              "neutral",
+              "action_required",
+              "unknown"
+            ],
+            "title": "Conclusion",
+            "type": "string"
+          },
+          "disposition": {
+            "enum": [
+              "eligible_auto_repair",
+              "eligible_approval_gated",
+              "diagnose_only_monitor",
+              "blocked_paused",
+              "blocked_branch_policy",
+              "blocked_untrusted_fork",
+              "blocked_workflow_hazard",
+              "blocked_grant_review",
+              "blocked_worker_unready",
+              "blocked_missing_consent"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "head_sha": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Head Sha",
+            "type": "string"
+          },
+          "provider_run_id": {
+            "title": "Provider Run Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "ref": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          },
+          "trigger_id": {
+            "title": "Trigger Id",
+            "type": "string"
+          },
+          "triggered_at": {
+            "title": "Triggered At",
+            "type": "string"
+          },
+          "untrusted_fork": {
+            "default": false,
+            "title": "Untrusted Fork",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "trigger_id",
+          "provider_run_id",
+          "attempt_key",
+          "ref",
+          "head_sha",
+          "conclusion",
+          "triggered_at",
+          "disposition",
+          "allow_sandbox_execution",
+          "allow_auto_publication",
+          "reason"
+        ],
+        "title": "HistoricalRunSimulation",
         "type": "object"
       },
       "Invite": {
@@ -4179,6 +4878,27 @@
         "description": "S-01 exact decimal monetary representation (never binary floating point).",
         "properties": {
           "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "title": "Money",
+        "type": "object"
+      },
+      "Money-Input": {
+        "additionalProperties": false,
+        "description": "S-01 exact decimal monetary representation (never binary floating point).",
+        "properties": {
+          "amount": {
             "anyOf": [
               {
                 "type": "number"
@@ -4188,6 +4908,27 @@
               }
             ],
             "title": "Amount"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "title": "Money",
+        "type": "object"
+      },
+      "Money-Output": {
+        "additionalProperties": false,
+        "description": "S-01 exact decimal monetary representation (never binary floating point).",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
           },
           "currency": {
             "pattern": "^[A-Z]{3}$",
@@ -4958,6 +5699,215 @@
           "attempt"
         ],
         "title": "Patch",
+        "type": "object"
+      },
+      "PathPolicyEvaluation": {
+        "additionalProperties": false,
+        "description": "Per-file-path canonicalization & glob evaluation (`SEC-007`, `SEC-009`).",
+        "properties": {
+          "canonical_path": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Path"
+          },
+          "category": {
+            "enum": [
+              "standard",
+              "hard_denied",
+              "denied_glob",
+              "outside_allowlist",
+              "protected_sensitive",
+              "test_file",
+              "config_file",
+              "invalid_path"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "matched_rule": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Rule"
+          },
+          "raw_path": {
+            "maxLength": 4096,
+            "title": "Raw Path",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_layer": {
+            "enum": [
+              "hard_invariant",
+              "instance",
+              "workspace",
+              "repository"
+            ],
+            "title": "Source Layer",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "allow",
+              "requires_approval",
+              "deny"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "raw_path",
+          "verdict",
+          "category",
+          "source_layer",
+          "reason"
+        ],
+        "title": "PathPolicyEvaluation",
+        "type": "object"
+      },
+      "PolicyDenialItem": {
+        "additionalProperties": false,
+        "description": "Explicit invariant, hazard, readiness, or scope denial reported by the policy engine.",
+        "properties": {
+          "blocking_save": {
+            "default": false,
+            "title": "Blocking Save",
+            "type": "boolean"
+          },
+          "code": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Detail",
+            "type": "string"
+          },
+          "source_layer": {
+            "enum": [
+              "hard_invariant",
+              "instance",
+              "workspace",
+              "repository"
+            ],
+            "title": "Source Layer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "source_layer",
+          "detail"
+        ],
+        "title": "PolicyDenialItem",
+        "type": "object"
+      },
+      "PolicyReadinessGates": {
+        "additionalProperties": false,
+        "description": "Authoritative safety & operational readiness prerequisites for repository automation.",
+        "properties": {
+          "blocking_reasons": {
+            "items": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Blocking Reasons",
+            "type": "array"
+          },
+          "grant_review_required": {
+            "title": "Grant Review Required",
+            "type": "boolean"
+          },
+          "inference_consent_ready": {
+            "title": "Inference Consent Ready",
+            "type": "boolean"
+          },
+          "instance_paused": {
+            "default": false,
+            "title": "Instance Paused",
+            "type": "boolean"
+          },
+          "worker_isolation_ready": {
+            "title": "Worker Isolation Ready",
+            "type": "boolean"
+          },
+          "workflow_hazard_blocked": {
+            "title": "Workflow Hazard Blocked",
+            "type": "boolean"
+          },
+          "workspace_paused": {
+            "default": false,
+            "title": "Workspace Paused",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "worker_isolation_ready",
+          "inference_consent_ready",
+          "workflow_hazard_blocked",
+          "grant_review_required"
+        ],
+        "title": "PolicyReadinessGates",
+        "type": "object"
+      },
+      "PolicyRuleChange": {
+        "additionalProperties": false,
+        "description": "Structured rule diff entry produced during dry-run policy preview (`A-07`).",
+        "properties": {
+          "after": {
+            "title": "After"
+          },
+          "before": {
+            "title": "Before"
+          },
+          "field": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "impact": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Impact",
+            "type": "string"
+          },
+          "requires_step_up": {
+            "default": false,
+            "title": "Requires Step Up",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "field",
+          "before",
+          "after",
+          "impact"
+        ],
+        "title": "PolicyRuleChange",
         "type": "object"
       },
       "Problem": {
@@ -6200,6 +7150,11 @@
         "additionalProperties": false,
         "description": "S-09 workspace-scoped repository catalog entry.",
         "properties": {
+          "active": {
+            "default": true,
+            "title": "Active",
+            "type": "boolean"
+          },
           "archived": {
             "default": false,
             "title": "Archived",
@@ -6228,6 +7183,11 @@
             "title": "External Id",
             "type": "string"
           },
+          "grant_review_required": {
+            "default": false,
+            "title": "Grant Review Required",
+            "type": "boolean"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -6236,6 +7196,49 @@
             "default": false,
             "title": "Is Fork",
             "type": "boolean"
+          },
+          "last_ci_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ci At"
+          },
+          "last_ci_conclusion": {
+            "anyOf": [
+              {
+                "enum": [
+                  "success",
+                  "failure",
+                  "cancelled",
+                  "timed_out",
+                  "skipped",
+                  "neutral",
+                  "action_required",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ci Conclusion"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
           },
           "mode": {
             "enum": [
@@ -6252,6 +7255,19 @@
             "title": "Name",
             "type": "string"
           },
+          "organization": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization"
+          },
           "paused": {
             "default": false,
             "title": "Paused",
@@ -6261,6 +7277,21 @@
             "minimum": 1.0,
             "title": "Policy Revision",
             "type": "integer"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "enum": [
+                  "github",
+                  "gitlab"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
           },
           "repository_id": {
             "anyOf": [
@@ -6272,6 +7303,26 @@
               }
             ],
             "title": "Repository Id"
+          },
+          "sync_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "idle",
+                  "ok",
+                  "not_modified",
+                  "rate_limited",
+                  "gap_detected",
+                  "error",
+                  "revoked"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Status"
           },
           "tags": {
             "items": {
@@ -6340,15 +7391,371 @@
         "title": "Repository",
         "type": "object"
       },
+      "RepositoryAccessGrantSummary": {
+        "additionalProperties": false,
+        "description": "Authorized principal summary for `UI-S05` Access tab (`ADR-030`, `SEC-010`).",
+        "properties": {
+          "display_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 4096,
+            "title": "Email",
+            "type": "string"
+          },
+          "grant_origin": {
+            "enum": [
+              "workspace_admin",
+              "explicit_repo_grant"
+            ],
+            "title": "Grant Origin",
+            "type": "string"
+          },
+          "membership_id": {
+            "title": "Membership Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "maintainer",
+              "reviewer",
+              "viewer",
+              "auditor"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "membership_id",
+          "user_id",
+          "display_name",
+          "email",
+          "role",
+          "grant_origin"
+        ],
+        "title": "RepositoryAccessGrantSummary",
+        "type": "object"
+      },
+      "RepositoryCatalogPage": {
+        "additionalProperties": false,
+        "description": "A-07 cursor-paginated repository catalog page (`S-04`) with strictly scoped facets.",
+        "properties": {
+          "facets": {
+            "$ref": "#/components/schemas/RepositoryFacetSummary"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Repository"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "snapshot_at"
+        ],
+        "title": "RepositoryCatalogPage",
+        "type": "object"
+      },
+      "RepositoryDetailResponse": {
+        "additionalProperties": false,
+        "description": "A-07 comprehensive repository detail DTO powering all 7 `UI-S05` tabs.",
+        "properties": {
+          "access_grants": {
+            "items": {
+              "$ref": "#/components/schemas/RepositoryAccessGrantSummary"
+            },
+            "title": "Access Grants",
+            "type": "array"
+          },
+          "active_jobs": {
+            "items": {
+              "$ref": "#/components/schemas/AffectedInFlightItem"
+            },
+            "title": "Active Jobs",
+            "type": "array"
+          },
+          "connection_display_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Display Name"
+          },
+          "connection_status": {
+            "enum": [
+              "not_configured",
+              "checking",
+              "ready",
+              "degraded",
+              "revoked",
+              "unsupported"
+            ],
+            "title": "Connection Status",
+            "type": "string"
+          },
+          "current_policy_revision": {
+            "minimum": 1.0,
+            "title": "Current Policy Revision",
+            "type": "integer"
+          },
+          "effective_policy": {
+            "$ref": "#/components/schemas/EffectiveRepositoryPolicy"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/RepositoryPolicy-Output"
+          },
+          "policy_revisions": {
+            "items": {
+              "$ref": "#/components/schemas/RepositoryPolicyRevision"
+            },
+            "title": "Policy Revisions",
+            "type": "array"
+          },
+          "readiness_gates": {
+            "$ref": "#/components/schemas/PolicyReadinessGates"
+          },
+          "recent_history": {
+            "items": {
+              "$ref": "#/components/schemas/RepositoryHistoryEntry"
+            },
+            "title": "Recent History",
+            "type": "array"
+          },
+          "recent_runs": {
+            "items": {
+              "$ref": "#/components/schemas/RepositoryRunTriggerSummary"
+            },
+            "title": "Recent Runs",
+            "type": "array"
+          },
+          "repository": {
+            "$ref": "#/components/schemas/Repository"
+          },
+          "sync_cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderSyncCursor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "repository",
+          "connection_status",
+          "current_policy_revision",
+          "policy",
+          "effective_policy",
+          "readiness_gates"
+        ],
+        "title": "RepositoryDetailResponse",
+        "type": "object"
+      },
+      "RepositoryFacetSummary": {
+        "additionalProperties": false,
+        "description": "Scoped catalog facets computed over the caller's authorized repositories (`UX-02`).",
+        "properties": {
+          "hazard_flagged_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Hazard Flagged Count",
+            "type": "integer"
+          },
+          "mode_counts": {
+            "additionalProperties": {
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "title": "Mode Counts",
+            "type": "object"
+          },
+          "organizations": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Organizations",
+            "type": "array"
+          },
+          "partial_sync_connection_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Partial Sync Connection Ids",
+            "type": "array"
+          },
+          "paused_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Paused Count",
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "RepositoryFacetSummary",
+        "type": "object"
+      },
+      "RepositoryHistoryEntry": {
+        "additionalProperties": false,
+        "description": "Audit & policy revision history item for `UI-S05` History tab.",
+        "properties": {
+          "action": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "actor_type": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Actor Type",
+            "type": "string"
+          },
+          "decision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Decision",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "policy_revision": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Revision"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "summary": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "actor_type",
+          "actor_id",
+          "action",
+          "decision",
+          "summary"
+        ],
+        "title": "RepositoryHistoryEntry",
+        "type": "object"
+      },
       "RepositoryPolicy": {
         "additionalProperties": false,
         "description": "S-09 repository repair automation policy (require_baseline=True invariant per ADR-031).",
         "properties": {
+          "allow_config_edits": {
+            "default": false,
+            "title": "Allow Config Edits",
+            "type": "boolean"
+          },
+          "allow_test_edits": {
+            "default": false,
+            "title": "Allow Test Edits",
+            "type": "boolean"
+          },
           "branch_allowlist": {
             "items": {
               "type": "string"
             },
             "title": "Branch Allowlist",
+            "type": "array"
+          },
+          "branch_denylist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branch Denylist",
+            "type": "array"
+          },
+          "file_allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "File Allowlist",
             "type": "array"
           },
           "file_denylist": {
@@ -6377,12 +7784,65 @@
             "title": "Max Attempts",
             "type": "integer"
           },
+          "max_calls_per_session": {
+            "anyOf": [
+              {
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Calls Per Session"
+          },
+          "max_cost_per_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "max_diff_lines": {
             "default": 500,
             "maximum": 2000,
             "minimum": 1,
             "title": "Max Diff Lines",
             "type": "integer"
+          },
+          "max_tokens_per_session": {
+            "anyOf": [
+              {
+                "maximum": 1000000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Tokens Per Session"
+          },
+          "max_wall_seconds": {
+            "anyOf": [
+              {
+                "maximum": 7200,
+                "minimum": 60,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Wall Seconds"
           },
           "require_baseline": {
             "const": true,
@@ -6408,6 +7868,897 @@
           "runtime_profile_id"
         ],
         "title": "RepositoryPolicy",
+        "type": "object"
+      },
+      "RepositoryPolicy-Input": {
+        "additionalProperties": false,
+        "description": "S-09 repository repair automation policy (require_baseline=True invariant per ADR-031).",
+        "properties": {
+          "allow_config_edits": {
+            "default": false,
+            "title": "Allow Config Edits",
+            "type": "boolean"
+          },
+          "allow_test_edits": {
+            "default": false,
+            "title": "Allow Test Edits",
+            "type": "boolean"
+          },
+          "branch_allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branch Allowlist",
+            "type": "array"
+          },
+          "branch_denylist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branch Denylist",
+            "type": "array"
+          },
+          "file_allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "File Allowlist",
+            "type": "array"
+          },
+          "file_denylist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "File Denylist",
+            "type": "array"
+          },
+          "inference_consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inference Consent Id"
+          },
+          "max_attempts": {
+            "default": 2,
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "max_calls_per_session": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Calls Per Session"
+          },
+          "max_cost_per_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_diff_lines": {
+            "default": 500,
+            "maximum": 2000.0,
+            "minimum": 1.0,
+            "title": "Max Diff Lines",
+            "type": "integer"
+          },
+          "max_tokens_per_session": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens Per Session"
+          },
+          "max_wall_seconds": {
+            "anyOf": [
+              {
+                "maximum": 7200.0,
+                "minimum": 60.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Wall Seconds"
+          },
+          "require_baseline": {
+            "const": true,
+            "default": true,
+            "title": "Require Baseline",
+            "type": "boolean"
+          },
+          "runtime_profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Runtime Profile Id",
+            "type": "string"
+          },
+          "sensitive_rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sensitive Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "runtime_profile_id"
+        ],
+        "title": "RepositoryPolicy",
+        "type": "object"
+      },
+      "RepositoryPolicy-Output": {
+        "additionalProperties": false,
+        "description": "S-09 repository repair automation policy (require_baseline=True invariant per ADR-031).",
+        "properties": {
+          "allow_config_edits": {
+            "default": false,
+            "title": "Allow Config Edits",
+            "type": "boolean"
+          },
+          "allow_test_edits": {
+            "default": false,
+            "title": "Allow Test Edits",
+            "type": "boolean"
+          },
+          "branch_allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branch Allowlist",
+            "type": "array"
+          },
+          "branch_denylist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branch Denylist",
+            "type": "array"
+          },
+          "file_allowlist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "File Allowlist",
+            "type": "array"
+          },
+          "file_denylist": {
+            "items": {
+              "type": "string"
+            },
+            "title": "File Denylist",
+            "type": "array"
+          },
+          "inference_consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inference Consent Id"
+          },
+          "max_attempts": {
+            "default": 2,
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "max_calls_per_session": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Calls Per Session"
+          },
+          "max_cost_per_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_diff_lines": {
+            "default": 500,
+            "maximum": 2000.0,
+            "minimum": 1.0,
+            "title": "Max Diff Lines",
+            "type": "integer"
+          },
+          "max_tokens_per_session": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens Per Session"
+          },
+          "max_wall_seconds": {
+            "anyOf": [
+              {
+                "maximum": 7200.0,
+                "minimum": 60.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Wall Seconds"
+          },
+          "require_baseline": {
+            "const": true,
+            "default": true,
+            "title": "Require Baseline",
+            "type": "boolean"
+          },
+          "runtime_profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Runtime Profile Id",
+            "type": "string"
+          },
+          "sensitive_rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sensitive Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "runtime_profile_id"
+        ],
+        "title": "RepositoryPolicy",
+        "type": "object"
+      },
+      "RepositoryPolicyPreviewRequest": {
+        "additionalProperties": false,
+        "description": "A-07 zero-mutation dry-run policy simulator input (`UX-POLICY-001`, `T-REP-02-P`).",
+        "properties": {
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "monitor",
+                  "approval",
+                  "auto_repair"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "paused": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused"
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepositoryPolicy-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sample_branches": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Sample Branches",
+            "type": "array"
+          },
+          "sample_diff_lines": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Diff Lines"
+          },
+          "sample_paths": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Sample Paths",
+            "type": "array"
+          }
+        },
+        "title": "RepositoryPolicyPreviewRequest",
+        "type": "object"
+      },
+      "RepositoryPolicyPreviewResponse": {
+        "additionalProperties": false,
+        "description": "A-07 dry-run policy preview result (mutates zero rows; surfaces diffs & simulations).",
+        "properties": {
+          "affected_in_flight": {
+            "items": {
+              "$ref": "#/components/schemas/AffectedInFlightItem"
+            },
+            "title": "Affected In Flight",
+            "type": "array"
+          },
+          "branch_evaluations": {
+            "items": {
+              "$ref": "#/components/schemas/BranchPolicyEvaluation"
+            },
+            "title": "Branch Evaluations",
+            "type": "array"
+          },
+          "can_apply": {
+            "title": "Can Apply",
+            "type": "boolean"
+          },
+          "changed_rules": {
+            "items": {
+              "$ref": "#/components/schemas/PolicyRuleChange"
+            },
+            "title": "Changed Rules",
+            "type": "array"
+          },
+          "current_revision": {
+            "minimum": 1.0,
+            "title": "Current Revision",
+            "type": "integer"
+          },
+          "denials": {
+            "items": {
+              "$ref": "#/components/schemas/PolicyDenialItem"
+            },
+            "title": "Denials",
+            "type": "array"
+          },
+          "diff_lines_reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff Lines Reason"
+          },
+          "diff_lines_verdict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allow",
+                  "requires_approval",
+                  "deny"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff Lines Verdict"
+          },
+          "effective_policy": {
+            "$ref": "#/components/schemas/EffectiveRepositoryPolicy"
+          },
+          "historical_run_simulations": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalRunSimulation"
+            },
+            "title": "Historical Run Simulations",
+            "type": "array"
+          },
+          "next_revision": {
+            "minimum": 1.0,
+            "title": "Next Revision",
+            "type": "integer"
+          },
+          "path_evaluations": {
+            "items": {
+              "$ref": "#/components/schemas/PathPolicyEvaluation"
+            },
+            "title": "Path Evaluations",
+            "type": "array"
+          },
+          "readiness_gates": {
+            "$ref": "#/components/schemas/PolicyReadinessGates"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "requires_step_up": {
+            "title": "Requires Step Up",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "repository_id",
+          "current_revision",
+          "next_revision",
+          "requires_step_up",
+          "can_apply",
+          "effective_policy",
+          "readiness_gates"
+        ],
+        "title": "RepositoryPolicyPreviewResponse",
+        "type": "object"
+      },
+      "RepositoryPolicyRevision": {
+        "additionalProperties": false,
+        "description": "Immutable versioned `repository_policies` snapshot (`S-09`, `REP-02`).",
+        "properties": {
+          "change_reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Reason"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By User Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "monitor",
+              "approval",
+              "auto_repair"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/RepositoryPolicy-Output"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "revision",
+          "mode",
+          "paused",
+          "policy"
+        ],
+        "title": "RepositoryPolicyRevision",
+        "type": "object"
+      },
+      "RepositoryPolicyStateResponse": {
+        "additionalProperties": false,
+        "description": "A-07 current policy snapshot, merged effective policy, gates, and revision history.",
+        "properties": {
+          "current_revision": {
+            "minimum": 1.0,
+            "title": "Current Revision",
+            "type": "integer"
+          },
+          "effective_policy": {
+            "$ref": "#/components/schemas/EffectiveRepositoryPolicy"
+          },
+          "mode": {
+            "enum": [
+              "monitor",
+              "approval",
+              "auto_repair"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/RepositoryPolicy-Output"
+          },
+          "readiness_gates": {
+            "$ref": "#/components/schemas/PolicyReadinessGates"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/RepositoryPolicyRevision"
+            },
+            "title": "Revisions",
+            "type": "array"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "workspace_id",
+          "current_revision",
+          "mode",
+          "paused",
+          "policy",
+          "effective_policy",
+          "readiness_gates"
+        ],
+        "title": "RepositoryPolicyStateResponse",
+        "type": "object"
+      },
+      "RepositoryPolicyUpdateRequest": {
+        "additionalProperties": false,
+        "description": "A-07 optimistic-concurrency update creating an immutable `repository_policies` revision.",
+        "properties": {
+          "expected_revision": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Revision"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "monitor",
+                  "approval",
+                  "auto_repair"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "paused": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/RepositoryPolicy-Input"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "policy"
+        ],
+        "title": "RepositoryPolicyUpdateRequest",
+        "type": "object"
+      },
+      "RepositoryRunTriggerSummary": {
+        "additionalProperties": false,
+        "description": "Normalized CI failure trigger summary for `UI-S05` Overview, Runs & Branches tabs.",
+        "properties": {
+          "attempt_key": {
+            "title": "Attempt Key",
+            "type": "string"
+          },
+          "conclusion": {
+            "enum": [
+              "success",
+              "failure",
+              "cancelled",
+              "timed_out",
+              "skipped",
+              "neutral",
+              "action_required",
+              "unknown"
+            ],
+            "title": "Conclusion",
+            "type": "string"
+          },
+          "event_type": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Event Type",
+            "type": "string"
+          },
+          "first_source": {
+            "enum": [
+              "webhook",
+              "poll",
+              "reconcile"
+            ],
+            "title": "First Source",
+            "type": "string"
+          },
+          "head_sha": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Head Sha",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_rerun": {
+            "title": "Is Rerun",
+            "type": "boolean"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "provider": {
+            "enum": [
+              "github",
+              "gitlab"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_run_id": {
+            "title": "Provider Run Id",
+            "type": "string"
+          },
+          "ref": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "in_progress",
+              "completed",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "triggered_at": {
+            "title": "Triggered At",
+            "type": "string"
+          },
+          "untrusted_fork": {
+            "title": "Untrusted Fork",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "provider_run_id",
+          "attempt_key",
+          "head_sha",
+          "ref",
+          "event_type",
+          "status",
+          "conclusion",
+          "is_rerun",
+          "untrusted_fork",
+          "first_source",
+          "triggered_at"
+        ],
+        "title": "RepositoryRunTriggerSummary",
+        "type": "object"
+      },
+      "RepositoryUpdateRequest": {
+        "additionalProperties": false,
+        "description": "A-07 partial repository mode, pause, tag, and W-02 grant-review update (`S-02`).",
+        "properties": {
+          "acknowledge_grant_review": {
+            "default": false,
+            "title": "Acknowledge Grant Review",
+            "type": "boolean"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "monitor",
+                  "approval",
+                  "auto_repair"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "paused": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 32,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          }
+        },
+        "title": "RepositoryUpdateRequest",
         "type": "object"
       },
       "ReproVerificationEventPayload": {
@@ -7690,7 +10041,7 @@
           "max_cost_per_session": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Money"
+                "$ref": "#/components/schemas/Money-Input"
               },
               {
                 "type": "null"
@@ -17428,6 +19779,1461 @@
         "summary": "Update member role & repository grants (`admin` only, `409 last_admin`) (A-05)",
         "tags": [
           "members"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/repositories": {
+      "get": {
+        "operationId": "listWorkspaceRepositories",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "connection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "github",
+                    "gitlab"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "monitor",
+                    "approval",
+                    "auto_repair"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mode"
+            }
+          },
+          {
+            "in": "query",
+            "name": "paused",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Paused"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hazard_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "clean",
+                    "flagged",
+                    "unscanned"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hazard Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_inactive",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Inactive",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryCatalogPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List authorized workspace repositories with S-04 cursor & scoped facets (A-07)",
+        "tags": [
+          "repositories"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/repositories/bulk-update": {
+      "post": {
+        "operationId": "bulkUpdateWorkspaceRepositories",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkRepositoryUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkRepositoryUpdateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Apply all-or-nothing version-checked bulk repository updates (A-07)",
+        "tags": [
+          "repositories"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/repositories/policy-previews": {
+      "post": {
+        "operationId": "previewBulkRepositoryPolicies",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkRepositoryPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkRepositoryPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Preview bulk repository mode, pause, or tag changes with zero DB mutations (A-07)",
+        "tags": [
+          "repositories"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/repositories/{repository_id}": {
+      "get": {
+        "operationId": "getWorkspaceRepository",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get repository overview, effective policy, CI runs, access & audit history (A-07)",
+        "tags": [
+          "repositories"
+        ]
+      },
+      "patch": {
+        "operationId": "updateWorkspaceRepository",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Repository"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Update repository mode, pause state, tags, or W-02 grant review (A-07)",
+        "tags": [
+          "repositories"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy": {
+      "get": {
+        "operationId": "getWorkspaceRepositoryPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryPolicyStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get immutable repository policy snapshot, effective merge & revisions (A-07)",
+        "tags": [
+          "repositories"
+        ]
+      },
+      "patch": {
+        "operationId": "updateWorkspaceRepositoryPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryPolicyUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryPolicyStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Create a new immutable repository policy revision with concurrency guard (A-07)",
+        "tags": [
+          "repositories"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy/previews": {
+      "post": {
+        "operationId": "previewWorkspaceRepositoryPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryPolicyPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryPolicyPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Simulate candidate repository policy without saving or mutating rows (A-07)",
+        "tags": [
+          "repositories"
         ]
       }
     },

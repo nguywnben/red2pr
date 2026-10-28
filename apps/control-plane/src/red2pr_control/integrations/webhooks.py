@@ -61,6 +61,7 @@ from red2pr_control.db.base import (
     EffectTombstoneModel,
     ProviderConnectionModel,
     RepositoryModel,
+    RepositoryPolicyModel,
     TaskJobModel,
     WebhookInboxModel,
 )
@@ -80,6 +81,10 @@ from red2pr_control.integrations.github_app import (
 from red2pr_control.integrations.gitlab_client import (
     GitLabAdapter,
     _map_gitlab_pipeline_status,
+)
+from red2pr_control.repositories.glob_guard import (
+    canonicalize_branch_ref,
+    first_matching_glob,
 )
 
 WEBHOOK_INBOX_RETENTION = timedelta(days=90)
@@ -473,6 +478,32 @@ async def record_normalized_run_failure_trigger(
         now=now,
     )
 
+    pol_row = await db.scalar(
+        select(RepositoryPolicyModel).where(
+            RepositoryPolicyModel.workspace_id == workspace_id,
+            RepositoryPolicyModel.repository_id == repo_row.id,
+            RepositoryPolicyModel.revision == repo_row.policy_revision,
+        )
+    )
+    branch_allowed = True
+    if pol_row is not None:
+        try:
+            canon_branch = canonicalize_branch_ref(clean_ref)
+            if first_matching_glob(pol_row.branch_denylist_json, canon_branch) is not None or (
+                pol_row.branch_allowlist_json
+                and first_matching_glob(pol_row.branch_allowlist_json, canon_branch) is None
+            ):
+                branch_allowed = False
+        except Exception:
+            branch_allowed = False
+
+    allow_sandbox_execution = bool(
+        repo_row.mode in ("approval", "auto_repair")
+        and not repo_row.paused
+        and not candidate.untrusted_fork
+        and branch_allowed
+    )
+
     dedup_key = f"ci_run.triage:{repo_row.id}:{clean_run_id}:{clean_attempt_key}"[:256]
     job_id = new_uuid7(now=now)
     job_row = TaskJobModel(
@@ -495,6 +526,8 @@ async def record_normalized_run_failure_trigger(
             "repository_id": repo_row.id,
             "repository_name": repo_row.name,
             "repository_mode": repo_row.mode,
+            "policy_revision": repo_row.policy_revision,
+            "allow_sandbox_execution": allow_sandbox_execution,
             "provider": candidate.provider,
             "provider_run_id": clean_run_id,
             "attempt_key": clean_attempt_key,

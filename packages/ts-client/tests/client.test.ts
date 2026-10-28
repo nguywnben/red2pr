@@ -807,4 +807,224 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(reconciled.data.complete_recovery, false);
     assert.equal(reconciled.data.sync_cursors?.[0]?.history_gap_detected, true);
   });
+
+  it("serializes U12 A-07 repository catalog, versioned policy, ETag/If-Match, and dry-run previews", async () => {
+    const repoId = "019a2800-0000-7000-8000-000000000101";
+    const connId = "019a2800-0000-7000-8000-000000000202";
+    const wsId = "019a2800-0000-7000-8000-000000000001";
+    const seenHeaders: Array<{ path: string; method: string; ifMatch: string | null; csrf: string | null }> = [];
+
+    const sampleRepo = {
+      id: repoId,
+      workspace_id: wsId,
+      version: 2,
+      created_at: "2026-10-28T01:00:00Z",
+      updated_at: "2026-10-28T01:05:00Z",
+      external_id: "70001",
+      connection_id: connId,
+      provider: "github",
+      organization: "acme-corp",
+      name: "acme-corp/service-api",
+      default_branch: "main",
+      visibility: "private",
+      mode: "approval",
+      paused: false,
+      active: true,
+      grant_review_required: false,
+      policy_revision: 2,
+      tags: ["tier-1", "python"],
+      archived: false,
+      is_fork: false,
+      workflow_hazard_status: "clean",
+      workflow_hazards: [],
+      auto_repair_blocked: false,
+      sync_status: "idle",
+      last_synced_at: "2026-10-28T01:05:00Z",
+      last_ci_conclusion: "failure",
+      last_ci_at: "2026-10-28T01:04:00Z",
+    };
+
+    const samplePolicy = {
+      branch_allowlist: ["main", "release/*"],
+      branch_denylist: ["production/*"],
+      file_allowlist: ["src/**"],
+      file_denylist: ["vendor/**"],
+      sensitive_rules: ["auth/**"],
+      allow_test_edits: false,
+      allow_config_edits: false,
+      max_attempts: 3,
+      max_diff_lines: 300,
+      max_calls_per_session: 15,
+      max_tokens_per_session: 80000,
+      max_wall_seconds: 600,
+      max_cost_per_session: { amount: "2.50", currency: "USD" },
+      require_baseline: true as const,
+      inference_consent_id: null,
+      runtime_profile_id: "py312-linux",
+    };
+
+    const samplePolicyState = {
+      repository_id: repoId,
+      workspace_id: wsId,
+      current_revision: 2,
+      mode: "approval",
+      paused: false,
+      policy: samplePolicy,
+      effective_policy: {
+        mode: "approval",
+        effective_mode: "approval",
+        paused: false,
+        effective_paused: false,
+        allow_sandbox_execution: true,
+        allow_auto_publication: false,
+        require_baseline: true as const,
+        auto_merge: false as const,
+        branch_allowlist: ["main", "release/*"],
+        branch_denylist: ["production/*"],
+        file_allowlist: ["src/**"],
+        file_denylist: ["vendor/**"],
+        hard_denied_paths: [".env", ".git/**"],
+        sensitive_rules: ["auth/**"],
+        protected_paths: [".github/workflows/**", "uv.lock"],
+        allow_test_edits: false,
+        allow_config_edits: false,
+        max_attempts: 3,
+        max_diff_lines: 300,
+        max_calls_per_session: 15,
+        max_tokens_per_session: 80000,
+        max_wall_seconds: 600,
+        max_cost_per_session: { amount: "2.50", currency: "USD" },
+        inference_consent_id: null,
+        runtime_profile_id: "py312-linux",
+        field_sources: { mode: "repository", max_attempts: "repository" },
+      },
+      readiness_gates: {
+        auto_repair_eligible: true,
+        worker_isolation_ready: true,
+        inference_consent_ready: true,
+        workflow_hazard_blocked: false,
+        grant_review_required: false,
+        instance_paused: false,
+        workspace_paused: false,
+        blocking_reasons: [],
+      },
+      revisions: [],
+    };
+
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u12-token",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        seenHeaders.push({
+          path: url.pathname,
+          method: request.method,
+          ifMatch: request.headers.get("If-Match"),
+          csrf: request.headers.get("X-CSRF-Token"),
+        });
+
+        if (request.method === "GET" && url.pathname === "/api/v1/workspaces/acme/repositories") {
+          assert.equal(url.searchParams.get("mode"), "approval");
+          assert.equal(url.searchParams.get("tag"), "tier-1");
+          return new Response(
+            JSON.stringify({
+              items: [sampleRepo],
+              next_cursor: null,
+              snapshot_at: "2026-10-28T01:06:00Z",
+              facets: {
+                tags: ["python", "tier-1"],
+                organizations: ["acme-corp"],
+                by_provider: { github: 1 },
+                by_mode: { approval: 1 },
+                paused_count: 0,
+                hazard_flagged_count: 0,
+                grant_review_required_count: 0,
+                partial_sync_connection_ids: [],
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (
+          request.method === "PATCH" &&
+          url.pathname === `/api/v1/workspaces/acme/repositories/${repoId}/policy`
+        ) {
+          return new Response(JSON.stringify({ ...samplePolicyState, current_revision: 3 }), {
+            status: 200,
+            headers: { "Content-Type": "application/json", ETag: '"v3"' },
+          });
+        }
+        if (
+          request.method === "POST" &&
+          url.pathname === `/api/v1/workspaces/acme/repositories/${repoId}/policy/previews`
+        ) {
+          return new Response(
+            JSON.stringify({
+              repository_id: repoId,
+              current_revision: 2,
+              next_revision: 3,
+              can_apply: true,
+              requires_step_up: false,
+              effective_policy: samplePolicyState.effective_policy,
+              readiness_gates: samplePolicyState.readiness_gates,
+              changed_rules: [],
+              denials: [],
+              branch_evaluations: [
+                {
+                  branch: "main",
+                  canonical_branch: "main",
+                  verdict: "requires_approval",
+                  matched_rule: "main",
+                  source_layer: "repository",
+                  reason: "Approval mode requires human review.",
+                },
+              ],
+              path_evaluations: [
+                {
+                  raw_path: ".github/workflows/ci.yml",
+                  canonical_path: ".github/workflows/ci.yml",
+                  verdict: "requires_approval",
+                  category: "protected_sensitive",
+                  matched_rule: ".github/workflows/**",
+                  source_layer: "hard_invariant",
+                  reason: "Protected workflow file requires human approval.",
+                },
+              ],
+              diff_lines_verdict: "allow",
+              diff_lines_reason: "40 <= 300",
+              historical_run_simulations: [],
+              affected_in_flight: [],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        throw new Error(`Unexpected ${request.method} ${url.pathname}`);
+      },
+    });
+
+    const catalog = await client.listRepositories("acme", { mode: "approval", tag: "tier-1" });
+    assert.equal(catalog.data.items.length, 1);
+    assert.deepEqual(catalog.data.facets?.tags, ["python", "tier-1"]);
+
+    const updatedPolicy = await client.updateRepositoryPolicy(
+      "acme",
+      repoId,
+      { expected_revision: 2, mode: "approval", paused: false, policy: samplePolicy },
+      { ifMatch: '"v2"' },
+    );
+    assert.equal(updatedPolicy.etag, '"v3"');
+    assert.equal(seenHeaders[1]?.ifMatch, '"v2"');
+    assert.equal(seenHeaders[1]?.csrf, "csrf-u12-token");
+
+    const preview = await client.previewRepositoryPolicy("acme", repoId, {
+      mode: "approval",
+      paused: false,
+      policy: samplePolicy,
+      sample_branches: ["main"],
+      sample_paths: [".github/workflows/ci.yml"],
+      sample_diff_lines: 40,
+    });
+    assert.equal(preview.data.can_apply, true);
+    assert.equal(preview.data.path_evaluations?.[0]?.verdict, "requires_approval");
+  });
 });

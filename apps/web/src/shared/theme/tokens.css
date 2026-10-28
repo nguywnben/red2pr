@@ -338,7 +338,8 @@ body {
   cursor: pointer;
 }
 
-.red2pr-tab-button[aria-pressed="true"] {
+.red2pr-tab-button[aria-pressed="true"],
+.red2pr-tab-button[aria-selected="true"] {
   background-color: var(--red2pr-tone-info-bg);
   border-color: var(--red2pr-tone-info-border);
   color: var(--red2pr-tone-info-fg);

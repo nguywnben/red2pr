@@ -26,12 +26,19 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from py_contracts import (
     MAX_JSON_BODY_BYTES,
     ActionReceipt,
+    AffectedInFlightItem,
     Approval,
     Artifact,
     AuditRecord,
+    BranchPolicyEvaluation,
     BreakGlassCreateRequest,
     BreakGlassGrant,
     BreakGlassGrantPage,
+    BulkRepositoryPreviewItem,
+    BulkRepositoryPreviewRequest,
+    BulkRepositoryPreviewResponse,
+    BulkRepositoryUpdateRequest,
+    BulkRepositoryUpdateResponse,
     CapabilitySnapshot,
     CiJob,
     CiRun,
@@ -51,6 +58,7 @@ from py_contracts import (
     CsrfBootstrapResponse,
     DeadLetterJobSummary,
     Diagnosis,
+    EffectiveRepositoryPolicy,
     EndpointRegistration,
     EndpointRegistrationCreateRequest,
     EndpointRegistrationPage,
@@ -61,6 +69,7 @@ from py_contracts import (
     GitHubInstallationConfirmResponse,
     GitHubInstallStateCreateRequest,
     GitHubInstallStateResponse,
+    HistoricalRunSimulation,
     Invite,
     InviteAcceptRequest,
     InviteCreateRequest,
@@ -84,6 +93,10 @@ from py_contracts import (
     NotificationPreference,
     PageParams,
     Patch,
+    PathPolicyEvaluation,
+    PolicyDenialItem,
+    PolicyReadinessGates,
+    PolicyRuleChange,
     Problem,
     ProblemFieldError,
     ProviderSyncCursor,
@@ -94,7 +107,19 @@ from py_contracts import (
     Repair,
     ReportExportRequest,
     Repository,
+    RepositoryAccessGrantSummary,
+    RepositoryCatalogPage,
+    RepositoryDetailResponse,
+    RepositoryFacetSummary,
+    RepositoryHistoryEntry,
     RepositoryPolicy,
+    RepositoryPolicyPreviewRequest,
+    RepositoryPolicyPreviewResponse,
+    RepositoryPolicyRevision,
+    RepositoryPolicyStateResponse,
+    RepositoryPolicyUpdateRequest,
+    RepositoryRunTriggerSummary,
+    RepositoryUpdateRequest,
     ResultV1,
     SandboxJobV1,
     SecretPresence,
@@ -164,6 +189,10 @@ from red2pr_control.orchestrator import (
     OperationReceiptService,
     build_orchestrator_router,
 )
+from red2pr_control.repositories import (
+    RepositoryCatalogService,
+    build_repositories_router,
+)
 
 CORRELATION_HEADER = "X-Correlation-Id"
 _SAFE_CORR_RE = re.compile(r"^[A-Za-z0-9._:-]{1,120}$")
@@ -230,7 +259,32 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     GitHubInstallationConfirmRequest,
     GitHubInstallationConfirmResponse,
     Repository,
+    RepositoryAccessGrantSummary,
+    RepositoryCatalogPage,
+    RepositoryDetailResponse,
+    RepositoryFacetSummary,
+    RepositoryHistoryEntry,
     RepositoryPolicy,
+    RepositoryPolicyPreviewRequest,
+    RepositoryPolicyPreviewResponse,
+    RepositoryPolicyRevision,
+    RepositoryPolicyStateResponse,
+    RepositoryPolicyUpdateRequest,
+    RepositoryRunTriggerSummary,
+    RepositoryUpdateRequest,
+    AffectedInFlightItem,
+    BranchPolicyEvaluation,
+    BulkRepositoryPreviewItem,
+    BulkRepositoryPreviewRequest,
+    BulkRepositoryPreviewResponse,
+    BulkRepositoryUpdateRequest,
+    BulkRepositoryUpdateResponse,
+    EffectiveRepositoryPolicy,
+    HistoricalRunSimulation,
+    PathPolicyEvaluation,
+    PolicyDenialItem,
+    PolicyReadinessGates,
+    PolicyRuleChange,
     CiRun,
     CiJob,
     Repair,
@@ -416,6 +470,7 @@ def create_app(
     webhook_ingest_service: WebhookIngestService | None = None,
     polling_service: LocalPollingService | None = None,
     reconciler_service: MissedEventReconciler | None = None,
+    repository_catalog_service: RepositoryCatalogService | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     app = FastAPI(
@@ -431,6 +486,8 @@ def create_app(
     )
     if github_integration_service is not None and setup_step_registry is not None:
         github_integration_service.register_setup_probe(setup_step_registry)
+    if repository_catalog_service is not None and setup_step_registry is not None:
+        repository_catalog_service.register_setup_probe(setup_step_registry)
     app.state.iam_service = iam_service
     app.state.setup_wizard_service = setup_wizard_service
     app.state.setup_step_registry = setup_step_registry
@@ -440,6 +497,7 @@ def create_app(
     app.state.webhook_ingest_service = webhook_ingest_service
     app.state.polling_service = polling_service
     app.state.reconciler_service = reconciler_service
+    app.state.repository_catalog_service = repository_catalog_service
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -462,6 +520,7 @@ def create_app(
     app.include_router(build_orchestrator_router())
     app.include_router(build_integrations_router())
     app.include_router(build_webhooks_router())
+    app.include_router(build_repositories_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:
