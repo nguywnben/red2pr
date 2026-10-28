@@ -35,6 +35,9 @@ from py_contracts import (
     BreakGlassCreateRequest,
     BreakGlassGrant,
     BreakGlassGrantPage,
+    BudgetAccountSummary,
+    BudgetPolicyDefaults,
+    BudgetReservationRecord,
     BulkRepositoryPreviewItem,
     BulkRepositoryPreviewRequest,
     BulkRepositoryPreviewResponse,
@@ -66,6 +69,7 @@ from py_contracts import (
     EndpointRegistration,
     EndpointRegistrationCreateRequest,
     EndpointRegistrationPage,
+    EscalationPolicy,
     EventEnvelope,
     EvidenceManifestV1,
     FailureFingerprintObservation,
@@ -93,6 +97,11 @@ from py_contracts import (
     MfaDeleteRequest,
     MfaEnrollRequest,
     MfaEnrollResponse,
+    ModelCapabilityFlags,
+    ModelCapabilitySnapshot,
+    ModelPricingRate,
+    ModelProbeRequest,
+    ModelProbeResponse,
     ModelUsageRecord,
     Money,
     NotificationDelivery,
@@ -168,6 +177,11 @@ from py_contracts import (
     Workspace,
     WorkspaceCreateRequest,
     WorkspaceDeleteRequest,
+    WorkspaceInferenceConsentCreateRequest,
+    WorkspaceModelEntry,
+    WorkspaceModelsConfigUpdateRequest,
+    WorkspaceModelsConfigUpdateResponse,
+    WorkspaceModelsResponse,
     WorkspacePage,
     WorkspaceQueueFairnessSummary,
     WorkspaceSandboxLeaseSummary,
@@ -189,6 +203,10 @@ from red2pr_control.core.logging import (
 )
 from red2pr_control.iam.router import build_iam_router
 from red2pr_control.iam.sessions import IamService
+from red2pr_control.inference import (
+    MetaMuseInferenceService,
+    build_inference_router,
+)
 from red2pr_control.integrations import (
     GitHubIntegrationService,
     LocalPollingService,
@@ -349,6 +367,20 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     NotificationPreference,
     AuditRecord,
     ModelUsageRecord,
+    BudgetAccountSummary,
+    BudgetPolicyDefaults,
+    BudgetReservationRecord,
+    EscalationPolicy,
+    ModelCapabilityFlags,
+    ModelCapabilitySnapshot,
+    ModelPricingRate,
+    ModelProbeRequest,
+    ModelProbeResponse,
+    WorkspaceInferenceConsentCreateRequest,
+    WorkspaceModelEntry,
+    WorkspaceModelsConfigUpdateRequest,
+    WorkspaceModelsConfigUpdateResponse,
+    WorkspaceModelsResponse,
     ReportExportRequest,
     ConsentCreateRequest,
     ConsentRevokeRequest,
@@ -521,6 +553,7 @@ def create_app(
     reconciler_service: MissedEventReconciler | None = None,
     repository_catalog_service: RepositoryCatalogService | None = None,
     triage_evidence_service: TriageEvidenceService | None = None,
+    meta_inference_service: MetaMuseInferenceService | None = None,
     artifact_store: ArtifactStoreProtocol | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
@@ -541,6 +574,8 @@ def create_app(
         repository_catalog_service.register_setup_probe(setup_step_registry)
     if worker_broker_service is not None and setup_step_registry is not None:
         worker_broker_service.register_setup_probe(setup_step_registry)
+    if meta_inference_service is not None and setup_step_registry is not None:
+        meta_inference_service.register_setup_probe(setup_step_registry)
     app.state.iam_service = iam_service
     app.state.setup_wizard_service = setup_wizard_service
     app.state.setup_step_registry = setup_step_registry
@@ -553,6 +588,7 @@ def create_app(
     app.state.reconciler_service = reconciler_service
     app.state.repository_catalog_service = repository_catalog_service
     app.state.triage_evidence_service = triage_evidence_service
+    app.state.meta_inference_service = meta_inference_service
     app.state.artifact_store = artifact_store
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
@@ -579,6 +615,7 @@ def create_app(
     app.include_router(build_webhooks_router())
     app.include_router(build_repositories_router())
     app.include_router(build_triage_evidence_router())
+    app.include_router(build_inference_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:

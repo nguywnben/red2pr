@@ -2940,3 +2940,425 @@ class ReproductionRunModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class WorkspaceModelConfigModel(Base):
+    """U16 / A-20 workspace Meta Muse inference configuration, pricing, budgets & escalation."""
+
+    __tablename__ = "workspace_model_configs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", name="uq_workspace_model_configs_workspace_id"),
+        UniqueConstraint("workspace_id", "id", name="uq_workspace_model_configs_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_workspace_model_configs_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["endpoint_registration_id"],
+            ["endpoint_registrations.id"],
+            name="fk_workspace_model_configs_endpoint_reg_endpoint_registrations",
+            ondelete="SET NULL",
+        ),
+        ForeignKeyConstraint(
+            ["active_inference_consent_id"],
+            ["consents.id"],
+            name="fk_workspace_model_configs_consent_id_consents",
+            ondelete="SET NULL",
+        ),
+        ForeignKeyConstraint(
+            ["updated_by_user_id"],
+            ["users.id"],
+            name="fk_workspace_model_configs_updated_by_user_id_users",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "suspension_reason IS NULL OR suspension_reason IN ("
+            "'maintenance', 'model_unavailable', 'quota', "
+            "'worker_unavailable', 'operator_pause'"
+            ")",
+            name="model_cfg_suspension_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    endpoint_base_url: Mapped[str] = mapped_column(
+        String(2048), nullable=False, default="https://api.meta.ai/v1"
+    )
+    endpoint_registration_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    credential_secret_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    credential_secret_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    active_inference_consent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    pricing_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    budget_policy_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    escalation_policy_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    suspension_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status_detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    retry_after_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    updated_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class ModelCapabilitySnapshotModel(Base):
+    """U16 / AGT-01 immutable observed capability probe snapshot for Meta Muse models."""
+
+    __tablename__ = "model_capability_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "id", name="uq_model_capability_snapshots_workspace_id_id"
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_model_capability_snapshots_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["consent_id"],
+            ["consents.id"],
+            name="fk_model_capability_snapshots_consent_id_consents",
+            ondelete="SET NULL",
+        ),
+        CheckConstraint(
+            "model_id IN ('muse-spark-1.3', 'muse-wonder-1.0')",
+            name="model_snapshot_model_id_valid",
+        ),
+        CheckConstraint(
+            "tier_role IN ('primary', 'escalation')",
+            name="model_snapshot_tier_role_valid",
+        ),
+        CheckConstraint(
+            "status IN ('available', 'unavailable', 'not_probed', 'degraded', 'disabled')",
+            name="model_snapshot_status_valid",
+        ),
+        CheckConstraint(
+            "suspension_reason IS NULL OR suspension_reason IN ("
+            "'maintenance', 'model_unavailable', 'quota', "
+            "'worker_unavailable', 'operator_pause'"
+            ")",
+            name="model_snapshot_suspension_valid",
+        ),
+        CheckConstraint(
+            "retry_after_seconds IS NULL OR retry_after_seconds >= 0",
+            name="model_snapshot_retry_nonneg",
+        ),
+        CheckConstraint("version = 1", name="model_snapshot_immutable_version"),
+        Index(
+            "ix_model_capability_snapshots_ws_model_probed",
+            "workspace_id",
+            "model_id",
+            "probed_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    tier_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    capabilities_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    provider_request_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    consent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    probed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status_detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    suspension_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    retry_after_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class BudgetAccountModel(Base):
+    """U16 / AGT-03 / SEC-033 row-locked NUMERIC(18, 6) token, call, attempt & cost ledger."""
+
+    __tablename__ = "budget_accounts"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_budget_accounts_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "scope_kind",
+            "scope_key",
+            name="uq_budget_accounts_ws_scope_kind_key",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_budget_accounts_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "scope_kind IN ('workspace_daily', 'workspace_total', 'repair_session', 'model_probe')",
+            name="budget_scope_kind_valid",
+        ),
+        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="budget_currency_iso"),
+        CheckConstraint(
+            "cost_cap >= 0 AND reserved_cost >= 0 AND settled_cost >= 0 AND unknown_cost >= 0",
+            name="budget_costs_nonneg",
+        ),
+        CheckConstraint(
+            "token_cap >= 0 AND reserved_tokens >= 0 "
+            "AND settled_tokens >= 0 AND unknown_tokens >= 0",
+            name="budget_tokens_nonneg",
+        ),
+        CheckConstraint(
+            "call_cap >= 0 AND reserved_calls >= 0 AND settled_calls >= 0 AND unknown_calls >= 0",
+            name="budget_calls_nonneg",
+        ),
+        CheckConstraint(
+            "max_patch_attempts >= 0 AND patch_attempts_used >= 0 "
+            "AND patch_attempts_used <= max_patch_attempts",
+            name="budget_patch_attempts_bounds",
+        ),
+        CheckConstraint("max_wall_seconds >= 0", name="budget_wall_seconds_nonneg"),
+        CheckConstraint(
+            "reserved_calls = 0 OR ("
+            "(reserved_cost + settled_cost + unknown_cost) <= cost_cap "
+            "AND (reserved_tokens + settled_tokens + unknown_tokens) <= token_cap "
+            "AND (reserved_calls + settled_calls + unknown_calls) <= call_cap"
+            ")",
+            name="budget_active_reservation_within_caps",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_budget_accounts_ws_scope_window",
+            "workspace_id",
+            "scope_kind",
+            "window_started_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    repair_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    scope_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    scope_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
+    cost_cap: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+    reserved_cost: Mapped[Decimal] = mapped_column(
+        Numeric(18, 6), nullable=False, default=Decimal("0.000000")
+    )
+    settled_cost: Mapped[Decimal] = mapped_column(
+        Numeric(18, 6), nullable=False, default=Decimal("0.000000")
+    )
+    unknown_cost: Mapped[Decimal] = mapped_column(
+        Numeric(18, 6), nullable=False, default=Decimal("0.000000")
+    )
+    token_cap: Mapped[int] = mapped_column(Integer, nullable=False)
+    reserved_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    settled_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unknown_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    call_cap: Mapped[int] = mapped_column(Integer, nullable=False)
+    reserved_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    settled_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unknown_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_patch_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    patch_attempts_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_wall_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=1800)
+    threshold_alert_emitted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    window_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class BudgetReservationModel(Base):
+    """U16 / AGT-03 / SEC-033 worst-case pre-call budget reservation & settlement row."""
+
+    __tablename__ = "budget_reservations"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_budget_reservations_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_budget_reservations_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "budget_account_id"],
+            ["budget_accounts.workspace_id", "budget_accounts.id"],
+            name="fk_budget_reservations_tenant_account_budget_accounts",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["consent_id"],
+            ["consents.id"],
+            name="fk_budget_reservations_consent_id_consents",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "model_id IN ('muse-spark-1.3', 'muse-wonder-1.0')",
+            name="reservation_model_id_valid",
+        ),
+        CheckConstraint(
+            "status IN ('reserved', 'settled', 'released', 'unknown_outcome')",
+            name="reservation_status_valid",
+        ),
+        CheckConstraint(
+            "estimated_input_tokens >= 0 AND max_output_tokens >= 0",
+            name="reservation_estimated_tokens_nonneg",
+        ),
+        CheckConstraint(
+            "(actual_input_tokens IS NULL OR actual_input_tokens >= 0) "
+            "AND (actual_output_tokens IS NULL OR actual_output_tokens >= 0)",
+            name="reservation_actual_tokens_nonneg",
+        ),
+        CheckConstraint(
+            "reserved_cost >= 0 AND (settled_cost IS NULL OR settled_cost >= 0)",
+            name="reservation_costs_nonneg",
+        ),
+        CheckConstraint(
+            "status <> 'unknown_outcome' OR settled_cost IS NULL",
+            name="reservation_unknown_never_settled",
+        ),
+        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="reservation_currency_iso"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_budget_reservations_ws_account_status",
+            "workspace_id",
+            "budget_account_id",
+            "status",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    repair_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    budget_account_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    secondary_budget_account_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    consent_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    pricing_revision: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="reserved")
+    estimated_input_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    actual_input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    actual_output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reserved_cost: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+    settled_cost: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
+    provider_request_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    prompt_redacted_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_redacted_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    tool_call_digests_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    late_after_cancel: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class UsageLedgerModel(Base):
+    """S-17 / U16 append-only ModelUsageRecord ledger (`unknown` != `0`, zero CoT stored)."""
+
+    __tablename__ = "usage_ledger"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_usage_ledger_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "reservation_id",
+            name="uq_usage_ledger_ws_reservation_id",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_usage_ledger_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "reservation_id"],
+            ["budget_reservations.workspace_id", "budget_reservations.id"],
+            name="fk_usage_ledger_tenant_reservation_budget_reservations",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "model_id IN ('muse-spark-1.3', 'muse-wonder-1.0')",
+            name="usage_model_id_valid",
+        ),
+        CheckConstraint(
+            "status IN ('reserved', 'settled', 'released', 'failed', 'unknown')",
+            name="usage_status_valid",
+        ),
+        CheckConstraint(
+            "(input_tokens IS NULL OR input_tokens >= 0) "
+            "AND (output_tokens IS NULL OR output_tokens >= 0)",
+            name="usage_tokens_nonneg",
+        ),
+        CheckConstraint(
+            "estimated_cost >= 0 AND (settled_cost IS NULL OR settled_cost >= 0)",
+            name="usage_costs_nonneg",
+        ),
+        CheckConstraint(
+            "status <> 'unknown' OR ("
+            "settled_cost IS NULL AND input_tokens IS NULL AND output_tokens IS NULL"
+            ")",
+            name="usage_unknown_never_zero",
+        ),
+        CheckConstraint(
+            "status <> 'settled' OR ("
+            "settled_cost IS NOT NULL AND input_tokens IS NOT NULL AND output_tokens IS NOT NULL"
+            ")",
+            name="usage_settled_complete",
+        ),
+        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="usage_currency_iso"),
+        CheckConstraint("version = 1", name="usage_immutable_version"),
+        Index(
+            "ix_usage_ledger_ws_created",
+            "workspace_id",
+            "created_at",
+            "id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    repair_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    reservation_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider_request_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    model_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    estimated_cost: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+    settled_cost: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
+    pricing_revision: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

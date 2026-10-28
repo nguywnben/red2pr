@@ -764,6 +764,91 @@ export interface paths {
         patch: operations["updateWorkspaceMember"];
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/model-probes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run consented, budget-capped Meta Model API capability probe (A-20) */
+        post: operations["createWorkspaceModelProbe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get workspace Meta model registry, masked key presence, budgets & usage (A-20) */
+        get: operations["listWorkspaceModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/models/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update workspace Meta API key, pricing, NFR-06 budgets & escalation policy (A-20) */
+        patch: operations["updateWorkspaceModelsConfig"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/models/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Grant explicit workspace-scoped outbound Meta inference consent (SEC-018) */
+        post: operations["grantWorkspaceInferenceConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/models/consents/{consent_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke workspace-scoped outbound Meta inference consent (SEC-018) */
+        delete: operations["revokeWorkspaceInferenceConsent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/repositories": {
         parameters: {
             query?: never;
@@ -1268,12 +1353,249 @@ export interface components {
             /** Workspace Id */
             workspace_id: string;
         };
+        /**
+         * BudgetAccountSummary
+         * @description Atomic row-locked budget account ledger state (`AGT-03`, `SEC-033`).
+         */
+        BudgetAccountSummary: {
+            /** Call Cap */
+            call_cap: number;
+            /** Cancelled At */
+            cancelled_at?: string | null;
+            cost_cap: components["schemas"]["Money-Output"];
+            /** Created At */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** Id */
+            id: string;
+            /** Max Patch Attempts */
+            max_patch_attempts: number;
+            /** Max Wall Seconds */
+            max_wall_seconds: number;
+            /** Patch Attempts Used */
+            patch_attempts_used: number;
+            remaining_cost: components["schemas"]["Money-Output"];
+            /** Repository Id */
+            repository_id?: string | null;
+            /** Reserved Calls */
+            reserved_calls: number;
+            reserved_cost: components["schemas"]["Money-Output"];
+            /** Reserved Tokens */
+            reserved_tokens: number;
+            /** Scope Key */
+            scope_key: string;
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "workspace_daily" | "workspace_total" | "repair_session" | "model_probe";
+            /** Settled Calls */
+            settled_calls: number;
+            settled_cost: components["schemas"]["Money-Output"];
+            /** Settled Tokens */
+            settled_tokens: number;
+            /** Token Cap */
+            token_cap: number;
+            /** Unknown Calls */
+            unknown_calls: number;
+            unknown_cost: components["schemas"]["Money-Output"];
+            /** Unknown Tokens */
+            unknown_tokens: number;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Window Ends At */
+            window_ends_at?: string | null;
+            /** Window Started At */
+            window_started_at: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
         /** BudgetEventPayload */
         BudgetEventPayload: {
             /** Budget Id */
             budget_id: string;
             /** Reason Code */
             reason_code: string;
+        };
+        /**
+         * BudgetPolicyDefaults
+         * @description Workspace & per-session token, call, attempt, walltime & cost caps (`NFR-06`, `AGT-03`).
+         */
+        BudgetPolicyDefaults: {
+            /**
+             * Alert Threshold Percent
+             * @default 80
+             */
+            alert_threshold_percent: number;
+            daily_workspace_cap: components["schemas"]["Money"];
+            /**
+             * Max Calls Per Session
+             * @default 30
+             */
+            max_calls_per_session: number;
+            max_cost_per_session: components["schemas"]["Money"];
+            /**
+             * Max Patch Attempts
+             * @default 2
+             */
+            max_patch_attempts: number;
+            /**
+             * Max Tokens Per Session
+             * @default 120000
+             */
+            max_tokens_per_session: number;
+            /**
+             * Max Wall Seconds
+             * @default 1800
+             */
+            max_wall_seconds: number;
+        };
+        /**
+         * BudgetPolicyDefaults
+         * @description Workspace & per-session token, call, attempt, walltime & cost caps (`NFR-06`, `AGT-03`).
+         */
+        "BudgetPolicyDefaults-Input": {
+            /**
+             * Alert Threshold Percent
+             * @default 80
+             */
+            alert_threshold_percent: number;
+            daily_workspace_cap: components["schemas"]["Money-Input"];
+            /**
+             * Max Calls Per Session
+             * @default 30
+             */
+            max_calls_per_session: number;
+            max_cost_per_session: components["schemas"]["Money-Input"];
+            /**
+             * Max Patch Attempts
+             * @default 2
+             */
+            max_patch_attempts: number;
+            /**
+             * Max Tokens Per Session
+             * @default 120000
+             */
+            max_tokens_per_session: number;
+            /**
+             * Max Wall Seconds
+             * @default 1800
+             */
+            max_wall_seconds: number;
+        };
+        /**
+         * BudgetPolicyDefaults
+         * @description Workspace & per-session token, call, attempt, walltime & cost caps (`NFR-06`, `AGT-03`).
+         */
+        "BudgetPolicyDefaults-Output": {
+            /**
+             * Alert Threshold Percent
+             * @default 80
+             */
+            alert_threshold_percent: number;
+            daily_workspace_cap: components["schemas"]["Money-Output"];
+            /**
+             * Max Calls Per Session
+             * @default 30
+             */
+            max_calls_per_session: number;
+            max_cost_per_session: components["schemas"]["Money-Output"];
+            /**
+             * Max Patch Attempts
+             * @default 2
+             */
+            max_patch_attempts: number;
+            /**
+             * Max Tokens Per Session
+             * @default 120000
+             */
+            max_tokens_per_session: number;
+            /**
+             * Max Wall Seconds
+             * @default 1800
+             */
+            max_wall_seconds: number;
+        };
+        /**
+         * BudgetReservationRecord
+         * @description Pre-call worst-case budget reservation & settlement record (`AGT-03`, `SEC-033`).
+         */
+        BudgetReservationRecord: {
+            /**
+             * Actual Input Tokens
+             * @default null
+             */
+            actual_input_tokens: number | null;
+            /**
+             * Actual Output Tokens
+             * @default null
+             */
+            actual_output_tokens: number | null;
+            /** Budget Account Id */
+            budget_account_id: string;
+            /** Correlation Id */
+            correlation_id: string;
+            /** Created At */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** Estimated Input Tokens */
+            estimated_input_tokens: number;
+            /** Id */
+            id: string;
+            /**
+             * Late After Cancel
+             * @default false
+             */
+            late_after_cancel: boolean;
+            /** Max Output Tokens */
+            max_output_tokens: number;
+            /**
+             * Model Id
+             * @enum {string}
+             */
+            model_id: "muse-spark-1.3" | "muse-wonder-1.0";
+            /** Pricing Revision */
+            pricing_revision: string;
+            /** Prompt Redacted Digest */
+            prompt_redacted_digest: string;
+            /**
+             * Provider Request Id
+             * @default null
+             */
+            provider_request_id: string | null;
+            /**
+             * Repair Id
+             * @default null
+             */
+            repair_id: string | null;
+            /**
+             * Repository Id
+             * @default null
+             */
+            repository_id: string | null;
+            reserved_cost: components["schemas"]["Money"];
+            /**
+             * Response Redacted Digest
+             * @default null
+             */
+            response_redacted_digest: string | null;
+            /** @default null */
+            settled_cost: components["schemas"]["Money"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "reserved" | "settled" | "released" | "unknown_outcome";
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
         };
         /**
          * BulkRepositoryPreviewItem
@@ -2216,6 +2538,39 @@ export interface components {
             scheme: "https" | "http";
         };
         /**
+         * EscalationPolicy
+         * @description Optional `muse-spark-1.3 -> muse-wonder-1.0` escalation policy (`ADR-008`, `ADR-020`).
+         */
+        EscalationPolicy: {
+            /**
+             * Allow Non Meta Fallback
+             * @default false
+             * @constant
+             */
+            allow_non_meta_fallback: false;
+            /**
+             * Escalate After Failed Attempts
+             * @default 1
+             */
+            escalate_after_failed_attempts: number;
+            /**
+             * Escalation Enabled
+             * @default false
+             */
+            escalation_enabled: boolean;
+            /**
+             * Escalation Model Id
+             * @default muse-wonder-1.0
+             */
+            escalation_model_id: string | null;
+            /**
+             * Require Probed Availability
+             * @default true
+             * @constant
+             */
+            require_probed_availability: true;
+        };
+        /**
          * EventEnvelope
          * @description S-19 canonical domain event and SSE frame payload.
          */
@@ -2847,6 +3202,155 @@ export interface components {
             user?: components["schemas"]["User"] | null;
         };
         /**
+         * ModelCapabilityFlags
+         * @description Observed Meta Model API capabilities recorded by a consented probe (`AGT-01`).
+         */
+        ModelCapabilityFlags: {
+            /** Context Window Tokens */
+            context_window_tokens?: number | null;
+            /** Max Output Tokens */
+            max_output_tokens?: number | null;
+            /** Rate Limit Rpm */
+            rate_limit_rpm?: number | null;
+            /** Rate Limit Tpm */
+            rate_limit_tpm?: number | null;
+            /**
+             * Streaming
+             * @default unknown
+             * @enum {string}
+             */
+            streaming: "available" | "unavailable" | "unknown";
+            /**
+             * Structured Output
+             * @default unknown
+             * @enum {string}
+             */
+            structured_output: "available" | "unavailable" | "unknown";
+            /**
+             * Tool Calls
+             * @default unknown
+             * @enum {string}
+             */
+            tool_calls: "available" | "unavailable" | "unknown";
+        };
+        /**
+         * ModelCapabilitySnapshot
+         * @description Immutable observed capability probe snapshot for a Meta model (`AGT-01`, `A-20`).
+         */
+        ModelCapabilitySnapshot: {
+            capabilities: components["schemas"]["ModelCapabilityFlags"];
+            /** Consent Id */
+            consent_id?: string | null;
+            /** Created At */
+            created_at: string;
+            /** Id */
+            id: string;
+            /**
+             * Model Id
+             * @enum {string}
+             */
+            model_id: "muse-spark-1.3" | "muse-wonder-1.0";
+            /** Probed At */
+            probed_at: string;
+            /** Provider Request Id */
+            provider_request_id?: string | null;
+            /** Repository Id */
+            repository_id?: string | null;
+            /** Retry After Seconds */
+            retry_after_seconds?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "unavailable" | "not_probed" | "degraded" | "disabled";
+            /** Status Detail */
+            status_detail?: string | null;
+            /** Suspension Reason */
+            suspension_reason?: ("maintenance" | "model_unavailable" | "quota" | "worker_unavailable" | "operator_pause") | null;
+            /**
+             * Tier Role
+             * @enum {string}
+             */
+            tier_role: "primary" | "escalation";
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * ModelPricingRate
+         * @description Exact Decimal token pricing schedule per 1,000,000 input/output tokens.
+         */
+        ModelPricingRate: {
+            /**
+             * Configured
+             * @default true
+             */
+            configured: boolean;
+            input_per_1m_tokens: components["schemas"]["Money"];
+            output_per_1m_tokens: components["schemas"]["Money"];
+            /** Pricing Revision */
+            pricing_revision: string;
+        };
+        /**
+         * ModelPricingRate
+         * @description Exact Decimal token pricing schedule per 1,000,000 input/output tokens.
+         */
+        "ModelPricingRate-Input": {
+            /**
+             * Configured
+             * @default true
+             */
+            configured: boolean;
+            input_per_1m_tokens: components["schemas"]["Money-Input"];
+            output_per_1m_tokens: components["schemas"]["Money-Input"];
+            /** Pricing Revision */
+            pricing_revision: string;
+        };
+        /**
+         * ModelPricingRate
+         * @description Exact Decimal token pricing schedule per 1,000,000 input/output tokens.
+         */
+        "ModelPricingRate-Output": {
+            /**
+             * Configured
+             * @default true
+             */
+            configured: boolean;
+            input_per_1m_tokens: components["schemas"]["Money-Output"];
+            output_per_1m_tokens: components["schemas"]["Money-Output"];
+            /** Pricing Revision */
+            pricing_revision: string;
+        };
+        /**
+         * ModelProbeRequest
+         * @description `A-20` consented Meta model capability probe request (`max_cost` + `consent_id`).
+         */
+        ModelProbeRequest: {
+            /** Consent Id */
+            consent_id: string;
+            max_cost: components["schemas"]["Money-Input"];
+            /**
+             * Max Output Tokens
+             * @default 64
+             */
+            max_output_tokens: number;
+            /** Model Id */
+            model_id: string;
+        };
+        /**
+         * ModelProbeResponse
+         * @description `A-20` capability probe result with `S-05` receipt, snapshot & settled usage record.
+         */
+        ModelProbeResponse: {
+            models_state: components["schemas"]["WorkspaceModelsResponse"];
+            receipt: components["schemas"]["ActionReceipt"];
+            snapshot: components["schemas"]["ModelCapabilitySnapshot"];
+            usage_record?: components["schemas"]["ModelUsageRecord"] | null;
+        };
+        /**
          * ModelToolProvenance
          * @description S-22 redacted model/tool provenance record (no raw chain-of-thought or secrets).
          */
@@ -2876,37 +3380,24 @@ export interface components {
             created_at: string;
             /** Currency */
             currency: string;
-            estimated_cost: components["schemas"]["Money"];
+            estimated_cost: components["schemas"]["Money-Output"];
             /** Id */
             id: string;
-            /**
-             * Input Tokens
-             * @default null
-             */
-            input_tokens: number | null;
+            /** Input Tokens */
+            input_tokens?: number | null;
             /** Model Id */
             model_id: string;
-            /**
-             * Output Tokens
-             * @default null
-             */
-            output_tokens: number | null;
+            /** Output Tokens */
+            output_tokens?: number | null;
             /** Pricing Revision */
             pricing_revision: string;
-            /**
-             * Provider Request Id
-             * @default null
-             */
-            provider_request_id: string | null;
-            /**
-             * Repository Id
-             * @default null
-             */
-            repository_id: string | null;
+            /** Provider Request Id */
+            provider_request_id?: string | null;
+            /** Repository Id */
+            repository_id?: string | null;
             /** Reservation Id */
             reservation_id: string;
-            /** @default null */
-            settled_cost: components["schemas"]["Money"] | null;
+            settled_cost?: components["schemas"]["Money-Output"] | null;
             /**
              * Status
              * @enum {string}
@@ -5854,6 +6345,147 @@ export interface components {
         WorkspaceDeleteRequest: {
             /** Confirm Name */
             confirm_name: string;
+        };
+        /**
+         * WorkspaceInferenceConsentCreateRequest
+         * @description Grant a workspace-scoped `S-18` `inference` outbound data-sharing consent (`SEC-018`).
+         */
+        WorkspaceInferenceConsentCreateRequest: {
+            /** Data Classes */
+            data_classes: ("public" | "workspace_internal" | "restricted")[];
+            /**
+             * Destination
+             * @default https://api.meta.ai/v1
+             */
+            destination: string;
+            /**
+             * Policy Version
+             * @default 1
+             */
+            policy_version: number;
+        };
+        /**
+         * WorkspaceModelEntry
+         * @description Workspace model registry entry (`muse-spark-1.3` primary, `muse-wonder-1.0` escalation).
+         */
+        WorkspaceModelEntry: {
+            /** Display Name */
+            display_name: string;
+            /** Enabled */
+            enabled: boolean;
+            latest_snapshot?: components["schemas"]["ModelCapabilitySnapshot"] | null;
+            /**
+             * Model Id
+             * @enum {string}
+             */
+            model_id: "muse-spark-1.3" | "muse-wonder-1.0";
+            pricing: components["schemas"]["ModelPricingRate-Output"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "unavailable" | "not_probed" | "degraded" | "disabled";
+            /**
+             * Tier Role
+             * @enum {string}
+             */
+            tier_role: "primary" | "escalation";
+            /**
+             * Vendor
+             * @default meta
+             * @constant
+             */
+            vendor: "meta";
+        };
+        /**
+         * WorkspaceModelsConfigUpdateRequest
+         * @description Write-only Meta credential, pricing, budget & escalation configuration update (`UI-S12`).
+         */
+        WorkspaceModelsConfigUpdateRequest: {
+            /** Active Inference Consent Id */
+            active_inference_consent_id?: string | null;
+            /** Api Key */
+            api_key?: string | null;
+            budget_policy?: components["schemas"]["BudgetPolicyDefaults-Input"] | null;
+            /**
+             * Clear Endpoint Registration
+             * @default false
+             */
+            clear_endpoint_registration: boolean;
+            /**
+             * Clear Inference Consent
+             * @default false
+             */
+            clear_inference_consent: boolean;
+            /**
+             * Clear Suspension
+             * @default false
+             */
+            clear_suspension: boolean;
+            /** Endpoint Base Url */
+            endpoint_base_url?: string | null;
+            /** Endpoint Registration Id */
+            endpoint_registration_id?: string | null;
+            escalation_policy?: components["schemas"]["EscalationPolicy"] | null;
+            /** Expected Version */
+            expected_version?: number | null;
+            /** Pricing Updates */
+            pricing_updates?: {
+                [key: string]: components["schemas"]["ModelPricingRate-Input"];
+            } | null;
+            /**
+             * Revoke Api Key
+             * @default false
+             */
+            revoke_api_key: boolean;
+            /** Secret Ref */
+            secret_ref?: string | null;
+        };
+        /**
+         * WorkspaceModelsConfigUpdateResponse
+         * @description Idempotent `S-05` receipt + updated workspace model registry state.
+         */
+        WorkspaceModelsConfigUpdateResponse: {
+            models_state: components["schemas"]["WorkspaceModelsResponse"];
+            receipt: components["schemas"]["ActionReceipt"];
+        };
+        /**
+         * WorkspaceModelsResponse
+         * @description `A-20` / `UI-S12` workspace Meta model registry, budgets, consents & usage snapshot.
+         */
+        WorkspaceModelsResponse: {
+            /** Active Inference Consent Id */
+            active_inference_consent_id?: string | null;
+            api_key_presence: components["schemas"]["SecretPresence"];
+            /** Available Inference Consents */
+            available_inference_consents?: components["schemas"]["ConsentRecord"][];
+            budget_policy: components["schemas"]["BudgetPolicyDefaults-Output"];
+            /** Endpoint Base Url */
+            endpoint_base_url: string;
+            /** Endpoint Registration Id */
+            endpoint_registration_id?: string | null;
+            escalation_policy: components["schemas"]["EscalationPolicy"];
+            /** Inference Consent Active */
+            inference_consent_active: boolean;
+            /** Models */
+            models: components["schemas"]["WorkspaceModelEntry"][];
+            /** Ready For Repair Inference */
+            ready_for_repair_inference: boolean;
+            /** Recent Usage */
+            recent_usage?: components["schemas"]["ModelUsageRecord"][];
+            /** Retry After Seconds */
+            retry_after_seconds?: number | null;
+            /** Status Detail */
+            status_detail?: string | null;
+            /** Suspension Reason */
+            suspension_reason?: ("maintenance" | "model_unavailable" | "quota" | "worker_unavailable" | "operator_pause") | null;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            workspace_budget: components["schemas"]["BudgetAccountSummary"];
+            /** Workspace Id */
+            workspace_id: string;
         };
         /**
          * WorkspaceQueueFairnessSummary
@@ -12605,6 +13237,640 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Membership"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    createWorkspaceModelProbe: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelProbeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelProbeResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    listWorkspaceModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceModelsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    updateWorkspaceModelsConfig: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "If-Match"?: string | null;
+            };
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceModelsConfigUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceModelsConfigUpdateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    grantWorkspaceInferenceConsent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceInferenceConsentCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentRecord"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    revokeWorkspaceInferenceConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                consent_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConsentRevokeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentRecord"];
                 };
             };
             /** @description Bad Request */

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "message": "Account tier is not entitled to model muse-wonder-1.0.",
+    "type": "permission_error",
+    "code": "model_not_entitled"
+  }
+}

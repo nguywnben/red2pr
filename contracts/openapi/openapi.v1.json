@@ -784,6 +784,190 @@
         "title": "BreakGlassGrant",
         "type": "object"
       },
+      "BudgetAccountSummary": {
+        "additionalProperties": false,
+        "description": "Atomic row-locked budget account ledger state (`AGT-03`, `SEC-033`).",
+        "properties": {
+          "call_cap": {
+            "minimum": 0.0,
+            "title": "Call Cap",
+            "type": "integer"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "cost_cap": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "max_patch_attempts": {
+            "minimum": 0.0,
+            "title": "Max Patch Attempts",
+            "type": "integer"
+          },
+          "max_wall_seconds": {
+            "minimum": 0.0,
+            "title": "Max Wall Seconds",
+            "type": "integer"
+          },
+          "patch_attempts_used": {
+            "minimum": 0.0,
+            "title": "Patch Attempts Used",
+            "type": "integer"
+          },
+          "remaining_cost": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Id"
+          },
+          "reserved_calls": {
+            "minimum": 0.0,
+            "title": "Reserved Calls",
+            "type": "integer"
+          },
+          "reserved_cost": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "reserved_tokens": {
+            "minimum": 0.0,
+            "title": "Reserved Tokens",
+            "type": "integer"
+          },
+          "scope_key": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Scope Key",
+            "type": "string"
+          },
+          "scope_kind": {
+            "enum": [
+              "workspace_daily",
+              "workspace_total",
+              "repair_session",
+              "model_probe"
+            ],
+            "title": "Scope Kind",
+            "type": "string"
+          },
+          "settled_calls": {
+            "minimum": 0.0,
+            "title": "Settled Calls",
+            "type": "integer"
+          },
+          "settled_cost": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "settled_tokens": {
+            "minimum": 0.0,
+            "title": "Settled Tokens",
+            "type": "integer"
+          },
+          "token_cap": {
+            "minimum": 0.0,
+            "title": "Token Cap",
+            "type": "integer"
+          },
+          "unknown_calls": {
+            "minimum": 0.0,
+            "title": "Unknown Calls",
+            "type": "integer"
+          },
+          "unknown_cost": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "unknown_tokens": {
+            "minimum": 0.0,
+            "title": "Unknown Tokens",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "window_ends_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Ends At"
+          },
+          "window_started_at": {
+            "title": "Window Started At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "scope_kind",
+          "scope_key",
+          "currency",
+          "cost_cap",
+          "reserved_cost",
+          "settled_cost",
+          "unknown_cost",
+          "remaining_cost",
+          "token_cap",
+          "reserved_tokens",
+          "settled_tokens",
+          "unknown_tokens",
+          "call_cap",
+          "reserved_calls",
+          "settled_calls",
+          "unknown_calls",
+          "max_patch_attempts",
+          "patch_attempts_used",
+          "max_wall_seconds",
+          "window_started_at"
+        ],
+        "title": "BudgetAccountSummary",
+        "type": "object"
+      },
       "BudgetEventPayload": {
         "additionalProperties": false,
         "properties": {
@@ -803,6 +987,359 @@
           "reason_code"
         ],
         "title": "BudgetEventPayload",
+        "type": "object"
+      },
+      "BudgetPolicyDefaults": {
+        "additionalProperties": false,
+        "description": "Workspace & per-session token, call, attempt, walltime & cost caps (`NFR-06`, `AGT-03`).",
+        "properties": {
+          "alert_threshold_percent": {
+            "default": 80,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Alert Threshold Percent",
+            "type": "integer"
+          },
+          "daily_workspace_cap": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "max_calls_per_session": {
+            "default": 30,
+            "maximum": 500,
+            "minimum": 1,
+            "title": "Max Calls Per Session",
+            "type": "integer"
+          },
+          "max_cost_per_session": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "max_patch_attempts": {
+            "default": 2,
+            "maximum": 10,
+            "minimum": 1,
+            "title": "Max Patch Attempts",
+            "type": "integer"
+          },
+          "max_tokens_per_session": {
+            "default": 120000,
+            "maximum": 2000000,
+            "minimum": 256,
+            "title": "Max Tokens Per Session",
+            "type": "integer"
+          },
+          "max_wall_seconds": {
+            "default": 1800,
+            "maximum": 14400,
+            "minimum": 60,
+            "title": "Max Wall Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_cost_per_session",
+          "daily_workspace_cap"
+        ],
+        "title": "BudgetPolicyDefaults",
+        "type": "object"
+      },
+      "BudgetPolicyDefaults-Input": {
+        "additionalProperties": false,
+        "description": "Workspace & per-session token, call, attempt, walltime & cost caps (`NFR-06`, `AGT-03`).",
+        "properties": {
+          "alert_threshold_percent": {
+            "default": 80,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Alert Threshold Percent",
+            "type": "integer"
+          },
+          "daily_workspace_cap": {
+            "$ref": "#/components/schemas/Money-Input"
+          },
+          "max_calls_per_session": {
+            "default": 30,
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Max Calls Per Session",
+            "type": "integer"
+          },
+          "max_cost_per_session": {
+            "$ref": "#/components/schemas/Money-Input"
+          },
+          "max_patch_attempts": {
+            "default": 2,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Max Patch Attempts",
+            "type": "integer"
+          },
+          "max_tokens_per_session": {
+            "default": 120000,
+            "maximum": 2000000.0,
+            "minimum": 256.0,
+            "title": "Max Tokens Per Session",
+            "type": "integer"
+          },
+          "max_wall_seconds": {
+            "default": 1800,
+            "maximum": 14400.0,
+            "minimum": 60.0,
+            "title": "Max Wall Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_cost_per_session",
+          "daily_workspace_cap"
+        ],
+        "title": "BudgetPolicyDefaults",
+        "type": "object"
+      },
+      "BudgetPolicyDefaults-Output": {
+        "additionalProperties": false,
+        "description": "Workspace & per-session token, call, attempt, walltime & cost caps (`NFR-06`, `AGT-03`).",
+        "properties": {
+          "alert_threshold_percent": {
+            "default": 80,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Alert Threshold Percent",
+            "type": "integer"
+          },
+          "daily_workspace_cap": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "max_calls_per_session": {
+            "default": 30,
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Max Calls Per Session",
+            "type": "integer"
+          },
+          "max_cost_per_session": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "max_patch_attempts": {
+            "default": 2,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Max Patch Attempts",
+            "type": "integer"
+          },
+          "max_tokens_per_session": {
+            "default": 120000,
+            "maximum": 2000000.0,
+            "minimum": 256.0,
+            "title": "Max Tokens Per Session",
+            "type": "integer"
+          },
+          "max_wall_seconds": {
+            "default": 1800,
+            "maximum": 14400.0,
+            "minimum": 60.0,
+            "title": "Max Wall Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_cost_per_session",
+          "daily_workspace_cap"
+        ],
+        "title": "BudgetPolicyDefaults",
+        "type": "object"
+      },
+      "BudgetReservationRecord": {
+        "additionalProperties": false,
+        "description": "Pre-call worst-case budget reservation & settlement record (`AGT-03`, `SEC-033`).",
+        "properties": {
+          "actual_input_tokens": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actual Input Tokens"
+          },
+          "actual_output_tokens": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actual Output Tokens"
+          },
+          "budget_account_id": {
+            "title": "Budget Account Id",
+            "type": "string"
+          },
+          "correlation_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "estimated_input_tokens": {
+            "minimum": 0,
+            "title": "Estimated Input Tokens",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "late_after_cancel": {
+            "default": false,
+            "title": "Late After Cancel",
+            "type": "boolean"
+          },
+          "max_output_tokens": {
+            "minimum": 0,
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "model_id": {
+            "enum": [
+              "muse-spark-1.3",
+              "muse-wonder-1.0"
+            ],
+            "title": "Model Id",
+            "type": "string"
+          },
+          "pricing_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Pricing Revision",
+            "type": "string"
+          },
+          "prompt_redacted_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Prompt Redacted Digest",
+            "type": "string"
+          },
+          "provider_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Provider Request Id"
+          },
+          "repair_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repair Id"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "reserved_cost": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "response_redacted_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Response Redacted Digest"
+          },
+          "settled_cost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "status": {
+            "enum": [
+              "reserved",
+              "settled",
+              "released",
+              "unknown_outcome"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "budget_account_id",
+          "model_id",
+          "pricing_revision",
+          "status",
+          "estimated_input_tokens",
+          "max_output_tokens",
+          "reserved_cost",
+          "currency",
+          "prompt_redacted_digest",
+          "correlation_id"
+        ],
+        "title": "BudgetReservationRecord",
         "type": "object"
       },
       "BulkRepositoryPreviewItem": {
@@ -3508,6 +4045,52 @@
         "title": "EndpointRegistrationCreateRequest",
         "type": "object"
       },
+      "EscalationPolicy": {
+        "additionalProperties": false,
+        "description": "Optional `muse-spark-1.3 -> muse-wonder-1.0` escalation policy (`ADR-008`, `ADR-020`).",
+        "properties": {
+          "allow_non_meta_fallback": {
+            "const": false,
+            "default": false,
+            "title": "Allow Non Meta Fallback",
+            "type": "boolean"
+          },
+          "escalate_after_failed_attempts": {
+            "default": 1,
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Escalate After Failed Attempts",
+            "type": "integer"
+          },
+          "escalation_enabled": {
+            "default": false,
+            "title": "Escalation Enabled",
+            "type": "boolean"
+          },
+          "escalation_model_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "muse-wonder-1.0",
+            "title": "Escalation Model Id"
+          },
+          "require_probed_availability": {
+            "const": true,
+            "default": true,
+            "title": "Require Probed Availability",
+            "type": "boolean"
+          }
+        },
+        "title": "EscalationPolicy",
+        "type": "object"
+      },
       "EventEnvelope": {
         "additionalProperties": false,
         "description": "S-19 canonical domain event and SSE frame payload.",
@@ -5324,6 +5907,398 @@
         "title": "MfaEnrollResponse",
         "type": "object"
       },
+      "ModelCapabilityFlags": {
+        "additionalProperties": false,
+        "description": "Observed Meta Model API capabilities recorded by a consented probe (`AGT-01`).",
+        "properties": {
+          "context_window_tokens": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window Tokens"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens"
+          },
+          "rate_limit_rpm": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Rpm"
+          },
+          "rate_limit_tpm": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Tpm"
+          },
+          "streaming": {
+            "default": "unknown",
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Streaming",
+            "type": "string"
+          },
+          "structured_output": {
+            "default": "unknown",
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Structured Output",
+            "type": "string"
+          },
+          "tool_calls": {
+            "default": "unknown",
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Tool Calls",
+            "type": "string"
+          }
+        },
+        "title": "ModelCapabilityFlags",
+        "type": "object"
+      },
+      "ModelCapabilitySnapshot": {
+        "additionalProperties": false,
+        "description": "Immutable observed capability probe snapshot for a Meta model (`AGT-01`, `A-20`).",
+        "properties": {
+          "capabilities": {
+            "$ref": "#/components/schemas/ModelCapabilityFlags"
+          },
+          "consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "model_id": {
+            "enum": [
+              "muse-spark-1.3",
+              "muse-wonder-1.0"
+            ],
+            "title": "Model Id",
+            "type": "string"
+          },
+          "probed_at": {
+            "title": "Probed At",
+            "type": "string"
+          },
+          "provider_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Request Id"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Id"
+          },
+          "retry_after_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After Seconds"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "unavailable",
+              "not_probed",
+              "degraded",
+              "disabled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_detail": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Detail"
+          },
+          "suspension_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "maintenance",
+                  "model_unavailable",
+                  "quota",
+                  "worker_unavailable",
+                  "operator_pause"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suspension Reason"
+          },
+          "tier_role": {
+            "enum": [
+              "primary",
+              "escalation"
+            ],
+            "title": "Tier Role",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "model_id",
+          "tier_role",
+          "status",
+          "capabilities",
+          "probed_at"
+        ],
+        "title": "ModelCapabilitySnapshot",
+        "type": "object"
+      },
+      "ModelPricingRate": {
+        "additionalProperties": false,
+        "description": "Exact Decimal token pricing schedule per 1,000,000 input/output tokens.",
+        "properties": {
+          "configured": {
+            "default": true,
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "input_per_1m_tokens": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "output_per_1m_tokens": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "pricing_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Pricing Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pricing_revision",
+          "input_per_1m_tokens",
+          "output_per_1m_tokens"
+        ],
+        "title": "ModelPricingRate",
+        "type": "object"
+      },
+      "ModelPricingRate-Input": {
+        "additionalProperties": false,
+        "description": "Exact Decimal token pricing schedule per 1,000,000 input/output tokens.",
+        "properties": {
+          "configured": {
+            "default": true,
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "input_per_1m_tokens": {
+            "$ref": "#/components/schemas/Money-Input"
+          },
+          "output_per_1m_tokens": {
+            "$ref": "#/components/schemas/Money-Input"
+          },
+          "pricing_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Pricing Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pricing_revision",
+          "input_per_1m_tokens",
+          "output_per_1m_tokens"
+        ],
+        "title": "ModelPricingRate",
+        "type": "object"
+      },
+      "ModelPricingRate-Output": {
+        "additionalProperties": false,
+        "description": "Exact Decimal token pricing schedule per 1,000,000 input/output tokens.",
+        "properties": {
+          "configured": {
+            "default": true,
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "input_per_1m_tokens": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "output_per_1m_tokens": {
+            "$ref": "#/components/schemas/Money-Output"
+          },
+          "pricing_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Pricing Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pricing_revision",
+          "input_per_1m_tokens",
+          "output_per_1m_tokens"
+        ],
+        "title": "ModelPricingRate",
+        "type": "object"
+      },
+      "ModelProbeRequest": {
+        "additionalProperties": false,
+        "description": "`A-20` consented Meta model capability probe request (`max_cost` + `consent_id`).",
+        "properties": {
+          "consent_id": {
+            "title": "Consent Id",
+            "type": "string"
+          },
+          "max_cost": {
+            "$ref": "#/components/schemas/Money-Input"
+          },
+          "max_output_tokens": {
+            "default": 64,
+            "maximum": 4096.0,
+            "minimum": 16.0,
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "model_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Model Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "max_cost",
+          "consent_id"
+        ],
+        "title": "ModelProbeRequest",
+        "type": "object"
+      },
+      "ModelProbeResponse": {
+        "additionalProperties": false,
+        "description": "`A-20` capability probe result with `S-05` receipt, snapshot & settled usage record.",
+        "properties": {
+          "models_state": {
+            "$ref": "#/components/schemas/WorkspaceModelsResponse"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/ActionReceipt"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/ModelCapabilitySnapshot"
+          },
+          "usage_record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelUsageRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "receipt",
+          "snapshot",
+          "models_state"
+        ],
+        "title": "ModelProbeResponse",
+        "type": "object"
+      },
       "ModelToolProvenance": {
         "additionalProperties": false,
         "description": "S-22 redacted model/tool provenance record (no raw chain-of-thought or secrets).",
@@ -5396,7 +6371,7 @@
             "type": "string"
           },
           "estimated_cost": {
-            "$ref": "#/components/schemas/Money"
+            "$ref": "#/components/schemas/Money-Output"
           },
           "id": {
             "title": "Id",
@@ -5405,14 +6380,13 @@
           "input_tokens": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Input Tokens"
           },
           "model_id": {
@@ -5424,14 +6398,13 @@
           "output_tokens": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Output Tokens"
           },
           "pricing_revision": {
@@ -5449,7 +6422,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Provider Request Id"
           },
           "repository_id": {
@@ -5461,7 +6433,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Repository Id"
           },
           "reservation_id": {
@@ -5471,13 +6442,12 @@
           "settled_cost": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Money"
+                "$ref": "#/components/schemas/Money-Output"
               },
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "status": {
             "enum": [
@@ -5495,7 +6465,7 @@
             "type": "string"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           },
@@ -13742,6 +14712,417 @@
           "confirm_name"
         ],
         "title": "WorkspaceDeleteRequest",
+        "type": "object"
+      },
+      "WorkspaceInferenceConsentCreateRequest": {
+        "additionalProperties": false,
+        "description": "Grant a workspace-scoped `S-18` `inference` outbound data-sharing consent (`SEC-018`).",
+        "properties": {
+          "data_classes": {
+            "items": {
+              "enum": [
+                "public",
+                "workspace_internal",
+                "restricted"
+              ],
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Data Classes",
+            "type": "array"
+          },
+          "destination": {
+            "default": "https://api.meta.ai/v1",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Destination",
+            "type": "string"
+          },
+          "policy_version": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Policy Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "data_classes"
+        ],
+        "title": "WorkspaceInferenceConsentCreateRequest",
+        "type": "object"
+      },
+      "WorkspaceModelEntry": {
+        "additionalProperties": false,
+        "description": "Workspace model registry entry (`muse-spark-1.3` primary, `muse-wonder-1.0` escalation).",
+        "properties": {
+          "display_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "latest_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelCapabilitySnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_id": {
+            "enum": [
+              "muse-spark-1.3",
+              "muse-wonder-1.0"
+            ],
+            "title": "Model Id",
+            "type": "string"
+          },
+          "pricing": {
+            "$ref": "#/components/schemas/ModelPricingRate-Output"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "unavailable",
+              "not_probed",
+              "degraded",
+              "disabled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tier_role": {
+            "enum": [
+              "primary",
+              "escalation"
+            ],
+            "title": "Tier Role",
+            "type": "string"
+          },
+          "vendor": {
+            "const": "meta",
+            "default": "meta",
+            "title": "Vendor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "display_name",
+          "tier_role",
+          "enabled",
+          "status",
+          "pricing"
+        ],
+        "title": "WorkspaceModelEntry",
+        "type": "object"
+      },
+      "WorkspaceModelsConfigUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Write-only Meta credential, pricing, budget & escalation configuration update (`UI-S12`).",
+        "properties": {
+          "active_inference_consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Inference Consent Id"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 12,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "budget_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetPolicyDefaults-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clear_endpoint_registration": {
+            "default": false,
+            "title": "Clear Endpoint Registration",
+            "type": "boolean"
+          },
+          "clear_inference_consent": {
+            "default": false,
+            "title": "Clear Inference Consent",
+            "type": "boolean"
+          },
+          "clear_suspension": {
+            "default": false,
+            "title": "Clear Suspension",
+            "type": "boolean"
+          },
+          "endpoint_base_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint Base Url"
+          },
+          "endpoint_registration_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint Registration Id"
+          },
+          "escalation_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EscalationPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
+          "pricing_updates": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ModelPricingRate-Input"
+                },
+                "propertyNames": {
+                  "maxLength": 120,
+                  "minLength": 1
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pricing Updates"
+          },
+          "revoke_api_key": {
+            "default": false,
+            "title": "Revoke Api Key",
+            "type": "boolean"
+          },
+          "secret_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Ref"
+          }
+        },
+        "title": "WorkspaceModelsConfigUpdateRequest",
+        "type": "object"
+      },
+      "WorkspaceModelsConfigUpdateResponse": {
+        "additionalProperties": false,
+        "description": "Idempotent `S-05` receipt + updated workspace model registry state.",
+        "properties": {
+          "models_state": {
+            "$ref": "#/components/schemas/WorkspaceModelsResponse"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/ActionReceipt"
+          }
+        },
+        "required": [
+          "receipt",
+          "models_state"
+        ],
+        "title": "WorkspaceModelsConfigUpdateResponse",
+        "type": "object"
+      },
+      "WorkspaceModelsResponse": {
+        "additionalProperties": false,
+        "description": "`A-20` / `UI-S12` workspace Meta model registry, budgets, consents & usage snapshot.",
+        "properties": {
+          "active_inference_consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Inference Consent Id"
+          },
+          "api_key_presence": {
+            "$ref": "#/components/schemas/SecretPresence"
+          },
+          "available_inference_consents": {
+            "items": {
+              "$ref": "#/components/schemas/ConsentRecord"
+            },
+            "title": "Available Inference Consents",
+            "type": "array"
+          },
+          "budget_policy": {
+            "$ref": "#/components/schemas/BudgetPolicyDefaults-Output"
+          },
+          "endpoint_base_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Endpoint Base Url",
+            "type": "string"
+          },
+          "endpoint_registration_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint Registration Id"
+          },
+          "escalation_policy": {
+            "$ref": "#/components/schemas/EscalationPolicy"
+          },
+          "inference_consent_active": {
+            "title": "Inference Consent Active",
+            "type": "boolean"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceModelEntry"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "ready_for_repair_inference": {
+            "title": "Ready For Repair Inference",
+            "type": "boolean"
+          },
+          "recent_usage": {
+            "items": {
+              "$ref": "#/components/schemas/ModelUsageRecord"
+            },
+            "title": "Recent Usage",
+            "type": "array"
+          },
+          "retry_after_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After Seconds"
+          },
+          "status_detail": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Detail"
+          },
+          "suspension_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "maintenance",
+                  "model_unavailable",
+                  "quota",
+                  "worker_unavailable",
+                  "operator_pause"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suspension Reason"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_budget": {
+            "$ref": "#/components/schemas/BudgetAccountSummary"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "version",
+          "updated_at",
+          "endpoint_base_url",
+          "api_key_presence",
+          "inference_consent_active",
+          "ready_for_repair_inference",
+          "models",
+          "budget_policy",
+          "escalation_policy",
+          "workspace_budget"
+        ],
+        "title": "WorkspaceModelsResponse",
         "type": "object"
       },
       "WorkspaceQueueFairnessSummary": {
@@ -22651,6 +24032,845 @@
         "summary": "Update member role & repository grants (`admin` only, `409 last_admin`) (A-05)",
         "tags": [
           "members"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/model-probes": {
+      "post": {
+        "operationId": "createWorkspaceModelProbe",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelProbeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelProbeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Run consented, budget-capped Meta Model API capability probe (A-20)",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/models": {
+      "get": {
+        "operationId": "listWorkspaceModels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceModelsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get workspace Meta model registry, masked key presence, budgets & usage (A-20)",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/models/config": {
+      "patch": {
+        "operationId": "updateWorkspaceModelsConfig",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceModelsConfigUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceModelsConfigUpdateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Update workspace Meta API key, pricing, NFR-06 budgets & escalation policy (A-20)",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/models/consents": {
+      "post": {
+        "operationId": "grantWorkspaceInferenceConsent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceInferenceConsentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Grant explicit workspace-scoped outbound Meta inference consent (SEC-018)",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/models/consents/{consent_id}": {
+      "delete": {
+        "operationId": "revokeWorkspaceInferenceConsent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "consent_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Consent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentRevokeRequest",
+                "default": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Revoke workspace-scoped outbound Meta inference consent (SEC-018)",
+        "tags": [
+          "models"
         ]
       }
     },

@@ -1,0 +1,24 @@
+{
+  "id": "chatcmpl-meta-probe-spark-001",
+  "object": "chat.completion",
+  "created": 1793188830,
+  "model": "muse-spark-1.3",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"probe_ok\":true,\"model\":\"muse-spark-1.3\",\"structured_output\":true}"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 42,
+    "completion_tokens": 18,
+    "total_tokens": 60,
+    "completion_tokens_details": {
+      "reasoning_tokens": 8
+    }
+  }
+}

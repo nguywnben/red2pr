@@ -1,0 +1,7 @@
+{
+  "error": {
+    "message": "Rate limit exceeded for muse-spark-1.3. Please retry after cooldown.",
+    "type": "rate_limit_error",
+    "code": "rate_limit_exceeded"
+  }
+}

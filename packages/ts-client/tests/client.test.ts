@@ -5,11 +5,13 @@ import {
   Red2PrApiError,
   type FidelityGrade,
   type Membership,
+  type ModelUsageRecord,
   type Problem,
   type ReproductionRunRecord,
   type RepositoryPolicy,
   type RunnerProfileManifest,
   type SetupState,
+  type WorkspaceModelsResponse,
 } from "../src/index.js";
 
 describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
@@ -1427,5 +1429,222 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(record.fidelity_grade, "F3_VALIDATED");
     assert.equal(record.allow_patching, true);
     assert.equal(record.immutable_sealed, true);
+  });
+
+  it("serializes U16 A-20 & S-17 Meta models, consents, budgets, and paid capability probes", async () => {
+    const wsId = "019a2b00-0000-7000-8000-000000000001";
+    const consentId = "019a2b00-0000-7000-8000-000000000101";
+    const acctId = "019a2b00-0000-7000-8000-000000000201";
+    const snapId = "019a2b00-0000-7000-8000-000000000301";
+    const opId = "019a2b00-0000-7000-8000-000000000401";
+    const calls: Array<{ method: string; path: string; idem: string | null; ifMatch: string | null }> = [];
+
+    const unknownUsage: ModelUsageRecord = {
+      id: "019a2b00-0000-7000-8000-000000000501",
+      workspace_id: wsId,
+      repository_id: null,
+      version: 1,
+      created_at: "2026-10-28T14:00:00Z",
+      updated_at: "2026-10-28T14:00:00Z",
+      reservation_id: "019a2b00-0000-7000-8000-000000000601",
+      provider_request_id: null,
+      model_id: "muse-spark-1.3",
+      input_tokens: null,
+      output_tokens: null,
+      estimated_cost: { amount: "0.120000", currency: "USD" },
+      settled_cost: null,
+      currency: "USD",
+      pricing_revision: "meta-2026-10",
+      status: "unknown",
+    };
+
+    const modelsPayload: WorkspaceModelsResponse = {
+      workspace_id: wsId,
+      version: 2,
+      updated_at: "2026-10-28T14:00:00Z",
+      endpoint_base_url: "https://api.meta.ai/v1",
+      endpoint_registration_id: null,
+      api_key_presence: { configured: true, secret_version: 1 },
+      active_inference_consent_id: consentId,
+      inference_consent_active: true,
+      available_inference_consents: [],
+      suspension_reason: null,
+      status_detail: null,
+      retry_after_seconds: null,
+      ready_for_repair_inference: true,
+      models: [
+        {
+          model_id: "muse-spark-1.3",
+          display_name: "Muse Spark 1.3",
+          vendor: "meta",
+          tier_role: "primary",
+          enabled: true,
+          status: "available",
+          pricing: {
+            pricing_revision: "meta-2026-10",
+            input_per_1m_tokens: { amount: "0.500000", currency: "USD" },
+            output_per_1m_tokens: { amount: "2.000000", currency: "USD" },
+            configured: true,
+          },
+          latest_snapshot: null,
+        },
+      ],
+      budget_policy: {
+        max_calls_per_session: 30,
+        max_tokens_per_session: 120000,
+        max_patch_attempts: 2,
+        max_wall_seconds: 1800,
+        max_cost_per_session: { amount: "5.000000", currency: "USD" },
+        daily_workspace_cap: { amount: "25.000000", currency: "USD" },
+        alert_threshold_percent: 80,
+      },
+      escalation_policy: {
+        escalation_enabled: false,
+        escalation_model_id: "muse-wonder-1.0",
+        escalate_after_failed_attempts: 1,
+        require_probed_availability: true,
+        allow_non_meta_fallback: false,
+      },
+      workspace_budget: {
+        id: acctId,
+        workspace_id: wsId,
+        repository_id: null,
+        version: 1,
+        created_at: "2026-10-28T00:00:00Z",
+        updated_at: "2026-10-28T14:00:00Z",
+        scope_kind: "workspace_daily",
+        scope_key: "daily:2026-10-28",
+        currency: "USD",
+        cost_cap: { amount: "25.000000", currency: "USD" },
+        reserved_cost: { amount: "0.000000", currency: "USD" },
+        settled_cost: { amount: "0.000402", currency: "USD" },
+        unknown_cost: { amount: "0.120000", currency: "USD" },
+        remaining_cost: { amount: "24.879598", currency: "USD" },
+        token_cap: 2400000,
+        reserved_tokens: 0,
+        settled_tokens: 516,
+        unknown_tokens: 5000,
+        call_cap: 600,
+        reserved_calls: 0,
+        settled_calls: 1,
+        unknown_calls: 1,
+        max_patch_attempts: 50,
+        patch_attempts_used: 0,
+        max_wall_seconds: 86400,
+        window_started_at: "2026-10-28T00:00:00Z",
+        window_ends_at: "2026-10-29T00:00:00Z",
+        cancelled_at: null,
+      },
+      recent_usage: [unknownUsage],
+    };
+
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u16",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        calls.push({
+          method: request.method,
+          path: url.pathname,
+          idem: request.headers.get("Idempotency-Key"),
+          ifMatch: request.headers.get("If-Match"),
+        });
+        if (request.method === "GET" && url.pathname === "/api/v1/workspaces/acme/models") {
+          return new Response(JSON.stringify(modelsPayload), {
+            status: 200,
+            headers: { "Content-Type": "application/json", ETag: '"2"' },
+          });
+        }
+        if (request.method === "PATCH" && url.pathname === "/api/v1/workspaces/acme/models/config") {
+          return new Response(
+            JSON.stringify({
+              receipt: {
+                operation_id: opId,
+                resource_id: wsId,
+                state: "succeeded",
+                correlation_id: "corr-u16-cfg",
+                status_url: `/api/v1/operations/${opId}`,
+                result_id: wsId,
+              },
+              models_state: modelsPayload,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json", ETag: '"3"' } },
+          );
+        }
+        if (request.method === "POST" && url.pathname === "/api/v1/workspaces/acme/model-probes") {
+          return new Response(
+            JSON.stringify({
+              receipt: {
+                operation_id: opId,
+                resource_id: snapId,
+                state: "succeeded",
+                correlation_id: "corr-u16-probe",
+                status_url: `/api/v1/operations/${opId}`,
+                result_id: snapId,
+              },
+              snapshot: {
+                id: snapId,
+                workspace_id: wsId,
+                repository_id: null,
+                version: 1,
+                created_at: "2026-10-28T14:00:00Z",
+                updated_at: "2026-10-28T14:00:00Z",
+                model_id: "muse-spark-1.3",
+                tier_role: "primary",
+                status: "available",
+                capabilities: {
+                  structured_output: true,
+                  tool_calling: true,
+                  reasoning_effort: true,
+                  vision: false,
+                },
+                provider_request_id: "req_spark_01",
+                consent_id: consentId,
+                probed_at: "2026-10-28T14:00:00Z",
+                status_detail: "OK",
+                suspension_reason: null,
+                retry_after_seconds: null,
+              },
+              usage_record: null,
+              models_state: modelsPayload,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        throw new Error(`Unexpected ${request.method} ${url.pathname}`);
+      },
+    });
+
+    const listed = await client.listWorkspaceModels("acme");
+    assert.equal(listed.etag, '"2"');
+    assert.equal(listed.data.recent_usage?.[0]?.status, "unknown");
+    assert.equal(listed.data.recent_usage?.[0]?.settled_cost, null);
+
+    await client.updateWorkspaceModelsConfig(
+      "acme",
+      {
+        api_key: "meta-write-only-key",
+        revoke_api_key: false,
+        clear_endpoint_registration: false,
+        clear_inference_consent: false,
+        clear_suspension: false,
+      },
+      { idempotencyKey: "019a2b00-0000-7000-8000-000000000901", ifMatch: '"2"' },
+    );
+
+    const probed = await client.createWorkspaceModelProbe(
+      "acme",
+      {
+        model_id: "muse-spark-1.3",
+        consent_id: consentId,
+        max_cost: { amount: "0.050000", currency: "USD" },
+        max_output_tokens: 64,
+      },
+      { idempotencyKey: "019a2b00-0000-7000-8000-000000000902" },
+    );
+    assert.equal(probed.data.snapshot.status, "available");
+    assert.equal(calls.length, 3);
+    assert.equal(calls[1]?.ifMatch, '"2"');
+    assert.equal(calls[2]?.idem, "019a2b00-0000-7000-8000-000000000902");
   });
 });

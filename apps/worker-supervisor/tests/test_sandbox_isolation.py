@@ -398,18 +398,24 @@ def test_external_result_signer_isolation_and_ed25519_verification(tmp_path: Pat
     guest_root = tmp_path / "guest_scratch" / "job-01"
     guest_root.mkdir(parents=True)
 
-    signer = ExternalResultSigner.generate(key_id="ed25519-worker-test01")
+    now = datetime(2026, 10, 28, 10, 5, 0, tzinfo=UTC)
+    signer = ExternalResultSigner.generate(
+        key_id="ed25519-worker-test01",
+        not_before=now - timedelta(minutes=5),
+    )
     signer.save_to_directory(key_dir)
     reloaded = ExternalResultSigner.load_from_directory(key_dir)
     reloaded.assert_outside_guest_workspace(guest_root)
 
     # Attempt to place signing key inside guest workspace MUST fail closed!
-    bad_signer = ExternalResultSigner.generate(key_id="ed25519-bad")
+    bad_signer = ExternalResultSigner.generate(
+        key_id="ed25519-bad",
+        not_before=now - timedelta(minutes=5),
+    )
     bad_signer.save_to_directory(guest_root / "leaked_keys")
     with pytest.raises(PermissionError, match="ADR-035"):
         bad_signer.assert_outside_guest_workspace(guest_root)
 
-    now = datetime(2026, 10, 28, 10, 5, 0, tzinfo=UTC)
     unsigned = ResultV1(
         job_id=new_uuid7(now=now),
         lease_epoch=1,

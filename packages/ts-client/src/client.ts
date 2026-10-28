@@ -196,6 +196,28 @@ export type ReproductionPhase = ReproductionRunRecord["phase"];
 export type ReproductionStatus = ReproductionRunRecord["status"];
 export type FidelityGrade = ReproductionRunRecord["fidelity_grade"];
 export type EvidenceManifestV1 = SchemaOf<"EvidenceManifestV1">;
+export type ModelToolProvenance = SchemaOf<"ModelToolProvenance">;
+export type ModelCapabilityFlags = SchemaOf<"ModelCapabilityFlags">;
+export type ModelCapabilitySnapshot = SchemaOf<"ModelCapabilitySnapshot">;
+export type MetaModelId = ModelCapabilitySnapshot["model_id"];
+export type ModelTierRole = ModelCapabilitySnapshot["tier_role"];
+export type ModelAvailabilityStatus = ModelCapabilitySnapshot["status"];
+export type SuspensionReason = NonNullable<ModelCapabilitySnapshot["suspension_reason"]>;
+export type ModelPricingRate = SchemaOf<"ModelPricingRate">;
+export type BudgetPolicyDefaults = SchemaOf<"BudgetPolicyDefaults">;
+export type EscalationPolicy = SchemaOf<"EscalationPolicy">;
+export type BudgetAccountSummary = SchemaOf<"BudgetAccountSummary">;
+export type BudgetScopeKind = BudgetAccountSummary["scope_kind"];
+export type BudgetReservationRecord = SchemaOf<"BudgetReservationRecord">;
+export type BudgetReservationStatus = BudgetReservationRecord["status"];
+export type WorkspaceModelEntry = SchemaOf<"WorkspaceModelEntry">;
+export type WorkspaceModelsResponse = SchemaOf<"WorkspaceModelsResponse">;
+export type WorkspaceModelsConfigUpdateRequest = SchemaOf<"WorkspaceModelsConfigUpdateRequest">;
+export type WorkspaceModelsConfigUpdateResponse = SchemaOf<"WorkspaceModelsConfigUpdateResponse">;
+export type WorkspaceInferenceConsentCreateRequest =
+  SchemaOf<"WorkspaceInferenceConsentCreateRequest">;
+export type ModelProbeRequest = SchemaOf<"ModelProbeRequest">;
+export type ModelProbeResponse = SchemaOf<"ModelProbeResponse">;
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const CSRF_COOKIE_NAME = "red2pr_csrf";
@@ -632,6 +654,31 @@ export interface Red2PrClient {
     ws: string,
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<WorkspaceWorkerReadinessResponse>>;
+  listWorkspaceModels(
+    ws: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<WorkspaceModelsResponse>>;
+  updateWorkspaceModelsConfig(
+    ws: string,
+    body: WorkspaceModelsConfigUpdateRequest,
+    options: IdempotentOptimisticMutationOptions,
+  ): Promise<ApiEnvelope<WorkspaceModelsConfigUpdateResponse>>;
+  grantWorkspaceInferenceConsent(
+    ws: string,
+    body: WorkspaceInferenceConsentCreateRequest,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<ConsentRecord>>;
+  revokeWorkspaceInferenceConsent(
+    ws: string,
+    consentId: string,
+    body?: ConsentRevokeRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<ConsentRecord>>;
+  createWorkspaceModelProbe(
+    ws: string,
+    body: ModelProbeRequest,
+    options: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<ModelProbeResponse>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -716,6 +763,20 @@ function toEnvelope<TData>(data: TData, response: Response): ApiEnvelope<TData> 
     correlationId: response.headers.get("X-Correlation-Id"),
     etag: response.headers.get("ETag"),
   };
+}
+
+function unwrapEnvelope<TData>(result: {
+  readonly data?: TData;
+  readonly error?: unknown;
+  readonly response: Response;
+}): ApiEnvelope<TData> {
+  if (result.data === undefined) {
+    throw new Red2PrApiError(
+      coerceProblem(result.error, result.response),
+      parseRetryAfter(result.response),
+    );
+  }
+  return toEnvelope(result.data, result.response);
 }
 
 export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrClient {
@@ -811,93 +872,77 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       return toEnvelope(data, response);
     },
     async getSetupState(reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/setup", {
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/setup", {
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async submitSetupStep(phase, body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/setup/steps/{phase}", {
-        params: { path: { phase } },
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/setup/steps/{phase}", {
+          params: { path: { phase } },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async listSetupConsents(query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/setup/consents", {
-        params: { query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/setup/consents", {
+          params: { query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async grantSetupConsent(body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/setup/consents", {
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/setup/consents", {
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async revokeSetupConsent(consentId, body = {}, reqOptions) {
-      const { data, error, response } = await raw.DELETE("/api/v1/setup/consents/{consent_id}", {
-        params: { path: { consent_id: consentId } },
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.DELETE("/api/v1/setup/consents/{consent_id}", {
+          params: { path: { consent_id: consentId } },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async listEndpointRegistrations(query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/setup/endpoints", {
-        params: { query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/setup/endpoints", {
+          params: { query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async registerPrivateEndpoint(body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/setup/endpoints", {
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/setup/endpoints", {
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async revokePrivateEndpoint(endpointId, reqOptions) {
-      const { data, error, response } = await raw.DELETE("/api/v1/setup/endpoints/{endpoint_id}", {
-        params: { path: { endpoint_id: endpointId } },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.DELETE("/api/v1/setup/endpoints/{endpoint_id}", {
+          params: { path: { endpoint_id: endpointId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async login(body, reqOptions) {
       await ensurePreAuthCsrf(reqOptions);
@@ -965,14 +1010,12 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       return toEnvelope(data, response);
     },
     async listMySessions(reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/me/sessions", {
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/me/sessions", {
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async revokeMySession(sessionId, reqOptions) {
       const { error, response } = await raw.DELETE("/api/v1/me/sessions/{session_id}", {
@@ -1015,90 +1058,76 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       };
     },
     async listWorkspaces(query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces", {
-        params: { query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces", {
+          params: { query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async createWorkspace(body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/workspaces", {
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces", {
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async getWorkspace(ws, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}", {
-        params: { path: { ws } },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}", {
+          params: { path: { ws } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async updateWorkspace(ws, body, reqOptions) {
-      const { data, error, response } = await raw.PATCH("/api/v1/workspaces/{ws}", {
-        params: {
-          path: { ws },
-          header: reqOptions?.ifMatch ? { "If-Match": reqOptions.ifMatch } : undefined,
-        },
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.PATCH("/api/v1/workspaces/{ws}", {
+          params: {
+            path: { ws },
+            header: reqOptions?.ifMatch ? { "If-Match": reqOptions.ifMatch } : undefined,
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async deleteWorkspace(ws, body, reqOptions) {
-      const { data, error, response } = await raw.DELETE("/api/v1/workspaces/{ws}", {
-        params: {
-          path: { ws },
-          header: { "Idempotency-Key": reqOptions.idempotencyKey },
-        },
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.DELETE("/api/v1/workspaces/{ws}", {
+          params: {
+            path: { ws },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async listBreakGlassGrants(ws, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/break-glass", {
-        params: { path: { ws } },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/break-glass", {
+          params: { path: { ws } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async createBreakGlassGrant(ws, body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/workspaces/{ws}/break-glass", {
-        params: { path: { ws } },
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/break-glass", {
+          params: { path: { ws } },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async revokeBreakGlassGrant(ws, grantId, reqOptions) {
       const { error, response } = await raw.DELETE(
@@ -1117,20 +1146,17 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       };
     },
     async listWorkspaceMembers(ws, query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/members", {
-        params: { path: { ws }, query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/members", {
+          params: { path: { ws }, query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async updateWorkspaceMember(ws, memberId, body, reqOptions) {
-      const { data, error, response } = await raw.PATCH(
-        "/api/v1/workspaces/{ws}/members/{member_id}",
-        {
+      return unwrapEnvelope(
+        await raw.PATCH("/api/v1/workspaces/{ws}/members/{member_id}", {
           params: {
             path: { ws, member_id: memberId },
             header: reqOptions?.ifMatch ? { "If-Match": reqOptions.ifMatch } : undefined,
@@ -1138,12 +1164,8 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async removeWorkspaceMember(ws, memberId, reqOptions) {
       const { error, response } = await raw.DELETE("/api/v1/workspaces/{ws}/members/{member_id}", {
@@ -1159,27 +1181,23 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       };
     },
     async listWorkspaceInvitations(ws, query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/invitations", {
-        params: { path: { ws }, query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/invitations", {
+          params: { path: { ws }, query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async createWorkspaceInvitation(ws, body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/workspaces/{ws}/invitations", {
-        params: { path: { ws } },
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/invitations", {
+          params: { path: { ws } },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async revokeWorkspaceInvitation(ws, inviteId, reqOptions) {
       const { error, response } = await raw.DELETE(
@@ -1198,45 +1216,35 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       };
     },
     async acceptWorkspaceInvitation(body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/invitations/accept", {
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/invitations/accept", {
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async listTaskJobs(ws, query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/task-jobs", {
-        params: { path: { ws }, query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/task-jobs", {
+          params: { path: { ws }, query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async getTaskJob(ws, jobId, reqOptions) {
-      const { data, error, response } = await raw.GET(
-        "/api/v1/workspaces/{ws}/task-jobs/{job_id}",
-        {
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/task-jobs/{job_id}", {
           params: { path: { ws, job_id: jobId } },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async performTaskJobAction(ws, jobId, body, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/workspaces/{ws}/task-jobs/{job_id}/actions",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/task-jobs/{job_id}/actions", {
           params: {
             path: { ws, job_id: jobId },
             header: {
@@ -1247,68 +1255,52 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async getOperationReceipt(operationId, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/operations/{operation_id}", {
-        params: { path: { operation_id: operationId } },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/operations/{operation_id}", {
+          params: { path: { operation_id: operationId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async listConnections(ws, query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/integrations", {
-        params: { path: { ws }, query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/integrations", {
+          params: { path: { ws }, query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async createConnection(ws, body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/workspaces/{ws}/integrations", {
-        params: {
-          path: { ws },
-          header: { "Idempotency-Key": reqOptions.idempotencyKey },
-        },
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/integrations", {
+          params: {
+            path: { ws },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        }),
+      );
     },
     async getConnection(ws, connectionId, reqOptions) {
-      const { data, error, response } = await raw.GET(
-        "/api/v1/workspaces/{ws}/integrations/{connection_id}",
-        {
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/integrations/{connection_id}", {
           params: { path: { ws, connection_id: connectionId } },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async updateConnection(ws, connectionId, body, reqOptions) {
-      const { data, error, response } = await raw.PATCH(
-        "/api/v1/workspaces/{ws}/integrations/{connection_id}",
-        {
+      return unwrapEnvelope(
+        await raw.PATCH("/api/v1/workspaces/{ws}/integrations/{connection_id}", {
           params: {
             path: { ws, connection_id: connectionId },
             header: {
@@ -1319,68 +1311,48 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async deleteConnection(ws, connectionId, reqOptions) {
-      const { data, error, response } = await raw.DELETE(
-        "/api/v1/workspaces/{ws}/integrations/{connection_id}",
-        {
+      return unwrapEnvelope(
+        await raw.DELETE("/api/v1/workspaces/{ws}/integrations/{connection_id}", {
           params: {
             path: { ws, connection_id: connectionId },
             header: { "Idempotency-Key": reqOptions.idempotencyKey },
           },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async probeConnection(ws, connectionId, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/workspaces/{ws}/integrations/{connection_id}/probes",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/integrations/{connection_id}/probes", {
           params: {
             path: { ws, connection_id: connectionId },
             header: { "Idempotency-Key": reqOptions.idempotencyKey },
           },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async syncConnection(ws, connectionId, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/workspaces/{ws}/integrations/{connection_id}/sync",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/integrations/{connection_id}/sync", {
           params: {
             path: { ws, connection_id: connectionId },
             header: { "Idempotency-Key": reqOptions.idempotencyKey },
           },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async reconcileConnectionRuns(ws, connectionId, body, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/workspaces/{ws}/integrations/{connection_id}/reconcile",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/integrations/{connection_id}/reconcile", {
           params: {
             path: { ws, connection_id: connectionId },
             header: { "Idempotency-Key": reqOptions.idempotencyKey },
@@ -1392,17 +1364,12 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async mintGitHubInstallState(ws, connectionId, body, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/state",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/state", {
           params: {
             path: { ws, connection_id: connectionId },
             header: { "Idempotency-Key": reqOptions.idempotencyKey },
@@ -1410,71 +1377,55 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           body: body ?? {},
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async handleGitHubCallback(query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/integrations/github/callback", {
-        params: { query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/integrations/github/callback", {
+          params: { query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async confirmGitHubInstallation(ws, connectionId, body, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/confirm",
-        {
-          params: {
-            path: { ws, connection_id: connectionId },
-            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+      return unwrapEnvelope(
+        await raw.POST(
+          "/api/v1/workspaces/{ws}/integrations/{connection_id}/installations/confirm",
+          {
+            params: {
+              path: { ws, connection_id: connectionId },
+              header: { "Idempotency-Key": reqOptions.idempotencyKey },
+            },
+            body,
+            headers: buildOptionalHeaders(reqOptions),
+            signal: reqOptions.signal,
           },
-          body,
-          headers: buildOptionalHeaders(reqOptions),
-          signal: reqOptions.signal,
-        },
+        ),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async listRepositories(ws, query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/repositories", {
-        params: { path: { ws }, query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/repositories", {
+          params: { path: { ws }, query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async getRepository(ws, repositoryId, reqOptions) {
-      const { data, error, response } = await raw.GET(
-        "/api/v1/workspaces/{ws}/repositories/{repository_id}",
-        {
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/repositories/{repository_id}", {
           params: { path: { ws, repository_id: repositoryId } },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async updateRepository(ws, repositoryId, body, reqOptions) {
-      const { data, error, response } = await raw.PATCH(
-        "/api/v1/workspaces/{ws}/repositories/{repository_id}",
-        {
+      return unwrapEnvelope(
+        await raw.PATCH("/api/v1/workspaces/{ws}/repositories/{repository_id}", {
           params: {
             path: { ws, repository_id: repositoryId },
             header: reqOptions?.ifMatch !== undefined ? { "If-Match": reqOptions.ifMatch } : {},
@@ -1482,31 +1433,21 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async getRepositoryPolicy(ws, repositoryId, reqOptions) {
-      const { data, error, response } = await raw.GET(
-        "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy",
-        {
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/repositories/{repository_id}/policy", {
           params: { path: { ws, repository_id: repositoryId } },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async updateRepositoryPolicy(ws, repositoryId, body, reqOptions) {
-      const { data, error, response } = await raw.PATCH(
-        "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy",
-        {
+      return unwrapEnvelope(
+        await raw.PATCH("/api/v1/workspaces/{ws}/repositories/{repository_id}/policy", {
           params: {
             path: { ws, repository_id: repositoryId },
             header: reqOptions?.ifMatch !== undefined ? { "If-Match": reqOptions.ifMatch } : {},
@@ -1514,107 +1455,74 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async previewRepositoryPolicy(ws, repositoryId, body, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy/previews",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/repositories/{repository_id}/policy/previews", {
           params: { path: { ws, repository_id: repositoryId } },
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async previewBulkRepositoryPolicies(ws, body, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/workspaces/{ws}/repositories/policy-previews",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/repositories/policy-previews", {
           params: { path: { ws } },
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async bulkUpdateRepositories(ws, body, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/workspaces/{ws}/repositories/bulk-update",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/repositories/bulk-update", {
           params: { path: { ws } },
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async listRuns(ws, query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/runs", {
-        params: { path: { ws }, query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/runs", {
+          params: { path: { ws }, query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async getRun(ws, runId, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/workspaces/{ws}/runs/{run_id}", {
-        params: { path: { ws, run_id: runId } },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
-    },
-    async listRunJobs(ws, runId, reqOptions) {
-      const { data, error, response } = await raw.GET(
-        "/api/v1/workspaces/{ws}/runs/{run_id}/jobs",
-        {
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/runs/{run_id}", {
           params: { path: { ws, run_id: runId } },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+    },
+    async listRunJobs(ws, runId, reqOptions) {
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/runs/{run_id}/jobs", {
+          params: { path: { ws, run_id: runId } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async getJobLog(ws, jobId, query, reqOptions) {
-      const { data, error, response } = await raw.GET(
-        "/api/v1/workspaces/{ws}/jobs/{job_id}/log",
-        {
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/jobs/{job_id}/log", {
           params: { path: { ws, job_id: jobId }, query },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async downloadArtifact(ws, artifactId, reqOptions) {
       const { data, error, response } = await raw.GET(
@@ -1642,31 +1550,26 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       );
     },
     async listSystemWorkers(query, reqOptions) {
-      const { data, error, response } = await raw.GET("/api/v1/system/workers", {
-        params: { query },
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/system/workers", {
+          params: { query },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async createWorkerEnrollment(body, reqOptions) {
-      const { data, error, response } = await raw.POST("/api/v1/system/workers/enrollments", {
-        body,
-        headers: buildOptionalHeaders(reqOptions),
-        signal: reqOptions?.signal,
-      });
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/system/workers/enrollments", {
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
     },
     async performWorkerAction(workerId, body, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/system/workers/{worker_id}/actions",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/system/workers/{worker_id}/actions", {
           params: {
             path: { worker_id: workerId },
             header: {
@@ -1677,40 +1580,87 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
           body,
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async runWorkerSelfTest(workerId, reqOptions) {
-      const { data, error, response } = await raw.POST(
-        "/api/v1/system/workers/{worker_id}/self-test",
-        {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/system/workers/{worker_id}/self-test", {
           params: { path: { worker_id: workerId } },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
     },
     async getWorkspaceWorkerReadiness(ws, reqOptions) {
-      const { data, error, response } = await raw.GET(
-        "/api/v1/workspaces/{ws}/workers/readiness",
-        {
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/workers/readiness", {
           params: { path: { ws } },
           headers: buildOptionalHeaders(reqOptions),
           signal: reqOptions?.signal,
-        },
+        }),
       );
-      if (data === undefined) {
-        throw new Red2PrApiError(coerceProblem(error, response), parseRetryAfter(response));
-      }
-      return toEnvelope(data, response);
+    },
+    async listWorkspaceModels(ws, reqOptions) {
+      return unwrapEnvelope(
+        await raw.GET("/api/v1/workspaces/{ws}/models", {
+          params: { path: { ws } },
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
+    },
+    async updateWorkspaceModelsConfig(ws, body, reqOptions) {
+      return unwrapEnvelope(
+        await raw.PATCH("/api/v1/workspaces/{ws}/models/config", {
+          params: {
+            path: { ws },
+            header: {
+              "Idempotency-Key": reqOptions.idempotencyKey,
+              ...(reqOptions.ifMatch ? { "If-Match": reqOptions.ifMatch } : {}),
+            },
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        }),
+      );
+    },
+    async grantWorkspaceInferenceConsent(ws, body, reqOptions) {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/models/consents", {
+          params: {
+            path: { ws },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        }),
+      );
+    },
+    async revokeWorkspaceInferenceConsent(ws, consentId, body, reqOptions) {
+      return unwrapEnvelope(
+        await raw.DELETE("/api/v1/workspaces/{ws}/models/consents/{consent_id}", {
+          params: { path: { ws, consent_id: consentId } },
+          body: body ?? {},
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions?.signal,
+        }),
+      );
+    },
+    async createWorkspaceModelProbe(ws, body, reqOptions) {
+      return unwrapEnvelope(
+        await raw.POST("/api/v1/workspaces/{ws}/model-probes", {
+          params: {
+            path: { ws },
+            header: { "Idempotency-Key": reqOptions.idempotencyKey },
+          },
+          body,
+          headers: buildOptionalHeaders(reqOptions),
+          signal: reqOptions.signal,
+        }),
+      );
     },
   };
 }
