@@ -885,7 +885,7 @@ def _build_unsigned_manifest(signer_key_id: str, created_at: datetime) -> Eviden
         patched_result_job_id=new_uuid7(),
         patched_result_digest="d" * 64,
         failure_fingerprint="e" * 64,
-        fidelity_grade="F1",
+        fidelity_grade="F1_TARGETED",
         fidelity_differences=[],
         regression=RegressionSuiteSummary(
             selection_id="full-pytest",
@@ -2077,3 +2077,117 @@ def test_u14_worker_mtls_pki_upload_capability_and_a13_contracts() -> None:
         snapshot_at=FIXED_NOW,
     )
     assert readiness.ready is True
+
+
+def test_u15_runner_profile_manifests_and_adr031_reproduction_contract() -> None:
+    """`SAN-02` / `SAN-03` / `ADR-031`: Validate reviewed profile manifests & A/B invariants."""
+    from py_contracts.worker import (
+        ReproductionRunRecord,
+        RunnerProfileCommandSpec,
+        RunnerProfileManifest,
+        load_reviewed_profile_manifests,
+    )
+
+    profiles_dir = REPO_ROOT / "apps" / "worker-supervisor" / "profiles"
+    manifests = load_reviewed_profile_manifests(profiles_dir)
+    assert set(manifests.keys()) == {
+        "python-pytest-linux",
+        "node-jest-linux",
+        "node-vitest-linux",
+        "custom-linux-declared",
+    }
+    assert len(manifests["python-pytest-linux"].manifest_digest()) == 64
+    assert manifests["custom-linux-declared"].requires_isolated_vm_tier is True
+    assert manifests["custom-linux-declared"].requires_admin_opt_in is True
+
+    # Shell wrappers and secret env vars in manifests must fail closed:
+    with pytest.raises(ValidationError):
+        RunnerProfileCommandSpec(
+            command_id="bad-shell",
+            phase="reproduce",
+            argv=["bash", "-c", "pytest"],
+            description="Shell wrapper must be rejected",
+        )
+    with pytest.raises(ValidationError):
+        RunnerProfileManifest(
+            profile_id="bad-secret-profile",
+            revision=1,
+            display_name="Bad Secret Profile",
+            ecosystem="python",
+            platform="linux/amd64",
+            base_image="ghcr.io/red2pr/bad",
+            image_digest=SAMPLE_DIGEST,
+            supported_lockfiles=["uv.lock"],
+            env_allowlist=["GITHUB_TOKEN"],
+            commands=[
+                RunnerProfileCommandSpec(
+                    command_id="pytest-repro",
+                    phase="reproduce",
+                    argv=["python3", "-m", "pytest"],
+                    description="Test",
+                )
+            ],
+        )
+
+    ws_id = new_uuid7(now=FIXED_NOW)
+    repo_id = new_uuid7(now=FIXED_NOW)
+    repair_id = new_uuid7(now=FIXED_NOW)
+    run_id = new_uuid7(now=FIXED_NOW)
+    job_id = new_uuid7(now=FIXED_NOW)
+
+    # ADR-031: repro_unconfirmed can NEVER set allow_patching=True:
+    with pytest.raises(ValidationError):
+        ReproductionRunRecord(
+            id=new_uuid7(now=FIXED_NOW),
+            workspace_id=ws_id,
+            version=1,
+            created_at=FIXED_NOW,
+            updated_at=FIXED_NOW,
+            repository_id=repo_id,
+            repair_id=repair_id,
+            ci_run_id=run_id,
+            ci_job_id=job_id,
+            phase="baseline_a",
+            profile_id="python-pytest-linux",
+            profile_revision=1,
+            base_sha=SAMPLE_SHA,
+            status="repro_unconfirmed",
+            fidelity_grade="F2_APPROX",
+            handoff_outcome="diagnosis_and_human_handoff",
+            allow_patching=True,
+            immutable_sealed=True,
+            started_at=FIXED_NOW,
+            finished_at=FIXED_NOW,
+        )
+
+    valid_confirmed = ReproductionRunRecord(
+        id=new_uuid7(now=FIXED_NOW),
+        workspace_id=ws_id,
+        version=1,
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+        repository_id=repo_id,
+        repair_id=repair_id,
+        ci_run_id=run_id,
+        ci_job_id=job_id,
+        phase="baseline_a",
+        profile_id="python-pytest-linux",
+        profile_revision=1,
+        base_sha=SAMPLE_SHA,
+        fingerprint_matched=True,
+        executed_tests_count=5,
+        passed_tests_count=4,
+        failed_tests_count=1,
+        exit_code=1,
+        termination="exited",
+        status="repro_confirmed",
+        fidelity_grade="F3_VALIDATED",
+        handoff_outcome="proceed_to_patch",
+        allow_patching=True,
+        allow_publication=False,
+        immutable_sealed=True,
+        started_at=FIXED_NOW,
+        finished_at=FIXED_NOW,
+    )
+    assert valid_confirmed.allow_patching is True
+    assert valid_confirmed.allow_publication is False

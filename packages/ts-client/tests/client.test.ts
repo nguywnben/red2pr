@@ -3,9 +3,12 @@ import { describe, it } from "node:test";
 import {
   createRed2PrClient,
   Red2PrApiError,
+  type FidelityGrade,
   type Membership,
   type Problem,
+  type ReproductionRunRecord,
   type RepositoryPolicy,
+  type RunnerProfileManifest,
   type SetupState,
 } from "../src/index.js";
 
@@ -1342,5 +1345,87 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     const readiness = await client.getWorkspaceWorkerReadiness("acme");
     assert.equal(readiness.data.ready, true);
     assert.equal(readiness.data.vm_isolation_available, true);
+  });
+
+  it("types U15 S-21 & S-22 RunnerProfileManifest, ReproductionRunRecord, and FidelityGrade contracts", () => {
+    const grade: FidelityGrade = "F3_VALIDATED";
+    const manifest: RunnerProfileManifest = {
+      schema_version: 1,
+      profile_id: "python-pytest-linux",
+      revision: 1,
+      display_name: "Certified Linux Python pytest",
+      ecosystem: "python",
+      platform: "linux/amd64",
+      base_image: "ghcr.io/red2pr/runner-python-pytest:3.12-bookworm",
+      image_digest: "a".repeat(64),
+      supported_lockfiles: ["uv.lock", "poetry.lock", "requirements.txt"],
+      env_allowlist: ["PYTHONDONTWRITEBYTECODE", "PIP_NO_INDEX"],
+      default_env: { PYTHONDONTWRITEBYTECODE: "1", PIP_NO_INDEX: "1" },
+      requires_isolated_vm_tier: false,
+      requires_admin_opt_in: false,
+      commands: [
+        {
+          command_id: "pytest-repro",
+          phase: "reproduce",
+          argv: ["pytest", "-q", "--tb=short"],
+          network_egress_allowed: false,
+          description: "Execute pytest reproduction in offline sandbox",
+        },
+      ],
+    };
+    const record: ReproductionRunRecord = {
+      id: "019a2a00-0000-7000-8000-000000000001",
+      workspace_id: "019a2a00-0000-7000-8000-000000000002",
+      repository_id: "019a2a00-0000-7000-8000-000000000003",
+      repair_id: "019a2a00-0000-7000-8000-000000000004",
+      ci_run_id: "019a2a00-0000-7000-8000-000000000005",
+      ci_job_id: "019a2a00-0000-7000-8000-000000000006",
+      phase: "baseline_a",
+      baseline_reproduction_id: null,
+      sandbox_job_id: "019a2a00-0000-7000-8000-000000000007",
+      sandbox_lease_id: "019a2a00-0000-7000-8000-000000000008",
+      profile_id: manifest.profile_id,
+      profile_revision: manifest.revision,
+      profile_digest: "b".repeat(64),
+      image_digest: manifest.image_digest,
+      base_sha: "c".repeat(40),
+      source_archive_digest: "d".repeat(64),
+      dependency_lock_digest: "e".repeat(64),
+      cache_key: "019a2a00-0000-7000-8000-000000000002:python-pytest-linux:" + "e".repeat(64),
+      patch_digest: null,
+      command_ids: ["pytest-repro"],
+      command_digest: "1".repeat(64),
+      environment_digest: "f".repeat(64),
+      expected_fingerprint_hash: "2".repeat(64),
+      observed_fingerprint_hash: "2".repeat(64),
+      fingerprint_matched: true,
+      executed_tests_count: 12,
+      passed_tests_count: 11,
+      failed_tests_count: 1,
+      skipped_tests_count: 0,
+      exit_code: 1,
+      termination: "exited",
+      status: "repro_confirmed",
+      fidelity_grade: grade,
+      fidelity_differences: [],
+      handoff_outcome: "proceed_to_patch",
+      allow_patching: true,
+      allow_publication: false,
+      failure_reason_code: null,
+      failure_detail: null,
+      result_digest: "3".repeat(64),
+      artifact_refs: [],
+      immutable_sealed: true,
+      started_at: "2026-10-28T09:00:00Z",
+      finished_at: "2026-10-28T09:00:12Z",
+      version: 2,
+      created_at: "2026-10-28T09:00:00Z",
+      updated_at: "2026-10-28T09:00:12Z",
+    };
+
+    assert.equal(manifest.commands[0]?.network_egress_allowed, false);
+    assert.equal(record.fidelity_grade, "F3_VALIDATED");
+    assert.equal(record.allow_patching, true);
+    assert.equal(record.immutable_sealed, true);
   });
 });

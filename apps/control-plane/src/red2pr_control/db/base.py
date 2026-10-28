@@ -2709,3 +2709,234 @@ class SandboxLeaseModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class ProfileRevisionModel(Base):
+    """SAN-03 / U15 immutable SHA-256 pinned runner profile manifest revision."""
+
+    __tablename__ = "profile_revisions"
+    __table_args__ = (
+        UniqueConstraint(
+            "profile_id",
+            "revision",
+            name="uq_profile_revisions_profile_id_revision",
+        ),
+        UniqueConstraint(
+            "manifest_digest",
+            name="uq_profile_revisions_manifest_digest",
+        ),
+        CheckConstraint("revision >= 1", name="profile_revision_pos"),
+        CheckConstraint(
+            "ecosystem IN ('python', 'node', 'custom')",
+            name="profile_ecosystem_valid",
+        ),
+        CheckConstraint(
+            "platform IN ('linux/amd64', 'linux/arm64')",
+            name="profile_platform_valid",
+        ),
+        CheckConstraint("version = 1", name="profile_immutable_version"),
+        Index("ix_profile_revisions_profile_rev", "profile_id", "revision"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    profile_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    manifest_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    ecosystem: Mapped[str] = mapped_column(String(32), nullable=False)
+    platform: Mapped[str] = mapped_column(String(32), nullable=False, default="linux/amd64")
+    base_image: Mapped[str] = mapped_column(String(512), nullable=False)
+    image_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    requires_isolated_vm_tier: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    requires_admin_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    manifest_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class ReproductionRunModel(Base):
+    """SAN-02 / ADR-031 / U15 workspace-scoped immutable Sandbox A / Sandbox B reproduction run."""
+
+    __tablename__ = "reproduction_runs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_reproduction_runs_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_reproduction_runs_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_reproduction_runs_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "ci_run_id"],
+            ["ci_runs.workspace_id", "ci_runs.id"],
+            name="fk_reproduction_runs_tenant_ci_run_ci_runs",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "ci_job_id"],
+            ["ci_jobs.workspace_id", "ci_jobs.id"],
+            name="fk_reproduction_runs_tenant_ci_job_ci_jobs",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "baseline_reproduction_id"],
+            ["reproduction_runs.workspace_id", "reproduction_runs.id"],
+            name="fk_reproduction_runs_tenant_baseline_reproduction_runs",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "sandbox_job_id"],
+            ["task_jobs.workspace_id", "task_jobs.id"],
+            name="fk_reproduction_runs_tenant_sandbox_job_task_jobs",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "sandbox_lease_id"],
+            ["sandbox_leases.workspace_id", "sandbox_leases.id"],
+            name="fk_reproduction_runs_tenant_sandbox_lease_sandbox_leases",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["profile_revision_id"],
+            ["profile_revisions.id"],
+            name="fk_reproduction_runs_profile_revision_id_profile_revisions",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("phase IN ('baseline_a', 'patched_b')", name="repro_phase_valid"),
+        CheckConstraint(
+            "status IN ("
+            "'running', 'repro_confirmed', 'repro_unconfirmed', "
+            "'patched_passed', 'patched_failed', 'unsupported', 'blocked', 'cancelled'"
+            ")",
+            name="repro_status_valid",
+        ),
+        CheckConstraint(
+            "fidelity_grade IN ('F1_TARGETED', 'F2_APPROX', 'F3_VALIDATED', 'FX_UNSUPPORTED')",
+            name="repro_fidelity_valid",
+        ),
+        CheckConstraint(
+            "handoff_outcome IN ("
+            "'pending', 'proceed_to_patch', 'diagnosis_and_human_handoff', "
+            "'unsupported_abstain', 'verified_red_to_green', 'patch_still_failing'"
+            ")",
+            name="repro_handoff_valid",
+        ),
+        CheckConstraint(
+            "termination IS NULL OR termination IN ("
+            "'exited', 'timeout', 'oom', 'cancelled', 'infrastructure_error'"
+            ")",
+            name="repro_termination_valid",
+        ),
+        CheckConstraint("profile_revision >= 1", name="repro_profile_rev_pos"),
+        CheckConstraint(
+            "executed_tests_count >= 0 AND passed_tests_count >= 0 "
+            "AND failed_tests_count >= 0 AND skipped_tests_count >= 0",
+            name="repro_test_counts_nonneg",
+        ),
+        CheckConstraint(
+            "(phase = 'baseline_a' AND patch_digest IS NULL AND baseline_reproduction_id IS NULL) "
+            "OR (phase = 'patched_b' AND patch_digest IS NOT NULL "
+            "AND baseline_reproduction_id IS NOT NULL)",
+            name="repro_phase_parity",
+        ),
+        CheckConstraint(
+            "(NOT allow_patching) OR ("
+            "phase = 'baseline_a' AND status = 'repro_confirmed' "
+            "AND fidelity_grade <> 'FX_UNSUPPORTED' "
+            "AND executed_tests_count > 0 AND failed_tests_count > 0 "
+            "AND fingerprint_matched IS TRUE"
+            ")",
+            name="adr031_patching_gate",
+        ),
+        CheckConstraint(
+            "(NOT allow_publication) OR ("
+            "phase = 'patched_b' AND status = 'patched_passed' "
+            "AND fidelity_grade <> 'FX_UNSUPPORTED' "
+            "AND executed_tests_count > 0 AND failed_tests_count = 0 "
+            "AND termination = 'exited' AND exit_code = 0"
+            ")",
+            name="adr031_publication_gate",
+        ),
+        CheckConstraint(
+            "(status = 'running' AND immutable_sealed IS FALSE) "
+            "OR (status <> 'running' AND immutable_sealed IS TRUE AND finished_at IS NOT NULL)",
+            name="repro_sealed_when_terminal",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_reproduction_runs_ws_repair_phase",
+            "workspace_id",
+            "repair_id",
+            "phase",
+            "created_at",
+        ),
+        Index("ix_reproduction_runs_ws_ci_job", "workspace_id", "ci_job_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    ci_run_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    ci_job_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    phase: Mapped[str] = mapped_column(String(32), nullable=False)
+    baseline_reproduction_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    sandbox_job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    sandbox_lease_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    profile_revision_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    profile_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    profile_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    profile_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    image_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    base_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_archive_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    dependency_lock_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cache_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    patch_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    command_ids_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    command_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    environment_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expected_fingerprint_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    observed_fingerprint_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    fingerprint_matched: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    executed_tests_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    passed_tests_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failed_tests_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    skipped_tests_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    termination: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    fidelity_grade: Mapped[str] = mapped_column(String(32), nullable=False)
+    fidelity_differences_json: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    handoff_outcome: Mapped[str] = mapped_column(String(64), nullable=False)
+    allow_patching: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allow_publication: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    failure_reason_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    failure_detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    result_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    artifact_refs_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    immutable_sealed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

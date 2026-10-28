@@ -127,7 +127,10 @@ from py_contracts import (
     RepositoryPolicyUpdateRequest,
     RepositoryRunTriggerSummary,
     RepositoryUpdateRequest,
+    ReproductionRunRecord,
     ResultV1,
+    RunnerProfileCommandSpec,
+    RunnerProfileManifest,
     SandboxJobV1,
     SecretPresence,
     Session,
@@ -365,6 +368,9 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     ToolCallResponse,
     SandboxJobV1,
     ResultV1,
+    RunnerProfileCommandSpec,
+    RunnerProfileManifest,
+    ReproductionRunRecord,
     EvidenceManifestV1,
 )
 

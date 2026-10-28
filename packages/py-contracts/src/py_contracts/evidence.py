@@ -170,8 +170,13 @@ class ReportExportRequest(StrictContractModel):
         return self
 
 
-# S-22 Proof & Audit Manifest
-FidelityGrade = Literal["F1", "F2", "F3", "FX"]
+# S-22 Proof & Audit Manifest (docs/10_SANDBOX_REPRODUCTION.md canonical fidelity grades)
+FidelityGrade = Literal[
+    "F1_TARGETED",
+    "F2_APPROX",
+    "F3_VALIDATED",
+    "FX_UNSUPPORTED",
+]
 
 
 class ModelToolProvenance(StrictContractModel):

@@ -2303,7 +2303,7 @@ export interface components {
              * Fidelity Grade
              * @enum {string}
              */
-            fidelity_grade: "F1" | "F2" | "F3" | "FX";
+            fidelity_grade: "F1_TARGETED" | "F2_APPROX" | "F3_VALIDATED" | "FX_UNSUPPORTED";
             /** Image Digest */
             image_digest: string;
             /**
@@ -4343,6 +4343,199 @@ export interface components {
             /** Repair Id */
             repair_id: string;
         };
+        /**
+         * ReproductionRunRecord
+         * @description SAN-02 / ADR-031 immutable baseline (Sandbox A) or patched (Sandbox B) record.
+         */
+        ReproductionRunRecord: {
+            /**
+             * Allow Patching
+             * @default false
+             */
+            allow_patching: boolean;
+            /**
+             * Allow Publication
+             * @default false
+             */
+            allow_publication: boolean;
+            /** Artifact Refs */
+            artifact_refs?: components["schemas"]["ResultArtifactRef"][];
+            /** Base Sha */
+            base_sha: string;
+            /**
+             * Baseline Reproduction Id
+             * @default null
+             */
+            baseline_reproduction_id: string | null;
+            /**
+             * Cache Key
+             * @default null
+             */
+            cache_key: string | null;
+            /** Ci Job Id */
+            ci_job_id: string;
+            /** Ci Run Id */
+            ci_run_id: string;
+            /**
+             * Command Digest
+             * @default null
+             */
+            command_digest: string | null;
+            /** Command Ids */
+            command_ids?: string[];
+            /** Created At */
+            created_at: string;
+            /**
+             * Dependency Lock Digest
+             * @default null
+             */
+            dependency_lock_digest: string | null;
+            /**
+             * Environment Digest
+             * @default null
+             */
+            environment_digest: string | null;
+            /**
+             * Executed Tests Count
+             * @default 0
+             */
+            executed_tests_count: number;
+            /**
+             * Exit Code
+             * @default null
+             */
+            exit_code: number | null;
+            /**
+             * Expected Fingerprint Hash
+             * @default null
+             */
+            expected_fingerprint_hash: string | null;
+            /**
+             * Failed Tests Count
+             * @default 0
+             */
+            failed_tests_count: number;
+            /**
+             * Failure Detail
+             * @default null
+             */
+            failure_detail: string | null;
+            /**
+             * Failure Reason Code
+             * @default null
+             */
+            failure_reason_code: string | null;
+            /** Fidelity Differences */
+            fidelity_differences?: string[];
+            /**
+             * Fidelity Grade
+             * @enum {string}
+             */
+            fidelity_grade: "F1_TARGETED" | "F2_APPROX" | "F3_VALIDATED" | "FX_UNSUPPORTED";
+            /**
+             * Fingerprint Matched
+             * @default false
+             */
+            fingerprint_matched: boolean;
+            /**
+             * Finished At
+             * @default null
+             */
+            finished_at: string | null;
+            /**
+             * Handoff Outcome
+             * @enum {string}
+             */
+            handoff_outcome: "pending" | "proceed_to_patch" | "diagnosis_and_human_handoff" | "unsupported_abstain" | "verified_red_to_green" | "patch_still_failing";
+            /** Id */
+            id: string;
+            /**
+             * Image Digest
+             * @default null
+             */
+            image_digest: string | null;
+            /**
+             * Immutable Sealed
+             * @default false
+             */
+            immutable_sealed: boolean;
+            /**
+             * Observed Fingerprint Hash
+             * @default null
+             */
+            observed_fingerprint_hash: string | null;
+            /**
+             * Passed Tests Count
+             * @default 0
+             */
+            passed_tests_count: number;
+            /**
+             * Patch Digest
+             * @default null
+             */
+            patch_digest: string | null;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "baseline_a" | "patched_b";
+            /**
+             * Profile Digest
+             * @default null
+             */
+            profile_digest: string | null;
+            /** Profile Id */
+            profile_id: string;
+            /** Profile Revision */
+            profile_revision: number;
+            /** Repair Id */
+            repair_id: string;
+            /** Repository Id */
+            repository_id: string;
+            /**
+             * Result Digest
+             * @default null
+             */
+            result_digest: string | null;
+            /**
+             * Sandbox Job Id
+             * @default null
+             */
+            sandbox_job_id: string | null;
+            /**
+             * Sandbox Lease Id
+             * @default null
+             */
+            sandbox_lease_id: string | null;
+            /**
+             * Skipped Tests Count
+             * @default 0
+             */
+            skipped_tests_count: number;
+            /**
+             * Source Archive Digest
+             * @default null
+             */
+            source_archive_digest: string | null;
+            /** Started At */
+            started_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "repro_confirmed" | "repro_unconfirmed" | "patched_passed" | "patched_failed" | "unsupported" | "blocked" | "cancelled";
+            /**
+             * Termination
+             * @default null
+             */
+            termination: ("exited" | "timeout" | "oom" | "cancelled" | "infrastructure_error") | null;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
         /** RequestReproductionArgs */
         RequestReproductionArgs: {
             /** Command Ids */
@@ -4437,6 +4630,84 @@ export interface components {
             test_selection_id: string;
         };
         /**
+         * RunnerProfileCommandSpec
+         * @description SAN-03 reviewed immutable `command_id` -> `argv` specification (zero shell eval).
+         */
+        RunnerProfileCommandSpec: {
+            /** Argv */
+            argv: string[];
+            /** Command Id */
+            command_id: string;
+            /** Description */
+            description: string;
+            /**
+             * Network Egress Allowed
+             * @default false
+             */
+            network_egress_allowed: boolean;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "bootstrap" | "reproduce" | "test" | "self_test";
+        };
+        /**
+         * RunnerProfileManifest
+         * @description SAN-03 reviewed immutable runner profile manifest pinned by SHA-256 digest.
+         */
+        RunnerProfileManifest: {
+            /** Base Image */
+            base_image: string;
+            /** Commands */
+            commands: components["schemas"]["RunnerProfileCommandSpec"][];
+            /** Default Env */
+            default_env?: {
+                [key: string]: string;
+            };
+            /** Display Name */
+            display_name: string;
+            /**
+             * Ecosystem
+             * @enum {string}
+             */
+            ecosystem: "python" | "node" | "custom";
+            /** Env Allowlist */
+            env_allowlist?: string[];
+            /** Image Digest */
+            image_digest: string;
+            /**
+             * Platform
+             * @default linux/amd64
+             * @enum {string}
+             */
+            platform: "linux/amd64" | "linux/arm64";
+            /** Profile Id */
+            profile_id: string;
+            /**
+             * Requires Admin Opt In
+             * @default false
+             */
+            requires_admin_opt_in: boolean;
+            /**
+             * Requires Isolated Vm Tier
+             * @default false
+             */
+            requires_isolated_vm_tier: boolean;
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Supported Lockfiles */
+            supported_lockfiles: string[];
+        };
+        /**
          * SandboxJobV1
          * @description S-21 lease-fenced immutable execution directive dispatched to worker supervisor.
          */
@@ -4449,6 +4720,11 @@ export interface components {
             capability_nonce: string;
             /** Command Ids */
             command_ids: string[];
+            /**
+             * Dependency Lock Digest
+             * @default null
+             */
+            dependency_lock_digest: string | null;
             /** Expected Worker Trust Domain */
             expected_worker_trust_domain: string;
             /** Expires At */

@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "profile_id": "python-pytest-linux",
+  "revision": 1,
+  "display_name": "Python 3.12 + pytest (Linux Rootless/VM)",
+  "ecosystem": "python",
+  "platform": "linux/amd64",
+  "base_image": "ghcr.io/red2pr/runner-python-pytest-linux",
+  "image_digest": "3120a1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccdd01",
+  "supported_lockfiles": [
+    "uv.lock",
+    "poetry.lock",
+    "requirements.lock",
+    "requirements.txt",
+    "pyproject.toml"
+  ],
+  "env_allowlist": [
+    "PIP_DISABLE_PIP_VERSION_CHECK",
+    "PIP_FIND_LINKS",
+    "PIP_NO_INDEX",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD",
+    "PYTHONHASHSEED",
+    "TZ",
+    "UV_CACHE_DIR",
+    "UV_OFFLINE"
+  ],
+  "default_env": {
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "PIP_FIND_LINKS": "/dep-cache/wheels",
+    "PIP_NO_INDEX": "1",
+    "PYTHONHASHSEED": "0",
+    "TZ": "UTC",
+    "UV_CACHE_DIR": "/dep-cache/uv",
+    "UV_OFFLINE": "1"
+  },
+  "requires_isolated_vm_tier": false,
+  "requires_admin_opt_in": false,
+  "commands": [
+    {
+      "command_id": "bootstrap-deps",
+      "phase": "bootstrap",
+      "argv": [
+        "python3",
+        "-m",
+        "pip",
+        "install",
+        "--no-index",
+        "--find-links=/dep-cache/wheels",
+        "--no-build-isolation",
+        "--disable-pip-version-check",
+        "-e",
+        "."
+      ],
+      "network_egress_allowed": false,
+      "description": "Offline wheelhouse install from tenant-scoped read-only dependency cache."
+    },
+    {
+      "command_id": "pytest-repro",
+      "phase": "reproduce",
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-v",
+        "--tb=short",
+        "--color=no",
+        "--junitxml=/output/junit_xml"
+      ],
+      "network_egress_allowed": false,
+      "description": "Deterministic pytest baseline & patched failure reproduction run."
+    },
+    {
+      "command_id": "pytest-targeted",
+      "phase": "test",
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        "--color=no",
+        "--junitxml=/output/junit_xml"
+      ],
+      "network_egress_allowed": false,
+      "description": "Deterministic pytest targeted verification run."
+    },
+    {
+      "command_id": "pytest-regression",
+      "phase": "test",
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "--tb=short",
+        "--color=no",
+        "--junitxml=/output/junit_xml"
+      ],
+      "network_egress_allowed": false,
+      "description": "Full pytest regression verification suite."
+    },
+    {
+      "command_id": "sandbox-self-test",
+      "phase": "self_test",
+      "argv": [
+        "python3",
+        "-c",
+        "print('sandbox-isolated-ok')"
+      ],
+      "network_egress_allowed": false,
+      "description": "Minimal isolated guest confinement self-test."
+    }
+  ]
+}

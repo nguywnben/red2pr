@@ -189,6 +189,12 @@ export type ToolCallRequest = SchemaOf<"ToolCallRequest">;
 export type ToolCallResponse = SchemaOf<"ToolCallResponse">;
 export type SandboxJobV1 = SchemaOf<"SandboxJobV1">;
 export type ResultV1 = SchemaOf<"ResultV1">;
+export type RunnerProfileCommandSpec = SchemaOf<"RunnerProfileCommandSpec">;
+export type RunnerProfileManifest = SchemaOf<"RunnerProfileManifest">;
+export type ReproductionRunRecord = SchemaOf<"ReproductionRunRecord">;
+export type ReproductionPhase = ReproductionRunRecord["phase"];
+export type ReproductionStatus = ReproductionRunRecord["status"];
+export type FidelityGrade = ReproductionRunRecord["fidelity_grade"];
 export type EvidenceManifestV1 = SchemaOf<"EvidenceManifestV1">;
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);

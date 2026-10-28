@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "profile_id": "custom-linux-declared",
+  "revision": 1,
+  "display_name": "Reviewed Custom Linux Declared Profile (MicroVM Opt-In)",
+  "ecosystem": "custom",
+  "platform": "linux/amd64",
+  "base_image": "ghcr.io/red2pr/runner-custom-linux-declared",
+  "image_digest": "9900d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccdd04040404",
+  "supported_lockfiles": [
+    "uv.lock",
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "Cargo.lock",
+    "go.sum"
+  ],
+  "env_allowlist": [
+    "TZ"
+  ],
+  "default_env": {
+    "TZ": "UTC"
+  },
+  "requires_isolated_vm_tier": true,
+  "requires_admin_opt_in": true,
+  "commands": [
+    {
+      "command_id": "declared-repro",
+      "phase": "reproduce",
+      "argv": [
+        "/usr/local/bin/red2pr-declared-repro"
+      ],
+      "network_egress_allowed": false,
+      "description": "Reviewed immutable declared entrypoint for baseline/patched reproduction."
+    },
+    {
+      "command_id": "declared-regression",
+      "phase": "test",
+      "argv": [
+        "/usr/local/bin/red2pr-declared-regression"
+      ],
+      "network_egress_allowed": false,
+      "description": "Reviewed immutable declared regression suite entrypoint."
+    },
+    {
+      "command_id": "sandbox-self-test",
+      "phase": "self_test",
+      "argv": [
+        "/bin/echo",
+        "sandbox-isolated-ok"
+      ],
+      "network_egress_allowed": false,
+      "description": "Minimal isolated microVM guest self-test."
+    }
+  ]
+}

@@ -28,19 +28,22 @@ from typing import Any, Protocol
 
 from py_contracts.worker import (
     IsolationCheckResult,
+    RunnerProfileManifest,
     SandboxJobV1,
     SandboxResourceUsage,
     WorkerIsolationAttestation,
     WorkerIsolationMode,
+    load_reviewed_profile_manifests,
 )
 from red2pr_worker.cleanup import JobSandboxDirectories
+from red2pr_worker.materializer import resolve_default_profiles_dir
 
 MAX_ALLOWED_PIDS_LIMIT = 512
 MAX_ALLOWED_DISK_BYTES = 42_949_672_960  # 40 GiB (NFR-14)
 MAX_ALLOWED_OUTPUT_BYTES = 104_857_600  # 100 MiB (NFR-14)
 
 _SHA256_HEX_RE = re.compile(r"^[0-9a-f]{64}$")
-_SAFE_ENV_KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
+_SAFE_ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 
 FORBIDDEN_MOUNT_SUBSTRINGS: tuple[str, ...] = (
     "docker.sock",
@@ -94,15 +97,23 @@ SAFE_BASE_GUEST_ENV: Mapping[str, str] = {
     "TMPDIR": _GUEST_ISOLATED_TMP_MOUNT,
 }
 
-REVIEWED_PROFILE_IMAGES: Mapping[str, str] = {
+REVIEWED_PROFILE_MANIFESTS: Mapping[str, RunnerProfileManifest] = load_reviewed_profile_manifests(
+    resolve_default_profiles_dir()
+)
+
+_BASE_PROFILE_IMAGES: dict[str, str] = {
     "python-3.12-node-22": "ghcr.io/red2pr/runtime-python312-node22",
     "python-3.12-slim": "ghcr.io/red2pr/runtime-python312-slim",
     "node-22-bookworm": "ghcr.io/red2pr/runtime-node22-bookworm",
     "rust-1.82-bookworm": "ghcr.io/red2pr/runtime-rust182-bookworm",
     "go-1.23-bookworm": "ghcr.io/red2pr/runtime-go123-bookworm",
 }
+for _pid, _manifest in REVIEWED_PROFILE_MANIFESTS.items():
+    _BASE_PROFILE_IMAGES[_pid] = _manifest.base_image
 
-REVIEWED_PROFILE_COMMANDS: Mapping[str, Mapping[str, tuple[str, ...]]] = {
+REVIEWED_PROFILE_IMAGES: Mapping[str, str] = _BASE_PROFILE_IMAGES
+
+_BASE_PROFILE_COMMANDS: dict[str, Mapping[str, tuple[str, ...]]] = {
     "python-3.12-node-22": {
         "pytest-unit": ("python3", "-m", "pytest", "-q"),
         "pytest-repro": ("python3", "-m", "pytest", "-v", "--tb=short"),
@@ -136,6 +147,10 @@ REVIEWED_PROFILE_COMMANDS: Mapping[str, Mapping[str, tuple[str, ...]]] = {
         "sandbox-self-test": ("go", "version"),
     },
 }
+for _pid, _manifest in REVIEWED_PROFILE_MANIFESTS.items():
+    _BASE_PROFILE_COMMANDS[_pid] = {cmd.command_id: tuple(cmd.argv) for cmd in _manifest.commands}
+
+REVIEWED_PROFILE_COMMANDS: Mapping[str, Mapping[str, tuple[str, ...]]] = _BASE_PROFILE_COMMANDS
 
 BLOCKED_SECCOMP_SYSCALLS: tuple[str, ...] = (
     "acct",
@@ -297,8 +312,9 @@ def build_hardened_oci_invocation(
     runtime_binary: str = "podman",
     isolation_mode: WorkerIsolationMode = "oci_rootless",
     explicit_non_secret_env: Mapping[str, str] | None = None,
+    readonly_dep_cache_dir: Path | None = None,
 ) -> HardenedOciInvocation:
-    """Build hardened OCI CLI arguments enforcing all `SAN-01` / `NFR-14` limits."""
+    """Build hardened OCI CLI arguments enforcing all `SAN-01` / `SAN-03` / `NFR-14` limits."""
     if not _SHA256_HEX_RE.fullmatch(job.image_digest):
         raise SandboxIsolationUnavailableError(
             "Sandbox image_digest must be a pinned 64-hex SHA-256 digest."
@@ -308,12 +324,33 @@ def build_hardened_oci_invocation(
         raise SandboxIsolationUnavailableError(
             f"Unreviewed sandbox runtime profile: {job.profile_id!r}."
         )
+    manifest = REVIEWED_PROFILE_MANIFESTS.get(job.profile_id)
+    if manifest is not None:
+        if manifest.requires_isolated_vm_tier and isolation_mode != "vm_isolated":
+            raise SandboxIsolationUnavailableError(
+                f"Profile {job.profile_id!r} requires vm_isolated worker tier (ADR-018)."
+            )
+        if job.profile_revision == manifest.revision and job.image_digest != manifest.image_digest:
+            raise SandboxIsolationUnavailableError(
+                f"SandboxJobV1 image_digest does not match pinned manifest digest for "
+                f"{job.profile_id!r} rev {manifest.revision} (SAN-03)."
+            )
+
     resolved_cmds = resolve_reviewed_commands(
         profile_id=job.profile_id,
         command_ids=job.command_ids,
     )
+    merged_allowlist: list[str] = list(manifest.env_allowlist) if manifest is not None else []
+    merged_overrides: dict[str, str] = dict(manifest.default_env) if manifest is not None else {}
+    if explicit_non_secret_env:
+        for k, v in explicit_non_secret_env.items():
+            if k not in merged_allowlist:
+                merged_allowlist.append(k)
+            merged_overrides[k] = v
+
     guest_env = build_sanitized_guest_env(
-        explicit_non_secret_overrides=explicit_non_secret_env,
+        merged_allowlist,
+        explicit_non_secret_overrides=merged_overrides,
     )
 
     limits = job.resource_limits
@@ -326,7 +363,27 @@ def build_hardened_oci_invocation(
 
     worktree_mount = f"{dirs.worktree_dir}:/workspace:rw,nosuid,nodev,Z"
     output_mount = f"{dirs.output_dir}:/output:rw,noexec,nosuid,nodev,Z"
-    mounts = (worktree_mount, output_mount)
+    mount_list: list[str] = [worktree_mount, output_mount]
+    volume_flags: list[str] = [
+        "--volume",
+        worktree_mount,
+        "--volume",
+        output_mount,
+    ]
+    if readonly_dep_cache_dir is not None:
+        if readonly_dep_cache_dir.is_symlink() or not readonly_dep_cache_dir.is_dir():
+            raise SandboxIsolationUnavailableError(
+                "Read-only dependency cache path does not exist or is a symlink (SEC-036)."
+            )
+        resolved_cache = readonly_dep_cache_dir.resolve(strict=True)
+        if resolved_cache.is_relative_to(dirs.root_dir.resolve(strict=True)):
+            raise SandboxIsolationUnavailableError(
+                "Dependency cache directory must reside outside writable guest scratch (SEC-036)."
+            )
+        cache_mount = f"{resolved_cache}:/dep-cache:ro,noexec,nosuid,nodev,Z"
+        mount_list.append(cache_mount)
+        volume_flags.extend(("--volume", cache_mount))
+    mounts = tuple(mount_list)
 
     env_flags: list[str] = []
     for k in sorted(guest_env):
@@ -351,10 +408,7 @@ def build_hardened_oci_invocation(
         f"--memory-swap={limits.memory_bytes}",
         "--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=67108864",
         "--workdir=/workspace",
-        "--volume",
-        worktree_mount,
-        "--volume",
-        output_mount,
+        *volume_flags,
         *env_flags,
         image_ref,
     ]
@@ -446,6 +500,13 @@ def validate_oci_invocation_security(
             if bad_mount in lowered:
                 raise SandboxIsolationUnavailableError(
                     f"Forbidden host mount/socket reference {bad_mount!r} rejected (SEC-006)."
+                )
+        if ":/dep-cache" in lowered:
+            after_target = lowered.split(":/dep-cache", 1)[1]
+            opts = {opt.strip() for opt in after_target.lstrip(":").split(",") if opt.strip()}
+            if "ro" not in opts or "rw" in opts:
+                raise SandboxIsolationUnavailableError(
+                    "Dependency cache mount /dep-cache must be strictly read-only (:ro) (SEC-036)."
                 )
 
     for env_key in invocation.guest_env:

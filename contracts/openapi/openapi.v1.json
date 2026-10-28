@@ -3754,10 +3754,10 @@
           },
           "fidelity_grade": {
             "enum": [
-              "F1",
-              "F2",
-              "F3",
-              "FX"
+              "F1_TARGETED",
+              "F2_APPROX",
+              "F3_VALIDATED",
+              "FX_UNSUPPORTED"
             ],
             "title": "Fidelity Grade",
             "type": "string"
@@ -9475,6 +9475,451 @@
         "title": "ReproVerificationEventPayload",
         "type": "object"
       },
+      "ReproductionRunRecord": {
+        "additionalProperties": false,
+        "description": "SAN-02 / ADR-031 immutable baseline (Sandbox A) or patched (Sandbox B) record.",
+        "properties": {
+          "allow_patching": {
+            "default": false,
+            "title": "Allow Patching",
+            "type": "boolean"
+          },
+          "allow_publication": {
+            "default": false,
+            "title": "Allow Publication",
+            "type": "boolean"
+          },
+          "artifact_refs": {
+            "items": {
+              "$ref": "#/components/schemas/ResultArtifactRef"
+            },
+            "title": "Artifact Refs",
+            "type": "array"
+          },
+          "base_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Base Sha",
+            "type": "string"
+          },
+          "baseline_reproduction_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Baseline Reproduction Id"
+          },
+          "cache_key": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cache Key"
+          },
+          "ci_job_id": {
+            "title": "Ci Job Id",
+            "type": "string"
+          },
+          "ci_run_id": {
+            "title": "Ci Run Id",
+            "type": "string"
+          },
+          "command_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Command Digest"
+          },
+          "command_ids": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Command Ids",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "dependency_lock_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Dependency Lock Digest"
+          },
+          "environment_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Environment Digest"
+          },
+          "executed_tests_count": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Executed Tests Count",
+            "type": "integer"
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Exit Code"
+          },
+          "expected_fingerprint_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expected Fingerprint Hash"
+          },
+          "failed_tests_count": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Failed Tests Count",
+            "type": "integer"
+          },
+          "failure_detail": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Failure Detail"
+          },
+          "failure_reason_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Failure Reason Code"
+          },
+          "fidelity_differences": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "title": "Fidelity Differences",
+            "type": "array"
+          },
+          "fidelity_grade": {
+            "enum": [
+              "F1_TARGETED",
+              "F2_APPROX",
+              "F3_VALIDATED",
+              "FX_UNSUPPORTED"
+            ],
+            "title": "Fidelity Grade",
+            "type": "string"
+          },
+          "fingerprint_matched": {
+            "default": false,
+            "title": "Fingerprint Matched",
+            "type": "boolean"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finished At"
+          },
+          "handoff_outcome": {
+            "enum": [
+              "pending",
+              "proceed_to_patch",
+              "diagnosis_and_human_handoff",
+              "unsupported_abstain",
+              "verified_red_to_green",
+              "patch_still_failing"
+            ],
+            "title": "Handoff Outcome",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "image_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Image Digest"
+          },
+          "immutable_sealed": {
+            "default": false,
+            "title": "Immutable Sealed",
+            "type": "boolean"
+          },
+          "observed_fingerprint_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Observed Fingerprint Hash"
+          },
+          "passed_tests_count": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Passed Tests Count",
+            "type": "integer"
+          },
+          "patch_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Patch Digest"
+          },
+          "phase": {
+            "enum": [
+              "baseline_a",
+              "patched_b"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "profile_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile Digest"
+          },
+          "profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "profile_revision": {
+            "minimum": 1,
+            "title": "Profile Revision",
+            "type": "integer"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "result_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Digest"
+          },
+          "sandbox_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sandbox Job Id"
+          },
+          "sandbox_lease_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sandbox Lease Id"
+          },
+          "skipped_tests_count": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Skipped Tests Count",
+            "type": "integer"
+          },
+          "source_archive_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Archive Digest"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "repro_confirmed",
+              "repro_unconfirmed",
+              "patched_passed",
+              "patched_failed",
+              "unsupported",
+              "blocked",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "termination": {
+            "anyOf": [
+              {
+                "enum": [
+                  "exited",
+                  "timeout",
+                  "oom",
+                  "cancelled",
+                  "infrastructure_error"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Termination"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "repository_id",
+          "repair_id",
+          "ci_run_id",
+          "ci_job_id",
+          "phase",
+          "profile_id",
+          "profile_revision",
+          "base_sha",
+          "status",
+          "fidelity_grade",
+          "handoff_outcome",
+          "started_at"
+        ],
+        "title": "ReproductionRunRecord",
+        "type": "object"
+      },
       "RequestReproductionArgs": {
         "additionalProperties": false,
         "properties": {
@@ -9728,6 +10173,176 @@
         "title": "RunTargetedTestArgs",
         "type": "object"
       },
+      "RunnerProfileCommandSpec": {
+        "additionalProperties": false,
+        "description": "SAN-03 reviewed immutable `command_id` -> `argv` specification (zero shell eval).",
+        "properties": {
+          "argv": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Argv",
+            "type": "array"
+          },
+          "command_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Command Id",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 4096,
+            "title": "Description",
+            "type": "string"
+          },
+          "network_egress_allowed": {
+            "default": false,
+            "title": "Network Egress Allowed",
+            "type": "boolean"
+          },
+          "phase": {
+            "enum": [
+              "bootstrap",
+              "reproduce",
+              "test",
+              "self_test"
+            ],
+            "title": "Phase",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "phase",
+          "argv",
+          "description"
+        ],
+        "title": "RunnerProfileCommandSpec",
+        "type": "object"
+      },
+      "RunnerProfileManifest": {
+        "additionalProperties": false,
+        "description": "SAN-03 reviewed immutable runner profile manifest pinned by SHA-256 digest.",
+        "properties": {
+          "base_image": {
+            "maxLength": 4096,
+            "title": "Base Image",
+            "type": "string"
+          },
+          "commands": {
+            "items": {
+              "$ref": "#/components/schemas/RunnerProfileCommandSpec"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Commands",
+            "type": "array"
+          },
+          "default_env": {
+            "additionalProperties": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "propertyNames": {
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "title": "Default Env",
+            "type": "object"
+          },
+          "display_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "ecosystem": {
+            "enum": [
+              "python",
+              "node",
+              "custom"
+            ],
+            "title": "Ecosystem",
+            "type": "string"
+          },
+          "env_allowlist": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Env Allowlist",
+            "type": "array"
+          },
+          "image_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Image Digest",
+            "type": "string"
+          },
+          "platform": {
+            "default": "linux/amd64",
+            "enum": [
+              "linux/amd64",
+              "linux/arm64"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "profile_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "requires_admin_opt_in": {
+            "default": false,
+            "title": "Requires Admin Opt In",
+            "type": "boolean"
+          },
+          "requires_isolated_vm_tier": {
+            "default": false,
+            "title": "Requires Isolated Vm Tier",
+            "type": "boolean"
+          },
+          "revision": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "supported_lockfiles": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Supported Lockfiles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "profile_id",
+          "display_name",
+          "ecosystem",
+          "base_image",
+          "image_digest",
+          "supported_lockfiles",
+          "commands"
+        ],
+        "title": "RunnerProfileManifest",
+        "type": "object"
+      },
       "SandboxJobV1": {
         "additionalProperties": false,
         "description": "S-21 lease-fenced immutable execution directive dispatched to worker supervisor.",
@@ -9758,6 +10373,19 @@
             "minItems": 1,
             "title": "Command Ids",
             "type": "array"
+          },
+          "dependency_lock_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Dependency Lock Digest"
           },
           "expected_worker_trust_domain": {
             "maxLength": 120,

@@ -460,6 +460,10 @@ class WorkerBrokerService:
     def ca(self) -> WorkerCertificateAuthority:
         return self._ca
 
+    @property
+    def artifact_store(self) -> ArtifactStoreProtocol:
+        return self._artifact_store
+
     def register_source_archive(self, source_archive_bytes: bytes) -> str:
         """Register an immutable repository snapshot archive for worker staging in tests/runs."""
         digest = hashlib.sha256(source_archive_bytes).hexdigest()
@@ -1662,6 +1666,7 @@ class WorkerBrokerService:
         correlation_id: str,
         now: datetime,
         profile_revision: int = 1,
+        dependency_lock_digest: str | None = None,
         patch_digest: str | None = None,
         patch_diff_text: str | None = None,
         resource_limits: SandboxResourceLimits | None = None,
@@ -1689,6 +1694,7 @@ class WorkerBrokerService:
             "image_digest": image_digest,
             "base_sha": base_sha,
             "source_archive_digest": source_archive_digest,
+            "dependency_lock_digest": dependency_lock_digest,
             "patch_digest": patch_digest,
             "patch_diff_text": patch_diff_text,
             "command_ids": list(command_ids),
@@ -1848,6 +1854,7 @@ class WorkerBrokerService:
             expires_at=lease_expires_at,
             base_sha=str(spec["base_sha"]),
             source_archive_digest=source_archive_digest,
+            dependency_lock_digest=cast(str | None, spec.get("dependency_lock_digest")),
             patch_digest=cast(str | None, spec.get("patch_digest")),
             profile_id=profile_id,
             profile_revision=int(spec.get("profile_revision", 1)),

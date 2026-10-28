@@ -8,11 +8,14 @@ Enforces:
 
 from __future__ import annotations
 
+import pathlib
+import re
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, StrictBool, StrictInt, model_validator
 
-from py_contracts.crypto import PublicKeyRecord
+from py_contracts.crypto import PublicKeyRecord, sha256_canonical_json
+from py_contracts.evidence import FidelityGrade
 from py_contracts.integrations import GitSha
 from py_contracts.primitives import (
     BoundedName,
@@ -312,6 +315,7 @@ class SandboxJobV1(StrictContractModel):
     expires_at: UtcTimestamp
     base_sha: GitSha
     source_archive_digest: Sha256Digest
+    dependency_lock_digest: Sha256Digest | None = None
     patch_digest: Sha256Digest | None = None
     profile_id: BoundedName
     profile_revision: PositiveVersion
@@ -461,8 +465,14 @@ class WorkerPollResponse(StrictContractModel):
     worker_status: WorkerStatus
     sandbox_job: SandboxJobV1 | None = None
     source_archive_b64: str | None = Field(default=None, max_length=16_777_216)
-    patch_diff_text: BoundedText | None = None
+    patch_diff_text: str | None = Field(default=None, max_length=262_144)
     heartbeat_interval_seconds: Annotated[StrictInt, Field(ge=1, le=300)] = 15
+
+    @model_validator(mode="after")
+    def _validate_patch_diff_no_nul(self) -> Self:
+        if self.patch_diff_text is not None and "\x00" in self.patch_diff_text:
+            raise ValueError("patch_diff_text must not contain NUL bytes")
+        return self
 
 
 class WorkerJobHeartbeatRequest(StrictContractModel):
@@ -527,3 +537,252 @@ class WorkerCancelAckResponse(StrictContractModel):
     lease_epoch: PositiveVersion
     state: TaskJobState
     worker_quarantined: StrictBool = False
+
+
+# ---------------------------------------------------------------------------
+# SAN-02 & SAN-03: Reviewed Runner Profiles & Immutable A/B Reproduction Runs
+# ---------------------------------------------------------------------------
+
+ProfileEcosystem = Literal["python", "node", "custom"]
+ProfilePlatform = Literal["linux/amd64", "linux/arm64"]
+ProfileCommandPhase = Literal["bootstrap", "reproduce", "test", "self_test"]
+
+_MANIFEST_ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+_MANIFEST_FORBIDDEN_ENV_SUBSTRINGS: tuple[str, ...] = (
+    "SECRET",
+    "TOKEN",
+    "PASSWORD",
+    "PASSWD",
+    "PRIVATE_KEY",
+    "API_KEY",
+    "ACCESS_KEY",
+    "DATABASE_URL",
+    "DSN",
+    "COOKIE",
+    "SESSION",
+    "AUTHORIZATION",
+    "RED2PR_",
+    "META_",
+    "LLAMA_",
+    "GITHUB_",
+    "GITLAB_",
+    "TELEGRAM_",
+    "AWS_",
+)
+
+
+class RunnerProfileCommandSpec(StrictContractModel):
+    """SAN-03 reviewed immutable `command_id` -> `argv` specification (zero shell eval)."""
+
+    command_id: BoundedName
+    phase: ProfileCommandPhase
+    argv: Annotated[list[BoundedText], Field(min_length=1, max_length=32)]
+    network_egress_allowed: StrictBool = False
+    description: BoundedText
+
+    @model_validator(mode="after")
+    def _validate_command_security(self) -> Self:
+        for token in self.argv:
+            if not token or not token.strip():
+                raise ValueError("RunnerProfileCommandSpec argv tokens must be non-empty")
+        first = self.argv[0].strip().lower()
+        if first in ("sh", "/bin/sh", "bash", "/bin/bash", "zsh", "/bin/zsh"):
+            raise ValueError(
+                "Reviewed runner profile commands must execute direct binaries, not shell wrappers"
+            )
+        if self.network_egress_allowed and self.phase != "bootstrap":
+            raise ValueError(
+                "Execution/reproduce/test phases must keep network_egress_allowed=False (SEC-014)"
+            )
+        return self
+
+
+class RunnerProfileManifest(StrictContractModel):
+    """SAN-03 reviewed immutable runner profile manifest pinned by SHA-256 digest."""
+
+    schema_version: Literal[1] = 1
+    profile_id: BoundedName
+    revision: PositiveVersion = 1
+    display_name: BoundedName
+    ecosystem: ProfileEcosystem
+    platform: ProfilePlatform = "linux/amd64"
+    base_image: BoundedText
+    image_digest: Sha256Digest
+    supported_lockfiles: Annotated[list[BoundedName], Field(min_length=1, max_length=16)]
+    env_allowlist: list[BoundedName] = Field(default_factory=list)
+    default_env: dict[BoundedName, BoundedText] = Field(default_factory=dict)
+    requires_isolated_vm_tier: StrictBool = False
+    requires_admin_opt_in: StrictBool = False
+    commands: Annotated[list[RunnerProfileCommandSpec], Field(min_length=1, max_length=32)]
+
+    @model_validator(mode="after")
+    def _validate_manifest_invariants(self) -> Self:
+        seen_cmds: set[str] = set()
+        for cmd in self.commands:
+            if cmd.command_id in seen_cmds:
+                raise ValueError(f"Duplicate command_id {cmd.command_id!r} in profile manifest")
+            seen_cmds.add(cmd.command_id)
+
+        allowed_set = set(self.env_allowlist)
+        for key in allowed_set:
+            if not _MANIFEST_ENV_KEY_RE.fullmatch(key):
+                raise ValueError(f"Invalid env_allowlist variable name {key!r}")
+            upper = key.upper()
+            if any(bad in upper for bad in _MANIFEST_FORBIDDEN_ENV_SUBSTRINGS):
+                raise ValueError(f"Forbidden secret-bearing env var {key!r} in profile manifest")
+
+        for k, v in self.default_env.items():
+            if k not in allowed_set:
+                raise ValueError(f"default_env variable {k!r} must be listed in env_allowlist")
+            if "\x00" in v or len(v) > 512:
+                raise ValueError(f"Invalid default_env value for {k!r}")
+
+        if self.ecosystem == "custom" and (
+            not self.requires_isolated_vm_tier or not self.requires_admin_opt_in
+        ):
+            raise ValueError(
+                "Custom Linux profile requires requires_isolated_vm_tier=True and "
+                "requires_admin_opt_in=True (ADR-018 / doc10)"
+            )
+        return self
+
+    def manifest_digest(self) -> str:
+        """Compute deterministic SHA-256 digest of the canonical profile manifest JSON."""
+        return sha256_canonical_json(self.model_dump(mode="json"))
+
+
+def load_reviewed_profile_manifests(
+    profiles_dir: pathlib.Path,
+) -> dict[str, RunnerProfileManifest]:
+    """Load and validate all `*/manifest.json` files under `profiles_dir` fail-closed."""
+    if not profiles_dir.is_dir():
+        raise FileNotFoundError(f"Runner profiles directory does not exist: {profiles_dir}")
+
+    manifests: dict[str, RunnerProfileManifest] = {}
+    for manifest_path in sorted(profiles_dir.glob("*/manifest.json")):
+        if manifest_path.is_symlink() or manifest_path.parent.is_symlink():
+            raise ValueError(f"Symlinked profile manifest is forbidden: {manifest_path}")
+        raw_text = manifest_path.read_text(encoding="utf-8")
+        manifest = RunnerProfileManifest.model_validate_json(raw_text)
+        if manifest.profile_id in manifests:
+            raise ValueError(f"Duplicate runner profile_id {manifest.profile_id!r}")
+        manifests[manifest.profile_id] = manifest
+
+    if not manifests:
+        raise ValueError(f"No reviewed runner profile manifests found in {profiles_dir}")
+    return manifests
+
+
+ReproductionPhase = Literal["baseline_a", "patched_b"]
+ReproductionStatus = Literal[
+    "running",
+    "repro_confirmed",
+    "repro_unconfirmed",
+    "patched_passed",
+    "patched_failed",
+    "unsupported",
+    "blocked",
+    "cancelled",
+]
+ReproductionHandoffOutcome = Literal[
+    "pending",
+    "proceed_to_patch",
+    "diagnosis_and_human_handoff",
+    "unsupported_abstain",
+    "verified_red_to_green",
+    "patch_still_failing",
+]
+
+
+class ReproductionRunRecord(WorkspaceResourceBase):
+    """SAN-02 / ADR-031 immutable baseline (Sandbox A) or patched (Sandbox B) record."""
+
+    repository_id: InternalId
+    repair_id: InternalId
+    ci_run_id: InternalId
+    ci_job_id: InternalId
+    phase: ReproductionPhase
+    baseline_reproduction_id: InternalId | None = None
+    sandbox_job_id: InternalId | None = None
+    sandbox_lease_id: InternalId | None = None
+    profile_id: BoundedName
+    profile_revision: PositiveVersion
+    profile_digest: Sha256Digest | None = None
+    image_digest: Sha256Digest | None = None
+    base_sha: GitSha
+    source_archive_digest: Sha256Digest | None = None
+    dependency_lock_digest: Sha256Digest | None = None
+    cache_key: BoundedText | None = None
+    patch_digest: Sha256Digest | None = None
+    command_ids: list[BoundedName] = Field(default_factory=list)
+    command_digest: Sha256Digest | None = None
+    environment_digest: Sha256Digest | None = None
+    expected_fingerprint_hash: Sha256Digest | None = None
+    observed_fingerprint_hash: Sha256Digest | None = None
+    fingerprint_matched: StrictBool = False
+    executed_tests_count: Annotated[StrictInt, Field(ge=0)] = 0
+    passed_tests_count: Annotated[StrictInt, Field(ge=0)] = 0
+    failed_tests_count: Annotated[StrictInt, Field(ge=0)] = 0
+    skipped_tests_count: Annotated[StrictInt, Field(ge=0)] = 0
+    exit_code: StrictInt | None = None
+    termination: ResultTermination | None = None
+    status: ReproductionStatus
+    fidelity_grade: FidelityGrade
+    fidelity_differences: list[BoundedText] = Field(default_factory=list)
+    handoff_outcome: ReproductionHandoffOutcome
+    allow_patching: StrictBool = False
+    allow_publication: StrictBool = False
+    failure_reason_code: BoundedName | None = None
+    failure_detail: BoundedText | None = None
+    result_digest: Sha256Digest | None = None
+    artifact_refs: list[ResultArtifactRef] = Field(default_factory=list)
+    immutable_sealed: StrictBool = False
+    started_at: UtcTimestamp
+    finished_at: UtcTimestamp | None = None
+
+    @model_validator(mode="after")
+    def _validate_adr031_and_ab_invariants(self) -> Self:
+        if self.phase == "baseline_a":
+            if self.patch_digest is not None or self.baseline_reproduction_id is not None:
+                raise ValueError(
+                    "Sandbox A baseline_a run must not carry patch_digest "
+                    "or baseline_reproduction_id"
+                )
+            if self.allow_publication:
+                raise ValueError("Sandbox A baseline_a run can never authorize publication")
+            if self.allow_patching and (
+                self.status != "repro_confirmed"
+                or self.fidelity_grade == "FX_UNSUPPORTED"
+                or self.executed_tests_count <= 0
+                or self.failed_tests_count <= 0
+                or not self.fingerprint_matched
+            ):
+                raise ValueError(
+                    "ADR-031 violation: allow_patching requires repro_confirmed, "
+                    "non-FX fidelity, >0 executed/failed tests, and matching fingerprint"
+                )
+        else:
+            if self.patch_digest is None or self.baseline_reproduction_id is None:
+                raise ValueError(
+                    "Sandbox B patched_b run requires patch_digest and baseline_reproduction_id"
+                )
+            if self.allow_patching:
+                raise ValueError("Sandbox B patched_b run must keep allow_patching=False")
+            if self.allow_publication and (
+                self.status != "patched_passed"
+                or self.fidelity_grade == "FX_UNSUPPORTED"
+                or self.executed_tests_count <= 0
+                or self.failed_tests_count != 0
+                or self.termination != "exited"
+                or self.exit_code != 0
+            ):
+                raise ValueError(
+                    "ADR-031 violation: allow_publication requires clean patched_passed "
+                    "exit 0 with >0 executed tests and 0 failures"
+                )
+
+        if self.status == "running" and self.immutable_sealed:
+            raise ValueError("Running reproduction_runs record cannot be immutable_sealed")
+        if self.status != "running" and (not self.immutable_sealed or self.finished_at is None):
+            raise ValueError("Terminal reproduction_runs record must be immutable_sealed")
+        return self

@@ -48,6 +48,11 @@ from red2pr_worker.enroll import (
     WorkerEnrollmentError,
     validate_attestation_fail_closed,
 )
+from red2pr_worker.materializer import (
+    PatchApplyError,
+    TenantDependencyCacheManager,
+    apply_unified_diff_to_worktree,
+)
 from red2pr_worker.oci_runner import (
     REVIEWED_PROFILE_COMMANDS,
     SandboxIsolationUnavailableError,
@@ -93,6 +98,7 @@ class WorkerSupervisor:
         supported_profiles: Sequence[str] | None = None,
         heartbeat_interval_seconds: float = DEFAULT_SUPERVISOR_HEARTBEAT_SECONDS,
         allow_trusted_local_mode: bool = False,
+        dep_cache_manager: TenantDependencyCacheManager | None = None,
     ) -> None:
         if heartbeat_interval_seconds <= 0:
             raise ValueError("heartbeat_interval_seconds must be > 0")
@@ -102,6 +108,11 @@ class WorkerSupervisor:
         self._cleaner = EphemeralWorkspaceCleaner(scratch_dir)
         self._signer.assert_outside_guest_workspace(self._cleaner.base_dir)
         self._seccomp_path = write_seccomp_profile(state_dir)
+        self._dep_cache = dep_cache_manager or TenantDependencyCacheManager(state_dir / "dep-cache")
+        if self._dep_cache.root_dir.is_relative_to(self._cleaner.base_dir):
+            raise ValueError(
+                "Tenant dependency cache root must reside outside writable guest scratch (SEC-036)."
+            )
         self._supported_profiles = tuple(
             supported_profiles
             if supported_profiles is not None
@@ -110,6 +121,10 @@ class WorkerSupervisor:
         self._heartbeat_interval = heartbeat_interval_seconds
         self._allow_trusted_local = allow_trusted_local_mode
         self._quarantined = False
+
+    @property
+    def dep_cache(self) -> TenantDependencyCacheManager:
+        return self._dep_cache
 
     @property
     def worker_id(self) -> str:
@@ -272,11 +287,35 @@ class WorkerSupervisor:
                     worktree_dir=dirs.worktree_dir,
                 )
 
+            if job.patch_digest is not None:
+                if archive_bytes is None:
+                    raise PatchApplyError(
+                        "Sandbox B job with patch_digest requires materialized base_sha archive."
+                    )
+                if not poll_resp.patch_diff_text:
+                    raise PatchApplyError(
+                        "Sandbox B job declared patch_digest without patch_diff_text."
+                    )
+                apply_unified_diff_to_worktree(
+                    dirs.worktree_dir,
+                    poll_resp.patch_diff_text,
+                    expected_patch_digest=job.patch_digest,
+                )
+
+            readonly_cache_dir: Path | None = None
+            if job.dependency_lock_digest is not None:
+                readonly_cache_dir = self._dep_cache.resolve_verified_readonly_dir(
+                    workspace_id=job.workspace_id,
+                    profile_id=job.profile_id,
+                    dependency_lock_digest=job.dependency_lock_digest,
+                )
+
             invocation = build_hardened_oci_invocation(
                 job,
                 dirs=dirs,
                 seccomp_profile_path=self._seccomp_path,
                 isolation_mode=self._driver.isolation_mode,
+                readonly_dep_cache_dir=readonly_cache_dir,
             )
 
             started_at = clock().astimezone(UTC)

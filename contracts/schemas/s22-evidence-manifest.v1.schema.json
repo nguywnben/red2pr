@@ -188,10 +188,10 @@
     },
     "fidelity_grade": {
       "enum": [
-        "F1",
-        "F2",
-        "F3",
-        "FX"
+        "F1_TARGETED",
+        "F2_APPROX",
+        "F3_VALIDATED",
+        "FX_UNSUPPORTED"
       ],
       "title": "Fidelity Grade",
       "type": "string"

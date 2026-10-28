@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "profile_id": "node-jest-linux",
+  "revision": 1,
+  "display_name": "Node 22 LTS + Jest (Linux Rootless/VM)",
+  "ecosystem": "node",
+  "platform": "linux/amd64",
+  "base_image": "ghcr.io/red2pr/runner-node-jest-linux",
+  "image_digest": "2210b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccdd0202",
+  "supported_lockfiles": [
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "yarn.lock"
+  ],
+  "env_allowlist": [
+    "NODE_ENV",
+    "PNPM_STORE_DIR",
+    "TZ",
+    "npm_config_cache",
+    "npm_config_ignore_scripts",
+    "npm_config_offline"
+  ],
+  "default_env": {
+    "NODE_ENV": "test",
+    "PNPM_STORE_DIR": "/dep-cache/pnpm",
+    "TZ": "UTC",
+    "npm_config_cache": "/dep-cache/npm",
+    "npm_config_ignore_scripts": "true",
+    "npm_config_offline": "true"
+  },
+  "requires_isolated_vm_tier": false,
+  "requires_admin_opt_in": false,
+  "commands": [
+    {
+      "command_id": "bootstrap-deps",
+      "phase": "bootstrap",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--offline",
+        "--ignore-scripts",
+        "--store-dir=/dep-cache/pnpm"
+      ],
+      "network_egress_allowed": false,
+      "description": "Offline frozen-lockfile restore from tenant-scoped read-only store with lifecycle scripts disabled."
+    },
+    {
+      "command_id": "jest-repro",
+      "phase": "reproduce",
+      "argv": [
+        "npx",
+        "--no-install",
+        "jest",
+        "--ci",
+        "--runInBand",
+        "--colors=false"
+      ],
+      "network_egress_allowed": false,
+      "description": "Deterministic single-worker Jest baseline & patched reproduction run."
+    },
+    {
+      "command_id": "jest-targeted",
+      "phase": "test",
+      "argv": [
+        "npx",
+        "--no-install",
+        "jest",
+        "--ci",
+        "--runInBand",
+        "--colors=false"
+      ],
+      "network_egress_allowed": false,
+      "description": "Deterministic Jest targeted test execution."
+    },
+    {
+      "command_id": "jest-regression",
+      "phase": "test",
+      "argv": [
+        "npx",
+        "--no-install",
+        "jest",
+        "--ci",
+        "--colors=false"
+      ],
+      "network_egress_allowed": false,
+      "description": "Full Jest CI regression suite."
+    },
+    {
+      "command_id": "sandbox-self-test",
+      "phase": "self_test",
+      "argv": [
+        "node",
+        "-e",
+        "process.stdout.write('sandbox-isolated-ok\\n')"
+      ],
+      "network_egress_allowed": false,
+      "description": "Minimal isolated Node guest confinement self-test."
+    }
+  ]
+}

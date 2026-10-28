@@ -11,7 +11,9 @@ from py_contracts.evidence import EvidenceManifestV1
 from py_contracts.primitives import StrictContractModel
 from py_contracts.tools import ToolCallRequest, ToolCallResponse
 from py_contracts.worker import (
+    ReproductionRunRecord,
     ResultV1,
+    RunnerProfileManifest,
     SandboxJobV1,
     WorkerArtifactUploadRequest,
     WorkerArtifactUploadResponse,
@@ -39,6 +41,8 @@ class SandboxWorkerSchemaBundle(StrictContractModel):
 
     job: SandboxJobV1
     result: ResultV1
+    profile_manifest: RunnerProfileManifest | None = None
+    reproduction_run: ReproductionRunRecord | None = None
     enroll_request: WorkerEnrollHandshakeRequest | None = None
     enroll_response: WorkerEnrollHandshakeResponse | None = None
     poll_request: WorkerPollRequest | None = None
