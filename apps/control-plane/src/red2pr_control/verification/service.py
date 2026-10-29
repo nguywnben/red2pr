@@ -16,8 +16,14 @@ from py_contracts.evidence import EvidenceManifestV1
 from py_contracts.primitives import new_uuid7
 from py_contracts.repairs import ProofGrade, RepairState
 from red2pr_control.analytics_audit.audit_chain import append_audit_entry
+from red2pr_control.approvals.service import create_approval_for_verified_patch
 from red2pr_control.core.errors import ConflictError, NotFoundError
-from red2pr_control.db.base import EvidenceManifestModel, RepairSessionModel, VerificationRunModel
+from red2pr_control.db.base import (
+    EvidenceManifestModel,
+    PatchAttemptModel,
+    RepairSessionModel,
+    VerificationRunModel,
+)
 from red2pr_control.db.outbox import enqueue_outbox_event
 from red2pr_control.db.rls import workspace_rls_session
 from red2pr_control.orchestrator.state_machine import RepairSessionStateMachine
@@ -208,6 +214,27 @@ class VerificationService:
                     )
                 )
                 await db.flush()
+
+            if verified:
+                verified_patch = await db.scalar(
+                    select(PatchAttemptModel)
+                    .where(
+                        PatchAttemptModel.workspace_id == workspace_id,
+                        PatchAttemptModel.repair_id == repair_id,
+                        PatchAttemptModel.patch_digest == facts.diff_digest,
+                    )
+                    .order_by(PatchAttemptModel.attempt_number.desc())
+                    .limit(1)
+                )
+                if verified_patch is not None:
+                    await create_approval_for_verified_patch(
+                        db,
+                        repair=repair,
+                        patch=verified_patch,
+                        actor_id=None,
+                        correlation_id=correlation_id,
+                        now=ref_now,
+                    )
 
             if repair.state == "verifying" and status != "cancelled":
                 target_state: RepairState

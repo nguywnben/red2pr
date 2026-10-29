@@ -414,6 +414,7 @@ def test_s11_s12_s13_s18_repairs_verification_publication_and_10_phase_setup() -
         remote_status="unknown",
         policy_revision=2,
         base_sha=SAMPLE_SHA,
+        target_ref="refs/heads/main",
         suspension=RepairSuspension(
             reason="model_unavailable",
             checkpoint_state="patching",

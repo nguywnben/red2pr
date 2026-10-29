@@ -276,6 +276,14 @@ from py_contracts.primitives import (
     parse_uuid7_timestamp_ms,
     validate_idempotency_key_window,
 )
+from py_contracts.repair_api import (
+    ApprovalDecisionRequest,
+    ApprovalInboxEntry,
+    ApprovalPageResponse,
+    RepairActionRequest,
+    RepairCreateRequest,
+    RepairPageResponse,
+)
 from py_contracts.repairs import (
     OPTIONAL_SETUP_PHASES,
     SETUP_WIZARD_PHASES,
@@ -460,6 +468,9 @@ __all__ = [
     "ApplyPatchArgs",
     "ApplyPatchResult",
     "Approval",
+    "ApprovalDecisionRequest",
+    "ApprovalInboxEntry",
+    "ApprovalPageResponse",
     "Artifact",
     "ArtifactAccessClass",
     "ArtifactRecord",
@@ -643,6 +654,9 @@ __all__ = [
     "RemoteCheckObservation",
     "RemoteStatus",
     "Repair",
+    "RepairActionRequest",
+    "RepairCreateRequest",
+    "RepairPageResponse",
     "RepairState",
     "RepairSuspension",
     "ReportExportRequest",

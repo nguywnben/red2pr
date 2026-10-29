@@ -33,6 +33,9 @@ from py_contracts import (
     AgentProfileUpdateResponse,
     AgentStepRecord,
     Approval,
+    ApprovalDecisionRequest,
+    ApprovalInboxEntry,
+    ApprovalPageResponse,
     Artifact,
     AuditRecord,
     BranchPolicyEvaluation,
@@ -130,6 +133,9 @@ from py_contracts import (
     RecoveryResponse,
     RemoteCheck,
     Repair,
+    RepairActionRequest,
+    RepairCreateRequest,
+    RepairPageResponse,
     ReportExportRequest,
     Repository,
     RepositoryAccessGrantSummary,
@@ -200,6 +206,7 @@ from py_contracts import (
     WorkspaceWorkerReadinessResponse,
     new_uuid7,
 )
+from red2pr_control.approvals.router import build_approvals_router
 from red2pr_control.core.errors import (
     PROBLEM_JSON_MEDIA_TYPE,
     PayloadTooLargeError,
@@ -240,6 +247,7 @@ from red2pr_control.orchestrator import (
     build_internal_worker_router,
     build_orchestrator_router,
 )
+from red2pr_control.orchestrator.repairs_router import build_repairs_router
 from red2pr_control.repositories import (
     RepositoryCatalogService,
     build_repositories_router,
@@ -351,6 +359,9 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     FailureFingerprintSummary,
     JobLogChunkResponse,
     Repair,
+    RepairActionRequest,
+    RepairCreateRequest,
+    RepairPageResponse,
     Diagnosis,
     DiagnosisHypothesis,
     EvidenceLineCitation,
@@ -361,6 +372,9 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     PatchAttemptRecord,
     Verification,
     Approval,
+    ApprovalDecisionRequest,
+    ApprovalInboxEntry,
+    ApprovalPageResponse,
     Publication,
     RemoteCheck,
     Artifact,
@@ -652,6 +666,8 @@ def create_app(
     app.include_router(build_webhooks_router())
     app.include_router(build_repositories_router())
     app.include_router(build_triage_evidence_router())
+    app.include_router(build_repairs_router())
+    app.include_router(build_approvals_router())
     app.include_router(build_inference_router())
 
     @app.exception_handler(Red2PrError)

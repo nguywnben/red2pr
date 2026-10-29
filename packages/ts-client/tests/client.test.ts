@@ -1794,4 +1794,39 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(calls[2]?.ifMatch, '"1"');
     assert.equal(calls[2]?.idem, "019a2c00-0000-7000-8000-000000000901");
   });
+
+  it("serializes U19 repair evidence, timeline, idempotent actions and step-up approval decisions", async () => {
+    const calls: { method: string; path: string; query: string; idem: string | null }[] = [];
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u19-client",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        calls.push({ method: request.method, path: url.pathname, query: url.search, idem: request.headers.get("Idempotency-Key") });
+        const body = url.pathname.endsWith("/approvals")
+          ? { items: [], next_cursor: null, snapshot_at: "2026-10-29T09:00:00Z" }
+          : url.pathname.endsWith("/timeline") || url.pathname.endsWith("/diagnosis")
+            ? { items: [], next_cursor: null, snapshot_at: "2026-10-29T09:00:00Z" }
+            : { operation_id: "0196f000-0000-7000-8000-000000000901", resource_id: "0196f000-0000-7000-8000-000000000201", state: "succeeded", correlation_id: "corr-u19-client", status_url: "/api/v1/operations/0196f000-0000-7000-8000-000000000901", result_id: "0196f000-0000-7000-8000-000000000201" };
+        return new Response(JSON.stringify(body), { status: request.method === "POST" ? 202 : 200, headers: { "Content-Type": "application/json" } });
+      },
+    });
+
+    await client.listWorkspaceRepairs("acme", { proof_grade: "locally_verified", limit: 10 });
+    await client.getWorkspaceRepairEvidence("acme", "0196f000-0000-7000-8000-000000000201", "diagnosis");
+    await client.getWorkspaceRepairTimeline("acme", "0196f000-0000-7000-8000-000000000201");
+    await client.createWorkspaceRepair("acme", { run_id: "0196f000-0000-7000-8000-000000000101", mode: "approval", reason: "review failed run" }, { idempotencyKey: "0196f000-0000-7000-8000-000000000902" });
+    await client.performRepairAction("acme", "0196f000-0000-7000-8000-000000000201", { action: "pause", reason: "operator review", expected_version: 1 }, { idempotencyKey: "0196f000-0000-7000-8000-000000000903" });
+    await client.listWorkspaceApprovals("acme", { status: "pending", limit: 5 });
+    await client.decideWorkspaceApproval("acme", "0196f000-0000-7000-8000-000000000501", { decision: "approve", reason: null, expected_patch_digest: "a".repeat(64), expected_policy_revision: 3 }, { idempotencyKey: "0196f000-0000-7000-8000-000000000904" });
+
+    assert.equal(calls[0]?.path, "/api/v1/workspaces/acme/repairs");
+    assert.equal(new URLSearchParams(calls[0]?.query).get("proof_grade"), "locally_verified");
+    assert.equal(calls[1]?.path, "/api/v1/workspaces/acme/repairs/0196f000-0000-7000-8000-000000000201/diagnosis");
+    assert.equal(calls[2]?.path, "/api/v1/workspaces/acme/repairs/0196f000-0000-7000-8000-000000000201/timeline");
+    assert.equal(calls[3]?.idem, "0196f000-0000-7000-8000-000000000902");
+    assert.equal(calls[4]?.idem, "0196f000-0000-7000-8000-000000000903");
+    assert.equal(calls[5]?.path, "/api/v1/workspaces/acme/approvals");
+    assert.equal(calls[6]?.idem, "0196f000-0000-7000-8000-000000000904");
+  });
 });

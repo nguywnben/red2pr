@@ -4002,3 +4002,120 @@ class EvidenceManifestModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class ApprovalRequestModel(Base):
+    """U19 patch/base/target/policy-bound approval intent (A-11, APP-02)."""
+
+    __tablename__ = "approval_requests"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_approval_requests_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_approval_requests_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repair_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_approval_requests_tenant_repair_repair_sessions",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(["requested_by"], ["users.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["decision_actor"], ["users.id"], ondelete="RESTRICT"),
+        CheckConstraint(
+            "intent_type IN ('publish_draft_pr', 'sensitive_path_change', 'test_modification')",
+            name="approval_request_intent_valid",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected', 'expired', 'revoked')",
+            name="approval_request_status_valid",
+        ),
+        CheckConstraint("policy_revision >= 1", name="approval_request_policy_revision_pos"),
+        CheckConstraint("version >= 1", name="approval_request_version_pos"),
+        CheckConstraint("expires_at > created_at", name="approval_request_expiry_after_create"),
+        Index("ix_approval_requests_ws_status_expiry", "workspace_id", "status", "expires_at"),
+        Index(
+            "uq_approval_requests_ws_repair_digest_revision_pending",
+            "workspace_id",
+            "repair_id",
+            "patch_digest",
+            "policy_revision",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index(
+            "ix_approval_requests_ws_repo_created", "workspace_id", "repository_id", "created_at"
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    intent_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    patch_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    base_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_ref: Mapped[str] = mapped_column(String(120), nullable=False)
+    policy_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    requested_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    risk_level: Mapped[str] = mapped_column(String(32), nullable=False, default="review")
+    scope_description: Mapped[str] = mapped_column(String(1000), nullable=False)
+    sensitive_change: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    decision: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    decision_actor: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class ApprovalVoteModel(Base):
+    """Append-only idempotent human approval decision record (A-11, SEC-026)."""
+
+    __tablename__ = "approval_votes"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_approval_votes_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "approval_request_id",
+            "user_id",
+            name="uq_approval_votes_ws_request_user",
+        ),
+        UniqueConstraint(
+            "workspace_id", "idempotency_key", name="uq_approval_votes_ws_idempotency"
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "approval_request_id"],
+            ["approval_requests.workspace_id", "approval_requests.id"],
+            name="fk_approval_votes_tenant_approval_requests",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="RESTRICT"),
+        CheckConstraint("decision IN ('approve', 'reject')", name="approval_vote_decision_valid"),
+        Index(
+            "ix_approval_votes_ws_request_created",
+            "workspace_id",
+            "approval_request_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    approval_request_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    decision: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

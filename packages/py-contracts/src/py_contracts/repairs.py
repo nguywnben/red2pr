@@ -113,6 +113,7 @@ class Repair(WorkspaceResourceBase):
     remote_status: RemoteStatus
     policy_revision: PositiveVersion
     base_sha: GitSha
+    target_ref: BoundedName
     parent_id: InternalId | None = None
     suspension: RepairSuspension | None = None
     budget_id: InternalId

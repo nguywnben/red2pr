@@ -126,6 +126,12 @@ export type Diagnosis = SchemaOf<"Diagnosis">;
 export type Patch = SchemaOf<"Patch">;
 export type Verification = SchemaOf<"Verification">;
 export type Approval = SchemaOf<"Approval">;
+export type RepairCreateRequest = SchemaOf<"RepairCreateRequest">;
+export type RepairActionRequest = SchemaOf<"RepairActionRequest">;
+export type ApprovalDecisionRequest = SchemaOf<"ApprovalDecisionRequest">;
+export type RepairPageResponse = SchemaOf<"RepairPageResponse">;
+export type ApprovalPageResponse = SchemaOf<"ApprovalPageResponse">;
+export type ApprovalInboxEntry = SchemaOf<"ApprovalInboxEntry">;
 export type Publication = SchemaOf<"Publication">;
 export type RemoteCheck = SchemaOf<"RemoteCheck">;
 export type Artifact = SchemaOf<"Artifact">;
@@ -708,6 +714,19 @@ export interface Red2PrClient {
     body: AgentProfileUpdateRequest,
     options: IdempotentOptimisticMutationOptions,
   ): Promise<ApiEnvelope<AgentProfileUpdateResponse>>;
+  listWorkspaceRepairs(
+    ws: string,
+    query?: { readonly state?: string; readonly proof_grade?: string; readonly remote_status?: string; readonly limit?: number; readonly cursor?: string },
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<RepairPageResponse>>;
+  createWorkspaceRepair(ws: string, body: RepairCreateRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<ActionReceipt>>;
+  getWorkspaceRepair(ws: string, repairId: string, options?: RequestCallOptions): Promise<ApiEnvelope<Repair>>;
+  getWorkspaceRepairEvidence(ws: string, repairId: string, kind: "diagnosis" | "patches" | "verification", options?: RequestCallOptions): Promise<ApiEnvelope<{ readonly items: readonly Record<string, unknown>[]; readonly reproductions?: readonly Record<string, unknown>[]; readonly next_cursor: string | null; readonly snapshot_at: string }>>;
+  getWorkspaceRepairTimeline(ws: string, repairId: string, options?: RequestCallOptions): Promise<ApiEnvelope<{ readonly items: readonly Record<string, unknown>[]; readonly next_cursor: string | null; readonly snapshot_at: string }>>;
+  performRepairAction(ws: string, repairId: string, body: RepairActionRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<ActionReceipt>>;
+  listWorkspaceApprovals(ws: string, query?: { readonly status?: string; readonly repository_id?: string; readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<ApprovalPageResponse>>;
+  getWorkspaceApproval(ws: string, approvalId: string, options?: RequestCallOptions): Promise<ApiEnvelope<Approval>>;
+  decideWorkspaceApproval(ws: string, approvalId: string, body: ApprovalDecisionRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<Approval>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -1238,6 +1257,44 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
     updateWorkspaceAgentProfile: (ws, profileId, body, options) =>
       callJson("PATCH", "/api/v1/workspaces/{ws}/agent-profiles/{profile_id}", {
         path: { ws, profile_id: profileId },
+        body,
+        options,
+      }),
+    listWorkspaceRepairs: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/repairs", { path: { ws }, query, options }),
+    createWorkspaceRepair: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/repairs", { path: { ws }, body, options }),
+    getWorkspaceRepair: (ws, repairId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/repairs/{repair_id}", {
+        path: { ws, repair_id: repairId },
+        options,
+      }),
+    getWorkspaceRepairEvidence: (ws, repairId, kind, options) =>
+      callJson("GET", `/api/v1/workspaces/{ws}/repairs/{repair_id}/${kind}`, {
+        path: { ws, repair_id: repairId },
+        options,
+      }),
+    getWorkspaceRepairTimeline: (ws, repairId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/repairs/{repair_id}/timeline", {
+        path: { ws, repair_id: repairId },
+        options,
+      }),
+    performRepairAction: (ws, repairId, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/repairs/{repair_id}/actions", {
+        path: { ws, repair_id: repairId },
+        body,
+        options,
+      }),
+    listWorkspaceApprovals: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/approvals", { path: { ws }, query, options }),
+    getWorkspaceApproval: (ws, approvalId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/approvals/{approval_id}", {
+        path: { ws, approval_id: approvalId },
+        options,
+      }),
+    decideWorkspaceApproval: (ws, approvalId, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/approvals/{approval_id}/decisions", {
+        path: { ws, approval_id: approvalId },
         body,
         options,
       }),

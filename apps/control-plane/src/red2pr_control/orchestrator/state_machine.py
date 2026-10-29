@@ -346,6 +346,7 @@ def to_repair_dto(row: RepairSessionModel) -> Repair:
         remote_status=cast(RemoteStatus, row.remote_status),
         policy_revision=row.policy_revision,
         base_sha=row.base_sha,
+        target_ref=row.target_ref,
         parent_id=row.parent_id,
         suspension=suspension,
         budget_id=row.budget_account_id,
@@ -707,6 +708,7 @@ class RepairSessionStateMachine:
         repair_id: str,
         reason: SuspensionReason,
         requested_by: str,
+        expected_version: int | None = None,
         correlation_id: str,
     ) -> Repair:
         """Pause a non-terminal repair session via `RepairSuspension` without mutating state."""
@@ -725,6 +727,11 @@ class RepairSessionStateMachine:
                 raise NotFoundError(
                     code="repair_not_found",
                     detail=f"Repair session {repair_id} not found.",
+                )
+            if expected_version is not None and row.version != expected_version:
+                raise ConflictError(
+                    code="version_conflict",
+                    detail="Repair session version has changed.",
                 )
             if row.state in TERMINAL_REPAIR_STATES:
                 raise ConflictError(
@@ -764,6 +771,7 @@ class RepairSessionStateMachine:
         workspace_id: str,
         repair_id: str,
         requested_by: str,
+        expected_version: int | None = None,
         correlation_id: str,
     ) -> Repair:
         """Resume a suspended non-terminal repair session from its checkpoint state."""
@@ -782,6 +790,11 @@ class RepairSessionStateMachine:
                 raise NotFoundError(
                     code="repair_not_found",
                     detail=f"Repair session {repair_id} not found.",
+                )
+            if expected_version is not None and row.version != expected_version:
+                raise ConflictError(
+                    code="version_conflict",
+                    detail="Repair session version has changed.",
                 )
             if row.suspension_json is None:
                 return to_repair_dto(row)
@@ -823,6 +836,7 @@ class RepairSessionStateMachine:
         requested_by: str,
         reason_code: str = "operator_cancelled",
         immediate: bool = False,
+        expected_version: int | None = None,
         correlation_id: str,
     ) -> Repair:
         """Request or finalize cancellation while preserving `proof_grade` & `remote_status`."""
@@ -841,6 +855,11 @@ class RepairSessionStateMachine:
                 raise NotFoundError(
                     code="repair_not_found",
                     detail=f"Repair session {repair_id} not found.",
+                )
+            if expected_version is not None and row.version != expected_version:
+                raise ConflictError(
+                    code="version_conflict",
+                    detail="Repair session version has changed.",
                 )
             if row.state == "cancelled":
                 return to_repair_dto(row)

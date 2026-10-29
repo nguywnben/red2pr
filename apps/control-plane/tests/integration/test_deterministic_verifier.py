@@ -439,8 +439,9 @@ def _make_signed_manifest_case(
     repository_id: str | None = None,
     repair_id: str | None = None,
     base_sha: str = "1" * 40,
+    now: datetime | None = None,
 ):
-    now = datetime.now(tz=UTC)
+    now = now or datetime.now(tz=UTC)
     worker_key = Ed25519PrivateKey.generate()
     evidence_key = Ed25519PrivateKey.generate()
     worker_id, manifest_id, ci_run_id = (str(uuid4()) for _ in range(3))
@@ -554,6 +555,21 @@ def _make_signed_manifest_case(
 @pytest.fixture
 def signed_manifest_case():
     return _make_signed_manifest_case()[:5]
+
+
+def test_signed_manifest_case_uses_injected_clock_for_key_validity() -> None:
+    now = datetime(2026, 10, 28, 15, 0, 0, tzinfo=UTC)
+    manifest, keyring, blobs, trust_domain, _private_key, _diff = _make_signed_manifest_case(
+        now=now
+    )
+
+    verify_evidence_manifest(
+        manifest,
+        keyring=keyring,
+        artifact_blobs=blobs,
+        expected_signer_trust_domain=trust_domain,
+        now=now,
+    )
 
 
 def _facts_for_signed_manifest(
@@ -962,6 +978,7 @@ async def test_u18_verification_persistence_rls_idempotency_and_human_gate(
             repository_id=repository_id,
             repair_id=success_repair_id,
             base_sha=base_sha,
+            now=clock(),
         )
         success_service = VerificationService(
             session_factory=harness.app_factory,

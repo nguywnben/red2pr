@@ -521,6 +521,57 @@ export interface paths {
         patch: operations["updateWorkspaceAgentProfile"];
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Approvals */
+        get: operations["list_approvals_api_v1_workspaces__ws__approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/approvals/{approval_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Approval */
+        get: operations["get_approval_api_v1_workspaces__ws__approvals__approval_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/approvals/{approval_id}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Approval */
+        post: operations["decide_approval_api_v1_workspaces__ws__approvals__approval_id__decisions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/artifacts/{artifact_id}/download": {
         parameters: {
             query?: never;
@@ -879,6 +930,126 @@ export interface paths {
         post?: never;
         /** Revoke workspace-scoped outbound Meta inference consent (SEC-018) */
         delete: operations["revokeWorkspaceInferenceConsent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repairs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Repairs */
+        get: operations["list_repairs_api_v1_workspaces__ws__repairs_get"];
+        put?: never;
+        /** Create Repair */
+        post: operations["create_repair_api_v1_workspaces__ws__repairs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repairs/{repair_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Repair */
+        get: operations["get_repair_api_v1_workspaces__ws__repairs__repair_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repairs/{repair_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Repair Action */
+        post: operations["repair_action_api_v1_workspaces__ws__repairs__repair_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repairs/{repair_id}/diagnosis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Repair Diagnosis */
+        get: operations["get_repair_diagnosis_api_v1_workspaces__ws__repairs__repair_id__diagnosis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repairs/{repair_id}/patches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Repair Patches */
+        get: operations["get_repair_patches_api_v1_workspaces__ws__repairs__repair_id__patches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repairs/{repair_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Repair Timeline */
+        get: operations["repair_timeline_api_v1_workspaces__ws__repairs__repair_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repairs/{repair_id}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Repair Verification */
+        get: operations["get_repair_verification_api_v1_workspaces__ws__repairs__repair_id__verification_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1345,11 +1516,8 @@ export interface components {
             base_sha: string;
             /** Created At */
             created_at: string;
-            /**
-             * Decision Actor
-             * @default null
-             */
-            decision_actor: string | null;
+            /** Decision Actor */
+            decision_actor?: string | null;
             /** Expires At */
             expires_at: string;
             /** Id */
@@ -1381,6 +1549,20 @@ export interface components {
             /** Workspace Id */
             workspace_id: string;
         };
+        /** ApprovalDecisionRequest */
+        ApprovalDecisionRequest: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+            /** Expected Patch Digest */
+            expected_patch_digest: string;
+            /** Expected Policy Revision */
+            expected_policy_revision: number;
+            /** Reason */
+            reason?: string | null;
+        };
         /** ApprovalEventPayload */
         ApprovalEventPayload: {
             /** Approval Id */
@@ -1392,6 +1574,31 @@ export interface components {
             expires_at: string | null;
             /** Status */
             status: string;
+        };
+        /** ApprovalInboxEntry */
+        ApprovalInboxEntry: {
+            approval: components["schemas"]["Approval"];
+            /** Decision */
+            decision: ("approve" | "reject") | null;
+            /** Reason */
+            reason: string | null;
+            /** Requested By */
+            requested_by: string | null;
+            /** Risk Level */
+            risk_level: string;
+            /** Scope Description */
+            scope_description: string;
+            /** Sensitive Change */
+            sensitive_change: boolean;
+        };
+        /** ApprovalPageResponse */
+        ApprovalPageResponse: {
+            /** Items */
+            items: components["schemas"]["ApprovalInboxEntry"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
         };
         /**
          * Artifact
@@ -4529,11 +4736,8 @@ export interface components {
             created_at: string;
             /** Id */
             id: string;
-            /**
-             * Parent Id
-             * @default null
-             */
-            parent_id: string | null;
+            /** Parent Id */
+            parent_id?: string | null;
             /** Policy Revision */
             policy_revision: number;
             /**
@@ -4555,14 +4759,48 @@ export interface components {
              * @enum {string}
              */
             state: "received" | "authorized" | "collecting" | "triaging" | "diagnosed_only" | "unsupported" | "reproducing" | "repro_confirmed" | "repro_unconfirmed" | "blocked" | "patching" | "verifying" | "rejected" | "policy_gate" | "awaiting_approval" | "expired" | "publishing" | "publish_reconcile" | "needs_human" | "remote_validating" | "remote_verified" | "remote_failed" | "remote_unknown" | "cancel_requested" | "cancelled";
-            /** @default null */
-            suspension: components["schemas"]["RepairSuspension"] | null;
+            suspension?: components["schemas"]["RepairSuspension"] | null;
+            /** Target Ref */
+            target_ref: string;
             /** Updated At */
             updated_at: string;
             /** Version */
             version: number;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /** RepairActionRequest */
+        RepairActionRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "pause" | "resume" | "cancel" | "retry";
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+        };
+        /** RepairCreateRequest */
+        RepairCreateRequest: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "approval" | "auto_repair";
+            /** Reason */
+            reason: string;
+            /** Run Id */
+            run_id: string;
+        };
+        /** RepairPageResponse */
+        RepairPageResponse: {
+            /** Items */
+            items: components["schemas"]["Repair"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
         };
         /** RepairPhaseEventPayload */
         RepairPhaseEventPayload: {
@@ -11379,6 +11617,122 @@ export interface operations {
             };
         };
     };
+    list_approvals_api_v1_workspaces__ws__approvals_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                repository_id?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_approval_api_v1_workspaces__ws__approvals__approval_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Approval"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_approval_api_v1_workspaces__ws__approvals__approval_id__decisions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                ws: string;
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Approval"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     downloadWorkspaceArtifact: {
         parameters: {
             query?: never;
@@ -14753,6 +15107,288 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_repairs_api_v1_workspaces__ws__repairs_get: {
+        parameters: {
+            query?: {
+                state?: string | null;
+                proof_grade?: string | null;
+                remote_status?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepairPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_repair_api_v1_workspaces__ws__repairs_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepairCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_repair_api_v1_workspaces__ws__repairs__repair_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                repair_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Repair"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    repair_action_api_v1_workspaces__ws__repairs__repair_id__actions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                ws: string;
+                repair_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepairActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_repair_diagnosis_api_v1_workspaces__ws__repairs__repair_id__diagnosis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                repair_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_repair_patches_api_v1_workspaces__ws__repairs__repair_id__patches_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                repair_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    repair_timeline_api_v1_workspaces__ws__repairs__repair_id__timeline_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                ws: string;
+                repair_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_repair_verification_api_v1_workspaces__ws__repairs__repair_id__verification_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                repair_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

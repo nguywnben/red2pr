@@ -30,6 +30,8 @@ import { QueuesPage } from "../features/queues";
 import { RepositoriesPage, RepositoryDetailPage } from "../features/repositories";
 import { SetupWizardPage } from "../features/setup";
 import { WorkersPage } from "../features/workers";
+import { RepairDetailPage, RepairsListPage } from "../features/repairs";
+import { ApprovalsInboxPage } from "../features/approvals";
 import {
   ApiClientProvider,
   invalidateWorkspaceQueries,
@@ -79,6 +81,9 @@ function WorkspaceSectionOutlet({
       <Route path="queues" element={<QueuesPage workspace={workspace} me={meData} />} />
       <Route path="models" element={<ModelsPage workspace={workspace} me={meData} />} />
       <Route path="agents" element={<AgentsPage workspace={workspace} me={meData} />} />
+      <Route path="repairs" element={<RepairsListPage workspace={workspace} me={meData} />} />
+      <Route path="repairs/:repairId" element={<RepairDetailPage workspace={workspace} me={meData} />} />
+      <Route path="approvals" element={<ApprovalsInboxPage workspace={workspace} me={meData} />} />
       <Route
         path="repositories"
         element={<RepositoriesPage workspace={workspace} me={meData} />}
