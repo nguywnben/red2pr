@@ -3904,3 +3904,101 @@ class PatchAttemptModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class VerificationRunModel(Base):
+    """S-12 append-only deterministic V-01..V-07 evaluation record (U18)."""
+
+    __tablename__ = "verification_runs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_verification_runs_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "idempotency_key",
+            name="uq_verification_runs_ws_idempotency_key",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_verification_runs_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repair_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_verification_runs_tenant_repair_repair_sessions",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "status IN ('verified', 'failed', 'human_review', 'blocked', 'cancelled')",
+            name="verification_run_status_valid",
+        ),
+        CheckConstraint(
+            "proof_grade IN ('baseline_confirmed', 'locally_verified')",
+            name="verification_run_proof_grade_valid",
+        ),
+        Index("ix_verification_runs_ws_repair_created", "workspace_id", "repair_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    patch_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    proof_grade: Mapped[str] = mapped_column(String(32), nullable=False)
+    gates_json: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    baseline_result_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    patched_result_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class EvidenceManifestModel(Base):
+    """Immutable signed S-22 manifest, tenant-bound to its verification run (U18)."""
+
+    __tablename__ = "evidence_manifests"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_evidence_manifests_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "verification_run_id",
+            name="uq_evidence_manifests_ws_verification_run",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_evidence_manifests_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repair_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_evidence_manifests_tenant_repair_repair_sessions",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "verification_run_id"],
+            ["verification_runs.workspace_id", "verification_runs.id"],
+            name="fk_evidence_manifests_tenant_verification_run",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("schema_version = 1", name="evidence_manifest_version_valid"),
+        Index("ix_evidence_manifests_ws_repair_created", "workspace_id", "repair_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    verification_run_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    manifest_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    signer_key_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
