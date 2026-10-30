@@ -624,6 +624,41 @@ export interface paths {
         patch: operations["updateWorkspaceAgentProfile"];
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/api-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tokens */
+        get: operations["list_tokens_api_v1_workspaces__ws__api_tokens_get"];
+        put?: never;
+        /** Create Token */
+        post: operations["create_token_api_v1_workspaces__ws__api_tokens_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/api-tokens/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Token */
+        delete: operations["revoke_token_api_v1_workspaces__ws__api_tokens__token_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/approvals": {
         parameters: {
             query?: never;
@@ -1091,6 +1126,23 @@ export interface paths {
         patch: operations["patch_destination_api_v1_workspaces__ws__notification_destinations__destination_id__patch"];
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Notification Credential */
+        put: operations["replace_notification_credential_api_v1_workspaces__ws__notification_destinations__destination_id__credentials_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/tests": {
         parameters: {
             query?: never;
@@ -1102,6 +1154,23 @@ export interface paths {
         put?: never;
         /** Test Destination */
         post: operations["test_destination_api_v1_workspaces__ws__notification_destinations__destination_id__tests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/webhook-key/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate Webhook Key */
+        post: operations["rotate_webhook_key_api_v1_workspaces__ws__notification_destinations__destination_id__webhook_key_rotate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1744,6 +1813,64 @@ export interface components {
             version: number;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /**
+         * ApiToken
+         * @description Write-only A-19 token metadata; the raw secret is never part of this DTO.
+         */
+        ApiToken: {
+            /** Created At */
+            created_at: string;
+            /** Expires At */
+            expires_at: string;
+            /** Id */
+            id: string;
+            /** Last Used At */
+            last_used_at?: string | null;
+            /** Name */
+            name: string;
+            /** Owner User Id */
+            owner_user_id: string;
+            /** Repository Id */
+            repository_id?: string | null;
+            /** Repository Ids */
+            repository_ids: string[];
+            /** Revoked At */
+            revoked_at?: string | null;
+            /** Scopes */
+            scopes: ("notifications:read" | "notifications:write" | "repairs:read" | "repairs:write" | "integrations:read" | "integrations:write" | "events:read")[];
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * ApiTokenCreateRequest
+         * @description A-19 token issue request; expiry is checked against the current server time.
+         */
+        ApiTokenCreateRequest: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Name */
+            name: string;
+            /** Repository Ids */
+            repository_ids?: string[];
+            /** Scopes */
+            scopes: ("notifications:read" | "notifications:write" | "repairs:read" | "repairs:write" | "integrations:read" | "integrations:write" | "events:read")[];
+        };
+        /**
+         * ApiTokenCreateResponse
+         * @description A-19 secret revealed once at token creation, then returned only as metadata.
+         */
+        ApiTokenCreateResponse: {
+            metadata: components["schemas"]["ApiToken"];
+            /** Token */
+            token: string;
         };
         /** ApplyPatchArgs */
         ApplyPatchArgs: {
@@ -4220,6 +4347,17 @@ export interface components {
             currency: string;
         };
         /**
+         * NotificationCredentialWriteRequest
+         * @description Write-only channel credential/configuration; the response never echoes it.
+         */
+        NotificationCredentialWriteRequest: {
+            /**
+             * Secret Value
+             * Format: password
+             */
+            secret_value: string;
+        };
+        /**
          * NotificationDelivery
          * @description S-16 durable outbox delivery attempt record (docs/32).
          */
@@ -4459,6 +4597,15 @@ export interface components {
              * @default null
              */
             q: string | null;
+        };
+        /** Page[ApiToken] */
+        Page_ApiToken_: {
+            /** Items */
+            items: components["schemas"]["ApiToken"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
         };
         /** Page[BreakGlassGrant] */
         Page_BreakGlassGrant_: {
@@ -7143,6 +7290,21 @@ export interface components {
             status: "received" | "normalized" | "duplicate_semantic" | "ignored" | "reconcile_pending" | "quarantined";
             /** Trigger Id */
             trigger_id?: string | null;
+        };
+        /**
+         * WebhookSigningKeyRotateResponse
+         * @description One-time outgoing webhook key material; only its reference is persisted.
+         */
+        WebhookSigningKeyRotateResponse: {
+            /** Key Id */
+            key_id: string;
+            /**
+             * Overlap Hours
+             * @constant
+             */
+            overlap_hours: 48;
+            /** Secret */
+            secret: string;
         };
         /**
          * Worker
@@ -12265,6 +12427,105 @@ export interface operations {
             };
         };
     };
+    list_tokens_api_v1_workspaces__ws__api_tokens_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ApiToken_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_token_api_v1_workspaces__ws__api_tokens_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiTokenCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_token_api_v1_workspaces__ws__api_tokens__token_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                token_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_approvals_api_v1_workspaces__ws__approvals_get: {
         parameters: {
             query?: {
@@ -15934,6 +16195,40 @@ export interface operations {
             };
         };
     };
+    replace_notification_credential_api_v1_workspaces__ws__notification_destinations__destination_id__credentials_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                destination_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationCredentialWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     test_destination_api_v1_workspaces__ws__notification_destinations__destination_id__tests_post: {
         parameters: {
             query?: never;
@@ -15959,6 +16254,38 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rotate_webhook_key_api_v1_workspaces__ws__notification_destinations__destination_id__webhook_key_rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                destination_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookSigningKeyRotateResponse"];
                 };
             };
             /** @description Validation Error */

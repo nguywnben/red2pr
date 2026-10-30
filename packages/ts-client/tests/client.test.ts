@@ -1987,4 +1987,51 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(calls[4]?.path, "/api/v1/me/notification-preferences");
     assert.equal(new URLSearchParams(calls[4]?.query).get("workspace_id"), "workspace-1");
   });
+
+  it("serializes U23 scoped API tokens and write-only notification key operations", async () => {
+    const calls: { method: string; path: string; query: string; body: unknown }[] = [];
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u23-client",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        calls.push({
+          method: request.method,
+          path: url.pathname,
+          query: url.search,
+          body: request.method === "PUT" || (request.method === "POST" && url.pathname.endsWith("/api-tokens"))
+            ? await request.json()
+            : null,
+        });
+        return new Response(request.method === "DELETE" || request.method === "PUT" ? null : JSON.stringify({}), {
+          status: request.method === "DELETE" || request.method === "PUT" ? 204 : 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      },
+    });
+    await client.listApiTokens("acme", { limit: 10 });
+    await client.createApiToken("acme", {
+      name: "automation",
+      scopes: ["notifications:read"],
+      repository_ids: [],
+      expires_at: "2026-10-31T09:00:00Z",
+    });
+    await client.revokeApiToken("acme", "token-1");
+    await client.rotateWebhookSigningKey("acme", "destination-1");
+    await client.updateNotificationCredential("acme", "destination-2", { secret_value: "write-only" });
+    assert.equal(calls[0]?.path, "/api/v1/workspaces/acme/api-tokens");
+    assert.equal(new URLSearchParams(calls[0]?.query).get("limit"), "10");
+    assert.deepEqual(calls[1]?.body, {
+      name: "automation",
+      scopes: ["notifications:read"],
+      repository_ids: [],
+      expires_at: "2026-10-31T09:00:00Z",
+    });
+    assert.equal(calls[2]?.method, "DELETE");
+    assert.equal(calls[2]?.path, "/api/v1/workspaces/acme/api-tokens/token-1");
+    assert.equal(calls[3]?.method, "POST");
+    assert.equal(calls[3]?.path, "/api/v1/workspaces/acme/notification-destinations/destination-1/webhook-key/rotate");
+    assert.equal(calls[4]?.method, "PUT");
+    assert.deepEqual(calls[4]?.body, { secret_value: "write-only" });
+  });
 });

@@ -671,6 +671,190 @@
         "title": "AgentStepRecord",
         "type": "object"
       },
+      "ApiToken": {
+        "additionalProperties": false,
+        "description": "Write-only A-19 token metadata; the raw secret is never part of this DTO.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_user_id": {
+            "title": "Owner User Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Id"
+          },
+          "repository_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Repository Ids",
+            "type": "array"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "notifications:read",
+                "notifications:write",
+                "repairs:read",
+                "repairs:write",
+                "integrations:read",
+                "integrations:write",
+                "events:read"
+              ],
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "created_at",
+          "updated_at",
+          "workspace_id",
+          "owner_user_id",
+          "name",
+          "scopes",
+          "repository_ids",
+          "expires_at"
+        ],
+        "title": "ApiToken",
+        "type": "object"
+      },
+      "ApiTokenCreateRequest": {
+        "additionalProperties": false,
+        "description": "A-19 token issue request; expiry is checked against the current server time.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "repository_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Repository Ids",
+            "type": "array"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "notifications:read",
+                "notifications:write",
+                "repairs:read",
+                "repairs:write",
+                "integrations:read",
+                "integrations:write",
+                "events:read"
+              ],
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "scopes",
+          "expires_at"
+        ],
+        "title": "ApiTokenCreateRequest",
+        "type": "object"
+      },
+      "ApiTokenCreateResponse": {
+        "additionalProperties": false,
+        "description": "A-19 secret revealed once at token creation, then returned only as metadata.",
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/ApiToken"
+          },
+          "token": {
+            "pattern": "^r2p_[A-Za-z0-9_-]{43}$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "metadata"
+        ],
+        "title": "ApiTokenCreateResponse",
+        "type": "object"
+      },
       "ApplyPatchArgs": {
         "additionalProperties": false,
         "properties": {
@@ -7527,6 +7711,25 @@
         "title": "Money",
         "type": "object"
       },
+      "NotificationCredentialWriteRequest": {
+        "additionalProperties": false,
+        "description": "Write-only channel credential/configuration; the response never echoes it.",
+        "properties": {
+          "secret_value": {
+            "format": "password",
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Secret Value",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "secret_value"
+        ],
+        "title": "NotificationCredentialWriteRequest",
+        "type": "object"
+      },
       "NotificationDelivery": {
         "additionalProperties": false,
         "description": "S-16 durable outbox delivery attempt record (docs/32).",
@@ -8367,6 +8570,40 @@
           }
         },
         "title": "PageParams",
+        "type": "object"
+      },
+      "Page_ApiToken_": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ApiToken"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "snapshot_at"
+        ],
+        "title": "Page[ApiToken]",
         "type": "object"
       },
       "Page_BreakGlassGrant_": {
@@ -16115,6 +16352,35 @@
         "title": "WebhookIngressReceipt",
         "type": "object"
       },
+      "WebhookSigningKeyRotateResponse": {
+        "additionalProperties": false,
+        "description": "One-time outgoing webhook key material; only its reference is persisted.",
+        "properties": {
+          "key_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Key Id",
+            "type": "string"
+          },
+          "overlap_hours": {
+            "const": 48,
+            "title": "Overlap Hours",
+            "type": "integer"
+          },
+          "secret": {
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key_id",
+          "secret",
+          "overlap_hours"
+        ],
+        "title": "WebhookSigningKeyRotateResponse",
+        "type": "object"
+      },
       "Worker": {
         "additionalProperties": false,
         "description": "S-15 enrolled isolated sandbox worker supervisor node.",
@@ -23171,6 +23437,177 @@
         ]
       }
     },
+    "/api/v1/workspaces/{ws}/api-tokens": {
+      "get": {
+        "operationId": "list_tokens_api_v1_workspaces__ws__api_tokens_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ApiToken_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tokens",
+        "tags": [
+          "iam",
+          "api-tokens"
+        ]
+      },
+      "post": {
+        "operationId": "create_token_api_v1_workspaces__ws__api_tokens_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiTokenCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiTokenCreateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Token",
+        "tags": [
+          "iam",
+          "api-tokens"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/api-tokens/{token_id}": {
+      "delete": {
+        "operationId": "revoke_token_api_v1_workspaces__ws__api_tokens__token_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "title": "Token Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Token",
+        "tags": [
+          "iam",
+          "api-tokens"
+        ]
+      }
+    },
     "/api/v1/workspaces/{ws}/approvals": {
       "get": {
         "operationId": "list_approvals_api_v1_workspaces__ws__approvals_get",
@@ -28406,6 +28843,62 @@
         ]
       }
     },
+    "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/credentials": {
+      "put": {
+        "operationId": "replace_notification_credential_api_v1_workspaces__ws__notification_destinations__destination_id__credentials_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "destination_id",
+            "required": true,
+            "schema": {
+              "title": "Destination Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationCredentialWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace Notification Credential",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/tests": {
       "post": {
         "operationId": "test_destination_api_v1_workspaces__ws__notification_destinations__destination_id__tests_post",
@@ -28468,6 +28961,59 @@
           }
         },
         "summary": "Test Destination",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/webhook-key/rotate": {
+      "post": {
+        "operationId": "rotate_webhook_key_api_v1_workspaces__ws__notification_destinations__destination_id__webhook_key_rotate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "destination_id",
+            "required": true,
+            "schema": {
+              "title": "Destination Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSigningKeyRotateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rotate Webhook Key",
         "tags": [
           "notifications"
         ]

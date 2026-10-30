@@ -45,6 +45,8 @@ export function NotificationsPage({ workspace, me }: NotificationsPageProps): Re
   const [address, setAddress] = useState("");
   const [consentId, setConsentId] = useState("");
   const [secretRef, setSecretRef] = useState("");
+  const [credentialValues, setCredentialValues] = useState<Record<string, string>>({});
+  const [oneTimeWebhookKey, setOneTimeWebhookKey] = useState<{ readonly destinationId: string; readonly keyId: string; readonly secret: string } | null>(null);
   const [replacementAddress, setReplacementAddress] = useState("");
   const [replacementConsentId, setReplacementConsentId] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -89,13 +91,32 @@ export function NotificationsPage({ workspace, me }: NotificationsPageProps): Re
   const destinationMutation = useMutation({
     mutationFn: (body: NotificationDestinationCreateRequest) =>
       api.createNotificationDestination(ws, body, { idempotencyKey: generateClientUuidV7() }),
-    onSuccess: async () => { setAddress(""); setConsentId(""); setSecretRef(""); setNotice("Destination saved as not configured. A channel adapter and verification are required before sending."); await refresh(); },
+    onSuccess: async () => { setAddress(""); setConsentId(""); setSecretRef(""); setNotice("Destination saved. Configure its encrypted credential and complete a confirmed test before delivery."); await refresh(); },
     onError: (error: unknown) => setNotice(safeError(error, "Could not save destination.")),
   });
   const testMutation = useMutation({
     mutationFn: (id: string) => api.testNotificationDestination(ws, id, { confirmed: true }),
     onSuccess: () => setNotice("Test request accepted."),
     onError: (error: unknown) => setNotice(safeError(error, "No test message was sent.")),
+  });
+  const credentialMutation = useMutation({
+    mutationFn: ({ id, value }: { id: string; value: string }) =>
+      api.updateNotificationCredential(ws, id, { secret_value: value }),
+    onSuccess: async (_result, variables) => {
+      setCredentialValues((values) => ({ ...values, [variables.id]: "" }));
+      setNotice("Encrypted credentials saved. Run a confirmed test to enable delivery.");
+      await refresh();
+    },
+    onError: (error: unknown) => setNotice(safeError(error, "Could not store notification credentials.")),
+  });
+  const webhookKeyMutation = useMutation({
+    mutationFn: (id: string) => api.rotateWebhookSigningKey(ws, id),
+    onSuccess: async (result, destinationId) => {
+      setOneTimeWebhookKey({ destinationId, keyId: result.data.key_id, secret: result.data.secret });
+      setNotice("New signing key issued. Copy it now; Red2PR will not show it again.");
+      await refresh();
+    },
+    onError: (error: unknown) => setNotice(safeError(error, "Could not rotate the webhook signing key.")),
   });
   const patchMutation = useMutation({
     mutationFn: ({ id, version, address: nextAddress, consent }: { id: string; version: number; address: string; consent: string }) =>
@@ -115,11 +136,12 @@ export function NotificationsPage({ workspace, me }: NotificationsPageProps): Re
   const canManage = (me.memberships ?? []).some((membership) =>
     membership.workspace_id === workspace.id && ["admin", "maintainer"].includes(membership.role),
   );
-  const pending = readMutation.isPending || preferenceMutation.isPending || destinationMutation.isPending || testMutation.isPending || patchMutation.isPending || deleteMutation.isPending;
+  const pending = readMutation.isPending || preferenceMutation.isPending || destinationMutation.isPending || testMutation.isPending || credentialMutation.isPending || webhookKeyMutation.isPending || patchMutation.isPending || deleteMutation.isPending;
 
   return <main className="red2pr-page-stack" data-testid="notifications-page">
     <header className="red2pr-page-header"><div><h1>Notifications</h1><p>Review workspace events, configure delivery preferences, and inspect delivery receipts.</p></div></header>
     {notice ? <div className="red2pr-inline-alert" role="status" aria-live="polite">{notice}</div> : null}
+    {oneTimeWebhookKey ? <section className="red2pr-surface red2pr-card-section" aria-label="One-time webhook signing key" role="alert"><h2>Copy the new webhook signing key</h2><p>Key ID: <code>{oneTimeWebhookKey.keyId}</code>. This secret is shown once. The previous key remains valid for 48 hours.</p><label htmlFor="one-time-webhook-secret" className="red2pr-field-label">Signing secret</label><input id="one-time-webhook-secret" className="red2pr-control-input" readOnly value={oneTimeWebhookKey.secret} autoComplete="off" /><Button label="I copied the key" variant="secondary" onClick={() => setOneTimeWebhookKey(null)} /></section> : null}
 
     <section className="red2pr-surface red2pr-card-section" aria-labelledby="inbox-heading">
       <header className="red2pr-card-header"><div><h2 id="inbox-heading">Inbox</h2><p>Security and audit notices remain in the inbox regardless of delivery preferences.</p></div>
@@ -146,15 +168,15 @@ export function NotificationsPage({ workspace, me }: NotificationsPageProps): Re
     </section>
 
     <section className="red2pr-surface red2pr-card-section" aria-labelledby="destinations-heading">
-      <header><h2 id="destinations-heading">Delivery destinations</h2><p>External channel adapters are supplied by later approved units. This screen never reports a test send as successful when no adapter is available.</p></header>
-      {destinationsQuery.isPending ? <StateView state="loading" /> : destinationsQuery.isError ? <StateView state="error" title="Destinations unavailable" description={safeError(destinationsQuery.error, "Destinations could not be loaded.")} primaryAction={{ label: "Retry", onClick: () => void destinationsQuery.refetch() }} /> : destinations.length === 0 ? <p>No external destinations are configured.</p> : <ul className="red2pr-page-stack">{destinations.map((destination) => <li key={destination.id} className="red2pr-card-section"><div className="red2pr-card-header"><div><h3>{destination.channel} · {destination.scope}</h3><p>Status: {destination.status}. Secret: {destination.secret_presence.configured ? "configured (value hidden)" : "not configured"}.</p></div><span className="red2pr-badge-pill">{destination.status}</span></div><p>Address is stored by the server and is not returned to the browser.</p>{canManage ? <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); const next = replacementAddress.trim(); const consent = replacementConsentId.trim(); if (next && consent) patchMutation.mutate({ id: destination.id, version: destination.version, address: next, consent }); }}><div className="red2pr-field"><label htmlFor={`destination-address-${destination.id}`} className="red2pr-field-label">Replace address</label><input id={`destination-address-${destination.id}`} className="red2pr-control-input" value={replacementAddress} maxLength={500} onChange={(event) => setReplacementAddress(event.target.value)} required /></div><div className="red2pr-field"><label htmlFor={`destination-consent-${destination.id}`} className="red2pr-field-label">Matching consent ID</label><input id={`destination-consent-${destination.id}`} className="red2pr-control-input" value={replacementConsentId} maxLength={36} onChange={(event) => setReplacementConsentId(event.target.value)} required /></div><Button label="Update address" variant="secondary" type="submit" isDisabled={pending || replacementAddress.trim().length === 0 || replacementConsentId.trim().length === 0} /></form> : null}<div className="red2pr-button-row"><Button label="Preview test send" variant="secondary" isDisabled={!canManage || pending || destination.status !== "ready"} onClick={() => testMutation.mutate(destination.id)} /><Button label="Remove destination" variant="secondary" isDisabled={!canManage || pending} onClick={() => deleteMutation.mutate(destination.id)} /></div></li>)}</ul>}
+      <header><h2 id="destinations-heading">Delivery destinations</h2><p>Credentials stay encrypted and are never returned. A destination remains disabled for delivery until its confirmed test succeeds.</p></header>
+      {destinationsQuery.isPending ? <StateView state="loading" /> : destinationsQuery.isError ? <StateView state="error" title="Destinations unavailable" description={safeError(destinationsQuery.error, "Destinations could not be loaded.")} primaryAction={{ label: "Retry", onClick: () => void destinationsQuery.refetch() }} /> : destinations.length === 0 ? <p>No external destinations are configured.</p> : <ul className="red2pr-page-stack">{destinations.map((destination) => <li key={destination.id} className="red2pr-card-section"><div className="red2pr-card-header"><div><h3>{destination.channel} · {destination.scope}</h3><p>Status: {destination.status}. Secret: {destination.secret_presence.configured ? "configured (value hidden)" : "not configured"}.</p></div><span className="red2pr-badge-pill">{destination.status}</span></div><p>Address is stored by the server and is not returned to the browser.</p>{canManage && ["email", "slack", "discord"].includes(destination.channel) ? <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); const value = credentialValues[destination.id]?.trim() ?? ""; if (value) credentialMutation.mutate({ id: destination.id, value }); }}><div className="red2pr-field"><label htmlFor={`destination-credential-${destination.id}`} className="red2pr-field-label">Encrypted {destination.channel} credential/configuration</label><textarea id={`destination-credential-${destination.id}`} className="red2pr-control-input" value={credentialValues[destination.id] ?? ""} maxLength={8192} autoComplete="off" onChange={(event) => setCredentialValues((values) => ({ ...values, [destination.id]: event.target.value }))} required /><p className="red2pr-field-hint">{destination.channel === "email" ? "Enter SMTP JSON: host, port 587 with STARTTLS or 465 with TLS, sender, and optional paired username/password." : "Enter the HTTPS incoming webhook URL. The value is write-only and encrypted."}</p></div><Button label="Save encrypted credential" variant="secondary" type="submit" isDisabled={pending || !(credentialValues[destination.id]?.trim())} /></form> : null}{canManage && destination.channel === "webhook" ? <Button label="Rotate signing key" variant="secondary" isDisabled={pending} onClick={() => webhookKeyMutation.mutate(destination.id)} /> : null}{canManage ? <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); const next = replacementAddress.trim(); const consent = replacementConsentId.trim(); if (next && consent) patchMutation.mutate({ id: destination.id, version: destination.version, address: next, consent }); }}><div className="red2pr-field"><label htmlFor={`destination-address-${destination.id}`} className="red2pr-field-label">Replace address</label><input id={`destination-address-${destination.id}`} className="red2pr-control-input" value={replacementAddress} maxLength={500} onChange={(event) => setReplacementAddress(event.target.value)} required /></div><div className="red2pr-field"><label htmlFor={`destination-consent-${destination.id}`} className="red2pr-field-label">Matching consent ID</label><input id={`destination-consent-${destination.id}`} className="red2pr-control-input" value={replacementConsentId} maxLength={36} onChange={(event) => setReplacementConsentId(event.target.value)} required /></div><Button label="Update address" variant="secondary" type="submit" isDisabled={pending || replacementAddress.trim().length === 0 || replacementConsentId.trim().length === 0} /></form> : null}<div className="red2pr-button-row"><Button label="Preview test send" variant="secondary" isDisabled={!canManage || pending || destination.status !== "ready"} onClick={() => testMutation.mutate(destination.id)} /><Button label="Remove destination" variant="secondary" isDisabled={!canManage || pending} onClick={() => deleteMutation.mutate(destination.id)} /></div></li>)}</ul>}
       {canManage ? <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); destinationMutation.mutate({ channel, scope, address: address.trim(), consent_id: consentId.trim(), secret_ref: secretRef.trim() || null }); }}>
         <h3>Add a destination</h3><div className="red2pr-field"><label htmlFor="notification-channel" className="red2pr-field-label">Channel</label><select id="notification-channel" className="red2pr-control-input" value={channel} onChange={(event) => setChannel(event.target.value as NotificationChannel)}>{CHANNELS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
         <div className="red2pr-field"><label htmlFor="notification-scope" className="red2pr-field-label">Scope</label><select id="notification-scope" className="red2pr-control-input" value={scope} onChange={(event) => setScope(event.target.value as typeof scope)}><option value="workspace">Workspace</option><option value="user">Personal</option></select></div>
         <div className="red2pr-field"><label htmlFor="notification-address" className="red2pr-field-label">Destination address</label><input id="notification-address" className="red2pr-control-input" value={address} maxLength={500} onChange={(event) => setAddress(event.target.value)} required /></div>
         <div className="red2pr-field"><label htmlFor="notification-consent" className="red2pr-field-label">Active notification consent ID</label><input id="notification-consent" className="red2pr-control-input" value={consentId} maxLength={36} onChange={(event) => setConsentId(event.target.value)} required /></div>
         <div className="red2pr-field"><label htmlFor="notification-secret-ref" className="red2pr-field-label">Existing notification-channel secret reference (optional)</label><input id="notification-secret-ref" className="red2pr-control-input" value={secretRef} maxLength={128} onChange={(event) => setSecretRef(event.target.value)} /><p className="red2pr-field-hint">Enter a secret reference from the protected secret store. Never paste a secret value here.</p></div>
-        <p className="red2pr-field-hint">The consent must match this address and workspace. The destination starts not configured until its channel adapter and verification are available.</p>
+        <p className="red2pr-field-hint">The consent must match this address and workspace. The destination starts not configured until credentials and a confirmed verification test are complete.</p>
         <Button label="Save destination" variant="primary" type="submit" isLoading={destinationMutation.isPending} isDisabled={pending || address.trim().length === 0 || consentId.trim().length === 0} />
       </form> : <p role="note">Your workspace role can view destinations but cannot change them.</p>}
     </section>

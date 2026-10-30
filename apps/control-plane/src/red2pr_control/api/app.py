@@ -35,6 +35,9 @@ from py_contracts import (
     AgentProfileUpdateRequest,
     AgentProfileUpdateResponse,
     AgentStepRecord,
+    ApiToken,
+    ApiTokenCreateRequest,
+    ApiTokenCreateResponse,
     Approval,
     ApprovalDecisionRequest,
     ApprovalInboxEntry,
@@ -118,6 +121,7 @@ from py_contracts import (
     ModelProbeResponse,
     ModelUsageRecord,
     Money,
+    NotificationCredentialWriteRequest,
     NotificationDelivery,
     NotificationDestination,
     NotificationPreference,
@@ -193,6 +197,7 @@ from py_contracts import (
     User,
     Verification,
     WebhookIngressReceipt,
+    WebhookSigningKeyRotateResponse,
     Worker,
     WorkerActionRequest,
     WorkerEnrollmentCreateRequest,
@@ -230,6 +235,7 @@ from red2pr_control.core.logging import (
     current_correlation_id,
     get_structured_logger,
 )
+from red2pr_control.iam.api_tokens import build_api_tokens_router
 from red2pr_control.iam.router import build_iam_router
 from red2pr_control.iam.sessions import IamService
 from red2pr_control.inference import (
@@ -246,6 +252,7 @@ from red2pr_control.integrations import (
     build_webhooks_router,
 )
 from red2pr_control.notifications import NotificationDispatcher, build_notifications_router
+from red2pr_control.notifications.channels.runtime import build_external_notification_adapters
 from red2pr_control.notifications.telegram.poller import TelegramBotService
 from red2pr_control.notifications.telegram.router import build_telegram_router
 from red2pr_control.operations.setup_wizard import (
@@ -269,6 +276,7 @@ from red2pr_control.repositories import (
     RepositoryCatalogService,
     build_repositories_router,
 )
+from red2pr_control.secrets.broker import SecretBroker
 from red2pr_control.triage_evidence import (
     ArtifactStoreProtocol,
     TriageEvidenceService,
@@ -417,6 +425,11 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     NotificationDestination,
     NotificationDelivery,
     NotificationPreference,
+    ApiToken,
+    ApiTokenCreateRequest,
+    ApiTokenCreateResponse,
+    WebhookSigningKeyRotateResponse,
+    NotificationCredentialWriteRequest,
     TelegramLinkSummary,
     TelegramLinkChallengeResponse,
     TelegramIntentTokenRequest,
@@ -623,12 +636,23 @@ def create_app(
     remote_ci_observer: RemoteCiObserver | None = None,
     notification_dispatcher: NotificationDispatcher | None = None,
     telegram_bot_service: TelegramBotService | None = None,
+    notification_secret_broker: SecretBroker | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     if notification_dispatcher is None and iam_service is not None:
         notification_dispatcher = NotificationDispatcher(
             session_factory=iam_service.session_factory
         )
+    if (
+        notification_dispatcher is not None
+        and iam_service is not None
+        and notification_secret_broker is not None
+    ):
+        for channel, adapter in build_external_notification_adapters(
+            session_factory=iam_service.session_factory,
+            secret_broker=notification_secret_broker,
+        ).items():
+            notification_dispatcher.register_adapter(channel, adapter)  # type: ignore[arg-type]
     if notification_dispatcher is not None and telegram_bot_service is not None:
         notification_dispatcher.register_adapter(
             "telegram", telegram_bot_service.notification_adapter
@@ -657,6 +681,8 @@ def create_app(
                 worker.cancel()
                 with suppress(asyncio.CancelledError):
                     await worker
+            if dispatcher is not None:
+                await dispatcher.aclose()
             if telegram_worker is not None:
                 telegram_worker.cancel()
                 with suppress(asyncio.CancelledError):
@@ -714,6 +740,7 @@ def create_app(
     app.state.publisher_saga = publisher_saga
     app.state.remote_ci_observer = remote_ci_observer
     app.state.notification_dispatcher = notification_dispatcher
+    app.state.notification_secret_broker = notification_secret_broker
     app.state.telegram_bot_service = telegram_bot_service
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
@@ -733,6 +760,7 @@ def create_app(
 
     app.include_router(system_router)
     app.include_router(build_iam_router())
+    app.include_router(build_api_tokens_router())
     app.include_router(build_setup_router())
     app.include_router(build_orchestrator_router())
     app.include_router(build_internal_worker_router())

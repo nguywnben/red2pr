@@ -343,6 +343,8 @@ class WorkspaceAccessContext:
     @property
     def has_workspace_wide_repo_read(self) -> bool:
         """True only for workspace `admin` or active time-bounded break-glass read grant."""
+        if getattr(self.auth, "api_token", None) is not None:
+            return False
         if self.membership is not None and self.membership.role == "admin":
             return True
         return self.break_glass_grant is not None
@@ -366,8 +368,23 @@ class WorkspaceAccessContext:
         if role not in allowed_roles:
             return False
         if role == "admin":
-            return True
+            return (
+                repository_id in self.repository_grants
+                if getattr(self.auth, "api_token", None) is not None
+                else True
+            )
         return repository_id in self.repository_grants
+
+
+_API_TOKEN_ACTION_SCOPES: dict[str, str] = {
+    "notification.read": "notifications:read",
+    "notification.manage": "notifications:write",
+    "repair.read": "repairs:read",
+    "repair.action": "repairs:write",
+    "integration.read": "integrations:read",
+    "integration.mutate": "integrations:write",
+    "sse.subscribe": "events:read",
+}
 
 
 async def load_workspace_by_identifier(
@@ -407,6 +424,7 @@ async def authorize_workspace_access(
     membership or active break-glass requirements on workspace data endpoints.
     """
     ref_now = now.astimezone(UTC)
+    api_token = getattr(auth, "api_token", None)
 
     async with instance_rls_session(session_factory, mode="instance_admin") as db:
         ws_row = await load_workspace_by_identifier(db, raw_ws)
@@ -427,6 +445,9 @@ async def authorize_workspace_access(
 
         ws_id = ws_row.id
         db.expunge(ws_row)
+
+    if api_token is not None and api_token.workspace_id != ws_id:
+        raise NotFoundError(code="workspace_not_found", detail="Workspace not found.")
 
     # Execute membership, break-glass, and audit checks strictly inside workspace RLS!
     raised_error: Exception | None = None
@@ -485,13 +506,37 @@ async def authorize_workspace_access(
                 detail="Workspace not found.",
             )
         else:
+            if api_token is not None:
+                required_scope = _API_TOKEN_ACTION_SCOPES.get(action)
+                if required_scope is None or required_scope not in api_token.scopes:
+                    await append_audit_entry(
+                        ws_db,
+                        workspace_id=ws_id,
+                        actor_type="user",
+                        actor_id=api_token.owner_user_id,
+                        action=action,
+                        target=f"workspace:{ws_id}",
+                        decision="deny",
+                        reason_code="api_token_scope_denied",
+                        correlation_id=correlation_id,
+                        client_ip=client_ip,
+                        metadata={
+                            "required_scope": required_scope or "none",
+                            "api_token_id": api_token.id,
+                        },
+                        occurred_at=ref_now,
+                    )
+                    raised_error = ForbiddenError(
+                        code="api_token_scope_denied",
+                        detail="API token scope does not permit this operation.",
+                    )
             role_permitted = (
                 membership_row is not None
                 and cast(WorkspaceRole, membership_row.role) in allowed_roles
             )
             bg_permitted = allow_break_glass and bg_row is not None
 
-            if not role_permitted and not bg_permitted:
+            if raised_error is None and not role_permitted and not bg_permitted:
                 reason = (
                     "break_glass_read_only"
                     if membership_row is None and bg_row is not None
@@ -537,7 +582,7 @@ async def authorize_workspace_access(
                     code=reason,
                     detail="Your workspace role does not permit this operation.",
                 )
-            else:
+            elif raised_error is None:
                 if membership_row is not None:
                     ws_db.expunge(membership_row)
                 if bg_row is not None:
@@ -546,7 +591,11 @@ async def authorize_workspace_access(
                     auth=auth,
                     workspace=ws_row,
                     membership=membership_row,
-                    repository_grants=grant_ids,
+                    repository_grants=(
+                        grant_ids.intersection(api_token.repository_ids)
+                        if api_token is not None
+                        else grant_ids
+                    ),
                     break_glass_grant=bg_row,
                 )
 

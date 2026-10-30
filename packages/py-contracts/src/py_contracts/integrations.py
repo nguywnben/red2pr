@@ -21,6 +21,7 @@ from typing import Annotated, Any, Literal
 from pydantic import (
     BeforeValidator,
     Field,
+    SecretStr,
     StrictBool,
     StrictInt,
     StrictStr,
@@ -761,6 +762,69 @@ class NotificationPreferencesState(StrictContractModel):
 class NotificationDeliveryPageParams(StrictContractModel):
     destination_id: InternalId | None = None
     state: DeliveryState | None = None
+
+
+# A-19 scoped non-browser API tokens (U23). Empty repository_ids grant only workspace-level
+# operations; repository access always requires an explicit, live repository grant.
+ApiTokenScope = Literal[
+    "notifications:read",
+    "notifications:write",
+    "repairs:read",
+    "repairs:write",
+    "integrations:read",
+    "integrations:write",
+    "events:read",
+]
+
+
+class ApiToken(WorkspaceResourceBase):
+    """Write-only A-19 token metadata; the raw secret is never part of this DTO."""
+
+    owner_user_id: InternalId
+    name: BoundedName
+    scopes: Annotated[list[ApiTokenScope], Field(min_length=1, max_length=16)]
+    repository_ids: Annotated[list[InternalId], Field(max_length=100)]
+    expires_at: UtcTimestamp
+    revoked_at: UtcTimestamp | None = None
+    last_used_at: UtcTimestamp | None = None
+
+
+class ApiTokenCreateRequest(StrictContractModel):
+    """A-19 token issue request; expiry is checked against the current server time."""
+
+    name: BoundedName
+    scopes: Annotated[list[ApiTokenScope], Field(min_length=1, max_length=16)]
+    repository_ids: Annotated[list[InternalId], Field(max_length=100)] = Field(default_factory=list)
+    expires_at: UtcTimestamp
+
+    @model_validator(mode="after")
+    def _unique_rights(self) -> ApiTokenCreateRequest:
+        if len(self.scopes) != len(set(self.scopes)):
+            raise ValueError("API token scopes must be unique")
+        if len(self.repository_ids) != len(set(self.repository_ids)):
+            raise ValueError("API token repository_ids must be unique")
+        return self
+
+
+class ApiTokenCreateResponse(StrictContractModel):
+    """A-19 secret revealed once at token creation, then returned only as metadata."""
+
+    token: Annotated[StrictStr, StringConstraints(pattern=r"^r2p_[A-Za-z0-9_-]{43}$")]
+    metadata: ApiToken
+
+
+class WebhookSigningKeyRotateResponse(StrictContractModel):
+    """One-time outgoing webhook key material; only its reference is persisted."""
+
+    key_id: Annotated[StrictStr, StringConstraints(min_length=1, max_length=120)]
+    secret: Annotated[StrictStr, StringConstraints(pattern=r"^[A-Za-z0-9_-]{43}$")]
+    overlap_hours: Literal[48]
+
+
+class NotificationCredentialWriteRequest(StrictContractModel):
+    """Write-only channel credential/configuration; the response never echoes it."""
+
+    secret_value: Annotated[SecretStr, Field(min_length=1, max_length=8192)]
 
 
 # U07 / ADR-037 Outbound Consents & Private Endpoint Registrations

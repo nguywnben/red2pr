@@ -183,6 +183,13 @@ export type NotificationDeliveryPage = SchemaOf<"Page_NotificationDelivery_">;
 export type NotificationReadPatchRequest = SchemaOf<"NotificationReadPatchRequest">;
 export type NotificationPreferencesPatchRequest = SchemaOf<"NotificationPreferencesPatchRequest">;
 export type NotificationPreferencesState = SchemaOf<"NotificationPreferencesState">;
+export type ApiToken = SchemaOf<"ApiToken">;
+export type ApiTokenScope = SchemaOf<"ApiTokenCreateRequest">["scopes"][number];
+export type ApiTokenCreateRequest = SchemaOf<"ApiTokenCreateRequest">;
+export type ApiTokenCreateResponse = SchemaOf<"ApiTokenCreateResponse">;
+export type ApiTokenPage = SchemaOf<"Page_ApiToken_">;
+export type WebhookSigningKeyRotateResponse = SchemaOf<"WebhookSigningKeyRotateResponse">;
+export type NotificationCredentialWriteRequest = SchemaOf<"NotificationCredentialWriteRequest">;
 export type NotificationTestRequest = SchemaOf<"NotificationTestRequest">;
 export type AuditRecord = SchemaOf<"AuditRecord">;
 export type ModelUsageRecord = SchemaOf<"ModelUsageRecord">;
@@ -761,6 +768,11 @@ export interface Red2PrClient {
   deleteNotificationDestination(ws: string, destinationId: string, options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
   testNotificationDestination(ws: string, destinationId: string, body: NotificationTestRequest, options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
   listNotificationDeliveries(ws: string, query?: { readonly destination_id?: string; readonly state?: string; readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationDeliveryPage>>;
+  listApiTokens(ws: string, query?: { readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<ApiTokenPage>>;
+  createApiToken(ws: string, body: ApiTokenCreateRequest, options?: RequestCallOptions): Promise<ApiEnvelope<ApiTokenCreateResponse>>;
+  revokeApiToken(ws: string, tokenId: string, options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
+  rotateWebhookSigningKey(ws: string, destinationId: string, options?: RequestCallOptions): Promise<ApiEnvelope<WebhookSigningKeyRotateResponse>>;
+  updateNotificationCredential(ws: string, destinationId: string, body: NotificationCredentialWriteRequest, options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
   getNotificationPreferences(workspaceId?: string, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationPreferencesState>>;
   patchNotificationPreferences(body: NotificationPreferencesPatchRequest, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationPreferencesState>>;
   getWorkspaceApproval(ws: string, approvalId: string, options?: RequestCallOptions): Promise<ApiEnvelope<Approval>>;
@@ -1354,6 +1366,16 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       callVoid("POST", "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/tests", { path: { ws, destination_id: destinationId }, body, options }),
     listNotificationDeliveries: (ws, query, options) =>
       callJson("GET", "/api/v1/workspaces/{ws}/notification-deliveries", { path: { ws }, query, options }),
+    listApiTokens: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/api-tokens", { path: { ws }, query, options }),
+    createApiToken: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/api-tokens", { path: { ws }, body, options }),
+    revokeApiToken: (ws, tokenId, options) =>
+      callVoid("DELETE", "/api/v1/workspaces/{ws}/api-tokens/{token_id}", { path: { ws, token_id: tokenId }, options }),
+    rotateWebhookSigningKey: (ws, destinationId, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/webhook-key/rotate", { path: { ws, destination_id: destinationId }, options }),
+    updateNotificationCredential: (ws, destinationId, body, options) =>
+      callVoid("PUT", "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/credentials", { path: { ws, destination_id: destinationId }, body, options }),
     getNotificationPreferences: (workspaceId, options) =>
       callJson("GET", "/api/v1/me/notification-preferences", { query: workspaceId ? { workspace_id: workspaceId } : undefined, options }),
     patchNotificationPreferences: (body, options) =>

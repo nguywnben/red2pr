@@ -24,7 +24,7 @@ import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Literal, cast
+from typing import Any, Literal, cast
 from urllib.parse import urlparse
 
 from argon2 import PasswordHasher
@@ -169,12 +169,13 @@ RateLimitAction = Literal["login", "step_up", "recovery", "bootstrap_claim", "mf
 
 @dataclass(frozen=True)
 class AuthenticatedContext:
-    """Validated request authentication context resolved from opaque session cookie."""
+    """Validated cookie or scoped API-token authentication context."""
 
     user: UserModel
     session: SessionModel
     csrf_token: str
     csrf_cookie_refreshed: bool
+    api_token: Any | None = None
 
 
 def _default_utc_clock() -> datetime:
@@ -1268,6 +1269,41 @@ class IamService:
         correlation_id: str,
     ) -> AuthenticatedContext:
         """Validate opaque session cookie, idle/absolute timeouts, epochs, and optional CSRF."""
+        authorization = request.headers.get("authorization", "")
+        if authorization:
+            scheme, _, credential = authorization.partition(" ")
+            if scheme.lower() != "bearer" or not credential or " " in credential:
+                raise UnauthorizedError(
+                    code="invalid_authorization_header", detail="Authorization header is invalid."
+                )
+            if request.url.path.startswith(("/api/v1/auth/", "/api/v1/me", "/api/v1/setup/")):
+                raise ForbiddenError(
+                    code="api_token_endpoint_denied",
+                    detail="API tokens cannot access session, MFA, or setup endpoints.",
+                )
+            from red2pr_control.iam.api_tokens import (
+                ApiTokenSession,
+                authenticate_api_token,
+            )
+
+            user_row, api_token = await authenticate_api_token(
+                self._session_factory, raw_token=credential, now=self.now()
+            )
+            return AuthenticatedContext(
+                user=user_row,
+                session=cast(
+                    SessionModel,
+                    ApiTokenSession(
+                        id=api_token.id,
+                        user_id=user_row.id,
+                        grant_epoch=user_row.grant_epoch,
+                    ),
+                ),
+                csrf_token="",
+                csrf_cookie_refreshed=False,
+                api_token=api_token,
+            )
+
         raw_cookie = extract_session_cookie(request, secure=self._secure_cookies)
         if not raw_cookie:
             raise UnauthorizedError(
@@ -1290,7 +1326,7 @@ class IamService:
                     detail="Session is invalid or has been revoked.",
                 )
             else:
-                user_row = await db.scalar(
+                session_user_row = await db.scalar(
                     select(UserModel).where(UserModel.id == session_row.user_id)
                 )
                 inst_row = await db.scalar(select(InstanceModel))
@@ -1307,8 +1343,8 @@ class IamService:
                         detail="Session has expired; please sign in again.",
                     )
                 elif (
-                    user_row is None
-                    or user_row.status != "active"
+                    session_user_row is None
+                    or session_user_row.status != "active"
                     or session_row.recovery_epoch != expected_rec_epoch
                 ):
                     session_row.revoked_at = ref_now
@@ -1330,7 +1366,7 @@ class IamService:
                         await append_audit_entry(
                             db,
                             actor_type="user",
-                            actor_id=user_row.id,
+                            actor_id=session_user_row.id,
                             action="security.csrf_check",
                             target=request.url.path,
                             decision="deny",
@@ -1342,9 +1378,9 @@ class IamService:
                         raised_error = csrf_exc
 
                 if raised_error is None:
-                    assert user_row is not None
-                    if session_row.grant_epoch != user_row.grant_epoch:
-                        session_row.grant_epoch = user_row.grant_epoch
+                    assert session_user_row is not None
+                    if session_row.grant_epoch != session_user_row.grant_epoch:
+                        session_row.grant_epoch = session_user_row.grant_epoch
                     session_row.last_seen_at = ref_now
                     session_row.idle_expires_at = min(
                         session_row.expires_at.astimezone(UTC),
@@ -1365,10 +1401,10 @@ class IamService:
                         csrf_refreshed = True
 
                     await db.flush()
-                    db.expunge(user_row)
+                    db.expunge(session_user_row)
                     db.expunge(session_row)
                     return AuthenticatedContext(
-                        user=user_row,
+                        user=session_user_row,
                         session=session_row,
                         csrf_token=active_csrf_token,
                         csrf_cookie_refreshed=csrf_refreshed,

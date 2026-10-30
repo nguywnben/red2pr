@@ -6,7 +6,7 @@ import asyncio
 import logging
 import re
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -89,6 +89,11 @@ class NotificationSendRequest:
     deep_link: str | None
     request_digest: str
     is_test: bool = False
+    event_payload: dict[str, Any] | None = None
+    event_type: str | None = None
+    repository_id: str | None = None
+    occurred_at: str | None = None
+    webhook_key_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,6 +309,15 @@ class NotificationDispatcher:
             raise ValueError("Only external notification channels accept adapters.")
         self._adapters[channel] = adapter
 
+    async def aclose(self) -> None:
+        """Close adapters with owned transports after the outbox worker has stopped."""
+        seen: set[int] = set()
+        for adapter in self._adapters.values():
+            close = getattr(adapter, "aclose", None)
+            if close is not None and id(adapter) not in seen:
+                seen.add(id(adapter))
+                await close()
+
     def register_setup_probe(self, registry: Any) -> None:
         """Register U21's actual in-app readiness check with the existing setup registry."""
         from red2pr_control.operations.setup_wizard import SetupStepProbeResult
@@ -398,6 +412,9 @@ class NotificationDispatcher:
                     correlation_id=event.correlation_id,
                     repository_id=event.repository_id,
                     payload_json=payload if isinstance(payload, dict) else {},
+                    aggregate_id=event.aggregate_id,
+                    aggregate_version=event.aggregate_version,
+                    causation_id=event.causation_id,
                     template_revision=1,
                     occurred_at=event.occurred_at.astimezone(UTC),
                     created_at=now,
@@ -573,6 +590,22 @@ class NotificationDispatcher:
                 db, workspace_id=workspace_id, destination=destination
             ):
                 return "suppressed"
+            webhook_key_id = None
+            secret_ref = destination.secret_ref
+            if destination.channel == "webhook":
+                from red2pr_control.db.base import WebhookSigningKeyModel
+
+                active_key = await db.scalar(
+                    select(WebhookSigningKeyModel).where(
+                        WebhookSigningKeyModel.workspace_id == workspace_id,
+                        WebhookSigningKeyModel.destination_id == destination.id,
+                        WebhookSigningKeyModel.status == "active",
+                        WebhookSigningKeyModel.revoked_at.is_(None),
+                    )
+                )
+                if active_key is not None:
+                    webhook_key_id = active_key.key_id
+                    secret_ref = active_key.secret_ref
             request = NotificationSendRequest(
                 workspace_id=workspace_id,
                 delivery_id=None,
@@ -580,7 +613,7 @@ class NotificationDispatcher:
                 correlation_id=new_uuid7(now=now),
                 channel=destination.channel,
                 address=destination.address,
-                secret_ref=destination.secret_ref,
+                secret_ref=secret_ref,
                 title="Red2PR notification test",
                 body="This is a test notification. No project data is included.",
                 severity="info",
@@ -594,6 +627,7 @@ class NotificationDispatcher:
                     }
                 ),
                 is_test=True,
+                webhook_key_id=webhook_key_id,
             )
 
         try:
@@ -838,7 +872,40 @@ class NotificationDispatcher:
                     severity=inbox_item.severity,
                     deep_link=inbox_item.deep_link,
                     request_digest=request_digest,
+                    event_payload={
+                        "schema_version": 1,
+                        "type": event.event_type,
+                        "event_id": event.id,
+                        "occurred_at": event.occurred_at.isoformat(),
+                        "workspace_id": event.workspace_id,
+                        "repository_id": event.repository_id,
+                        "aggregate_id": event.aggregate_id,
+                        "aggregate_version": event.aggregate_version,
+                        "correlation_id": event.correlation_id,
+                        "causation_id": event.causation_id,
+                        "payload": event.payload_json,
+                    },
+                    event_type=event.event_type,
+                    repository_id=event.repository_id,
+                    occurred_at=event.occurred_at.isoformat(),
                 )
+                if destination.channel == "webhook":
+                    from red2pr_control.db.base import WebhookSigningKeyModel
+
+                    active_key = await db.scalar(
+                        select(WebhookSigningKeyModel).where(
+                            WebhookSigningKeyModel.workspace_id == workspace_id,
+                            WebhookSigningKeyModel.destination_id == destination.id,
+                            WebhookSigningKeyModel.status == "active",
+                            WebhookSigningKeyModel.revoked_at.is_(None),
+                        )
+                    )
+                    if active_key is not None:
+                        request = replace(
+                            request,
+                            secret_ref=active_key.secret_ref,
+                            webhook_key_id=active_key.key_id,
+                        )
                 claimed.append(
                     (delivery, request, destination.channel, delivery.attempt, first_attempt_at)
                 )

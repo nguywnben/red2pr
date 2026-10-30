@@ -544,6 +544,85 @@ class SessionModel(Base):
     )
 
 
+class ApiTokenModel(Base):
+    """A-19 workspace-scoped opaque API token; only its SHA-256 digest is stored."""
+
+    __tablename__ = "api_tokens"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_api_tokens_workspace_id_id"),
+        UniqueConstraint("secret_hash", name="uq_api_tokens_secret_hash"),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        CheckConstraint("secret_hash ~ '^[0-9a-f]{64}$'", name="api_token_hash_valid"),
+        CheckConstraint("grant_epoch >= 1", name="api_token_grant_epoch_pos"),
+        CheckConstraint("jsonb_typeof(scopes_json) = 'array'", name="api_token_scopes_array"),
+        CheckConstraint(
+            "jsonb_typeof(repository_ids_json) = 'array'", name="api_token_repos_array"
+        ),
+        Index("ix_api_tokens_user_active", "user_id", "revoked_at", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    secret_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    scopes_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    repository_ids_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    grant_epoch: Mapped[int] = mapped_column(Integer, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class WebhookSigningKeyModel(Base):
+    """Active/overlap key references for one outgoing HTTPS webhook destination."""
+
+    __tablename__ = "webhook_signing_keys"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_webhook_keys_workspace_id_id"),
+        UniqueConstraint("key_id", name="uq_webhook_signing_key_id"),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["workspace_id", "destination_id"],
+            ["notification_destinations.workspace_id", "notification_destinations.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "status IN ('active','overlap','revoked')", name="webhook_signing_key_status_valid"
+        ),
+        CheckConstraint("length(key_id) BETWEEN 1 AND 120", name="webhook_signing_key_id_len"),
+        Index(
+            "uq_webhook_key_one_active",
+            "workspace_id",
+            "destination_id",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+        Index(
+            "ix_webhook_keys_destination_status",
+            "workspace_id",
+            "destination_id",
+            "status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    destination_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    key_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    secret_ref: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class MfaCredentialModel(Base):
     """RFC 6238 TOTP MFA credential referencing Z2 SecretBroker (purpose='mfa_totp')."""
 
@@ -4339,6 +4418,9 @@ class NotificationEventModel(Base):
     correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
     repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    aggregate_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    aggregate_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    causation_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     template_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

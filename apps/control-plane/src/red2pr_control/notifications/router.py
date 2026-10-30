@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC
+import secrets
+from datetime import UTC, timedelta
 from typing import Annotated, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -17,6 +18,7 @@ from py_contracts.integrations import (
     DestinationScope,
     DestinationStatus,
     NotificationChannel,
+    NotificationCredentialWriteRequest,
     NotificationDelivery,
     NotificationDestination,
     NotificationDestinationCreateRequest,
@@ -29,6 +31,7 @@ from py_contracts.integrations import (
     NotificationTestRequest,
     QuietHoursWindow,
     SecretPresence,
+    WebhookSigningKeyRotateResponse,
 )
 from py_contracts.primitives import Page, new_uuid7
 from red2pr_control.analytics_audit.audit_chain import append_audit_entry
@@ -49,6 +52,7 @@ from red2pr_control.db.base import (
     SecretEntryModel,
     UserInboxItemModel,
     UserNotificationPreferenceModel,
+    WebhookSigningKeyModel,
 )
 from red2pr_control.db.idempotency import (
     claim_idempotent_operation,
@@ -64,6 +68,7 @@ from red2pr_control.iam.rbac import (
 )
 from red2pr_control.iam.router import get_iam_service
 from red2pr_control.iam.sessions import IamService, extract_client_ip
+from red2pr_control.secrets.broker import SecretBroker
 
 _READ_ROLES: frozenset[WorkspaceRole] = frozenset(
     {"admin", "maintainer", "reviewer", "viewer", "auditor"}
@@ -955,5 +960,168 @@ def build_notifications_router() -> APIRouter:
                 row.updated_at = now
             await db.flush()
             return _preference_state(row, body.workspace_id)
+
+    @router.post(
+        "/workspaces/{ws}/notification-destinations/{destination_id}/webhook-key/rotate",
+        status_code=201,
+        response_model=WebhookSigningKeyRotateResponse,
+    )
+    async def rotate_webhook_key(
+        request: Request,
+        ws: Annotated[str, Path()],
+        destination_id: str,
+        ctx: Annotated[WorkspaceAccessContext, Depends(_WRITE)],
+    ) -> WebhookSigningKeyRotateResponse:
+        iam = get_iam_service(request)
+        broker = getattr(request.app.state, "notification_secret_broker", None)
+        if not isinstance(broker, SecretBroker):
+            raise DependencyUnavailableError(
+                code="notification_secret_store_unavailable",
+                detail=(
+                    "Notification signing keys cannot be issued while the encrypted secret "
+                    "store is unavailable."
+                ),
+            )
+        now = iam.now().astimezone(UTC)
+        key_id = f"whk_{new_uuid7(now=now)}"
+        raw_secret = secrets.token_urlsafe(32)
+        async with workspace_rls_session(iam.session_factory, workspace_id=ctx.workspace_id) as db:
+            destination = await db.scalar(
+                select(NotificationDestinationModel)
+                .where(
+                    NotificationDestinationModel.workspace_id == ctx.workspace_id,
+                    NotificationDestinationModel.id == destination_id,
+                )
+                .with_for_update()
+            )
+            if destination is None or destination.channel != "webhook":
+                raise NotFoundError(
+                    code="webhook_destination_not_found",
+                    detail="Signed webhook destination was not found.",
+                )
+            active = await db.scalar(
+                select(WebhookSigningKeyModel)
+                .where(
+                    WebhookSigningKeyModel.workspace_id == ctx.workspace_id,
+                    WebhookSigningKeyModel.destination_id == destination.id,
+                    WebhookSigningKeyModel.status == "active",
+                )
+                .with_for_update()
+            )
+            if active is not None:
+                active.status = "overlap"
+                active.expires_at = now + timedelta(hours=48)
+            metadata = await broker.store_secret(
+                db,
+                plaintext=raw_secret.encode("ascii"),
+                purpose="notification_channel",
+                workspace_id=ctx.workspace_id,
+                now=now,
+            )
+            db.add(
+                WebhookSigningKeyModel(
+                    id=new_uuid7(now=now),
+                    workspace_id=ctx.workspace_id,
+                    destination_id=destination.id,
+                    key_id=key_id,
+                    secret_ref=metadata.secret_ref,
+                    status="active",
+                    created_at=now,
+                    expires_at=None,
+                    revoked_at=None,
+                )
+            )
+            destination.secret_ref = metadata.secret_ref
+            destination.status = "not_configured"
+            destination.verified_at = None
+            destination.version += 1
+            destination.updated_at = now
+            await append_audit_entry(
+                db,
+                workspace_id=ctx.workspace_id,
+                actor_type="user",
+                actor_id=ctx.auth.user.id,
+                action="notification.webhook_key.rotated",
+                target=f"notification_destination:{destination.id}",
+                decision="allow",
+                reason_code="active_key_rotated_with_48h_overlap",
+                correlation_id=current_correlation_id(),
+                client_ip=extract_client_ip(request),
+                occurred_at=now,
+                metadata={"key_id": key_id},
+            )
+        return WebhookSigningKeyRotateResponse(key_id=key_id, secret=raw_secret, overlap_hours=48)
+
+    @router.put(
+        "/workspaces/{ws}/notification-destinations/{destination_id}/credentials",
+        status_code=204,
+    )
+    async def replace_notification_credential(
+        body: NotificationCredentialWriteRequest,
+        request: Request,
+        ws: Annotated[str, Path()],
+        destination_id: str,
+        ctx: Annotated[WorkspaceAccessContext, Depends(_WRITE)],
+    ) -> Response:
+        iam = get_iam_service(request)
+        broker = getattr(request.app.state, "notification_secret_broker", None)
+        if not isinstance(broker, SecretBroker):
+            raise DependencyUnavailableError(
+                code="notification_secret_store_unavailable",
+                detail=(
+                    "Notification credentials cannot be stored while the encrypted secret "
+                    "store is unavailable."
+                ),
+            )
+        now = iam.now().astimezone(UTC)
+        async with workspace_rls_session(iam.session_factory, workspace_id=ctx.workspace_id) as db:
+            destination = await db.scalar(
+                select(NotificationDestinationModel)
+                .where(
+                    NotificationDestinationModel.workspace_id == ctx.workspace_id,
+                    NotificationDestinationModel.id == destination_id,
+                )
+                .with_for_update()
+            )
+            if destination is None or destination.channel in {"webhook", "in_app"}:
+                raise NotFoundError(
+                    code="notification_destination_not_found",
+                    detail="Credential-managed notification destination was not found.",
+                )
+            previous_secret_ref = destination.secret_ref
+            metadata = await broker.store_secret(
+                db,
+                plaintext=body.secret_value.get_secret_value().encode("utf-8"),
+                purpose="notification_channel",
+                workspace_id=ctx.workspace_id,
+                now=now,
+            )
+            destination.secret_ref = metadata.secret_ref
+            destination.status = "not_configured"
+            destination.verified_at = None
+            destination.version += 1
+            destination.updated_at = now
+            if previous_secret_ref:
+                await broker.revoke_secret(
+                    db,
+                    secret_ref=previous_secret_ref,
+                    workspace_id=ctx.workspace_id,
+                    now=now,
+                )
+            await append_audit_entry(
+                db,
+                workspace_id=ctx.workspace_id,
+                actor_type="user",
+                actor_id=ctx.auth.user.id,
+                action="notification.destination.credential_replaced",
+                target=f"notification_destination:{destination.id}",
+                decision="allow",
+                reason_code="encrypted_credential_replaced",
+                correlation_id=current_correlation_id(),
+                client_ip=extract_client_ip(request),
+                occurred_at=now,
+                metadata={"channel": destination.channel},
+            )
+        return Response(status_code=204)
 
     return router
