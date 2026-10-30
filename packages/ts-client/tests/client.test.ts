@@ -1891,4 +1891,47 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(calls[2]?.idem, "0196f000-0000-7000-8000-000000000905");
     assert.deepEqual(calls[2]?.body, { reason: "Retry remote observation" });
   });
+
+  it("serializes U21 inbox, consent-bound destination writes, and scoped preferences", async () => {
+    const calls: { method: string; path: string; query: string; idem: string | null; ifMatch: string | null }[] = [];
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u21-client",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        calls.push({
+          method: request.method,
+          path: url.pathname,
+          query: url.search,
+          idem: request.headers.get("Idempotency-Key"),
+          ifMatch: request.headers.get("If-Match"),
+        });
+        return new Response(request.method === "DELETE" ? null : JSON.stringify({}), {
+          status: request.method === "DELETE" ? 204 : 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      },
+    });
+    await client.listWorkspaceNotifications("acme", { unread: true, limit: 20 });
+    await client.updateWorkspaceNotificationReadState("acme", "notice-1", { read: true });
+    await client.createNotificationDestination(
+      "acme",
+      { channel: "webhook", scope: "workspace", address: "https://hooks.example.invalid", consent_id: "consent-1" },
+      { idempotencyKey: "0196f000-0000-7000-8000-000000000906" },
+    );
+    await client.patchNotificationDestination(
+      "acme",
+      "destination-1",
+      { status: "disabled" },
+      { ifMatch: '"v1"' },
+    );
+    await client.getNotificationPreferences("workspace-1");
+    assert.equal(calls[0]?.path, "/api/v1/workspaces/acme/notifications");
+    assert.equal(new URLSearchParams(calls[0]?.query).get("unread"), "true");
+    assert.equal(calls[1]?.method, "PATCH");
+    assert.equal(calls[2]?.idem, "0196f000-0000-7000-8000-000000000906");
+    assert.equal(calls[3]?.ifMatch, '"v1"');
+    assert.equal(calls[4]?.path, "/api/v1/me/notification-preferences");
+    assert.equal(new URLSearchParams(calls[4]?.query).get("workspace_id"), "workspace-1");
+  });
 });

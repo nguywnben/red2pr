@@ -7532,7 +7532,7 @@
         "description": "S-16 durable outbox delivery attempt record (docs/32).",
         "properties": {
           "attempt": {
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Attempt",
             "type": "integer"
           },
@@ -7563,7 +7563,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Last Error Code"
           },
           "next_retry_at": {
@@ -7575,8 +7574,12 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Next Retry At"
+          },
+          "possible_duplicate": {
+            "default": false,
+            "title": "Possible Duplicate",
+            "type": "boolean"
           },
           "provider_id": {
             "anyOf": [
@@ -7587,7 +7590,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Provider Id"
           },
           "repository_id": {
@@ -7599,7 +7601,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Repository Id"
           },
           "state": {
@@ -7619,7 +7620,7 @@
             "type": "string"
           },
           "template_revision": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Template Revision",
             "type": "integer"
           },
@@ -7628,7 +7629,7 @@
             "type": "string"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           },
@@ -7677,7 +7678,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Consent Id"
           },
           "created_at": {
@@ -7697,7 +7697,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Repository Id"
           },
           "scope": {
@@ -7737,11 +7736,10 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Verified At"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           },
@@ -7762,6 +7760,223 @@
           "secret_presence"
         ],
         "title": "NotificationDestination",
+        "type": "object"
+      },
+      "NotificationDestinationCreateRequest": {
+        "additionalProperties": false,
+        "description": "A destination address plus a write-only reference to a separately stored secret.",
+        "properties": {
+          "address": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Address",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "in_app",
+              "telegram",
+              "email",
+              "slack",
+              "discord",
+              "webhook"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Id"
+          },
+          "scope": {
+            "enum": [
+              "user",
+              "workspace"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "secret_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Ref"
+          }
+        },
+        "required": [
+          "channel",
+          "scope",
+          "address"
+        ],
+        "title": "NotificationDestinationCreateRequest",
+        "type": "object"
+      },
+      "NotificationDestinationPatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "consent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ready",
+                  "disabled"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "NotificationDestinationPatchRequest",
+        "type": "object"
+      },
+      "NotificationInboxItem": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 4096,
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "deep_link": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deep Link"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "enum": [
+              "provider.connection.created",
+              "provider.run.failed",
+              "provider.run.retried",
+              "repair.session.created",
+              "repair.diagnosed",
+              "repair.reproduction.completed",
+              "repair.patch.proposed",
+              "repair.verification.completed",
+              "repair.approval.requested",
+              "repair.approval.decided",
+              "repair.publication.created",
+              "repair.remote_ci.completed",
+              "repair.blocked",
+              "repair.cancelled",
+              "worker.offline",
+              "worker.quarantined",
+              "integration.disconnected",
+              "usage.budget.exceeded",
+              "security.policy.denied",
+              "backup.failed",
+              "release.update_available",
+              "identity.permission_revoked",
+              "notification.delivery.failed",
+              "operations.restore.completed"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_security": {
+            "title": "Is Security",
+            "type": "boolean"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warning",
+              "action",
+              "success",
+              "error",
+              "high",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "event_id",
+          "event_type",
+          "title",
+          "body",
+          "severity",
+          "is_security",
+          "created_at"
+        ],
+        "title": "NotificationInboxItem",
         "type": "object"
       },
       "NotificationPreference": {
@@ -7870,6 +8085,226 @@
           "updated_at"
         ],
         "title": "NotificationPreference",
+        "type": "object"
+      },
+      "NotificationPreferencesPatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "event_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "provider.connection.created",
+                    "provider.run.failed",
+                    "provider.run.retried",
+                    "repair.session.created",
+                    "repair.diagnosed",
+                    "repair.reproduction.completed",
+                    "repair.patch.proposed",
+                    "repair.verification.completed",
+                    "repair.approval.requested",
+                    "repair.approval.decided",
+                    "repair.publication.created",
+                    "repair.remote_ci.completed",
+                    "repair.blocked",
+                    "repair.cancelled",
+                    "worker.offline",
+                    "worker.quarantined",
+                    "integration.disconnected",
+                    "usage.budget.exceeded",
+                    "security.policy.denied",
+                    "backup.failed",
+                    "release.update_available",
+                    "identity.permission_revoked",
+                    "notification.delivery.failed",
+                    "operations.restore.completed"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Types"
+          },
+          "min_severity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "info",
+                  "warning",
+                  "action",
+                  "success",
+                  "error",
+                  "high",
+                  "critical"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Severity"
+          },
+          "quiet_hours": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuietHoursWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "NotificationPreferencesPatchRequest",
+        "type": "object"
+      },
+      "NotificationPreferencesState": {
+        "additionalProperties": false,
+        "properties": {
+          "event_types": {
+            "items": {
+              "enum": [
+                "provider.connection.created",
+                "provider.run.failed",
+                "provider.run.retried",
+                "repair.session.created",
+                "repair.diagnosed",
+                "repair.reproduction.completed",
+                "repair.patch.proposed",
+                "repair.verification.completed",
+                "repair.approval.requested",
+                "repair.approval.decided",
+                "repair.publication.created",
+                "repair.remote_ci.completed",
+                "repair.blocked",
+                "repair.cancelled",
+                "worker.offline",
+                "worker.quarantined",
+                "integration.disconnected",
+                "usage.budget.exceeded",
+                "security.policy.denied",
+                "backup.failed",
+                "release.update_available",
+                "identity.permission_revoked",
+                "notification.delivery.failed",
+                "operations.restore.completed"
+              ],
+              "type": "string"
+            },
+            "title": "Event Types",
+            "type": "array"
+          },
+          "min_severity": {
+            "enum": [
+              "info",
+              "warning",
+              "action",
+              "success",
+              "error",
+              "high",
+              "critical"
+            ],
+            "title": "Min Severity",
+            "type": "string"
+          },
+          "quiet_hours": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuietHoursWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timezone": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "event_types",
+          "min_severity",
+          "timezone",
+          "version"
+        ],
+        "title": "NotificationPreferencesState",
+        "type": "object"
+      },
+      "NotificationReadPatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "read": {
+            "title": "Read",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "read"
+        ],
+        "title": "NotificationReadPatchRequest",
+        "type": "object"
+      },
+      "NotificationTestRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "confirmed"
+        ],
+        "title": "NotificationTestRequest",
         "type": "object"
       },
       "OperationsEventPayload": {
@@ -8170,6 +8605,108 @@
           "snapshot_at"
         ],
         "title": "Page[Membership]",
+        "type": "object"
+      },
+      "Page_NotificationDelivery_": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationDelivery"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "snapshot_at"
+        ],
+        "title": "Page[NotificationDelivery]",
+        "type": "object"
+      },
+      "Page_NotificationDestination_": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationDestination"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "snapshot_at"
+        ],
+        "title": "Page[NotificationDestination]",
+        "type": "object"
+      },
+      "Page_NotificationInboxItem_": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationInboxItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "snapshot_at"
+        ],
+        "title": "Page[NotificationInboxItem]",
         "type": "object"
       },
       "Page_SessionListItem_": {
@@ -18530,6 +19067,94 @@
         ]
       }
     },
+    "/api/v1/me/notification-preferences": {
+      "get": {
+        "operationId": "get_preferences_api_v1_me_notification_preferences_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Preferences",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_preferences_api_v1_me_notification_preferences_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferencesPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Preferences",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/v1/me/sessions": {
       "get": {
         "operationId": "listMySessions",
@@ -27066,6 +27691,653 @@
         "summary": "Revoke workspace-scoped outbound Meta inference consent (SEC-018)",
         "tags": [
           "models"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/notification-deliveries": {
+      "get": {
+        "operationId": "list_deliveries_api_v1_workspaces__ws__notification_deliveries_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "destination_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Destination Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(pending|sending|accepted|delivered|bounced|retry_wait|unknown|possible_duplicate|failed_final|suppressed)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_NotificationDelivery_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Deliveries",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/notification-destinations": {
+      "get": {
+        "operationId": "list_destinations_api_v1_workspaces__ws__notification_destinations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_NotificationDestination_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Destinations",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "post": {
+        "operationId": "create_destination_api_v1_workspaces__ws__notification_destinations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationDestinationCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDestination"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Destination",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}": {
+      "delete": {
+        "operationId": "delete_destination_api_v1_workspaces__ws__notification_destinations__destination_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "destination_id",
+            "required": true,
+            "schema": {
+              "title": "Destination Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Destination",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_destination_api_v1_workspaces__ws__notification_destinations__destination_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "destination_id",
+            "required": true,
+            "schema": {
+              "title": "Destination Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "maxLength": 32,
+              "minLength": 4,
+              "title": "If-Match",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationDestinationPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDestination"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Destination",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/tests": {
+      "post": {
+        "operationId": "test_destination_api_v1_workspaces__ws__notification_destinations__destination_id__tests_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "destination_id",
+            "required": true,
+            "schema": {
+              "title": "Destination Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Test Destination Api V1 Workspaces  Ws  Notification Destinations  Destination Id  Tests Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Destination",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/notifications": {
+      "get": {
+        "operationId": "list_notifications_api_v1_workspaces__ws__notifications_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unread",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Unread"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(info|success|warning|action|error|high|critical)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_NotificationInboxItem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Notifications",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/notifications/{notification_id}": {
+      "get": {
+        "operationId": "get_notification_api_v1_workspaces__ws__notifications__notification_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "notification_id",
+            "required": true,
+            "schema": {
+              "title": "Notification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationInboxItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Notification",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "patch": {
+        "operationId": "update_notification_read_state_api_v1_workspaces__ws__notifications__notification_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "notification_id",
+            "required": true,
+            "schema": {
+              "title": "Notification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationReadPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationInboxItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Notification Read State",
+        "tags": [
+          "notifications"
         ]
       }
     },

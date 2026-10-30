@@ -166,8 +166,19 @@ export type TaskJobActionRequest = SchemaOf<"TaskJobActionRequest">;
 export type TaskJobAction = TaskJobActionRequest["action"];
 export type TaskJobReconcileOutcome = NonNullable<TaskJobActionRequest["reconciled_outcome"]>;
 export type NotificationDestination = SchemaOf<"NotificationDestination">;
+export type NotificationChannel = NotificationDestination["channel"];
+export type NotificationDestinationCreateRequest = SchemaOf<"NotificationDestinationCreateRequest">;
+export type NotificationDestinationPatchRequest = SchemaOf<"NotificationDestinationPatchRequest">;
 export type NotificationDelivery = SchemaOf<"NotificationDelivery">;
 export type NotificationPreference = SchemaOf<"NotificationPreference">;
+export type NotificationInboxItem = SchemaOf<"NotificationInboxItem">;
+export type NotificationInboxPage = SchemaOf<"Page_NotificationInboxItem_">;
+export type NotificationDestinationPage = SchemaOf<"Page_NotificationDestination_">;
+export type NotificationDeliveryPage = SchemaOf<"Page_NotificationDelivery_">;
+export type NotificationReadPatchRequest = SchemaOf<"NotificationReadPatchRequest">;
+export type NotificationPreferencesPatchRequest = SchemaOf<"NotificationPreferencesPatchRequest">;
+export type NotificationPreferencesState = SchemaOf<"NotificationPreferencesState">;
+export type NotificationTestRequest = SchemaOf<"NotificationTestRequest">;
 export type AuditRecord = SchemaOf<"AuditRecord">;
 export type ModelUsageRecord = SchemaOf<"ModelUsageRecord">;
 export type ReportExportRequest = SchemaOf<"ReportExportRequest">;
@@ -252,6 +263,10 @@ export interface RequestCallOptions {
 
 export interface OptimisticMutationOptions extends RequestCallOptions {
   readonly ifMatch?: string;
+}
+
+export interface RequiredOptimisticMutationOptions extends RequestCallOptions {
+  readonly ifMatch: string;
 }
 
 export interface IdempotentMutationOptions extends RequestCallOptions {
@@ -728,6 +743,17 @@ export interface Red2PrClient {
   getWorkspaceRepairTimeline(ws: string, repairId: string, options?: RequestCallOptions): Promise<ApiEnvelope<{ readonly items: readonly Record<string, unknown>[]; readonly next_cursor: string | null; readonly snapshot_at: string }>>;
   performRepairAction(ws: string, repairId: string, body: RepairActionRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<ActionReceipt>>;
   listWorkspaceApprovals(ws: string, query?: { readonly status?: string; readonly repository_id?: string; readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<ApprovalPageResponse>>;
+  listWorkspaceNotifications(ws: string, query?: { readonly unread?: boolean; readonly severity?: string; readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationInboxPage>>;
+  getWorkspaceNotification(ws: string, notificationId: string, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationInboxItem>>;
+  updateWorkspaceNotificationReadState(ws: string, notificationId: string, body: NotificationReadPatchRequest, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationInboxItem>>;
+  listNotificationDestinations(ws: string, query?: { readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationDestinationPage>>;
+  createNotificationDestination(ws: string, body: NotificationDestinationCreateRequest, options?: IdempotentMutationOptions): Promise<ApiEnvelope<NotificationDestination>>;
+  patchNotificationDestination(ws: string, destinationId: string, body: NotificationDestinationPatchRequest, options: RequiredOptimisticMutationOptions): Promise<ApiEnvelope<NotificationDestination>>;
+  deleteNotificationDestination(ws: string, destinationId: string, options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
+  testNotificationDestination(ws: string, destinationId: string, body: NotificationTestRequest, options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
+  listNotificationDeliveries(ws: string, query?: { readonly destination_id?: string; readonly state?: string; readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationDeliveryPage>>;
+  getNotificationPreferences(workspaceId?: string, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationPreferencesState>>;
+  patchNotificationPreferences(body: NotificationPreferencesPatchRequest, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationPreferencesState>>;
   getWorkspaceApproval(ws: string, approvalId: string, options?: RequestCallOptions): Promise<ApiEnvelope<Approval>>;
   decideWorkspaceApproval(ws: string, approvalId: string, body: ApprovalDecisionRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<Approval>>;
   listWorkspacePublications(ws: string, options?: RequestCallOptions): Promise<ApiEnvelope<PublicationPageResponse>>;
@@ -1293,6 +1319,28 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       }),
     listWorkspaceApprovals: (ws, query, options) =>
       callJson("GET", "/api/v1/workspaces/{ws}/approvals", { path: { ws }, query, options }),
+    listWorkspaceNotifications: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/notifications", { path: { ws }, query, options }),
+    getWorkspaceNotification: (ws, notificationId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/notifications/{notification_id}", { path: { ws, notification_id: notificationId }, options }),
+    updateWorkspaceNotificationReadState: (ws, notificationId, body, options) =>
+      callJson("PATCH", "/api/v1/workspaces/{ws}/notifications/{notification_id}", { path: { ws, notification_id: notificationId }, body, options }),
+    listNotificationDestinations: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/notification-destinations", { path: { ws }, query, options }),
+    createNotificationDestination: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/notification-destinations", { path: { ws }, body, options }),
+    patchNotificationDestination: (ws, destinationId, body, options) =>
+      callJson("PATCH", "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}", { path: { ws, destination_id: destinationId }, body, options }),
+    deleteNotificationDestination: (ws, destinationId, options) =>
+      callVoid("DELETE", "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}", { path: { ws, destination_id: destinationId }, options }),
+    testNotificationDestination: (ws, destinationId, body, options) =>
+      callVoid("POST", "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/tests", { path: { ws, destination_id: destinationId }, body, options }),
+    listNotificationDeliveries: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/notification-deliveries", { path: { ws }, query, options }),
+    getNotificationPreferences: (workspaceId, options) =>
+      callJson("GET", "/api/v1/me/notification-preferences", { query: workspaceId ? { workspace_id: workspaceId } : undefined, options }),
+    patchNotificationPreferences: (body, options) =>
+      callJson("PATCH", "/api/v1/me/notification-preferences", { body, options }),
     getWorkspaceApproval: (ws, approvalId, options) =>
       callJson("GET", "/api/v1/workspaces/{ws}/approvals/{approval_id}", {
         path: { ws, approval_id: approvalId },

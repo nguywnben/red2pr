@@ -192,6 +192,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Preferences */
+        get: operations["get_preferences_api_v1_me_notification_preferences_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Preferences */
+        patch: operations["patch_preferences_api_v1_me_notification_preferences_patch"];
+        trace?: never;
+    };
     "/api/v1/me/sessions": {
         parameters: {
             query?: never;
@@ -933,6 +951,111 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/notification-deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Deliveries */
+        get: operations["list_deliveries_api_v1_workspaces__ws__notification_deliveries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/notification-destinations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Destinations */
+        get: operations["list_destinations_api_v1_workspaces__ws__notification_destinations_get"];
+        put?: never;
+        /** Create Destination */
+        post: operations["create_destination_api_v1_workspaces__ws__notification_destinations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Destination */
+        delete: operations["delete_destination_api_v1_workspaces__ws__notification_destinations__destination_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Destination */
+        patch: operations["patch_destination_api_v1_workspaces__ws__notification_destinations__destination_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/notification-destinations/{destination_id}/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Destination */
+        post: operations["test_destination_api_v1_workspaces__ws__notification_destinations__destination_id__tests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Notifications */
+        get: operations["list_notifications_api_v1_workspaces__ws__notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/notifications/{notification_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Notification */
+        get: operations["get_notification_api_v1_workspaces__ws__notifications__notification_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Notification Read State */
+        patch: operations["update_notification_read_state_api_v1_workspaces__ws__notifications__notification_id__patch"];
         trace?: never;
     };
     "/api/v1/workspaces/{ws}/publications": {
@@ -4026,26 +4149,19 @@ export interface components {
             event_id: string;
             /** Id */
             id: string;
+            /** Last Error Code */
+            last_error_code?: string | null;
+            /** Next Retry At */
+            next_retry_at?: string | null;
             /**
-             * Last Error Code
-             * @default null
+             * Possible Duplicate
+             * @default false
              */
-            last_error_code: string | null;
-            /**
-             * Next Retry At
-             * @default null
-             */
-            next_retry_at: string | null;
-            /**
-             * Provider Id
-             * @default null
-             */
-            provider_id: string | null;
-            /**
-             * Repository Id
-             * @default null
-             */
-            repository_id: string | null;
+            possible_duplicate: boolean;
+            /** Provider Id */
+            provider_id?: string | null;
+            /** Repository Id */
+            repository_id?: string | null;
             /**
              * State
              * @enum {string}
@@ -4070,20 +4186,14 @@ export interface components {
              * @enum {string}
              */
             channel: "in_app" | "telegram" | "email" | "slack" | "discord" | "webhook";
-            /**
-             * Consent Id
-             * @default null
-             */
-            consent_id: string | null;
+            /** Consent Id */
+            consent_id?: string | null;
             /** Created At */
             created_at: string;
             /** Id */
             id: string;
-            /**
-             * Repository Id
-             * @default null
-             */
-            repository_id: string | null;
+            /** Repository Id */
+            repository_id?: string | null;
             /**
              * Scope
              * @enum {string}
@@ -4097,15 +4207,72 @@ export interface components {
             status: "not_configured" | "pending_verification" | "ready" | "degraded" | "suppressed" | "quarantined" | "disabled";
             /** Updated At */
             updated_at: string;
-            /**
-             * Verified At
-             * @default null
-             */
-            verified_at: string | null;
+            /** Verified At */
+            verified_at?: string | null;
             /** Version */
             version: number;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /**
+         * NotificationDestinationCreateRequest
+         * @description A destination address plus a write-only reference to a separately stored secret.
+         */
+        NotificationDestinationCreateRequest: {
+            /** Address */
+            address: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "in_app" | "telegram" | "email" | "slack" | "discord" | "webhook";
+            /** Consent Id */
+            consent_id?: string | null;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "user" | "workspace";
+            /** Secret Ref */
+            secret_ref?: string | null;
+        };
+        /** NotificationDestinationPatchRequest */
+        NotificationDestinationPatchRequest: {
+            /** Address */
+            address?: string | null;
+            /** Consent Id */
+            consent_id?: string | null;
+            /** Status */
+            status?: ("ready" | "disabled") | null;
+        };
+        /** NotificationInboxItem */
+        NotificationInboxItem: {
+            /** Body */
+            body: string;
+            /** Created At */
+            created_at: string;
+            /** Deep Link */
+            deep_link?: string | null;
+            /** Event Id */
+            event_id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed";
+            /** Id */
+            id: string;
+            /** Is Security */
+            is_security: boolean;
+            /** Read At */
+            read_at?: string | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "action" | "success" | "error" | "high" | "critical";
+            /** Title */
+            title: string;
         };
         /**
          * NotificationPreference
@@ -4140,6 +4307,45 @@ export interface components {
              * @default null
              */
             workspace_id: string | null;
+        };
+        /** NotificationPreferencesPatchRequest */
+        NotificationPreferencesPatchRequest: {
+            /** Event Types */
+            event_types?: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed")[] | null;
+            /** Min Severity */
+            min_severity?: ("info" | "warning" | "action" | "success" | "error" | "high" | "critical") | null;
+            quiet_hours?: components["schemas"]["QuietHoursWindow"] | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /** NotificationPreferencesState */
+        NotificationPreferencesState: {
+            /** Event Types */
+            event_types: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed")[];
+            /**
+             * Min Severity
+             * @enum {string}
+             */
+            min_severity: "info" | "warning" | "action" | "success" | "error" | "high" | "critical";
+            quiet_hours?: components["schemas"]["QuietHoursWindow"] | null;
+            /** Timezone */
+            timezone: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /** NotificationReadPatchRequest */
+        NotificationReadPatchRequest: {
+            /** Read */
+            read: boolean;
+        };
+        /** NotificationTestRequest */
+        NotificationTestRequest: {
+            /** Confirmed */
+            confirmed: boolean;
         };
         /** OperationsEventPayload */
         OperationsEventPayload: {
@@ -4227,6 +4433,33 @@ export interface components {
         Page_Membership_: {
             /** Items */
             items: components["schemas"]["Membership"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+        };
+        /** Page[NotificationDelivery] */
+        Page_NotificationDelivery_: {
+            /** Items */
+            items: components["schemas"]["NotificationDelivery"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+        };
+        /** Page[NotificationDestination] */
+        Page_NotificationDestination_: {
+            /** Items */
+            items: components["schemas"]["NotificationDestination"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+        };
+        /** Page[NotificationInboxItem] */
+        Page_NotificationInboxItem_: {
+            /** Items */
+            items: components["schemas"]["NotificationInboxItem"][];
             /** Next Cursor */
             next_cursor?: string | null;
             /** Snapshot At */
@@ -8750,6 +8983,70 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    get_preferences_api_v1_me_notification_preferences_get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferencesState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_preferences_api_v1_me_notification_preferences_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationPreferencesPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferencesState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -15178,6 +15475,323 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_deliveries_api_v1_workspaces__ws__notification_deliveries_get: {
+        parameters: {
+            query?: {
+                destination_id?: string | null;
+                state?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_NotificationDelivery_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_destinations_api_v1_workspaces__ws__notification_destinations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_NotificationDestination_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_destination_api_v1_workspaces__ws__notification_destinations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationDestinationCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDestination"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_destination_api_v1_workspaces__ws__notification_destinations__destination_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                destination_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_destination_api_v1_workspaces__ws__notification_destinations__destination_id__patch: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                ws: string;
+                destination_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationDestinationPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDestination"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_destination_api_v1_workspaces__ws__notification_destinations__destination_id__tests_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                destination_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notifications_api_v1_workspaces__ws__notifications_get: {
+        parameters: {
+            query?: {
+                unread?: boolean | null;
+                severity?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_NotificationInboxItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_notification_api_v1_workspaces__ws__notifications__notification_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationInboxItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_notification_read_state_api_v1_workspaces__ws__notifications__notification_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationReadPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationInboxItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

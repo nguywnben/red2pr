@@ -687,6 +687,7 @@ class NotificationDelivery(WorkspaceResourceBase):
     destination_id: InternalId
     template_revision: PositiveVersion
     state: DeliveryState
+    possible_duplicate: StrictBool = False
     attempt: Annotated[StrictInt, Field(ge=0)]
     next_retry_at: UtcTimestamp | None = None
     provider_id: OpaqueProviderId | None = None
@@ -701,6 +702,65 @@ class NotificationPreference(InstanceResourceBase):
     min_severity: NotificationSeverity = "info"
     quiet_hours: QuietHoursWindow | None = None
     timezone: BoundedName = "UTC"
+
+
+class NotificationDestinationCreateRequest(StrictContractModel):
+    """A destination address plus a write-only reference to a separately stored secret."""
+
+    channel: NotificationChannel
+    scope: DestinationScope
+    address: Annotated[StrictStr, StringConstraints(min_length=1, max_length=512)]
+    secret_ref: OpaqueSecretRef | None = None
+    consent_id: InternalId | None = None
+
+
+class NotificationDestinationPatchRequest(StrictContractModel):
+    status: Literal["ready", "disabled"] | None = None
+    consent_id: InternalId | None = None
+    address: Annotated[StrictStr, StringConstraints(min_length=1, max_length=512)] | None = None
+
+
+class NotificationTestRequest(StrictContractModel):
+    confirmed: StrictBool
+
+
+class NotificationInboxItem(StrictContractModel):
+    id: InternalId
+    event_id: InternalId
+    event_type: EventType
+    title: BoundedName
+    body: BoundedText
+    severity: NotificationSeverity
+    deep_link: BoundedText | None = None
+    is_security: StrictBool
+    read_at: UtcTimestamp | None = None
+    created_at: UtcTimestamp
+
+
+class NotificationReadPatchRequest(StrictContractModel):
+    read: StrictBool
+
+
+class NotificationPreferencesPatchRequest(StrictContractModel):
+    workspace_id: InternalId | None = None
+    event_types: list[EventType] | None = None
+    min_severity: NotificationSeverity | None = None
+    quiet_hours: QuietHoursWindow | None = None
+    timezone: BoundedName | None = None
+
+
+class NotificationPreferencesState(StrictContractModel):
+    workspace_id: InternalId | None = None
+    event_types: list[EventType]
+    min_severity: NotificationSeverity
+    quiet_hours: QuietHoursWindow | None = None
+    timezone: BoundedName
+    version: PositiveVersion
+
+
+class NotificationDeliveryPageParams(StrictContractModel):
+    destination_id: InternalId | None = None
+    state: DeliveryState | None = None
 
 
 # U07 / ADR-037 Outbound Consents & Private Endpoint Registrations

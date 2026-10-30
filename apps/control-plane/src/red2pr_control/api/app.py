@@ -10,9 +10,12 @@ Provides:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import pathlib
 import re
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime
 from typing import Any
 
@@ -237,6 +240,7 @@ from red2pr_control.integrations import (
     build_integrations_router,
     build_webhooks_router,
 )
+from red2pr_control.notifications import NotificationDispatcher, build_notifications_router
 from red2pr_control.operations.setup_wizard import (
     SetupStepRegistry,
     SetupWizardService,
@@ -604,8 +608,32 @@ def create_app(
     artifact_store: ArtifactStoreProtocol | None = None,
     publisher_saga: PublisherSaga | None = None,
     remote_ci_observer: RemoteCiObserver | None = None,
+    notification_dispatcher: NotificationDispatcher | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
+    if notification_dispatcher is None and iam_service is not None:
+        notification_dispatcher = NotificationDispatcher(
+            session_factory=iam_service.session_factory
+        )
+    if notification_dispatcher is not None and setup_step_registry is not None:
+        notification_dispatcher.register_setup_probe(setup_step_registry)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        worker = None
+        dispatcher = getattr(app.state, "notification_dispatcher", None)
+        if dispatcher is not None:
+            worker = asyncio.create_task(
+                dispatcher.run_forever(), name="notification-outbox-dispatcher"
+            )
+        try:
+            yield
+        finally:
+            if worker is not None:
+                worker.cancel()
+                with suppress(asyncio.CancelledError):
+                    await worker
+
     app = FastAPI(
         title="Red2PR Control Plane API",
         version="1.0.0",
@@ -616,6 +644,7 @@ def create_app(
         openapi_url="/api/v1/openapi.json",
         docs_url=None,
         redoc_url=None,
+        lifespan=lifespan,
     )
     if github_integration_service is not None and setup_step_registry is not None:
         github_integration_service.register_setup_probe(setup_step_registry)
@@ -654,6 +683,7 @@ def create_app(
     app.state.artifact_store = artifact_store
     app.state.publisher_saga = publisher_saga
     app.state.remote_ci_observer = remote_ci_observer
+    app.state.notification_dispatcher = notification_dispatcher
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -683,6 +713,7 @@ def create_app(
     app.include_router(build_approvals_router())
     app.include_router(build_publications_router())
     app.include_router(build_inference_router())
+    app.include_router(build_notifications_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:

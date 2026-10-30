@@ -4260,3 +4260,254 @@ class RemoteCiCheckModel(Base):
     observed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class NotificationDestinationModel(Base):
+    """Workspace-owned notification target; secrets are references only (U21/S-16)."""
+
+    __tablename__ = "notification_destinations"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_notification_destinations_workspace_id_id"),
+        Index(
+            "uq_notification_destination_owner",
+            "workspace_id",
+            "channel",
+            "scope",
+            text("coalesce(user_id, '')"),
+            unique=True,
+        ),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["workspace_id", "consent_id"],
+            ["consents.workspace_id", "consents.id"],
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "channel IN ('in_app','telegram','email','slack','discord','webhook')",
+            name="notification_channel_valid",
+        ),
+        CheckConstraint("scope IN ('user','workspace')", name="notification_scope_valid"),
+        CheckConstraint(
+            "status IN ('not_configured','pending_verification','ready','degraded',"
+            "'suppressed','quarantined','disabled')",
+            name="notification_destination_status_valid",
+        ),
+        CheckConstraint(
+            "(scope = 'user' AND user_id IS NOT NULL) OR (scope = 'workspace' AND user_id IS NULL)",
+            name="notification_destination_scope_binding",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index(
+            "ix_notification_destinations_ws_status", "workspace_id", "status", "created_at", "id"
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    channel: Mapped[str] = mapped_column(String(24), nullable=False)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    address: Mapped[str] = mapped_column(String(512), nullable=False)
+    secret_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    consent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_configured")
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class NotificationEventModel(Base):
+    """Immutable, redacted projection of one committed S-19 event."""
+
+    __tablename__ = "notification_events"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_notification_events_workspace_id_id"),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        CheckConstraint("template_revision >= 1", name="notification_template_revision_pos"),
+        Index("ix_notification_events_ws_created", "workspace_id", "created_at", "id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    template_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class UserInboxItemModel(Base):
+    """Durable per-user inbox projection; security records cannot be deleted (U21)."""
+
+    __tablename__ = "user_inbox_items"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_user_inbox_items_workspace_id_id"),
+        UniqueConstraint("workspace_id", "event_id", "user_id", name="uq_user_inbox_event_user"),
+        ForeignKeyConstraint(
+            ["workspace_id", "event_id"],
+            ["notification_events.workspace_id", "notification_events.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        CheckConstraint(
+            "severity IN ('info','warning','action','success','error','high','critical')",
+            name="notification_inbox_severity_valid",
+        ),
+        CheckConstraint(
+            "length(title) <= 120 AND length(body) <= 4096", name="notification_inbox_text_bounds"
+        ),
+        Index("ix_user_inbox_user_created", "workspace_id", "user_id", "created_at", "id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    body: Mapped[str] = mapped_column(String(4096), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    deep_link: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    is_security: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class NotificationDeliveryModel(Base):
+    """At-least-once destination delivery state with explicit ambiguous outcomes."""
+
+    __tablename__ = "notification_deliveries"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_notification_deliveries_workspace_id_id"),
+        UniqueConstraint(
+            "event_id",
+            "destination_id",
+            "template_revision",
+            name="uq_notification_logical_delivery",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "event_id"],
+            ["notification_events.workspace_id", "notification_events.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "destination_id"],
+            ["notification_destinations.workspace_id", "notification_destinations.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "state IN ('pending','sending','accepted','delivered','bounced','retry_wait',"
+            "'unknown','possible_duplicate','failed_final','suppressed')",
+            name="notification_delivery_state_valid",
+        ),
+        CheckConstraint(
+            "attempt >= 0 AND template_revision >= 1", name="notification_delivery_attempt_bounds"
+        ),
+        Index("ix_notification_delivery_retry", "workspace_id", "state", "next_retry_at", "id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    destination_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    template_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    state: Mapped[str] = mapped_column(String(24), nullable=False, default="pending")
+    possible_duplicate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    provider_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    request_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class DeliveryAttemptModel(Base):
+    """Append-only sanitized record of one channel attempt (no provider response body)."""
+
+    __tablename__ = "delivery_attempts"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "delivery_id", "attempt", name="uq_delivery_attempt_number"
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "delivery_id"],
+            ["notification_deliveries.workspace_id", "notification_deliveries.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("attempt >= 1", name="delivery_attempt_pos"),
+        CheckConstraint(
+            "outcome IN ('accepted','retry_wait','unknown','failed_final','suppressed')",
+            name="delivery_attempt_outcome_valid",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    delivery_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False)
+    outcome: Mapped[str] = mapped_column(String(24), nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    request_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UserNotificationPreferenceModel(Base):
+    """Per-user workspace or instance notification routing preferences."""
+
+    __tablename__ = "user_notification_preferences"
+    __table_args__ = (
+        Index("uq_notification_preferences_ws_user", "workspace_id", "user_id", unique=True),
+        Index(
+            "uq_notification_preferences_global_user",
+            "user_id",
+            unique=True,
+            postgresql_where=text("workspace_id IS NULL"),
+        ),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        CheckConstraint(
+            "min_severity IN ('info','warning','action','success','error','high','critical')",
+            name="notification_preference_severity_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    event_types_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    min_severity: Mapped[str] = mapped_column(String(16), nullable=False, default="info")
+    quiet_hours_json: Mapped[dict[str, str] | None] = mapped_column(JSONB, nullable=True)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
