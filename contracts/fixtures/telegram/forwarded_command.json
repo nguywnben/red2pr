@@ -1,0 +1,10 @@
+{
+  "update_id": 411,
+  "message": {
+    "message_id": 2,
+    "from": { "id": 90210, "is_bot": false },
+    "chat": { "id": 90210, "type": "private" },
+    "forward_origin": { "type": "user", "date": 1793354400, "sender_user": { "id": 90211, "is_bot": false, "first_name": "Example" } },
+    "text": "/pause 0196ed00-0000-7000-8000-000000000022"
+  }
+}

@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hooks/telegram/{bot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Telegram Webhook */
+        post: operations["receiveTelegramWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/github/callback": {
         parameters: {
             query?: never;
@@ -239,6 +256,74 @@ export interface paths {
         post?: never;
         /** Revoke one of the caller's active sessions (A-03) */
         delete: operations["revokeMySession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/telegram-intents/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm Intent */
+        post: operations["confirmTelegramIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/telegram-intents/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get Intent */
+        post: operations["getTelegramIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/telegram-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Link */
+        delete: operations["deleteTelegramLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/telegram-link-challenges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Link Challenge */
+        post: operations["createTelegramLinkChallenge"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -6788,11 +6873,69 @@ export interface components {
             snapshot_at: string;
             summary?: components["schemas"]["WorkspaceQueueFairnessSummary"] | null;
         };
+        /** TelegramIntentConfirmationRequest */
+        TelegramIntentConfirmationRequest: {
+            /** Confirmed */
+            confirmed: boolean;
+            /** Token */
+            token: string;
+        };
+        /** TelegramIntentConfirmationResponse */
+        TelegramIntentConfirmationResponse: {
+            /** Operation Id */
+            operation_id: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "confirmed";
+            /** Status Url */
+            status_url?: string | null;
+        };
+        /** TelegramIntentResponse */
+        TelegramIntentResponse: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "pause" | "resume" | "retry" | "unlink";
+            /**
+             * Already Confirmed
+             * @default false
+             */
+            already_confirmed: boolean;
+            /** Expires At */
+            expires_at: string;
+            /** Scope Description */
+            scope_description: string;
+            /** Target Id */
+            target_id?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /** TelegramIntentTokenRequest */
+        TelegramIntentTokenRequest: {
+            /** Token */
+            token: string;
+        };
+        /** TelegramLinkChallengeResponse */
+        TelegramLinkChallengeResponse: {
+            /** Bot Username */
+            bot_username: string;
+            /** Deep Link */
+            deep_link: string;
+            /** Expires At */
+            expires_at: string;
+        };
         /**
          * TelegramLinkSummary
-         * @description Honest personal Telegram link status summary on /account until U20 (NOT-02).
+         * @description Personal Telegram link state shown to the authenticated owner (NOT-02).
          */
         TelegramLinkSummary: {
+            /** Bot Username */
+            bot_username?: string | null;
+            /** Linked At */
+            linked_at?: string | null;
             /**
              * Status
              * @default not_configured
@@ -8373,6 +8516,37 @@ export interface operations {
             };
         };
     };
+    receiveTelegramWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     handleGitHubCallback: {
         parameters: {
             query?: {
@@ -9287,6 +9461,112 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    confirmTelegramIntent: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TelegramIntentConfirmationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramIntentConfirmationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getTelegramIntent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TelegramIntentTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramIntentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deleteTelegramLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createTelegramLinkChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramLinkChallengeResponse"];
                 };
             };
         };

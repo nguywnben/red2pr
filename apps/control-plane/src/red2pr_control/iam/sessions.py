@@ -74,6 +74,8 @@ from red2pr_control.db.base import (
     MfaCredentialModel,
     RecoveryCodeModel,
     SessionModel,
+    TelegramLinkChallengeModel,
+    TelegramLinkModel,
     UserModel,
 )
 from red2pr_control.db.outbox import enqueue_outbox_event
@@ -1852,6 +1854,27 @@ class IamService:
                 or 0
             )
 
+        async with instance_rls_session(self._session_factory, mode="instance_admin") as db:
+            telegram_link = await db.scalar(
+                select(TelegramLinkModel)
+                .where(
+                    TelegramLinkModel.user_id == ctx.user.id,
+                    TelegramLinkModel.revoked_at.is_(None),
+                )
+                .order_by(TelegramLinkModel.linked_at.desc())
+                .limit(1)
+            )
+            pending_link = await db.scalar(
+                select(TelegramLinkChallengeModel.id)
+                .where(
+                    TelegramLinkChallengeModel.user_id == ctx.user.id,
+                    TelegramLinkChallengeModel.scope == "account_link",
+                    TelegramLinkChallengeModel.used_at.is_(None),
+                    TelegramLinkChallengeModel.expires_at > ref_now,
+                )
+                .limit(1)
+            )
+
         workspaces, memberships, has_admin_role = await load_principal_workspaces_and_memberships(
             self._session_factory,
             user_id=ctx.user.id,
@@ -1872,7 +1895,14 @@ class IamService:
             recovery_codes_remaining=min(20, remaining_codes),
             workspaces=workspaces,
             memberships=memberships,
-            telegram_link=TelegramLinkSummary(status="not_configured"),
+            telegram_link=TelegramLinkSummary(
+                status="linked"
+                if telegram_link is not None
+                else "pending"
+                if pending_link is not None
+                else "not_configured",
+                linked_at=telegram_link.linked_at if telegram_link is not None else None,
+            ),
             csrf_token=ctx.csrf_token,
         )
 

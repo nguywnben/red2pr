@@ -15363,10 +15363,190 @@
         "title": "TaskJobPage",
         "type": "object"
       },
+      "TelegramIntentConfirmationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "token": {
+            "maxLength": 64,
+            "minLength": 32,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "confirmed"
+        ],
+        "title": "TelegramIntentConfirmationRequest",
+        "type": "object"
+      },
+      "TelegramIntentConfirmationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "state": {
+            "const": "confirmed",
+            "title": "State",
+            "type": "string"
+          },
+          "status_url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Url"
+          }
+        },
+        "required": [
+          "state",
+          "operation_id"
+        ],
+        "title": "TelegramIntentConfirmationResponse",
+        "type": "object"
+      },
+      "TelegramIntentResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "pause",
+              "resume",
+              "retry",
+              "unlink"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "already_confirmed": {
+            "default": false,
+            "title": "Already Confirmed",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "scope_description": {
+            "maxLength": 4096,
+            "title": "Scope Description",
+            "type": "string"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "action",
+          "scope_description",
+          "expires_at"
+        ],
+        "title": "TelegramIntentResponse",
+        "type": "object"
+      },
+      "TelegramIntentTokenRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 64,
+            "minLength": 32,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "TelegramIntentTokenRequest",
+        "type": "object"
+      },
+      "TelegramLinkChallengeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "bot_username": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Bot Username",
+            "type": "string"
+          },
+          "deep_link": {
+            "maxLength": 4096,
+            "title": "Deep Link",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deep_link",
+          "bot_username",
+          "expires_at"
+        ],
+        "title": "TelegramLinkChallengeResponse",
+        "type": "object"
+      },
       "TelegramLinkSummary": {
         "additionalProperties": false,
-        "description": "Honest personal Telegram link status summary on /account until U20 (NOT-02).",
+        "description": "Personal Telegram link state shown to the authenticated owner (NOT-02).",
         "properties": {
+          "bot_username": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bot Username"
+          },
+          "linked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked At"
+          },
           "status": {
             "default": "not_configured",
             "enum": [
@@ -18338,6 +18518,48 @@
         ]
       }
     },
+    "/api/v1/hooks/telegram/{bot_id}": {
+      "post": {
+        "operationId": "receiveTelegramWebhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bot_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Bot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Telegram Webhook",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
     "/api/v1/integrations/github/callback": {
       "get": {
         "operationId": "handleGitHubCallback",
@@ -19418,6 +19640,136 @@
         "summary": "Revoke one of the caller's active sessions (A-03)",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/api/v1/me/telegram-intents/confirm": {
+      "post": {
+        "operationId": "confirmTelegramIntent",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramIntentConfirmationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramIntentConfirmationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Intent",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/me/telegram-intents/preview": {
+      "post": {
+        "operationId": "getTelegramIntent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramIntentTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramIntentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Intent",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/me/telegram-link": {
+      "delete": {
+        "operationId": "deleteTelegramLink",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete Link",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/me/telegram-link-challenges": {
+      "post": {
+        "operationId": "createTelegramLinkChallenge",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramLinkChallengeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Link Challenge",
+        "tags": [
+          "notifications"
         ]
       }
     },

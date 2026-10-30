@@ -17,6 +17,7 @@ from pydantic import BeforeValidator, Field, StrictBool, StrictInt, StrictStr, m
 from py_contracts.primitives import (
     BoundedName,
     BoundedReason,
+    BoundedText,
     InstanceResourceBase,
     InternalId,
     Page,
@@ -207,9 +208,40 @@ class RecoveryResponse(StrictContractModel):
 
 
 class TelegramLinkSummary(StrictContractModel):
-    """Honest personal Telegram link status summary on /account until U20 (NOT-02)."""
+    """Personal Telegram link state shown to the authenticated owner (NOT-02)."""
 
     status: Literal["not_configured", "pending", "linked"] = "not_configured"
+    bot_username: BoundedName | None = None
+    linked_at: UtcTimestamp | None = None
+
+
+class TelegramLinkChallengeResponse(StrictContractModel):
+    deep_link: BoundedText
+    bot_username: BoundedName
+    expires_at: UtcTimestamp
+
+
+class TelegramIntentTokenRequest(StrictContractModel):
+    token: Annotated[StrictStr, Field(min_length=32, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")]
+
+
+class TelegramIntentConfirmationRequest(TelegramIntentTokenRequest):
+    confirmed: StrictBool
+
+
+class TelegramIntentResponse(StrictContractModel):
+    action: Literal["pause", "resume", "retry", "unlink"]
+    workspace_id: InternalId | None = None
+    target_id: InternalId | None = None
+    scope_description: BoundedText
+    expires_at: UtcTimestamp
+    already_confirmed: StrictBool = False
+
+
+class TelegramIntentConfirmationResponse(StrictContractModel):
+    state: Literal["confirmed"]
+    operation_id: InternalId
+    status_url: BoundedText | None = None
 
 
 class MeResponse(StrictContractModel):

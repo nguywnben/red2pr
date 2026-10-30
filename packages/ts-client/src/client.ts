@@ -25,6 +25,11 @@ export type StepUpResponse = SchemaOf<"StepUpResponse">;
 export type RecoveryRequest = SchemaOf<"RecoveryRequest">;
 export type RecoveryResponse = SchemaOf<"RecoveryResponse">;
 export type TelegramLinkSummary = SchemaOf<"TelegramLinkSummary">;
+export type TelegramLinkChallengeResponse = SchemaOf<"TelegramLinkChallengeResponse">;
+export type TelegramIntentTokenRequest = SchemaOf<"TelegramIntentTokenRequest">;
+export type TelegramIntentConfirmationRequest = SchemaOf<"TelegramIntentConfirmationRequest">;
+export type TelegramIntentResponse = SchemaOf<"TelegramIntentResponse">;
+export type TelegramIntentConfirmationResponse = SchemaOf<"TelegramIntentConfirmationResponse">;
 export type MeResponse = SchemaOf<"MeResponse">;
 export type MfaEnrollRequest = SchemaOf<"MfaEnrollRequest">;
 export type MfaEnrollResponse = SchemaOf<"MfaEnrollResponse">;
@@ -443,6 +448,10 @@ export interface Red2PrClient {
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<RecoveryResponse>>;
   getMe(options?: RequestCallOptions): Promise<ApiEnvelope<MeResponse>>;
+  createMyTelegramLinkChallenge(options?: RequestCallOptions): Promise<ApiEnvelope<TelegramLinkChallengeResponse>>;
+  deleteMyTelegramLink(options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
+  previewTelegramIntent(body: TelegramIntentTokenRequest, options?: RequestCallOptions): Promise<ApiEnvelope<TelegramIntentResponse>>;
+  confirmTelegramIntent(body: TelegramIntentConfirmationRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<TelegramIntentConfirmationResponse>>;
   listMySessions(options?: RequestCallOptions): Promise<ApiEnvelope<SessionPage>>;
   revokeMySession(
     sessionId: string,
@@ -1039,6 +1048,14 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       return syncCsrf(await callJson("POST", "/api/v1/auth/recovery", { body, options }));
     },
     getMe: async (options) => syncCsrf(await callJson("GET", "/api/v1/me", { options })),
+    createMyTelegramLinkChallenge: (options) =>
+      callJson("POST", "/api/v1/me/telegram-link-challenges", { options }),
+    deleteMyTelegramLink: (options) =>
+      callVoid("DELETE", "/api/v1/me/telegram-link", { options }),
+    previewTelegramIntent: (body, options) =>
+      callJson("POST", "/api/v1/me/telegram-intents/preview", { body, options }),
+    confirmTelegramIntent: (body, options) =>
+      callJson("POST", "/api/v1/me/telegram-intents/confirm", { body, options }),
     listMySessions: (options) => callJson("GET", "/api/v1/me/sessions", { options }),
     revokeMySession: (sessionId, options) =>
       callVoid("DELETE", "/api/v1/me/sessions/{session_id}", {

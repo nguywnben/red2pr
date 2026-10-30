@@ -1,0 +1,9 @@
+{
+  "update_id": 410,
+  "message": {
+    "message_id": 1,
+    "from": { "id": 90210, "is_bot": false },
+    "chat": { "id": 90210, "type": "private" },
+    "text": "/repair 0196ed00-0000-7000-8000-000000000021"
+  }
+}

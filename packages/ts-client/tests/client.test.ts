@@ -15,6 +15,59 @@ import {
 } from "../src/index.js";
 
 describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
+  it("keeps Telegram challenge tokens in POST bodies and confirms with idempotency (U22)", async () => {
+    const calls: Request[] = [];
+    const client = createRed2PrClient({
+      baseUrl: "https://red2pr.example.invalid",
+      getCsrfToken: () => "csrf-u22",
+      fetch: async (request: Request) => {
+        calls.push(request);
+        const body =
+          request.method === "POST" && request.headers.has("Content-Type")
+            ? await request.clone().json()
+            : null;
+        const payload = request.url.endsWith("telegram-link-challenges")
+          ? {
+              bot_username: "red2pr_test_bot",
+              deep_link: "https://t.me/red2pr_test_bot?start=exampleChallengeToken01234567890123456789",
+              expires_at: "2026-10-30T12:10:00Z",
+            }
+          : request.url.endsWith("telegram-intents/preview")
+            ? {
+                action: "unlink",
+                workspace_id: null,
+                target_id: null,
+                scope_description: "Unlink Telegram",
+                expires_at: "2026-10-30T12:05:00Z",
+                already_confirmed: false,
+              }
+            : {
+                state: "confirmed",
+                operation_id: "0196ed00-0000-7000-8000-000000000021",
+                status_url: null,
+              };
+        assert.equal(request.method, "POST");
+        assert.equal(request.headers.get("X-CSRF-Token"), "csrf-u22");
+        if (request.url.endsWith("telegram-intents/preview")) assert.equal(body.token, "a".repeat(43));
+        return new Response(JSON.stringify(payload), {
+          status: request.url.endsWith("telegram-link-challenges") ? 201 : 200,
+          headers: { "Content-Type": "application/json", "X-Correlation-Id": "corr-u22-client" },
+        });
+      },
+    });
+
+    const token = "a".repeat(43);
+    await client.createMyTelegramLinkChallenge();
+    await client.previewTelegramIntent({ token });
+    await client.confirmTelegramIntent(
+      { token, confirmed: true },
+      { idempotencyKey: "0196ed00-0000-7000-8000-000000000031" },
+    );
+    assert.equal(calls.length, 3);
+    assert.ok(calls.every((request) => !request.url.includes(token)));
+    assert.equal(calls[2]?.headers.get("Idempotency-Key"), "0196ed00-0000-7000-8000-000000000031");
+  });
+
   it("fetches /api/v1/system/health with correlation propagation", async () => {
     let capturedAccept: string | null = null;
     let capturedCorrelation: string | null = null;

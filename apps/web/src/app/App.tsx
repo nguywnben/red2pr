@@ -32,6 +32,7 @@ import { SetupWizardPage } from "../features/setup";
 import { WorkersPage } from "../features/workers";
 import { RepairDetailPage, RepairsListPage } from "../features/repairs";
 import { ApprovalsInboxPage } from "../features/approvals";
+import { TelegramIntentConfirmPage } from "../features/approvals/TelegramIntentConfirmPage";
 import { PullRequestsPage } from "../features/prs";
 import { NotificationsPage } from "../features/notifications";
 import {
@@ -599,6 +600,7 @@ export function AppRoutes(): React.JSX.Element {
       <Route path="/setup/*" element={<SetupWizardPage />} />
       <Route path="/integrations/github/callback" element={<GitHubCallbackRedirectRoute />} />
       <Route path="/account" element={<AccountRouteShell />} />
+      <Route path="/telegram/confirm" element={<TelegramIntentConfirmPage />} />
       <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
       <Route path="/admin/*" element={<AdminRouteShell />} />
       <Route path="*" element={<Navigate to="/w/default/overview" replace />} />

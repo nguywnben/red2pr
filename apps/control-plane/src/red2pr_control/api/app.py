@@ -181,6 +181,11 @@ from py_contracts import (
     TaskJobActionRequest,
     TaskJobDetail,
     TaskJobPage,
+    TelegramIntentConfirmationRequest,
+    TelegramIntentConfirmationResponse,
+    TelegramIntentResponse,
+    TelegramIntentTokenRequest,
+    TelegramLinkChallengeResponse,
     TelegramLinkSummary,
     ToolCallRequest,
     ToolCallResponse,
@@ -241,6 +246,8 @@ from red2pr_control.integrations import (
     build_webhooks_router,
 )
 from red2pr_control.notifications import NotificationDispatcher, build_notifications_router
+from red2pr_control.notifications.telegram.poller import TelegramBotService
+from red2pr_control.notifications.telegram.router import build_telegram_router
 from red2pr_control.operations.setup_wizard import (
     SetupStepRegistry,
     SetupWizardService,
@@ -410,6 +417,12 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     NotificationDestination,
     NotificationDelivery,
     NotificationPreference,
+    TelegramLinkSummary,
+    TelegramLinkChallengeResponse,
+    TelegramIntentTokenRequest,
+    TelegramIntentConfirmationRequest,
+    TelegramIntentResponse,
+    TelegramIntentConfirmationResponse,
     AuditRecord,
     ModelUsageRecord,
     BudgetAccountSummary,
@@ -609,11 +622,16 @@ def create_app(
     publisher_saga: PublisherSaga | None = None,
     remote_ci_observer: RemoteCiObserver | None = None,
     notification_dispatcher: NotificationDispatcher | None = None,
+    telegram_bot_service: TelegramBotService | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     if notification_dispatcher is None and iam_service is not None:
         notification_dispatcher = NotificationDispatcher(
             session_factory=iam_service.session_factory
+        )
+    if notification_dispatcher is not None and telegram_bot_service is not None:
+        notification_dispatcher.register_adapter(
+            "telegram", telegram_bot_service.notification_adapter
         )
     if notification_dispatcher is not None and setup_step_registry is not None:
         notification_dispatcher.register_setup_probe(setup_step_registry)
@@ -621,10 +639,16 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         worker = None
+        telegram_worker = None
         dispatcher = getattr(app.state, "notification_dispatcher", None)
         if dispatcher is not None:
             worker = asyncio.create_task(
                 dispatcher.run_forever(), name="notification-outbox-dispatcher"
+            )
+        telegram_service = getattr(app.state, "telegram_bot_service", None)
+        if telegram_service is not None:
+            telegram_worker = asyncio.create_task(
+                telegram_service.run_forever(), name="telegram-bot-runtime"
             )
         try:
             yield
@@ -633,6 +657,12 @@ def create_app(
                 worker.cancel()
                 with suppress(asyncio.CancelledError):
                     await worker
+            if telegram_worker is not None:
+                telegram_worker.cancel()
+                with suppress(asyncio.CancelledError):
+                    await telegram_worker
+                if telegram_service is not None:
+                    await telegram_service.api.aclose()
 
     app = FastAPI(
         title="Red2PR Control Plane API",
@@ -684,6 +714,7 @@ def create_app(
     app.state.publisher_saga = publisher_saga
     app.state.remote_ci_observer = remote_ci_observer
     app.state.notification_dispatcher = notification_dispatcher
+    app.state.telegram_bot_service = telegram_bot_service
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -714,6 +745,7 @@ def create_app(
     app.include_router(build_publications_router())
     app.include_router(build_inference_router())
     app.include_router(build_notifications_router())
+    app.include_router(build_telegram_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:

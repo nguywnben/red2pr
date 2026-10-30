@@ -1,0 +1,9 @@
+{
+  "update_id": 412,
+  "message": {
+    "message_id": 3,
+    "from": { "id": 90210, "is_bot": false },
+    "chat": { "id": -100902100, "type": "supergroup" },
+    "text": "/repos"
+  }
+}

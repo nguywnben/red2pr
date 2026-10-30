@@ -4511,3 +4511,107 @@ class UserNotificationPreferenceModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+
+
+class TelegramLinkModel(Base):
+    """Personal account-to-private-chat binding for one configured instance bot."""
+
+    __tablename__ = "telegram_links"
+    __table_args__ = (
+        UniqueConstraint("bot_id", "user_id", name="uq_telegram_links_bot_user"),
+        Index(
+            "uq_telegram_links_bot_tg_user_active",
+            "bot_id",
+            "telegram_user_id",
+            unique=True,
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        CheckConstraint("length(telegram_user_id) BETWEEN 1 AND 32", name="telegram_user_id_len"),
+        CheckConstraint("length(private_chat_id) BETWEEN 1 AND 32", name="telegram_chat_id_len"),
+        CheckConstraint("version >= 1", name="telegram_link_version_pos"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    bot_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    telegram_user_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    private_chat_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    linked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+class TelegramLinkChallengeModel(Base):
+    """Hashed, expiring, one-use account-link or web-confirmation challenge."""
+
+    __tablename__ = "telegram_link_challenges"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_telegram_link_challenges_token_hash"),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        CheckConstraint(
+            "scope IN ('account_link','action')", name="telegram_challenge_scope_valid"
+        ),
+        CheckConstraint("expires_at > created_at", name="telegram_challenge_expiry_valid"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    bot_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    scope: Mapped[str] = mapped_column(String(24), nullable=False)
+    workspace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    action: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class TelegramUpdateOffsetModel(Base):
+    """Durable polling offset and lease fencing state, one row per configured bot."""
+
+    __tablename__ = "telegram_update_offsets"
+    __table_args__ = (
+        CheckConstraint("mode IN ('polling','webhook')", name="telegram_mode_valid"),
+        CheckConstraint("next_update_id >= 0", name="telegram_next_update_id_nonnegative"),
+        CheckConstraint("lease_epoch >= 0", name="telegram_lease_epoch_nonnegative"),
+    )
+
+    bot_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False, default="polling")
+    credential_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    next_update_id: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    lease_owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_epoch: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class TelegramUpdateModel(Base):
+    """Durable dedup inbox containing only normalized command fields, never raw update JSON."""
+
+    __tablename__ = "telegram_updates"
+    __table_args__ = (
+        UniqueConstraint("bot_id", "update_id", name="uq_telegram_updates_bot_update"),
+        CheckConstraint(
+            "state IN ('received','processing','sent','ignored','unknown')",
+            name="telegram_update_state_valid",
+        ),
+        CheckConstraint("update_id >= 0", name="telegram_update_id_nonnegative"),
+        Index("ix_telegram_updates_pending", "bot_id", "state", "received_at", "update_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    bot_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    update_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    payload_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    normalized_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="received")
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    processing_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

@@ -298,6 +298,12 @@ class NotificationDispatcher:
         self._poll_interval_seconds = max(0.25, poll_interval_seconds)
         self._adapters = dict(adapters or {})
 
+    def register_adapter(self, channel: str, adapter: NotificationChannelAdapter) -> None:
+        """Install one host-configured channel adapter before the dispatcher starts."""
+        if channel not in {"telegram", "email", "slack", "discord", "webhook"}:
+            raise ValueError("Only external notification channels accept adapters.")
+        self._adapters[channel] = adapter
+
     def register_setup_probe(self, registry: Any) -> None:
         """Register U21's actual in-app readiness check with the existing setup registry."""
         from red2pr_control.operations.setup_wizard import SetupStepProbeResult

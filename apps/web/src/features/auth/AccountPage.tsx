@@ -19,6 +19,7 @@ import {
   type AuthProblemSummary,
 } from "./authHelpers";
 import { StepUpDialog } from "./StepUpDialog";
+import { TelegramLinkCard } from "./TelegramLinkCard";
 
 interface SessionTableRow extends Record<string, unknown> {
   readonly id: string;
@@ -615,21 +616,10 @@ export function AccountPage(): React.JSX.Element {
         ) : null}
       </section>
 
-      <section
-        className="red2pr-surface red2pr-card-section"
-        aria-labelledby="account-telegram-heading"
-      >
-        <div className="red2pr-card-header">
-          <h2 id="account-telegram-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
-            {t("account.telegramTitle")}
-          </h2>
-          <span className="red2pr-badge-pill red2pr-tone-neutral">
-            <StatusGlyph kind="info" />
-            <span>{t("account.telegramNotConfiguredBadge")}</span>
-          </span>
-        </div>
-        <p className="red2pr-field-hint">{t("account.telegramNotConfiguredDesc")}</p>
-      </section>
+      <TelegramLinkCard
+        link={me.telegram_link ?? { status: "not_configured" }}
+        requireStepUpThen={(action) => requireStepUpThen(me.step_up_valid_until, action)}
+      />
 
       <section
         className="red2pr-surface red2pr-card-section"
