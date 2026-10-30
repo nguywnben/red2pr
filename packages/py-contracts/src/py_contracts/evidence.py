@@ -22,10 +22,12 @@ from py_contracts.integrations import (
 from py_contracts.primitives import (
     BoundedName,
     BoundedText,
+    BoundedUrl,
     CurrencyCode,
     InstanceResourceBase,
     InternalId,
     Money,
+    MoneyAmount,
     OpaqueProviderId,
     Sha256Digest,
     StrictContractModel,
@@ -168,6 +170,66 @@ class ReportExportRequest(StrictContractModel):
         if self.range_end - self.range_start > timedelta(days=366):
             raise ValueError("Export time range must not exceed 366 days (A-17)")
         return self
+
+
+class AnalyticsFunnelStage(StrictContractModel):
+    """One explicit repair funnel stage with its authoritative denominator."""
+
+    key: BoundedName
+    value: Annotated[StrictInt, Field(ge=0)]
+    numerator: Annotated[StrictInt, Field(ge=0)] | None = None
+    denominator: Annotated[StrictInt, Field(ge=0)] | None = None
+
+
+class AnalyticsCostSummary(StrictContractModel):
+    """Exact cost ledger summary; unknown billing is kept explicit."""
+
+    currency: CurrencyCode
+    settled: MoneyAmount
+    estimated_unsettled: MoneyAmount
+    total: MoneyAmount
+    unknown_rows: Annotated[StrictInt, Field(ge=0)]
+    usage_rows: Annotated[StrictInt, Field(ge=0)]
+
+
+class WorkspaceAnalyticsResponse(StrictContractModel):
+    """A-17 workspace-scoped analytics projection with source watermark."""
+
+    workspace_id: InternalId
+    range_start: UtcTimestamp
+    range_end: UtcTimestamp
+    repository_count: Annotated[StrictInt, Field(ge=0)]
+    funnel: Annotated[list[AnalyticsFunnelStage], Field(min_length=8, max_length=8)]
+    local_success_count: Annotated[StrictInt, Field(ge=0)]
+    remote_success_count: Annotated[StrictInt, Field(ge=0)]
+    unknown_count: Annotated[StrictInt, Field(ge=0)]
+    pending_count: Annotated[StrictInt, Field(ge=0)]
+    abstained_count: Annotated[StrictInt, Field(ge=0)]
+    costs: list[AnalyticsCostSummary]
+    watermark: UtcTimestamp
+
+
+class WorkspaceUsageResponse(StrictContractModel):
+    """A-17 scoped model usage cost ledger summary with source watermark."""
+
+    workspace_id: InternalId
+    range_start: UtcTimestamp
+    range_end: UtcTimestamp
+    costs: list[AnalyticsCostSummary]
+    watermark: UtcTimestamp
+
+
+class ReportExportReceipt(StrictContractModel):
+    """Receipt for encrypted bounded report export and its authorized download route."""
+
+    export_id: InternalId
+    kind: ReportKind
+    format: ReportFormat
+    digest: Sha256Digest
+    size_bytes: Annotated[StrictInt, Field(ge=0)]
+    expires_at: UtcTimestamp
+    download_path: BoundedUrl
+    reused: StrictBool = False
 
 
 # S-22 Proof & Audit Manifest (docs/10_SANDBOX_REPRODUCTION.md canonical fidelity grades)

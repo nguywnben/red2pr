@@ -1,0 +1,46 @@
+.analytics-funnel-bars {
+  display: grid;
+  gap: 0.65rem;
+  list-style: none;
+  padding: 0;
+}
+
+.analytics-funnel-bars li {
+  align-items: center;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(9rem, 1.2fr) minmax(3rem, 3fr) auto;
+}
+
+.analytics-funnel-bar {
+  background: var(--red2pr-chart-bar-primary);
+  border-radius: 0.25rem;
+  display: block;
+  height: 0.7rem;
+  min-width: 0.25rem;
+}
+
+.analytics-summary-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
+.analytics-summary-grid div {
+  background: var(--red2pr-bg-subtle);
+  border: 1px solid var(--red2pr-border-subtle);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.analytics-summary-grid dd {
+  font-size: 1.4rem;
+  font-weight: 650;
+  margin: 0.25rem 0 0;
+}
+
+@media (max-width: 40rem) {
+  .analytics-funnel-bars li {
+    grid-template-columns: minmax(6rem, 1fr) minmax(2rem, 2fr) auto;
+  }
+}

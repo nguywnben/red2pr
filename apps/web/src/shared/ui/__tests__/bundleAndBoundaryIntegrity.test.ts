@@ -90,14 +90,18 @@ describe("U04 Bundle Security, Astryx Isolation & AGENTS.md Integrity (FE-05, SE
       const mapFiles = distFiles.filter((filePath) => filePath.endsWith(".map"));
       expect(mapFiles).toEqual([]);
 
-      // NFR-11: initial gzipped JS bundle must stay well below 350 KiB
-      const jsFiles = distFiles.filter((filePath) => filePath.endsWith(".js"));
-      const totalGzipJsBytes = jsFiles.reduce(
-        (acc, filePath) => acc + gzipSync(readFileSync(filePath)).byteLength,
-        0,
+      // NFR-11 measures JS fetched eagerly from index.html; lazy route chunks are excluded.
+      const html = readFileSync(join(distDir, "index.html"), "utf8");
+      const initialJsAssets = new Set(
+        [...html.matchAll(/(?:src|href)="([^"]+\.js)"/g)].map((match) => match[1]!),
       );
-      expect(totalGzipJsBytes).toBeGreaterThan(0);
-      expect(totalGzipJsBytes).toBeLessThan(350 * 1024);
+      const initialGzipJsBytes = [...initialJsAssets].reduce((acc, asset) => {
+        const filePath = join(distDir, asset.replace(/^\//, ""));
+        expect(existsSync(filePath)).toBe(true);
+        return acc + gzipSync(readFileSync(filePath)).byteLength;
+      }, 0);
+      expect(initialGzipJsBytes).toBeGreaterThan(0);
+      expect(initialGzipJsBytes).toBeLessThan(350 * 1024);
     }
   });
 });

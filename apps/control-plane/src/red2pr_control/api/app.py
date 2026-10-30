@@ -35,6 +35,8 @@ from py_contracts import (
     AgentProfileUpdateRequest,
     AgentProfileUpdateResponse,
     AgentStepRecord,
+    AnalyticsCostSummary,
+    AnalyticsFunnelStage,
     ApiToken,
     ApiTokenCreateRequest,
     ApiTokenCreateResponse,
@@ -146,6 +148,7 @@ from py_contracts import (
     RepairActionRequest,
     RepairCreateRequest,
     RepairPageResponse,
+    ReportExportReceipt,
     ReportExportRequest,
     Repository,
     RepositoryAccessGrantSummary,
@@ -208,6 +211,7 @@ from py_contracts import (
     WorkflowHazardFinding,
     Workspace,
     WorkspaceAgentProfilesResponse,
+    WorkspaceAnalyticsResponse,
     WorkspaceCreateRequest,
     WorkspaceDeleteRequest,
     WorkspaceInferenceConsentCreateRequest,
@@ -219,9 +223,13 @@ from py_contracts import (
     WorkspaceQueueFairnessSummary,
     WorkspaceSandboxLeaseSummary,
     WorkspaceUpdateRequest,
+    WorkspaceUsageResponse,
     WorkspaceWorkerReadinessResponse,
     new_uuid7,
 )
+from py_contracts.crypto import KeyRing
+from red2pr_control.analytics_audit.audit_chain import ExternalCheckpointStore
+from red2pr_control.analytics_audit.router import build_analytics_router
 from red2pr_control.approvals.router import build_approvals_router
 from red2pr_control.core.errors import (
     PROBLEM_JSON_MEDIA_TYPE,
@@ -292,6 +300,8 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     Problem,
     ProblemFieldError,
     ActionReceipt,
+    AnalyticsCostSummary,
+    AnalyticsFunnelStage,
     PageParams,
     Money,
     User,
@@ -448,6 +458,8 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     ModelProbeRequest,
     ModelProbeResponse,
     WorkspaceInferenceConsentCreateRequest,
+    WorkspaceAnalyticsResponse,
+    WorkspaceUsageResponse,
     WorkspaceModelEntry,
     WorkspaceModelsConfigUpdateRequest,
     WorkspaceModelsConfigUpdateResponse,
@@ -458,6 +470,7 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     AgentProfileUpdateRequest,
     AgentProfileUpdateResponse,
     ReportExportRequest,
+    ReportExportReceipt,
     ConsentCreateRequest,
     ConsentRevokeRequest,
     ConsentRecord,
@@ -637,8 +650,14 @@ def create_app(
     notification_dispatcher: NotificationDispatcher | None = None,
     telegram_bot_service: TelegramBotService | None = None,
     notification_secret_broker: SecretBroker | None = None,
+    audit_checkpoint_store: ExternalCheckpointStore | None = None,
+    audit_checkpoint_keyring: KeyRing | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
+    if (audit_checkpoint_store is None) != (audit_checkpoint_keyring is None):
+        raise ValueError(
+            "Audit checkpoint store and verification keyring must be configured together."
+        )
     if notification_dispatcher is None and iam_service is not None:
         notification_dispatcher = NotificationDispatcher(
             session_factory=iam_service.session_factory
@@ -742,6 +761,8 @@ def create_app(
     app.state.notification_dispatcher = notification_dispatcher
     app.state.notification_secret_broker = notification_secret_broker
     app.state.telegram_bot_service = telegram_bot_service
+    app.state.audit_checkpoint_store = audit_checkpoint_store
+    app.state.audit_checkpoint_keyring = audit_checkpoint_keyring
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -774,6 +795,7 @@ def create_app(
     app.include_router(build_inference_router())
     app.include_router(build_notifications_router())
     app.include_router(build_telegram_router())
+    app.include_router(build_analytics_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:

@@ -194,6 +194,9 @@ export type NotificationTestRequest = SchemaOf<"NotificationTestRequest">;
 export type AuditRecord = SchemaOf<"AuditRecord">;
 export type ModelUsageRecord = SchemaOf<"ModelUsageRecord">;
 export type ReportExportRequest = SchemaOf<"ReportExportRequest">;
+export type ReportExportReceipt = SchemaOf<"ReportExportReceipt">;
+export type WorkspaceAnalyticsResponse = SchemaOf<"WorkspaceAnalyticsResponse">;
+export type WorkspaceUsageResponse = SchemaOf<"WorkspaceUsageResponse">;
 export type ConsentCreateRequest = SchemaOf<"ConsentCreateRequest">;
 export type ConsentRevokeRequest = SchemaOf<"ConsentRevokeRequest">;
 export type ConsentRecord = SchemaOf<"ConsentRecord">;
@@ -302,6 +305,12 @@ export interface ListWorkspaceMembersQuery {
   readonly cursor?: string | null;
   readonly limit?: number;
   readonly role?: WorkspaceRole | null;
+}
+
+export interface AnalyticsRangeQuery {
+  readonly range_start: string;
+  readonly range_end: string;
+  readonly repository_id?: string;
 }
 
 export interface ListWorkspaceInvitationsQuery {
@@ -760,6 +769,10 @@ export interface Red2PrClient {
   performRepairAction(ws: string, repairId: string, body: RepairActionRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<ActionReceipt>>;
   listWorkspaceApprovals(ws: string, query?: { readonly status?: string; readonly repository_id?: string; readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<ApprovalPageResponse>>;
   listWorkspaceNotifications(ws: string, query?: { readonly unread?: boolean; readonly severity?: string; readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationInboxPage>>;
+  getWorkspaceAnalytics(ws: string, query: AnalyticsRangeQuery, options?: RequestCallOptions): Promise<ApiEnvelope<WorkspaceAnalyticsResponse>>;
+  getWorkspaceUsage(ws: string, query: AnalyticsRangeQuery, options?: RequestCallOptions): Promise<ApiEnvelope<WorkspaceUsageResponse>>;
+  createWorkspaceReportExport(ws: string, body: ReportExportRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<ReportExportReceipt>>;
+  downloadWorkspaceReportExport(ws: string, exportId: string, options?: RequestCallOptions): Promise<{ readonly blob: Blob; readonly filename: string | null; readonly correlationId: string | null }>;
   getWorkspaceNotification(ws: string, notificationId: string, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationInboxItem>>;
   updateWorkspaceNotificationReadState(ws: string, notificationId: string, body: NotificationReadPatchRequest, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationInboxItem>>;
   listNotificationDestinations(ws: string, query?: { readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationDestinationPage>>;
@@ -1350,6 +1363,28 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       callJson("GET", "/api/v1/workspaces/{ws}/approvals", { path: { ws }, query, options }),
     listWorkspaceNotifications: (ws, query, options) =>
       callJson("GET", "/api/v1/workspaces/{ws}/notifications", { path: { ws }, query, options }),
+    getWorkspaceAnalytics: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/analytics", { path: { ws }, query, options }),
+    getWorkspaceUsage: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/usage", { path: { ws }, query, options }),
+    createWorkspaceReportExport: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/exports", { path: { ws }, body, options }),
+    downloadWorkspaceReportExport: async (ws, exportId, options) => {
+      const result = await raw.GET("/api/v1/workspaces/{ws}/exports/{export_id}/download", {
+        params: { path: { ws, export_id: exportId } },
+        parseAs: "arrayBuffer",
+        headers: buildOptionalHeaders(options),
+        signal: options?.signal,
+      });
+      if (result.data === undefined) {
+        throw new Red2PrApiError(coerceProblem(result.error, result.response), parseRetryAfter(result.response));
+      }
+      return {
+        blob: new Blob([result.data]),
+        filename: parseAttachmentFilename(result.response),
+        correlationId: result.response.headers.get("X-Correlation-Id"),
+      };
+    },
     getWorkspaceNotification: (ws, notificationId, options) =>
       callJson("GET", "/api/v1/workspaces/{ws}/notifications/{notification_id}", { path: { ws, notification_id: notificationId }, options }),
     updateWorkspaceNotificationReadState: (ws, notificationId, body, options) =>

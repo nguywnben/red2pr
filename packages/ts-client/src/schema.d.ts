@@ -624,6 +624,23 @@ export interface paths {
         patch: operations["updateWorkspaceAgentProfile"];
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Analytics */
+        get: operations["getWorkspaceAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/api-tokens": {
         parameters: {
             query?: never;
@@ -771,6 +788,40 @@ export interface paths {
         };
         /** Stream workspace-scoped S-19 events over cookie-authenticated SSE (A-21) */
         get: operations["streamWorkspaceEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Export */
+        post: operations["createWorkspaceReportExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/exports/{export_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Export */
+        get: operations["downloadWorkspaceReportExport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1589,6 +1640,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Usage */
+        get: operations["getWorkspaceUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/workers/readiness": {
         parameters: {
             query?: never;
@@ -1813,6 +1881,38 @@ export interface components {
             version: number;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /**
+         * AnalyticsCostSummary
+         * @description Exact cost ledger summary; unknown billing is kept explicit.
+         */
+        AnalyticsCostSummary: {
+            /** Currency */
+            currency: string;
+            /** Estimated Unsettled */
+            estimated_unsettled: string;
+            /** Settled */
+            settled: string;
+            /** Total */
+            total: string;
+            /** Unknown Rows */
+            unknown_rows: number;
+            /** Usage Rows */
+            usage_rows: number;
+        };
+        /**
+         * AnalyticsFunnelStage
+         * @description One explicit repair funnel stage with its authoritative denominator.
+         */
+        AnalyticsFunnelStage: {
+            /** Denominator */
+            denominator?: number | null;
+            /** Key */
+            key: string;
+            /** Numerator */
+            numerator?: number | null;
+            /** Value */
+            value: number;
         };
         /**
          * ApiToken
@@ -5365,6 +5465,37 @@ export interface components {
             requested_by: string;
         };
         /**
+         * ReportExportReceipt
+         * @description Receipt for encrypted bounded report export and its authorized download route.
+         */
+        ReportExportReceipt: {
+            /** Digest */
+            digest: string;
+            /** Download Path */
+            download_path: string;
+            /** Expires At */
+            expires_at: string;
+            /** Export Id */
+            export_id: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "csv" | "json";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "funnel" | "usage" | "audit" | "proof_summary";
+            /**
+             * Reused
+             * @default false
+             */
+            reused: boolean;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /**
          * ReportExportRequest
          * @description S-17 / A-17 bounded analytics, usage, or audit export request (<= 366 days).
          */
@@ -5383,9 +5514,15 @@ export interface components {
              * @enum {string}
              */
             kind: "funnel" | "usage" | "audit" | "proof_summary";
-            /** Range End */
+            /**
+             * Range End
+             * Format: date-time
+             */
             range_end: string;
-            /** Range Start */
+            /**
+             * Range Start
+             * Format: date-time
+             */
             range_start: string;
         };
         /**
@@ -7581,6 +7718,36 @@ export interface components {
             workspace_id: string;
         };
         /**
+         * WorkspaceAnalyticsResponse
+         * @description A-17 workspace-scoped analytics projection with source watermark.
+         */
+        WorkspaceAnalyticsResponse: {
+            /** Abstained Count */
+            abstained_count: number;
+            /** Costs */
+            costs: components["schemas"]["AnalyticsCostSummary"][];
+            /** Funnel */
+            funnel: components["schemas"]["AnalyticsFunnelStage"][];
+            /** Local Success Count */
+            local_success_count: number;
+            /** Pending Count */
+            pending_count: number;
+            /** Range End */
+            range_end: string;
+            /** Range Start */
+            range_start: string;
+            /** Remote Success Count */
+            remote_success_count: number;
+            /** Repository Count */
+            repository_count: number;
+            /** Unknown Count */
+            unknown_count: number;
+            /** Watermark */
+            watermark: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
          * WorkspaceCreateRequest
          * @description A-04 owner-only workspace creation request.
          */
@@ -7810,6 +7977,22 @@ export interface components {
             name?: string | null;
             /** Paused */
             paused?: boolean | null;
+        };
+        /**
+         * WorkspaceUsageResponse
+         * @description A-17 scoped model usage cost ledger summary with source watermark.
+         */
+        WorkspaceUsageResponse: {
+            /** Costs */
+            costs: components["schemas"]["AnalyticsCostSummary"][];
+            /** Range End */
+            range_end: string;
+            /** Range Start */
+            range_start: string;
+            /** Watermark */
+            watermark: string;
+            /** Workspace Id */
+            workspace_id: string;
         };
         /**
          * WorkspaceWorkerReadinessResponse
@@ -12427,6 +12610,41 @@ export interface operations {
             };
         };
     };
+    getWorkspaceAnalytics: {
+        parameters: {
+            query: {
+                range_start: string;
+                range_end: string;
+                repository_id?: string | null;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceAnalyticsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_tokens_api_v1_workspaces__ws__api_tokens_get: {
         parameters: {
             query?: {
@@ -13248,6 +13466,75 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    createWorkspaceReportExport: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    downloadWorkspaceReportExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -18527,6 +18814,41 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getWorkspaceUsage: {
+        parameters: {
+            query: {
+                range_start: string;
+                range_end: string;
+                repository_id?: string | null;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceUsageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

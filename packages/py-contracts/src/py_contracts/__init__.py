@@ -45,6 +45,8 @@ from py_contracts.crypto import (
 )
 from py_contracts.events import EventEnvelope, EventPayload, EventType
 from py_contracts.evidence import (
+    AnalyticsCostSummary,
+    AnalyticsFunnelStage,
     Artifact,
     ArtifactAccessClass,
     ArtifactRecord,
@@ -55,7 +57,10 @@ from py_contracts.evidence import (
     ModelToolProvenance,
     ModelUsageRecord,
     RegressionSuiteSummary,
+    ReportExportReceipt,
     ReportExportRequest,
+    WorkspaceAnalyticsResponse,
+    WorkspaceUsageResponse,
 )
 from py_contracts.iam import (
     AuthStrength,
@@ -479,6 +484,8 @@ __all__ = [
     "AgentStepRecord",
     "AgentStepStatus",
     "AgentToolName",
+    "AnalyticsCostSummary",
+    "AnalyticsFunnelStage",
     "ApiToken",
     "ApiTokenCreateRequest",
     "ApiTokenCreateResponse",
@@ -681,6 +688,7 @@ __all__ = [
     "RepairPageResponse",
     "RepairState",
     "RepairSuspension",
+    "ReportExportReceipt",
     "ReportExportRequest",
     "Repository",
     "RepositoryAccessGrantSummary",
@@ -806,6 +814,7 @@ __all__ = [
     "WorkflowHazardStatus",
     "Workspace",
     "WorkspaceAgentProfilesResponse",
+    "WorkspaceAnalyticsResponse",
     "WorkspaceCreateRequest",
     "WorkspaceDeleteRequest",
     "WorkspaceInferenceConsentCreateRequest",
@@ -821,6 +830,7 @@ __all__ = [
     "WorkspaceSlugStr",
     "WorkspaceStatus",
     "WorkspaceUpdateRequest",
+    "WorkspaceUsageResponse",
     "WorkspaceWorkerReadinessResponse",
     "build_s20_tool_parameter_schema",
     "build_worker_spiffe_uri",

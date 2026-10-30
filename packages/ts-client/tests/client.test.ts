@@ -2034,4 +2034,57 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(calls[4]?.method, "PUT");
     assert.deepEqual(calls[4]?.body, { secret_value: "write-only" });
   });
+
+  it("serializes U24 analytics, usage, idempotent export, and binary download", async () => {
+    const calls: { method: string; path: string; query: string; idem: string | null; body: unknown }[] = [];
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u24-client",
+      fetch: async (request: Request) => {
+        const url = new URL(request.url);
+        calls.push({
+          method: request.method,
+          path: url.pathname,
+          query: url.search,
+          idem: request.headers.get("Idempotency-Key"),
+          body: request.method === "POST" ? await request.json() : null,
+        });
+        if (url.pathname.endsWith("/download")) {
+          return new Response(new TextEncoder().encode('"stage"\r\n"ingested"\r\n'), {
+            headers: {
+              "Content-Type": "text/csv; charset=utf-8",
+              "Content-Disposition": 'attachment; filename="funnel.csv"',
+            },
+          });
+        }
+        return new Response(JSON.stringify({
+          export_id: "0196f000-0000-7000-8000-000000000907",
+          kind: "funnel",
+          format: "csv",
+          digest: "a".repeat(64),
+          size_bytes: 20,
+          expires_at: "2026-10-31T09:00:00Z",
+          download_path: "/api/v1/workspaces/acme/exports/0196f000-0000-7000-8000-000000000907/download",
+          reused: false,
+        }), { status: request.method === "POST" ? 201 : 200, headers: { "Content-Type": "application/json" } });
+      },
+    });
+    const range = { range_start: "2026-10-01T00:00:00Z", range_end: "2026-10-30T23:59:59Z" };
+    await client.getWorkspaceAnalytics("acme", range);
+    await client.getWorkspaceUsage("acme", range);
+    await client.createWorkspaceReportExport(
+      "acme",
+      { ...range, kind: "funnel", format: "csv", filters: {} },
+      { idempotencyKey: "0196f000-0000-7000-8000-000000000908" },
+    );
+    const download = await client.downloadWorkspaceReportExport("acme", "0196f000-0000-7000-8000-000000000907");
+    assert.equal(calls[0]?.path, "/api/v1/workspaces/acme/analytics");
+    assert.equal(new URLSearchParams(calls[0]?.query).get("range_start"), range.range_start);
+    assert.equal(calls[1]?.path, "/api/v1/workspaces/acme/usage");
+    assert.equal(calls[2]?.idem, "0196f000-0000-7000-8000-000000000908");
+    assert.deepEqual(calls[2]?.body, { ...range, kind: "funnel", format: "csv", filters: {} });
+    assert.equal(calls[3]?.path, "/api/v1/workspaces/acme/exports/0196f000-0000-7000-8000-000000000907/download");
+    assert.equal(download.filename, "funnel.csv");
+    assert.equal(await download.blob.text(), '"stage"\r\n"ingested"\r\n');
+  });
 });

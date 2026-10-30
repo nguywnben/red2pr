@@ -4697,3 +4697,71 @@ class TelegramUpdateModel(Base):
     processing_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+class ReportingProjectionModel(Base):
+    """Deterministically rebuilt, repository-scoped analytics snapshot (U24)."""
+
+    __tablename__ = "reporting_projections"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "projection_key", name="uq_reporting_projection_key"),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        CheckConstraint("range_end >= range_start", name="reporting_projection_range_valid"),
+        Index("ix_reporting_projection_scope", "workspace_id", "scope_digest", "range_end"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    projection_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    scope_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    range_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    range_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    watermark: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    rebuilt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ReportExportModel(Base):
+    """Encrypted, expiring export object metadata; bytes remain in encrypted artifact storage."""
+
+    __tablename__ = "report_exports"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_report_exports_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "created_by_user_id",
+            "idempotency_key",
+            name="uq_report_exports_idempotency",
+        ),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["created_by_user_id"], ["users.id"], ondelete="RESTRICT"),
+        CheckConstraint(
+            "kind IN ('funnel','usage','audit','proof_summary')", name="report_export_kind_valid"
+        ),
+        CheckConstraint(
+            "created_by_role IN ('admin','maintainer','reviewer','viewer','auditor')",
+            name="report_export_creator_role_valid",
+        ),
+        CheckConstraint("format IN ('csv','json')", name="report_export_format_valid"),
+        CheckConstraint("expires_at > created_at", name="report_export_expiry_valid"),
+        CheckConstraint("length(digest) = 64", name="report_export_digest_valid"),
+        Index("ix_report_exports_expiry", "workspace_id", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    created_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    created_by_role: Mapped[str] = mapped_column(String(24), nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    format: Mapped[str] = mapped_column(String(8), nullable=False)
+    range_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    range_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    repository_ids_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    scope_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    storage_ref: Mapped[str] = mapped_column(String(1024), nullable=False)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

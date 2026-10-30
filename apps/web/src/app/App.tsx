@@ -1,6 +1,15 @@
 import { Red2PrApiError, type Workspace } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -10,31 +19,29 @@ import {
   useNavigate,
   useParams,
 } from "react-router";
-import {
-  AccountPage,
-  LoginPage,
-  StepUpDialog,
-  extractAuthProblemSummary,
-  isStepUpValid,
-  type AuthProblemSummary,
-} from "../features/auth";
-import {
-  GitHubCallbackRedirectRoute,
-  IntegrationsPage,
-} from "../features/integrations";
-import { AcceptInviteDialog, MembersPage } from "../features/members";
-import { AgentsPage } from "../features/agents";
-import { ModelsPage } from "../features/models";
-import { PipelinesPage } from "../features/pipelines";
-import { QueuesPage } from "../features/queues";
-import { RepositoriesPage, RepositoryDetailPage } from "../features/repositories";
-import { SetupWizardPage } from "../features/setup";
-import { WorkersPage } from "../features/workers";
-import { RepairDetailPage, RepairsListPage } from "../features/repairs";
-import { ApprovalsInboxPage } from "../features/approvals";
-import { TelegramIntentConfirmPage } from "../features/approvals/TelegramIntentConfirmPage";
-import { PullRequestsPage } from "../features/prs";
-import { NotificationsPage } from "../features/notifications";
+import { StepUpDialog, extractAuthProblemSummary, isStepUpValid, type AuthProblemSummary } from "../features/auth";
+const AccountPage = lazy(() => import("../features/auth").then((module) => ({ default: module.AccountPage })));
+const LoginPage = lazy(() => import("../features/auth").then((module) => ({ default: module.LoginPage })));
+const IntegrationsPage = lazy(() => import("../features/integrations").then((module) => ({ default: module.IntegrationsPage })));
+const GitHubCallbackRedirectRoute = lazy(() => import("../features/integrations").then((module) => ({ default: module.GitHubCallbackRedirectRoute })));
+const AcceptInviteDialog = lazy(() => import("../features/members").then((module) => ({ default: module.AcceptInviteDialog })));
+const MembersPage = lazy(() => import("../features/members").then((module) => ({ default: module.MembersPage })));
+const AgentsPage = lazy(() => import("../features/agents").then((module) => ({ default: module.AgentsPage })));
+const ModelsPage = lazy(() => import("../features/models").then((module) => ({ default: module.ModelsPage })));
+const PipelinesPage = lazy(() => import("../features/pipelines").then((module) => ({ default: module.PipelinesPage })));
+const QueuesPage = lazy(() => import("../features/queues").then((module) => ({ default: module.QueuesPage })));
+const RepositoriesPage = lazy(() => import("../features/repositories").then((module) => ({ default: module.RepositoriesPage })));
+const RepositoryDetailPage = lazy(() => import("../features/repositories").then((module) => ({ default: module.RepositoryDetailPage })));
+const SetupWizardPage = lazy(() => import("../features/setup").then((module) => ({ default: module.SetupWizardPage })));
+const WorkersPage = lazy(() => import("../features/workers").then((module) => ({ default: module.WorkersPage })));
+const RepairDetailPage = lazy(() => import("../features/repairs").then((module) => ({ default: module.RepairDetailPage })));
+const RepairsListPage = lazy(() => import("../features/repairs").then((module) => ({ default: module.RepairsListPage })));
+const ApprovalsInboxPage = lazy(() => import("../features/approvals").then((module) => ({ default: module.ApprovalsInboxPage })));
+const TelegramIntentConfirmPage = lazy(() => import("../features/approvals/TelegramIntentConfirmPage").then((module) => ({ default: module.TelegramIntentConfirmPage })));
+const PullRequestsPage = lazy(() => import("../features/prs").then((module) => ({ default: module.PullRequestsPage })));
+const NotificationsPage = lazy(() => import("../features/notifications").then((module) => ({ default: module.NotificationsPage })));
+const AnalyticsPage = lazy(() => import("../features/analytics/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
+const OverviewPage = lazy(() => import("../features/overview/OverviewPage").then((module) => ({ default: module.OverviewPage })));
 import {
   ApiClientProvider,
   invalidateWorkspaceQueries,
@@ -77,6 +84,8 @@ function WorkspaceSectionOutlet({
   const { t } = useI18n();
   return (
     <Routes>
+      <Route path="overview" element={<OverviewPage workspace={workspace} me={meData} />} />
+      <Route path="analytics" element={<AnalyticsPage workspace={workspace} me={meData} />} />
       <Route path="members" element={<MembersPage workspace={workspace} me={meData} />} />
       <Route path="pipelines" element={<PipelinesPage workspace={workspace} me={meData} />} />
       <Route path="failures" element={<Navigate to="../pipelines" replace />} />
@@ -594,17 +603,19 @@ export function AdminRouteShell(): React.JSX.Element {
 
 export function AppRoutes(): React.JSX.Element {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/setup" element={<SetupWizardPage />} />
-      <Route path="/setup/*" element={<SetupWizardPage />} />
-      <Route path="/integrations/github/callback" element={<GitHubCallbackRedirectRoute />} />
-      <Route path="/account" element={<AccountRouteShell />} />
-      <Route path="/telegram/confirm" element={<TelegramIntentConfirmPage />} />
-      <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
-      <Route path="/admin/*" element={<AdminRouteShell />} />
-      <Route path="*" element={<Navigate to="/w/default/overview" replace />} />
-    </Routes>
+    <Suspense fallback={<StateView state="loading" />}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/setup" element={<SetupWizardPage />} />
+        <Route path="/setup/*" element={<SetupWizardPage />} />
+        <Route path="/integrations/github/callback" element={<GitHubCallbackRedirectRoute />} />
+        <Route path="/account" element={<AccountRouteShell />} />
+        <Route path="/telegram/confirm" element={<TelegramIntentConfirmPage />} />
+        <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
+        <Route path="/admin/*" element={<AdminRouteShell />} />
+        <Route path="*" element={<Navigate to="/w/default/overview" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

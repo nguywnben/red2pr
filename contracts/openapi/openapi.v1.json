@@ -671,6 +671,96 @@
         "title": "AgentStepRecord",
         "type": "object"
       },
+      "AnalyticsCostSummary": {
+        "additionalProperties": false,
+        "description": "Exact cost ledger summary; unknown billing is kept explicit.",
+        "properties": {
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "estimated_unsettled": {
+            "title": "Estimated Unsettled",
+            "type": "string"
+          },
+          "settled": {
+            "title": "Settled",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "string"
+          },
+          "unknown_rows": {
+            "minimum": 0.0,
+            "title": "Unknown Rows",
+            "type": "integer"
+          },
+          "usage_rows": {
+            "minimum": 0.0,
+            "title": "Usage Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "currency",
+          "settled",
+          "estimated_unsettled",
+          "total",
+          "unknown_rows",
+          "usage_rows"
+        ],
+        "title": "AnalyticsCostSummary",
+        "type": "object"
+      },
+      "AnalyticsFunnelStage": {
+        "additionalProperties": false,
+        "description": "One explicit repair funnel stage with its authoritative denominator.",
+        "properties": {
+          "denominator": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "key": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          },
+          "numerator": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numerator"
+          },
+          "value": {
+            "minimum": 0.0,
+            "title": "Value",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "AnalyticsFunnelStage",
+        "type": "object"
+      },
       "ApiToken": {
         "additionalProperties": false,
         "description": "Write-only A-19 token metadata; the raw secret is never part of this DTO.",
@@ -10820,6 +10910,70 @@
         "title": "RepairSuspension",
         "type": "object"
       },
+      "ReportExportReceipt": {
+        "additionalProperties": false,
+        "description": "Receipt for encrypted bounded report export and its authorized download route.",
+        "properties": {
+          "digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "download_path": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Download Path",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "export_id": {
+            "title": "Export Id",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "csv",
+              "json"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "funnel",
+              "usage",
+              "audit",
+              "proof_summary"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reused": {
+            "default": false,
+            "title": "Reused",
+            "type": "boolean"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "export_id",
+          "kind",
+          "format",
+          "digest",
+          "size_bytes",
+          "expires_at",
+          "download_path"
+        ],
+        "title": "ReportExportReceipt",
+        "type": "object"
+      },
       "ReportExportRequest": {
         "additionalProperties": false,
         "description": "S-17 / A-17 bounded analytics, usage, or audit export request (<= 366 days).",
@@ -10855,10 +11009,12 @@
             "type": "string"
           },
           "range_end": {
+            "format": "date-time",
             "title": "Range End",
             "type": "string"
           },
           "range_start": {
+            "format": "date-time",
             "title": "Range Start",
             "type": "string"
           }
@@ -17093,6 +17249,90 @@
         "title": "WorkspaceAgentProfilesResponse",
         "type": "object"
       },
+      "WorkspaceAnalyticsResponse": {
+        "additionalProperties": false,
+        "description": "A-17 workspace-scoped analytics projection with source watermark.",
+        "properties": {
+          "abstained_count": {
+            "minimum": 0.0,
+            "title": "Abstained Count",
+            "type": "integer"
+          },
+          "costs": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsCostSummary"
+            },
+            "title": "Costs",
+            "type": "array"
+          },
+          "funnel": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsFunnelStage"
+            },
+            "maxItems": 8,
+            "minItems": 8,
+            "title": "Funnel",
+            "type": "array"
+          },
+          "local_success_count": {
+            "minimum": 0.0,
+            "title": "Local Success Count",
+            "type": "integer"
+          },
+          "pending_count": {
+            "minimum": 0.0,
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "range_end": {
+            "title": "Range End",
+            "type": "string"
+          },
+          "range_start": {
+            "title": "Range Start",
+            "type": "string"
+          },
+          "remote_success_count": {
+            "minimum": 0.0,
+            "title": "Remote Success Count",
+            "type": "integer"
+          },
+          "repository_count": {
+            "minimum": 0.0,
+            "title": "Repository Count",
+            "type": "integer"
+          },
+          "unknown_count": {
+            "minimum": 0.0,
+            "title": "Unknown Count",
+            "type": "integer"
+          },
+          "watermark": {
+            "title": "Watermark",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "range_start",
+          "range_end",
+          "repository_count",
+          "funnel",
+          "local_success_count",
+          "remote_success_count",
+          "unknown_count",
+          "pending_count",
+          "abstained_count",
+          "costs",
+          "watermark"
+        ],
+        "title": "WorkspaceAnalyticsResponse",
+        "type": "object"
+      },
       "WorkspaceCreateRequest": {
         "additionalProperties": false,
         "description": "A-04 owner-only workspace creation request.",
@@ -17753,6 +17993,44 @@
           }
         },
         "title": "WorkspaceUpdateRequest",
+        "type": "object"
+      },
+      "WorkspaceUsageResponse": {
+        "additionalProperties": false,
+        "description": "A-17 scoped model usage cost ledger summary with source watermark.",
+        "properties": {
+          "costs": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsCostSummary"
+            },
+            "title": "Costs",
+            "type": "array"
+          },
+          "range_end": {
+            "title": "Range End",
+            "type": "string"
+          },
+          "range_start": {
+            "title": "Range Start",
+            "type": "string"
+          },
+          "watermark": {
+            "title": "Watermark",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "range_start",
+          "range_end",
+          "costs",
+          "watermark"
+        ],
+        "title": "WorkspaceUsageResponse",
         "type": "object"
       },
       "WorkspaceWorkerReadinessResponse": {
@@ -23437,6 +23715,87 @@
         ]
       }
     },
+    "/api/v1/workspaces/{ws}/analytics": {
+      "get": {
+        "operationId": "getWorkspaceAnalytics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range_start",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Range Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range_end",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Range End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "repository_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 36,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceAnalyticsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Analytics",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/workspaces/{ws}/api-tokens": {
       "get": {
         "operationId": "list_tokens_api_v1_workspaces__ws__api_tokens_get",
@@ -24674,6 +25033,133 @@
         "summary": "Stream workspace-scoped S-19 events over cookie-authenticated SSE (A-21)",
         "tags": [
           "events"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/exports": {
+      "post": {
+        "operationId": "createWorkspaceReportExport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportExportReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Export",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/exports/{export_id}/download": {
+      "get": {
+        "operationId": "downloadWorkspaceReportExport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 36,
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Export",
+        "tags": [
+          "analytics"
         ]
       }
     },
@@ -32584,6 +33070,87 @@
         "summary": "Cancel, requeue, or reconcile a workspace task job (A-14)",
         "tags": [
           "queues"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/usage": {
+      "get": {
+        "operationId": "getWorkspaceUsage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range_start",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Range Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range_end",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Range End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "repository_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 36,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceUsageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Usage",
+        "tags": [
+          "analytics"
         ]
       }
     },

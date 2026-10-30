@@ -400,7 +400,7 @@ describe("U12 UI-S04 & UI-S05 Repository Catalog, Detail 7-Tab & Policy Dry-Run 
     });
 
     await screen.findByTestId("repositories-page");
-    expect(screen.getByTestId("repositories-partial-sync-banner")).toBeInTheDocument();
+    expect(await screen.findByTestId("repositories-partial-sync-banner")).toBeInTheDocument();
 
     // SEC-040: bidi U+202E replaced with [BIDI-STRIPPED] and ESC [31m stripped from rendered text
     const cleanRepoLink = await screen.findByRole("link", {
