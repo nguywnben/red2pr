@@ -818,6 +818,7 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     const connId = "019a2800-0000-7000-8000-000000000202";
     const wsId = "019a2800-0000-7000-8000-000000000001";
     const seenHeaders: Array<{ path: string; method: string; ifMatch: string | null; csrf: string | null }> = [];
+    const capturedPolicyBody: { value?: { policy?: { required_check_names?: string[] } } } = {};
 
     const sampleRepo = {
       id: repoId,
@@ -855,6 +856,7 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
       file_allowlist: ["src/**"],
       file_denylist: ["vendor/**"],
       sensitive_rules: ["auth/**"],
+      required_check_names: ["build", "unit-tests"],
       allow_test_edits: false,
       allow_config_edits: false,
       max_attempts: 3,
@@ -954,6 +956,9 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
           request.method === "PATCH" &&
           url.pathname === `/api/v1/workspaces/acme/repositories/${repoId}/policy`
         ) {
+          capturedPolicyBody.value = await request.json() as {
+            policy?: { required_check_names?: string[] };
+          };
           return new Response(JSON.stringify({ ...samplePolicyState, current_revision: 3 }), {
             status: 200,
             headers: { "Content-Type": "application/json", ETag: '"v3"' },
@@ -1020,6 +1025,7 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(updatedPolicy.etag, '"v3"');
     assert.equal(seenHeaders[1]?.ifMatch, '"v2"');
     assert.equal(seenHeaders[1]?.csrf, "csrf-u12-token");
+    assert.deepEqual(capturedPolicyBody.value?.policy?.required_check_names, ["build", "unit-tests"]);
 
     const preview = await client.previewRepositoryPolicy("acme", repoId, {
       mode: "approval",
@@ -1828,5 +1834,61 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(calls[4]?.idem, "0196f000-0000-7000-8000-000000000903");
     assert.equal(calls[5]?.path, "/api/v1/workspaces/acme/approvals");
     assert.equal(calls[6]?.idem, "0196f000-0000-7000-8000-000000000904");
+  });
+
+  it("serializes U20 publication reads and idempotent reconciliation", async () => {
+    const calls: { method: string; path: string; idem: string | null; body: unknown }[] = [];
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u20-client",
+      fetch: async (request: Request) => {
+        calls.push({
+          method: request.method,
+          path: new URL(request.url).pathname,
+          idem: request.headers.get("Idempotency-Key"),
+          body: request.method === "POST" ? await request.json() : null,
+        });
+        const result = request.method === "POST"
+          ? {
+              operation_id: "0196f000-0000-7000-8000-000000000905",
+              resource_id: "0196f000-0000-7000-8000-000000000801",
+              state: "succeeded",
+              correlation_id: "corr-u20-client",
+              status_url: "/api/v1/workspaces/acme/publications/0196f000-0000-7000-8000-000000000801",
+              result_id: "0196f000-0000-7000-8000-000000000801",
+            }
+          : {
+          publication: {
+            id: "0196f000-0000-7000-8000-000000000801",
+            version: 1,
+            workspace_id: "0196f000-0000-7000-8000-000000000301",
+            repository_id: "0196f000-0000-7000-8000-000000000601",
+            repair_id: "0196f000-0000-7000-8000-000000000201",
+            intent_id: "0196f000-0000-7000-8000-000000000901",
+            branch: "red2pr/0196f000-0000-7000-8000-000000000101/abc123",
+            expected_commit_sha: "a".repeat(40),
+            provider_object_id: null,
+            url: null,
+            status: "published",
+            created_at: "2026-10-30T09:00:00Z",
+            updated_at: "2026-10-30T09:00:00Z",
+          },
+          remote_check: null,
+          };
+        return new Response(JSON.stringify(result), { status: 200, headers: { "Content-Type": "application/json" } });
+      },
+    });
+    await client.listWorkspacePublications("acme");
+    await client.getWorkspacePublication("acme", "0196f000-0000-7000-8000-000000000801");
+    await client.reconcileWorkspacePublication(
+      "acme",
+      "0196f000-0000-7000-8000-000000000801",
+      { reason: "Retry remote observation" },
+      { idempotencyKey: "0196f000-0000-7000-8000-000000000905" },
+    );
+    assert.equal(calls[0]?.path, "/api/v1/workspaces/acme/publications");
+    assert.equal(calls[1]?.path, "/api/v1/workspaces/acme/publications/0196f000-0000-7000-8000-000000000801");
+    assert.equal(calls[2]?.idem, "0196f000-0000-7000-8000-000000000905");
+    assert.deepEqual(calls[2]?.body, { reason: "Retry remote observation" });
   });
 });

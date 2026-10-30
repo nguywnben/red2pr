@@ -935,6 +935,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/publications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Publications */
+        get: operations["list_publications_api_v1_workspaces__ws__publications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/publications/{publication_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Publication */
+        get: operations["get_publication_api_v1_workspaces__ws__publications__publication_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/publications/{publication_id}/reconciliations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reconcile Publication */
+        post: operations["reconcile_publication_api_v1_workspaces__ws__publications__publication_id__reconciliations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/repairs": {
         parameters: {
             query?: never;
@@ -4505,16 +4556,13 @@ export interface components {
             /** Created At */
             created_at: string;
             /** Expected Commit Sha */
-            expected_commit_sha: string;
+            expected_commit_sha?: string | null;
             /** Id */
             id: string;
             /** Intent Id */
             intent_id: string;
-            /**
-             * Provider Object Id
-             * @default null
-             */
-            provider_object_id: string | null;
+            /** Provider Object Id */
+            provider_object_id?: string | null;
             /** Repair Id */
             repair_id: string;
             /** Repository Id */
@@ -4526,15 +4574,17 @@ export interface components {
             status: "intent" | "pushing" | "creating" | "published" | "reconciling" | "failed" | "unknown";
             /** Updated At */
             updated_at: string;
-            /**
-             * Url
-             * @default null
-             */
-            url: string | null;
+            /** Url */
+            url?: string | null;
             /** Version */
             version: number;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /** PublicationDetailResponse */
+        PublicationDetailResponse: {
+            publication: components["schemas"]["Publication"];
+            remote_check?: components["schemas"]["RemoteCheck"] | null;
         };
         /** PublicationEventPayload */
         PublicationEventPayload: {
@@ -4542,6 +4592,20 @@ export interface components {
             publication_id: string;
             /** Status */
             status: string;
+        };
+        /** PublicationPageResponse */
+        PublicationPageResponse: {
+            /** Items */
+            items: components["schemas"]["Publication"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+        };
+        /** PublicationReconciliationRequest */
+        PublicationReconciliationRequest: {
+            /** Reason */
+            reason: string;
         };
         /**
          * QuietHoursWindow
@@ -4688,6 +4752,8 @@ export interface components {
             publication_id: string;
             /** Repository Id */
             repository_id: string;
+            /** Required Check Names */
+            required_check_names?: string[];
             /** Updated At */
             updated_at: string;
             /** Version */
@@ -4702,13 +4768,12 @@ export interface components {
         RemoteCheckObservation: {
             /** Check Name */
             check_name: string;
-            /**
-             * Conclusion
-             * @default null
-             */
-            conclusion: ("success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown") | null;
+            /** Conclusion */
+            conclusion?: ("success" | "failure" | "cancelled" | "timed_out" | "skipped" | "neutral" | "action_required" | "unknown") | null;
             /** External Id */
             external_id: string;
+            /** Head Sha */
+            head_sha: string;
             /** Observed At */
             observed_at: string;
             /** Status */
@@ -5126,6 +5191,8 @@ export interface components {
              * @constant
              */
             require_baseline: true;
+            /** Required Check Names */
+            required_check_names?: string[];
             /** Runtime Profile Id */
             runtime_profile_id: string;
             /** Sensitive Rules */
@@ -5179,6 +5246,8 @@ export interface components {
              * @constant
              */
             require_baseline: true;
+            /** Required Check Names */
+            required_check_names?: string[];
             /** Runtime Profile Id */
             runtime_profile_id: string;
             /** Sensitive Rules */
@@ -5232,6 +5301,8 @@ export interface components {
              * @constant
              */
             require_baseline: true;
+            /** Required Check Names */
+            required_check_names?: string[];
             /** Runtime Profile Id */
             runtime_profile_id: string;
             /** Sensitive Rules */
@@ -15107,6 +15178,107 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_publications_api_v1_workspaces__ws__publications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicationPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_publication_api_v1_workspaces__ws__publications__publication_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                publication_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicationDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reconcile_publication_api_v1_workspaces__ws__publications__publication_id__reconciliations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                ws: string;
+                publication_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicationReconciliationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

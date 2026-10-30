@@ -129,6 +129,9 @@ from py_contracts import (
     ProblemFieldError,
     ProviderSyncCursor,
     Publication,
+    PublicationDetailResponse,
+    PublicationPageResponse,
+    PublicationReconciliationRequest,
     RecoveryRequest,
     RecoveryResponse,
     RemoteCheck,
@@ -248,6 +251,9 @@ from red2pr_control.orchestrator import (
     build_orchestrator_router,
 )
 from red2pr_control.orchestrator.repairs_router import build_repairs_router
+from red2pr_control.publisher.remote_observer import RemoteCiObserver
+from red2pr_control.publisher.router import build_publications_router
+from red2pr_control.publisher.saga import PublisherSaga
 from red2pr_control.repositories import (
     RepositoryCatalogService,
     build_repositories_router,
@@ -376,6 +382,9 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     ApprovalInboxEntry,
     ApprovalPageResponse,
     Publication,
+    PublicationPageResponse,
+    PublicationDetailResponse,
+    PublicationReconciliationRequest,
     RemoteCheck,
     Artifact,
     Worker,
@@ -593,6 +602,8 @@ def create_app(
     meta_inference_service: MetaMuseInferenceService | None = None,
     agent_profile_service: AgentProfileService | None = None,
     artifact_store: ArtifactStoreProtocol | None = None,
+    publisher_saga: PublisherSaga | None = None,
+    remote_ci_observer: RemoteCiObserver | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     app = FastAPI(
@@ -641,6 +652,8 @@ def create_app(
         )
     )
     app.state.artifact_store = artifact_store
+    app.state.publisher_saga = publisher_saga
+    app.state.remote_ci_observer = remote_ci_observer
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -668,6 +681,7 @@ def create_app(
     app.include_router(build_triage_evidence_router())
     app.include_router(build_repairs_router())
     app.include_router(build_approvals_router())
+    app.include_router(build_publications_router())
     app.include_router(build_inference_router())
 
     @app.exception_handler(Red2PrError)

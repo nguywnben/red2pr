@@ -19,6 +19,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import ipaddress
+import re
 import secrets
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
@@ -124,6 +125,7 @@ from red2pr_control.integrations.base import (
     ProviderPollRunsResult,
     ProviderRemoteCheckRecord,
     ProviderRunRecord,
+    SourceProviderAdapter,
     parse_retry_after_seconds,
 )
 from red2pr_control.integrations.gitlab_client import GITLAB_API_VERSION, GitLabAdapter
@@ -1549,6 +1551,95 @@ class GitHubAppAdapter:
         self._raise_for_github_status(resp, treat_409_422_as_stale_sha=True)
         return f"refs/heads/{clean_branch}"
 
+    async def get_branch_head(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        branch_name: str,
+        now: datetime | None = None,
+    ) -> str:
+        ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+        owner, repo = _split_repo_full_name(repo_full_name)
+        token = await self._get_jit_installation_token(
+            session,
+            ctx,
+            permissions={"metadata": "read", "contents": "read"},
+            repositories=[repo],
+            now=ref_now,
+        )
+        branch = branch_name.removeprefix("refs/heads/")
+        resp = await self._send_request(
+            "GET",
+            self._build_url(
+                ctx.base_url,
+                f"/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/git/ref/heads/"
+                f"{quote(branch, safe='/')}",
+            ),
+            headers=self._default_headers(bearer_token=token),
+        )
+        self._raise_for_github_status(resp)
+        data = resp.json()
+        obj = data.get("object") if isinstance(data, Mapping) else None
+        sha = str(obj.get("sha") or "") if isinstance(obj, Mapping) else ""
+        if not re.fullmatch(r"[0-9a-fA-F]{40,64}", sha):
+            raise ProviderError(
+                code="TRANSIENT",
+                detail="GitHub returned an invalid branch head.",
+                provider="github",
+            )
+        return sha.lower()
+
+    async def get_file_contents_at_ref(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        path: str,
+        ref: str,
+        now: datetime | None = None,
+    ) -> str | None:
+        ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+        owner, repo = _split_repo_full_name(repo_full_name)
+        token = await self._get_jit_installation_token(
+            session,
+            ctx,
+            permissions={"metadata": "read", "contents": "read"},
+            repositories=[repo],
+            now=ref_now,
+        )
+        resp = await self._send_request(
+            "GET",
+            self._build_url(
+                ctx.base_url,
+                f"/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/contents/"
+                f"{quote(path, safe='/')}?ref={quote(ref, safe='')}",
+            ),
+            headers=self._default_headers(bearer_token=token),
+        )
+        if resp.status_code == 404:
+            return None
+        self._raise_for_github_status(resp)
+        payload = resp.json()
+        if not isinstance(payload, Mapping) or payload.get("type") != "file":
+            raise ProviderError(
+                code="UNSUPPORTED",
+                detail="The requested repository path is not a regular file.",
+                provider="github",
+            )
+        encoded = str(payload.get("content") or "").replace("\n", "")
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+            return raw.decode("utf-8")
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise ProviderError(
+                code="UNSUPPORTED",
+                detail="The requested repository file is binary or malformed UTF-8.",
+                provider="github",
+            ) from exc
+
     async def push_commit(
         self,
         session: AsyncSession,
@@ -1558,7 +1649,7 @@ class GitHubAppAdapter:
         branch_name: str,
         expected_parent_sha: str,
         commit_message: str,
-        file_changes: Mapping[str, str],
+        file_changes: Mapping[str, str | None],
         now: datetime | None = None,
     ) -> str:
         ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
@@ -1570,8 +1661,33 @@ class GitHubAppAdapter:
             repositories=[repo],
             now=ref_now,
         )
+        parent_resp = await self._send_request(
+            "GET",
+            self._build_url(
+                ctx.base_url,
+                f"/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/git/commits/"
+                f"{quote(expected_parent_sha, safe='')}",
+            ),
+            headers=self._default_headers(bearer_token=token),
+        )
+        self._raise_for_github_status(parent_resp)
+        parent = parent_resp.json()
+        parent_tree = parent.get("tree") if isinstance(parent, Mapping) else None
+        parent_tree_sha = (
+            str(parent_tree.get("sha") or "") if isinstance(parent_tree, Mapping) else ""
+        )
+        if not re.fullmatch(r"[0-9a-fA-F]{40,64}", parent_tree_sha):
+            raise ProviderError(
+                code="TRANSIENT",
+                detail="GitHub returned an invalid parent tree SHA.",
+                provider="github",
+            )
         tree_entries = [
-            {"path": path, "mode": "100644", "type": "blob", "content": content}
+            (
+                {"path": path, "mode": "100644", "type": "blob", "sha": None}
+                if content is None
+                else {"path": path, "mode": "100644", "type": "blob", "content": content}
+            )
             for path, content in file_changes.items()
         ]
         tree_resp = await self._send_request(
@@ -1581,7 +1697,7 @@ class GitHubAppAdapter:
                 f"/repos/{quote(owner, safe='')}/{quote(repo, safe='')}/git/trees",
             ),
             headers=self._default_headers(bearer_token=token),
-            json_body={"base_tree": expected_parent_sha, "tree": tree_entries},
+            json_body={"base_tree": parent_tree_sha, "tree": tree_entries},
         )
         self._raise_for_github_status(tree_resp, treat_409_422_as_stale_sha=True)
         tree_sha = str(tree_resp.json().get("sha", ""))
@@ -2329,6 +2445,53 @@ class GitHubIntegrationService:
             ca_bundle_resolver=github_adapter._ca_resolver,
             redactor=self._redactor,
         )
+
+    async def resolve_publisher_target(
+        self,
+        *,
+        workspace_id: str,
+        repository_id: str,
+    ) -> tuple[SourceProviderAdapter, ProviderConnectionContext, str]:
+        """Resolve one ready, active repository and its scoped adapter for the Z2 publisher."""
+        async with workspace_rls_session(self._session_factory, workspace_id=workspace_id) as db:
+            repo = await db.scalar(
+                select(RepositoryModel).where(
+                    RepositoryModel.workspace_id == workspace_id,
+                    RepositoryModel.id == repository_id,
+                )
+            )
+            if (
+                repo is None
+                or not repo.active
+                or repo.paused
+                or repo.archived
+                or repo.grant_review_required
+                or repo.auto_repair_blocked
+                or repo.workflow_hazard_status != "clean"
+            ):
+                raise ForbiddenError(
+                    code="publisher_repository_unavailable",
+                    detail=(
+                        "Repository is inactive, paused, under review, or has unsafe CI hazards."
+                    ),
+                )
+            connection = await db.scalar(
+                select(ProviderConnectionModel).where(
+                    ProviderConnectionModel.workspace_id == workspace_id,
+                    ProviderConnectionModel.id == repo.provider_connection_id,
+                )
+            )
+            if connection is None or connection.status != "ready":
+                raise ForbiddenError(
+                    code="provider_connection_revoked",
+                    detail="Provider connection is not ready for publication.",
+                )
+            provider = cast(ProviderKind, connection.provider)
+            adapter: SourceProviderAdapter = cast(
+                SourceProviderAdapter,
+                self._github if provider == "github" else self._gitlab,
+            )
+            return adapter, _to_connection_context(connection), repo.name
 
     async def _suspend_connection_work_and_mark_revoked(
         self,

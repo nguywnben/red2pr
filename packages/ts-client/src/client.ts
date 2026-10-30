@@ -134,6 +134,9 @@ export type ApprovalPageResponse = SchemaOf<"ApprovalPageResponse">;
 export type ApprovalInboxEntry = SchemaOf<"ApprovalInboxEntry">;
 export type Publication = SchemaOf<"Publication">;
 export type RemoteCheck = SchemaOf<"RemoteCheck">;
+export type PublicationPageResponse = SchemaOf<"PublicationPageResponse">;
+export type PublicationDetailResponse = SchemaOf<"PublicationDetailResponse">;
+export type PublicationReconciliationRequest = SchemaOf<"PublicationReconciliationRequest">;
 export type Artifact = SchemaOf<"Artifact">;
 export type Worker = SchemaOf<"Worker">;
 export type WorkerStatus = Worker["status"];
@@ -727,6 +730,9 @@ export interface Red2PrClient {
   listWorkspaceApprovals(ws: string, query?: { readonly status?: string; readonly repository_id?: string; readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<ApprovalPageResponse>>;
   getWorkspaceApproval(ws: string, approvalId: string, options?: RequestCallOptions): Promise<ApiEnvelope<Approval>>;
   decideWorkspaceApproval(ws: string, approvalId: string, body: ApprovalDecisionRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<Approval>>;
+  listWorkspacePublications(ws: string, options?: RequestCallOptions): Promise<ApiEnvelope<PublicationPageResponse>>;
+  getWorkspacePublication(ws: string, publicationId: string, options?: RequestCallOptions): Promise<ApiEnvelope<PublicationDetailResponse>>;
+  reconcileWorkspacePublication(ws: string, publicationId: string, body: PublicationReconciliationRequest, options: IdempotentMutationOptions): Promise<ApiEnvelope<ActionReceipt>>;
 }
 
 function readCookieFromDocument(cookieName: string): string | null {
@@ -1295,6 +1301,19 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
     decideWorkspaceApproval: (ws, approvalId, body, options) =>
       callJson("POST", "/api/v1/workspaces/{ws}/approvals/{approval_id}/decisions", {
         path: { ws, approval_id: approvalId },
+        body,
+        options,
+      }),
+    listWorkspacePublications: (ws, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/publications", { path: { ws }, options }),
+    getWorkspacePublication: (ws, publicationId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/publications/{publication_id}", {
+        path: { ws, publication_id: publicationId },
+        options,
+      }),
+    reconcileWorkspacePublication: (ws, publicationId, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/publications/{publication_id}/reconciliations", {
+        path: { ws, publication_id: publicationId },
         body,
         options,
       }),

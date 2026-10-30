@@ -42,7 +42,7 @@ All route IDs below use /w/:ws prefix unless explicit. Column test maps into fea
 | UI-S02 /login | login/MFA/recovery; generic errors, no account enumeration | A-02 / users,sessions,recovery_codes | UX-LOGIN-001, IAM-01 |
 | UI-S03 /overview | scoped funnel, failures, cost, timestamps and unresolved count | A-09,A-17,A-21 / repairs,usage_ledger | ANL-01 |
 | UI-S04 /repositories | paginated discovery/sync, filters/tags, explicit bulk policy preview | A-06,A-07 / repositories,provider_sync_cursors | UX-REPO-001, REP-01 |
-| UI-S05 /repositories/:repo | effective mode/branch/file rules, dry-run, revision conflict | A-07,A-08,A-09 / policies,runs,repairs | UX-POLICY-001, REP-02,REP-03 |
+| UI-S05 /repositories/:repo | effective mode/branch/file rules, required remote CI check names, dry-run, revision conflict and step-up for removals | A-07,A-08,A-09 / policies,runs,repairs | UX-POLICY-001, REP-02,REP-03, FIX-03 |
 | UI-S06 /pipelines | attempt/matrix selector, source SHA, truncated/expired logs | A-08,A-10 / ci_runs,ci_jobs,artifacts | TRI-01 |
 | UI-S07 /repairs | filters proof/phase/remote state; no “fixed” aggregate conflation | A-09,A-21 / repair_sessions | APP-01 |
 | UI-S08 /repairs/:id | Cause/Repro/Diff/Verification/PR/Logs/Audit tabs; pause/cancel/retry and missing evidence | A-09,A-10,A-12,A-21 / diagnostics,patches,verification,publication | UX-REPAIR-001, FIX-02 |

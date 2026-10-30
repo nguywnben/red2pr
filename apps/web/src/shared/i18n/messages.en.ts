@@ -12,6 +12,7 @@ export const EN_MESSAGES = {
   "app.nav.pipelines": "Pipelines",
   "app.nav.repairs": "Repairs",
   "app.nav.approvals": "Approvals",
+  "app.nav.prs": "Pull requests",
   "app.nav.repositories": "Repositories",
   "app.nav.connections": "Connections",
   "app.nav.integrations": "Integrations",

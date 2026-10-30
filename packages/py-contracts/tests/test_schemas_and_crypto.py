@@ -541,6 +541,7 @@ def test_s11_s12_s13_s18_repairs_verification_publication_and_10_phase_setup() -
             RemoteCheckObservation(
                 check_name="pytest",
                 external_id="chk-1",
+                head_sha=SAMPLE_SHA_2,
                 status="completed",
                 conclusion="success",
                 observed_at=FIXED_NOW,
@@ -1970,6 +1971,26 @@ def test_u12_repository_policy_and_preview_contracts_reject_unsafe_globs_and_enf
     assert bulk_upd_req.expected_versions[repo_id] == 2
     assert len(bulk_upd_resp.updated_repositories) == 1
     assert detail_resp.connection_status == "ready"
+
+
+def test_u12_required_check_names_are_exact_bounded_and_duplicate_free() -> None:
+    policy = RepositoryPolicy(
+        required_check_names=["unit-tests", "Build / Linux"],
+        runtime_profile_id="python-3.12-isolated",
+    )
+    assert policy.required_check_names == ["unit-tests", "Build / Linux"]
+
+    for names in (
+        ["unit-tests", "unit-tests"],
+        [" unit-tests"],
+        [""],
+        ["bad\nname"],
+        ["bad\u0085name"],
+        ["x" * 121],
+        [f"check-{index}" for index in range(129)],
+    ):
+        with pytest.raises(ValidationError):
+            RepositoryPolicy(required_check_names=names, runtime_profile_id="python-3.12-isolated")
 
 
 def test_u14_worker_mtls_pki_upload_capability_and_a13_contracts() -> None:

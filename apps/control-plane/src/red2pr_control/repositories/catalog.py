@@ -183,6 +183,7 @@ def _policy_model_to_contract(row: RepositoryPolicyModel) -> RepositoryPolicy:
         file_allowlist=list(row.file_allowlist_json),
         file_denylist=list(row.file_denylist_json),
         sensitive_rules=list(row.sensitive_rules_json),
+        required_check_names=list(row.required_check_names_json),
         allow_test_edits=row.allow_test_edits,
         allow_config_edits=row.allow_config_edits,
         max_attempts=row.max_attempts,
@@ -397,6 +398,7 @@ class RepositoryCatalogService:
             file_allowlist_json=list(base_policy.file_allowlist),
             file_denylist_json=list(base_policy.file_denylist),
             sensitive_rules_json=list(base_policy.sensitive_rules),
+            required_check_names_json=list(base_policy.required_check_names),
             allow_test_edits=base_policy.allow_test_edits,
             allow_config_edits=base_policy.allow_config_edits,
             max_attempts=base_policy.max_attempts,
@@ -1556,6 +1558,9 @@ class RepositoryCatalogService:
                                     file_allowlist_json=list(current_policy.file_allowlist),
                                     file_denylist_json=list(current_policy.file_denylist),
                                     sensitive_rules_json=list(current_policy.sensitive_rules),
+                                    required_check_names_json=list(
+                                        current_policy.required_check_names
+                                    ),
                                     allow_test_edits=current_policy.allow_test_edits,
                                     allow_config_edits=current_policy.allow_config_edits,
                                     max_attempts=current_policy.max_attempts,
@@ -1989,6 +1994,7 @@ class RepositoryCatalogService:
                         file_allowlist_json=list(target_policy.file_allowlist),
                         file_denylist_json=list(target_policy.file_denylist),
                         sensitive_rules_json=list(target_policy.sensitive_rules),
+                        required_check_names_json=list(target_policy.required_check_names),
                         allow_test_edits=target_policy.allow_test_edits,
                         allow_config_edits=target_policy.allow_config_edits,
                         max_attempts=target_policy.max_attempts,

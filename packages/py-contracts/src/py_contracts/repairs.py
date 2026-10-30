@@ -318,7 +318,7 @@ class Publication(WorkspaceResourceBase):
     intent_id: InternalId
     repair_id: InternalId
     branch: BoundedName
-    expected_commit_sha: GitSha
+    expected_commit_sha: GitSha | None = None
     provider_object_id: OpaqueProviderId | None = None
     url: SanitizedHttpUrl | None = None
     status: PublicationStatus
@@ -329,6 +329,7 @@ class RemoteCheckObservation(StrictContractModel):
 
     check_name: BoundedName
     external_id: OpaqueProviderId
+    head_sha: GitSha
     status: BoundedName
     conclusion: CiConclusion | None = None
     observed_at: UtcTimestamp
@@ -341,6 +342,7 @@ class RemoteCheck(WorkspaceResourceBase):
     publication_id: InternalId
     head_sha: GitSha
     expected_check_set_digest: Sha256Digest
+    required_check_names: list[BoundedName] = Field(default_factory=list, max_length=128)
     observations: list[RemoteCheckObservation] = Field(default_factory=list)
     outcome: RemoteCheckOutcome
 

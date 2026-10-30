@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from py_contracts.primitives import InternalId, StrictContractModel, UtcTimestamp
-from py_contracts.repairs import Approval, Repair
+from py_contracts.repairs import Approval, Publication, RemoteCheck, Repair
 
 
 class RepairCreateRequest(StrictContractModel):
@@ -49,3 +49,18 @@ class ApprovalPageResponse(StrictContractModel):
     items: list[ApprovalInboxEntry]
     next_cursor: str | None
     snapshot_at: UtcTimestamp
+
+
+class PublicationPageResponse(StrictContractModel):
+    items: list[Publication]
+    next_cursor: str | None
+    snapshot_at: UtcTimestamp
+
+
+class PublicationDetailResponse(StrictContractModel):
+    publication: Publication
+    remote_check: RemoteCheck | None = None
+
+
+class PublicationReconciliationRequest(StrictContractModel):
+    reason: Annotated[str, Field(min_length=1, max_length=1000)]

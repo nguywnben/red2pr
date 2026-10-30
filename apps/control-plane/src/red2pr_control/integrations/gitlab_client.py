@@ -771,7 +771,6 @@ class GitLabAdapter:
         scan_workflows: bool = True,
         now: datetime | None = None,
     ) -> PaginatedRepoDiscoveryResult:
-        del now
         token = await self._resolve_token(session, ctx)
         headers = self._default_headers(access_token=token)
         bounded_per_page = max(1, min(per_page, 100))
@@ -1316,6 +1315,70 @@ class GitLabAdapter:
         self._raise_for_gitlab_status(resp, treat_400_409_422_as_stale_sha=True)
         return f"refs/heads/{clean_branch}"
 
+    async def get_branch_head(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        branch_name: str,
+        now: datetime | None = None,
+    ) -> str:
+        del now
+        token = await self._resolve_token(session, ctx)
+        project = self._encode_project_ref(repo_full_name)
+        branch = quote(branch_name.removeprefix("refs/heads/"), safe="")
+        resp = await self._send_request(
+            "GET",
+            self._build_api_url(ctx.base_url, f"/projects/{project}/repository/branches/{branch}"),
+            headers=self._default_headers(access_token=token),
+        )
+        self._raise_for_gitlab_status(resp)
+        payload = resp.json()
+        commit = payload.get("commit") if isinstance(payload, Mapping) else None
+        sha = str(commit.get("id") or "") if isinstance(commit, Mapping) else ""
+        if not re.fullmatch(r"[0-9a-fA-F]{40,64}", sha):
+            raise ProviderError(
+                code="TRANSIENT",
+                detail="GitLab returned an invalid branch head.",
+                provider="gitlab",
+            )
+        return sha.lower()
+
+    async def get_file_contents_at_ref(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        path: str,
+        ref: str,
+        now: datetime | None = None,
+    ) -> str | None:
+        del now
+        token = await self._resolve_token(session, ctx)
+        project = self._encode_project_ref(repo_full_name)
+        resp = await self._send_request(
+            "GET",
+            self._build_api_url(
+                ctx.base_url,
+                f"/projects/{project}/repository/files/{quote(path, safe='')}/raw"
+                f"?ref={quote(ref, safe='')}",
+            ),
+            headers=self._default_headers(access_token=token),
+        )
+        if resp.status_code == 404:
+            return None
+        self._raise_for_gitlab_status(resp)
+        try:
+            return resp.content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ProviderError(
+                code="UNSUPPORTED",
+                detail="The requested repository file is binary or malformed UTF-8.",
+                provider="gitlab",
+            ) from exc
+
     async def push_commit(
         self,
         session: AsyncSession,
@@ -1325,10 +1388,9 @@ class GitLabAdapter:
         branch_name: str,
         expected_parent_sha: str,
         commit_message: str,
-        file_changes: Mapping[str, str],
+        file_changes: Mapping[str, str | None],
         now: datetime | None = None,
     ) -> str:
-        del now
         token = await self._resolve_token(session, ctx)
         encoded_proj = self._encode_project_ref(repo_full_name)
         clean_branch = branch_name.removeprefix("refs/heads/")
@@ -1356,10 +1418,26 @@ class GitLabAdapter:
                 status_code=409,
             )
 
-        actions = [
-            {"action": "update", "file_path": path, "content": content}
-            for path, content in file_changes.items()
-        ]
+        actions: list[dict[str, str]] = []
+        for path, content in file_changes.items():
+            if content is None:
+                actions.append({"action": "delete", "file_path": path})
+                continue
+            existing = await self.get_file_contents_at_ref(
+                session,
+                ctx,
+                repo_full_name=repo_full_name,
+                path=path,
+                ref=expected_parent_sha,
+                now=now,
+            )
+            actions.append(
+                {
+                    "action": "update" if existing is not None else "create",
+                    "file_path": path,
+                    "content": content,
+                }
+            )
         commit_resp = await self._send_request(
             "POST",
             self._build_api_url(

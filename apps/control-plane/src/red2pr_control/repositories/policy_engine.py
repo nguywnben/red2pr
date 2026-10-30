@@ -1250,6 +1250,7 @@ def compute_policy_rule_changes(
         "file_allowlist",
         "file_denylist",
         "sensitive_rules",
+        "required_check_names",
         "allow_test_edits",
         "allow_config_edits",
         "max_attempts",
@@ -1270,6 +1271,9 @@ def compute_policy_rule_changes(
         if key in {"file_denylist", "branch_denylist", "sensitive_rules"}:
             removed = set(before_val or []) - set(after_val or [])
             if removed:
+                step_up_field = True
+        elif key == "required_check_names":
+            if set(before_val or []) - set(after_val or []):
                 step_up_field = True
         elif key in {"allow_test_edits", "allow_config_edits"} and bool(after_val):
             step_up_field = True

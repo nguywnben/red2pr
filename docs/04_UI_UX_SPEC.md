@@ -35,7 +35,7 @@ Responsive desktop-first layout, dark/light mode, English first with i18n suppor
 Header: provider/repo/branch/SHA/run attempt, eligibility, current repair state, actions role-gated. Main timeline immutable events; side panel steps/fidelity/budget. Evidence viewer: baseline vs patched tabs, command + sandbox image digest, log source ranges, diff redactions, detached artifact checksum. PR creation shown as a separate gate; remote CI never conflated with local verification. Failure reasons can be expanded with next steps and correlation IDs.
 
 ## Repo policy editor
-- Mode selector `monitor`/`approval`/`auto_repair`; branch allowlist and denylist; file protected patterns; allow test/config edits toggle gated; permitted language profiles; time/token/compute budgets.
+- Mode selector `monitor`/`approval`/`auto_repair`; branch allowlist and denylist; file protected patterns; exact required remote CI check names (one per line, case-sensitive); allow test/config edits toggle gated; permitted language profiles; time/token/compute budgets. Removing check names requires step-up; an empty list is visibly marked as unable to establish remote verification.
 - Preview effective policy (global > workspace > repo, deny wins); 'simulate' using historical event, show why blocked. Save requires diff preview + audit.
 
 ## Setup Wizard stages

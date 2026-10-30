@@ -536,6 +536,7 @@ async def _seed_connection_and_repo(
             file_allowlist_json=list(default_pol.file_allowlist),
             file_denylist_json=list(default_pol.file_denylist),
             sensitive_rules_json=list(default_pol.sensitive_rules),
+            required_check_names_json=["build"],
             allow_test_edits=default_pol.allow_test_edits,
             allow_config_edits=default_pol.allow_config_edits,
             max_attempts=default_pol.max_attempts,
@@ -1467,6 +1468,16 @@ async def test_t_rep_02_p_and_n_immutable_revisions_concurrency_gates_sec022_and
                 assert pause_resp.status_code == 200, pause_resp.text
                 assert pause_resp.json()["paused"] is True
                 assert pause_resp.json()["policy_revision"] == 3
+
+                async with workspace_rls_session(harness.app_factory, workspace_id=ws_id) as db:
+                    mode_only_snapshot = await db.scalar(
+                        select(RepositoryPolicyModel).where(
+                            RepositoryPolicyModel.repository_id == repo_clean_id,
+                            RepositoryPolicyModel.revision == 3,
+                        )
+                    )
+                    assert mode_only_snapshot is not None
+                    assert mode_only_snapshot.required_check_names_json == ["build"]
 
                 async with workspace_rls_session(harness.app_factory, workspace_id=ws_id) as db:
                     q_row = await db.get(TaskJobModel, queued_job_id)

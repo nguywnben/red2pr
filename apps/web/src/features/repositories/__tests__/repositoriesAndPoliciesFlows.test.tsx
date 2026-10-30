@@ -145,6 +145,7 @@ function buildPolicyDto(overrides: Record<string, unknown> = {}): Record<string,
     file_allowlist: ["src/**"],
     file_denylist: ["src/generated/**"],
     sensitive_rules: ["src/billing/**"],
+    required_check_names: ["build", "unit-tests"],
     allow_test_edits: false,
     allow_config_edits: false,
     max_attempts: 3,
@@ -827,6 +828,9 @@ describe("U12 UI-S04 & UI-S05 Repository Catalog, Detail 7-Tab & Policy Dry-Run 
     // Switch to Policies tab
     await user.click(within(tablist).getByRole("tab", { name: "Policies" }));
     await screen.findByTestId("policy-editor");
+    expect(screen.getByLabelText(/Required remote CI check names/i)).toHaveValue(
+      "build\nunit-tests",
+    );
 
     // Run dry-run simulation and prove ZERO PATCH /policy calls occurred during simulation!
     const patchCallsBeforeSim = seenMethods.filter((m) => m.endsWith("/policy") && m.startsWith("PATCH"));

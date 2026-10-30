@@ -9044,9 +9044,16 @@
             "type": "string"
           },
           "expected_commit_sha": {
-            "pattern": "^[0-9a-f]{40}$",
-            "title": "Expected Commit Sha",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{40}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Commit Sha"
           },
           "id": {
             "title": "Id",
@@ -9065,7 +9072,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Provider Object Id"
           },
           "repair_id": {
@@ -9104,11 +9110,10 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Url"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           },
@@ -9127,10 +9132,32 @@
           "intent_id",
           "repair_id",
           "branch",
-          "expected_commit_sha",
           "status"
         ],
         "title": "Publication",
+        "type": "object"
+      },
+      "PublicationDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "publication": {
+            "$ref": "#/components/schemas/Publication"
+          },
+          "remote_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoteCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "publication"
+        ],
+        "title": "PublicationDetailResponse",
         "type": "object"
       },
       "PublicationEventPayload": {
@@ -9152,6 +9179,56 @@
           "status"
         ],
         "title": "PublicationEventPayload",
+        "type": "object"
+      },
+      "PublicationPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Publication"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "snapshot_at"
+        ],
+        "title": "PublicationPageResponse",
+        "type": "object"
+      },
+      "PublicationReconciliationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "PublicationReconciliationRequest",
         "type": "object"
       },
       "QuietHoursWindow": {
@@ -9497,12 +9574,22 @@
             "title": "Repository Id",
             "type": "string"
           },
+          "required_check_names": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Required Check Names",
+            "type": "array"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           },
@@ -9555,11 +9642,15 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Conclusion"
           },
           "external_id": {
             "title": "External Id",
+            "type": "string"
+          },
+          "head_sha": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Head Sha",
             "type": "string"
           },
           "observed_at": {
@@ -9576,6 +9667,7 @@
         "required": [
           "check_name",
           "external_id",
+          "head_sha",
           "status",
           "observed_at"
         ],
@@ -10710,6 +10802,16 @@
             "title": "Require Baseline",
             "type": "boolean"
           },
+          "required_check_names": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Required Check Names",
+            "type": "array"
+          },
           "runtime_profile_id": {
             "maxLength": 120,
             "minLength": 1,
@@ -10852,6 +10954,16 @@
             "title": "Require Baseline",
             "type": "boolean"
           },
+          "required_check_names": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Required Check Names",
+            "type": "array"
+          },
           "runtime_profile_id": {
             "maxLength": 120,
             "minLength": 1,
@@ -10993,6 +11105,16 @@
             "default": true,
             "title": "Require Baseline",
             "type": "boolean"
+          },
+          "required_check_names": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Required Check Names",
+            "type": "array"
           },
           "runtime_profile_id": {
             "maxLength": 120,
@@ -26944,6 +27066,177 @@
         "summary": "Revoke workspace-scoped outbound Meta inference consent (SEC-018)",
         "tags": [
           "models"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/publications": {
+      "get": {
+        "operationId": "list_publications_api_v1_workspaces__ws__publications_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Publications",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/publications/{publication_id}": {
+      "get": {
+        "operationId": "get_publication_api_v1_workspaces__ws__publications__publication_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Publication",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/publications/{publication_id}/reconciliations": {
+      "post": {
+        "operationId": "reconcile_publication_api_v1_workspaces__ws__publications__publication_id__reconciliations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationReconciliationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reconcile Publication",
+        "tags": [
+          "publications"
         ]
       }
     },

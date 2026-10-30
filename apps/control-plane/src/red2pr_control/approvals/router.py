@@ -29,6 +29,7 @@ from red2pr_control.iam.rbac import (
     make_workspace_rbac_dependency,
 )
 from red2pr_control.iam.sessions import IamService
+from red2pr_control.publisher.saga import PublisherSaga
 
 _APPROVAL_ROLES: frozenset[WorkspaceRole] = frozenset({"admin", "maintainer", "reviewer"})
 _READ = make_workspace_rbac_dependency(
@@ -210,6 +211,18 @@ def build_approvals_router() -> APIRouter:
                 raise NotFoundError(
                     code="approval_not_found", detail="Approval request was not found."
                 )
+            publisher = getattr(request.app.state, "publisher_saga", None)
+            if (
+                body.decision == "approve"
+                and current.intent_type == "publish_draft_pr"
+                and not isinstance(publisher, PublisherSaga)
+            ):
+                raise DependencyUnavailableError(
+                    code="publisher_unconfigured",
+                    detail=(
+                        "Draft publication cannot be approved while the publisher is unavailable."
+                    ),
+                )
         service = ApprovalService(session_factory=iam.session_factory)
         row = await service.decide(
             workspace_id=ctx.workspace_id,
@@ -223,6 +236,19 @@ def build_approvals_router() -> APIRouter:
             correlation_id=str(getattr(request.state, "correlation_id", "unknown")),
             now=iam.now(),
         )
+        if (
+            row.status == "approved"
+            and row.decision == "approve"
+            and row.intent_type == "publish_draft_pr"
+        ):
+            # The approval decision is committed first. A same-key replay re-enters here
+            # after a process failure and the saga reconciles the persisted intent.
+            assert isinstance(publisher, PublisherSaga)
+            await publisher.publish_approved(
+                workspace_id=ctx.workspace_id,
+                approval_id=row.id,
+                correlation_id=str(getattr(request.state, "correlation_id", "unknown")),
+            )
         return approval_dto(row)
 
     return router

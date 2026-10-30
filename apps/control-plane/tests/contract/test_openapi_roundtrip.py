@@ -97,6 +97,12 @@ def test_openapi_v1_export_is_deterministic_and_registers_all_canonical_schemas(
     parsed = json.loads(rendered)
     assert parsed["info"]["version"] == "1.0.0"
     assert "/api/v1/system/health" in parsed["paths"]
+    assert "/api/v1/workspaces/{ws}/publications" in parsed["paths"]
+    assert "/api/v1/workspaces/{ws}/publications/{publication_id}" in parsed["paths"]
+    assert (
+        "/api/v1/workspaces/{ws}/publications/{publication_id}/reconciliations" in parsed["paths"]
+    )
+    assert "post" not in parsed["paths"]["/api/v1/workspaces/{ws}/publications"]
 
     schemas = set(parsed["components"]["schemas"].keys())
     required_canonical_models = {
@@ -122,6 +128,9 @@ def test_openapi_v1_export_is_deterministic_and_registers_all_canonical_schemas(
         "Verification",
         "Approval",
         "Publication",
+        "PublicationPageResponse",
+        "PublicationDetailResponse",
+        "PublicationReconciliationRequest",
         "RemoteCheck",
         "Artifact",
         "Worker",
@@ -144,6 +153,15 @@ def test_openapi_v1_export_is_deterministic_and_registers_all_canonical_schemas(
     }
     missing = required_canonical_models - schemas
     assert not missing, f"Missing canonical schemas in OpenAPI components: {sorted(missing)}"
+
+
+def test_publication_routes_fail_closed_without_iam_and_expose_no_raw_create_endpoint() -> None:
+    client = TestClient(create_app())
+    response = client.get("/api/v1/workspaces/acme/publications")
+    assert response.status_code == 503
+    assert response.headers["content-type"].startswith(PROBLEM_JSON_MEDIA_TYPE)
+    raw_create = client.post("/api/v1/workspaces/acme/publications", json={"branch": "main"})
+    assert raw_create.status_code == 405
 
 
 @pytest.mark.parametrize(

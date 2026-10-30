@@ -271,6 +271,7 @@ class RepositoryPolicy(StrictContractModel):
     file_allowlist: list[CanonicalGlobPattern] = Field(default_factory=list)
     file_denylist: list[CanonicalGlobPattern] = Field(default_factory=list)
     sensitive_rules: list[CanonicalGlobPattern] = Field(default_factory=list)
+    required_check_names: list[BoundedName] = Field(default_factory=list, max_length=128)
     allow_test_edits: StrictBool = False
     allow_config_edits: StrictBool = False
     max_attempts: Annotated[StrictInt, Field(ge=1, le=5)] = 2
@@ -282,6 +283,19 @@ class RepositoryPolicy(StrictContractModel):
     require_baseline: Literal[True] = True
     inference_consent_id: InternalId | None = None
     runtime_profile_id: BoundedName
+
+    @model_validator(mode="after")
+    def validate_required_check_names(self) -> RepositoryPolicy:
+        names = self.required_check_names
+        if len(names) != len(set(names)):
+            raise ValueError("required_check_names must not contain duplicates.")
+        has_invalid_name = any(
+            name != name.strip() or any(unicodedata.category(char) == "Cc" for char in name)
+            for name in names
+        )
+        if has_invalid_name:
+            raise ValueError("required_check_names must be trimmed and control-free.")
+        return self
 
 
 class Repository(WorkspaceResourceBase):

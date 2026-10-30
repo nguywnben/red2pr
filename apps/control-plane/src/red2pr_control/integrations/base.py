@@ -470,6 +470,27 @@ class SourceProviderAdapter(Protocol):
         now: datetime | None = None,
     ) -> str: ...
 
+    async def get_branch_head(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        branch_name: str,
+        now: datetime | None = None,
+    ) -> str: ...
+
+    async def get_file_contents_at_ref(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        path: str,
+        ref: str,
+        now: datetime | None = None,
+    ) -> str | None: ...
+
     async def push_commit(
         self,
         session: AsyncSession,
@@ -479,7 +500,7 @@ class SourceProviderAdapter(Protocol):
         branch_name: str,
         expected_parent_sha: str,
         commit_message: str,
-        file_changes: Mapping[str, str],
+        file_changes: Mapping[str, str | None],
         now: datetime | None = None,
     ) -> str: ...
 

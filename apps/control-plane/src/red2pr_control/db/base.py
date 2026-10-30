@@ -1984,6 +1984,7 @@ class RepositoryPolicyModel(Base):
     file_allowlist_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     file_denylist_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     sensitive_rules_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    required_check_names_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     allow_test_edits: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     allow_config_edits: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
@@ -4117,5 +4118,145 @@ class ApprovalVoteModel(Base):
     request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class PublicationRecordModel(Base):
+    """Durable U20 publish intent and remote draft identity (S-13/FIX-03)."""
+
+    __tablename__ = "publication_records"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_publications_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id", "repair_id", "provider", "operation", name="uq_publications_effect"
+        ),
+        UniqueConstraint("workspace_id", "intent_id", name="uq_publications_intent"),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_publications_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repair_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            name="fk_publications_tenant_repair_repair_sessions",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "approval_request_id"],
+            ["approval_requests.workspace_id", "approval_requests.id"],
+            name="fk_publications_tenant_approval_approval_requests",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("provider IN ('github', 'gitlab')", name="publication_provider_valid"),
+        CheckConstraint(
+            "status IN ('intent', 'pushing', 'creating', 'published', 'reconciling', "
+            "'failed', 'unknown')",
+            name="publication_status_valid",
+        ),
+        CheckConstraint("operation = 'publish_draft'", name="publication_operation_valid"),
+        CheckConstraint("policy_revision >= 1", name="publication_policy_revision_pos"),
+        CheckConstraint(
+            "required_check_set_digest IS NULL OR length(required_check_set_digest) = 64",
+            name="publication_check_set_digest_valid",
+        ),
+        Index("ix_publications_ws_status_created", "workspace_id", "status", "created_at"),
+        Index("ix_publications_ws_repo_created", "workspace_id", "repository_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    approval_request_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider: Mapped[str] = mapped_column(String(16), nullable=False)
+    operation: Mapped[str] = mapped_column(String(32), nullable=False, default="publish_draft")
+    intent_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    marker: Mapped[str] = mapped_column(String(120), nullable=False)
+    branch: Mapped[str] = mapped_column(String(240), nullable=False)
+    base_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    expected_commit_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    required_check_set_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target_ref: Mapped[str] = mapped_column(String(120), nullable=False)
+    policy_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="intent")
+    provider_object_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    provider_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class RequiredCheckSetModel(Base):
+    """Versioned required remote CI names used to derive V-08's exact-SHA verdict."""
+
+    __tablename__ = "required_check_sets"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_required_check_sets_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "repository_id",
+            "policy_revision",
+            name="uq_required_check_sets_revision",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_required_check_sets_tenant_repo_repositories",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("policy_revision >= 1", name="required_check_set_policy_revision_pos"),
+        Index("ix_required_check_sets_ws_repo", "workspace_id", "repository_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    policy_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    names_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class RemoteCiCheckModel(Base):
+    """Latest V-08 observation set bound to one immutable published commit SHA."""
+
+    __tablename__ = "remote_ci_checks"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_remote_ci_checks_workspace_id_id"),
+        UniqueConstraint("workspace_id", "publication_id", name="uq_remote_ci_checks_publication"),
+        ForeignKeyConstraint(
+            ["workspace_id", "publication_id"],
+            ["publication_records.workspace_id", "publication_records.id"],
+            name="fk_remote_ci_checks_tenant_publication_publications",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "outcome IN ('pending', 'passed', 'failed', 'unknown')",
+            name="remote_ci_outcome_valid",
+        ),
+        Index("ix_remote_ci_checks_ws_sha", "workspace_id", "head_sha"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    publication_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    head_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    expected_check_set_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    observations_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    outcome: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    observed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )

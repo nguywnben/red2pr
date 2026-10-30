@@ -52,6 +52,10 @@ function formatGlobLines(items: readonly string[] | undefined): string {
   return (items ?? []).join("\n");
 }
 
+function parseExactNameLines(raw: string): string[] {
+  return raw.split(/[\r\n]+/).map((item) => item.trim()).filter((item) => item.length > 0);
+}
+
 function verdictAppearance(verdict: PolicyEvaluationVerdict): {
   readonly glyph: GlyphKind;
   readonly tone: string;
@@ -158,6 +162,7 @@ function PolicyEditorForm({
   const fileAllowId = useId();
   const fileDenyId = useId();
   const sensitiveRulesId = useId();
+  const requiredChecksId = useId();
   const allowTestsId = useId();
   const allowConfigsId = useId();
   const maxAttemptsId = useId();
@@ -192,6 +197,9 @@ function PolicyEditorForm({
   );
   const [sensitiveRulesText, setSensitiveRulesText] = useState(() =>
     formatGlobLines(initialPol.sensitive_rules),
+  );
+  const [requiredCheckNamesText, setRequiredCheckNamesText] = useState(() =>
+    formatGlobLines(initialPol.required_check_names),
   );
   const [allowTestEdits, setAllowTestEdits] = useState(() => Boolean(initialPol.allow_test_edits));
   const [allowConfigEdits, setAllowConfigEdits] = useState(() =>
@@ -247,6 +255,7 @@ function PolicyEditorForm({
       setFileAllowText(formatGlobLines(pol.file_allowlist));
       setFileDenyText(formatGlobLines(pol.file_denylist));
       setSensitiveRulesText(formatGlobLines(pol.sensitive_rules));
+      setRequiredCheckNamesText(formatGlobLines(pol.required_check_names));
       setAllowTestEdits(Boolean(pol.allow_test_edits));
       setAllowConfigEdits(Boolean(pol.allow_config_edits));
       setMaxAttempts(pol.max_attempts ?? 3);
@@ -276,6 +285,7 @@ function PolicyEditorForm({
       file_allowlist: parseGlobLines(fileAllowText),
       file_denylist: parseGlobLines(fileDenyText),
       sensitive_rules: parseGlobLines(sensitiveRulesText),
+      required_check_names: parseExactNameLines(requiredCheckNamesText),
       allow_test_edits: allowTestEdits,
       allow_config_edits: allowConfigEdits,
       max_attempts: Number.isFinite(maxAttempts) ? maxAttempts : 3,
@@ -309,6 +319,7 @@ function PolicyEditorForm({
     maxTokens,
     maxWallSeconds,
     runtimeProfileId,
+    requiredCheckNamesText,
     sensitiveRulesText,
   ]);
 
@@ -600,6 +611,28 @@ function PolicyEditorForm({
                   Auto-Repair (verified draft PR within safe allowlist)
                 </option>
               </select>
+            </div>
+
+            <div className="red2pr-field">
+              <label className="red2pr-field-label" htmlFor={requiredChecksId}>
+                Required remote CI check names (exact, case-sensitive; one per line)
+              </label>
+              <textarea
+                id={requiredChecksId}
+                rows={4}
+                maxLength={16000}
+                className="red2pr-control-input"
+                value={requiredCheckNamesText}
+                disabled={!canMutate || saveMutation.isPending}
+                placeholder="unit-tests&#10;Build / Linux"
+                onChange={(ev) => setRequiredCheckNamesText(ev.target.value)}
+                aria-describedby={`${requiredChecksId}-hint`}
+              />
+              <p id={`${requiredChecksId}-hint`} className="red2pr-field-hint">
+                Exact provider names are limited to 128 unique entries of up to 120 characters.
+                Removing a required check needs fresh step-up approval. An empty list can never
+                satisfy V-08 and remains unknown.
+              </p>
             </div>
 
             <div className="red2pr-field">

@@ -122,6 +122,7 @@ function buildDefaultNavItems(workspaceSlug: string | undefined): readonly Shell
     { id: "pipelines", labelKey: "app.nav.pipelines", href: `${prefix}/pipelines` },
     { id: "repairs", labelKey: "app.nav.repairs", href: `${prefix}/repairs` },
     { id: "approvals", labelKey: "app.nav.approvals", href: `${prefix}/approvals` },
+    { id: "prs", labelKey: "app.nav.prs", href: `${prefix}/prs` },
     {
       id: "repositories",
       labelKey: "app.nav.repositories",
