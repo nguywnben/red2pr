@@ -22,6 +22,7 @@ export const EN_MESSAGES = {
   "app.nav.agents": "Agents & Tools",
   "app.nav.notifications": "Notifications",
   "app.nav.analytics": "Analytics & Cost",
+  "app.nav.security": "Security & Audit",
   "app.nav.audit": "Audit Log",
   "app.nav.members": "Members & Access",
   "app.nav.settings": "Settings",

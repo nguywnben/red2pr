@@ -186,9 +186,7 @@ def generate_recovery_code_batch(
     seen_hashes: set[str] = set()
     results: list[tuple[str, str]] = []
     while len(results) < count:
-        groups = [
-            "".join(secrets.choice(_RECOVERY_ALPHABET) for _ in range(4)) for _ in range(4)
-        ]
+        groups = ["".join(secrets.choice(_RECOVERY_ALPHABET) for _ in range(4)) for _ in range(4)]
         display = f"R2PR-{'-'.join(groups)}"
         digest = hash_recovery_code(hmac_key, display)
         if digest in seen_hashes:

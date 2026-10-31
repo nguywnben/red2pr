@@ -103,6 +103,46 @@
       ],
       "title": "RegressionSuiteSummary",
       "type": "object"
+    },
+    "SecurityFindingV1": {
+      "additionalProperties": false,
+      "description": "Structured verifier finding covered by the signed evidence manifest.",
+      "properties": {
+        "artifact_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Artifact Digest",
+          "type": "string"
+        },
+        "finding_ref": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Finding Ref",
+          "type": "string"
+        },
+        "invariant_violation": {
+          "default": false,
+          "title": "Invariant Violation",
+          "type": "boolean"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding_ref",
+        "severity",
+        "artifact_digest"
+      ],
+      "title": "SecurityFindingV1",
+      "type": "object"
     }
   },
   "$id": "https://red2pr.local/schemas/s22-evidence-manifest.v1.schema.json",
@@ -279,6 +319,14 @@
       "default": 1,
       "title": "Schema Version",
       "type": "integer"
+    },
+    "security_findings": {
+      "items": {
+        "$ref": "#/$defs/SecurityFindingV1"
+      },
+      "maxItems": 500,
+      "title": "Security Findings",
+      "type": "array"
     },
     "security_outcome": {
       "enum": [

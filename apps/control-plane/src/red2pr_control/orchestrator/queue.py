@@ -53,6 +53,7 @@ from red2pr_control.analytics_audit.audit_chain import append_audit_entry
 from red2pr_control.core.errors import (
     BadRequestError,
     ConflictError,
+    DependencyUnavailableError,
     ForbiddenError,
     NotFoundError,
 )
@@ -238,6 +239,11 @@ class DurableTaskQueueService:
         self._max_running_repairs = max_running_repairs_per_workspace
         self._lease_ttl = lease_ttl
         self._base_backoff_seconds = max(1, base_backoff_seconds)
+        self._storage_admission_paused = False
+
+    def set_storage_admission_paused(self, paused: bool) -> None:
+        """Stop only new repair/sandbox jobs while preserving active proof and cleanup work."""
+        self._storage_admission_paused = bool(paused)
 
     @property
     def max_running_repairs_per_workspace(self) -> int:
@@ -306,6 +312,11 @@ class DurableTaskQueueService:
             if is_repair_job is not None
             else (repair_id is not None or clean_kind.startswith("repair."))
         )
+        if repair_flag and self._storage_admission_paused:
+            raise DependencyUnavailableError(
+                code="storage_capacity_exceeded",
+                detail="New repair admission is paused at the storage safety watermark.",
+            )
         scrubbed_payload = cast(dict[str, Any], self._redactor.redact_value(dict(payload or {})))
         effect_op = _job_effect_operation_name(clean_kind)
 

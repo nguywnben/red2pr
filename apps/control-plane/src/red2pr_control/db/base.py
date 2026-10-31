@@ -165,6 +165,24 @@ class SecretEntryModel(Base):
     )
 
 
+class SecretKeyringStateModel(Base):
+    """Global active KEK fence shared by all control-plane processes (U25)."""
+
+    __tablename__ = "secret_keyring_state"
+    __table_args__ = (
+        CheckConstraint("singleton_id = 'global'", name="secret_keyring_singleton"),
+        CheckConstraint("active_kek_version >= 1", name="active_kek_version_pos"),
+        CheckConstraint("version >= 1", name="version_pos"),
+    )
+
+    singleton_id: Mapped[str] = mapped_column(String(16), primary_key=True)
+    active_kek_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
 class IdempotencyRecordModel(Base):
     """S-05 atomic Idempotency-Key claim record and 7-day response cache."""
 
@@ -252,6 +270,40 @@ class EffectTombstoneModel(Base):
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     resource_id: Mapped[str] = mapped_column(String(36), nullable=False)
     retained_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class EffectReplayGuardModel(Base):
+    """Hash-only permanent replay guard retained after the detailed 90d tombstone expires."""
+
+    __tablename__ = "effect_replay_guards"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "operation",
+            "logical_effect_key_digest",
+            name="uq_effect_replay_guard_digest",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id"],
+            ["workspaces.id"],
+            name="fk_effect_replay_guards_workspace_id_workspaces",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "length(logical_effect_key_digest) = 64 "
+            "AND logical_effect_key_digest ~ '^[0-9a-f]{64}$'",
+            name="logical_effect_digest_valid",
+        ),
+        Index("ix_effect_replay_guards_workspace_operation", "workspace_id", "operation"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    operation: Mapped[str] = mapped_column(String(120), nullable=False)
+    logical_effect_key_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
@@ -4765,3 +4817,94 @@ class ReportExportModel(Base):
     request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ArtifactDeletionJobModel(Base):
+    """Durable retryable physical blob deletion work item (U25 / OPS-03)."""
+
+    __tablename__ = "artifact_deletion_jobs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "blob_id", name="uq_artifact_deletion_blob"),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["workspace_id", "blob_id"],
+            ["artifact_blobs.workspace_id", "artifact_blobs.id"],
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("state IN ('pending','claimed','deleted','failed')", name="state_valid"),
+        CheckConstraint("attempts >= 0", name="attempts_nonnegative"),
+        Index("ix_artifact_deletion_ready", "state", "available_at", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    blob_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class ReleaseExceptionModel(Base):
+    """Time-bounded ADR-032 High finding exception bound to an immutable artifact digest."""
+
+    __tablename__ = "release_exceptions"
+    __table_args__ = (
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["owner_user_id"], ["users.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["security_reviewer_user_id"], ["users.id"], ondelete="RESTRICT"),
+        CheckConstraint("severity = 'high'", name="severity_high_only"),
+        CheckConstraint(
+            "length(artifact_digest) = 64 AND artifact_digest ~ '^[0-9a-f]{64}$'",
+            name="artifact_digest_valid",
+        ),
+        CheckConstraint(
+            "expires_at > created_at AND expires_at <= created_at + interval '30 days'",
+            name="expiry_max_30_days",
+        ),
+        CheckConstraint("owner_user_id <> security_reviewer_user_id", name="reviewer_independent"),
+        Index("ix_release_exceptions_active", "workspace_id", "finding_ref", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    finding_ref: Mapped[str] = mapped_column(String(128), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False, default="high")
+    artifact_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    owner_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    security_reviewer_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    mitigation: Mapped[str] = mapped_column(String(2000), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class OperationalAlarmModel(Base):
+    """Durable per-workspace alarm state used to dedupe firing/resolved outbox events."""
+
+    __tablename__ = "operational_alarms"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "alarm_code", name="uq_operational_alarms_workspace_code"),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        CheckConstraint(
+            "alarm_code IN ('queue_lag','backup_failed','worker_quarantined',"
+            "'storage_soft_limit','storage_hard_limit','audit_chain_mismatch')",
+            name="operational_alarm_code_valid",
+        ),
+        CheckConstraint("state IN ('firing','resolved')", name="operational_alarm_state_valid"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_operational_alarms_workspace_state", "workspace_id", "state", "alarm_code"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    alarm_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)

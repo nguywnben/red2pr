@@ -25,6 +25,7 @@ from red2pr_control.db.base import (
     EvidenceManifestModel,
     PatchAttemptModel,
     PublicationRecordModel,
+    ReleaseExceptionModel,
     RepairSessionModel,
     RepositoryModel,
     RepositoryPolicyModel,
@@ -40,6 +41,10 @@ from red2pr_control.integrations.base import (
     SourceProviderAdapter,
 )
 from red2pr_control.integrations.github_app import GitHubIntegrationService
+from red2pr_control.operations.exceptions import (
+    ReleaseException,
+    evaluate_signed_manifest_release_gate,
+)
 from red2pr_control.orchestrator.state_machine import RepairSessionStateMachine
 from red2pr_control.publisher.patch_apply import apply_verified_unified_diff
 from red2pr_control.triage_evidence.artifact_store import (
@@ -591,6 +596,37 @@ class PublisherSaga:
             expected_signer_trust_domain=self._evidence_trust_domain,
             now=now,
         )
+        active_exceptions = (
+            await db.scalars(
+                select(ReleaseExceptionModel).where(
+                    ReleaseExceptionModel.workspace_id == intent.workspace_id,
+                    ReleaseExceptionModel.revoked_at.is_(None),
+                    ReleaseExceptionModel.expires_at > now,
+                )
+            )
+        ).all()
+        release_gate = evaluate_signed_manifest_release_gate(
+            manifest,
+            [
+                ReleaseException(
+                    finding_ref=row.finding_ref,
+                    severity="high",
+                    artifact_digest=row.artifact_digest,
+                    expires_at=row.expires_at,
+                    revoked=row.revoked_at is not None,
+                )
+                for row in active_exceptions
+            ],
+            keyring=self._manifest_keyring,
+            expected_signer_trust_domain=self._evidence_trust_domain,
+            artifact_digest=manifest.diff_digest,
+            now=now,
+        )
+        if not release_gate.ready:
+            raise ConflictError(
+                code="publication_release_gate_blocked",
+                detail="Verifier-signed security findings block release readiness.",
+            )
         diff_artifact = await db.scalar(
             select(ArtifactModel).where(
                 ArtifactModel.workspace_id == intent.workspace_id,

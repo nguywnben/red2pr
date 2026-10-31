@@ -88,6 +88,7 @@ from red2pr_control.core.errors import DependencyUnavailableError, ForbiddenErro
 from red2pr_control.core.redaction import Redactor
 from red2pr_control.db.base import (
     ArtifactBlobModel,
+    ArtifactDeletionJobModel,
     ArtifactModel,
     AuditLogModel,
     CiJobModel,
@@ -121,6 +122,7 @@ from red2pr_control.integrations import (
     ProviderIntegrationService,
     WebhookIngestService,
 )
+from red2pr_control.operations.retention import RetentionPurgeWorker
 from red2pr_control.operations.setup_wizard import (
     DbEndpointAllowlistProvider,
     SetupStepRegistry,
@@ -1744,7 +1746,7 @@ async def test_encrypted_artifact_store_contract_local_and_s3v4(
                 == secret_free_payload
             )
 
-        # At t+8d, art_1 also expires -> physical blob is deleted & marked `purged`
+        # At t+8d, art_1 also expires -> durable job is committed before physical deletion.
         t_plus_8d = now + timedelta(days=8)
         async with workspace_rls_session(app_factory, workspace_id=ws_a) as db:
             purged_second = await purge_expired_artifacts_in_tx(
@@ -1754,6 +1756,47 @@ async def test_encrypted_artifact_store_contract_local_and_s3v4(
                 now=t_plus_8d,
             )
             assert purged_second == 1
+            deletion_job = await db.scalar(
+                select(ArtifactDeletionJobModel).where(
+                    ArtifactDeletionJobModel.workspace_id == ws_a,
+                    ArtifactDeletionJobModel.blob_id == art_1.blob_id,
+                )
+            )
+            assert deletion_job is not None and deletion_job.state == "pending"
+
+        class FailOnceStore:
+            def __init__(self, wrapped: ArtifactStoreProtocol) -> None:
+                self.wrapped = wrapped
+                self.failed = False
+
+            async def delete_blob(self, *, workspace_id: str, storage_ref: str) -> bool:
+                if not self.failed:
+                    self.failed = True
+                    raise OSError("synthetic object store interruption")
+                return await self.wrapped.delete_blob(
+                    workspace_id=workspace_id, storage_ref=storage_ref
+                )
+
+            def __getattr__(self, name: str) -> object:
+                return getattr(self.wrapped, name)
+
+        retention = RetentionPurgeWorker(
+            session_factory=app_factory,
+            store=FailOnceStore(store),  # type: ignore[arg-type]
+        )
+        assert await retention.process_one(workspace_id=ws_a, now=t_plus_8d)
+        async with workspace_rls_session(app_factory, workspace_id=ws_a) as db:
+            failed_job = await db.scalar(
+                select(ArtifactDeletionJobModel).where(
+                    ArtifactDeletionJobModel.workspace_id == ws_a,
+                    ArtifactDeletionJobModel.blob_id == art_1.blob_id,
+                )
+            )
+            assert failed_job is not None
+            assert failed_job.state == "pending"
+            assert failed_job.error_code == "storage_delete_failed"
+        assert await retention.process_one(workspace_id=ws_a, now=t_plus_8d + timedelta(seconds=3))
+        async with workspace_rls_session(app_factory, workspace_id=ws_a) as db:
             blob_after = await db.scalar(
                 select(ArtifactBlobModel).where(
                     ArtifactBlobModel.workspace_id == ws_a,

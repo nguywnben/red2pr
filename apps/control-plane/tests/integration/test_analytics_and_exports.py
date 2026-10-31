@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import importlib.util
 import json
+import os
 import sys
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
@@ -11,9 +13,9 @@ from typing import Any
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 
-from py_contracts.crypto import KeyRing, export_ed25519_public_key_record
+from py_contracts.crypto import KeyRing, MasterKeyRing, export_ed25519_public_key_record
 from py_contracts.primitives import new_uuid7
 from red2pr_control.analytics_audit.audit_chain import (
     ExternalCheckpointStore,
@@ -21,9 +23,19 @@ from red2pr_control.analytics_audit.audit_chain import (
     create_audit_checkpoint,
 )
 from red2pr_control.api.app import create_app
-from red2pr_control.db.base import MembershipModel, UserModel
+from red2pr_control.core.errors import DependencyUnavailableError
+from red2pr_control.db.base import (
+    AuditLogModel,
+    MembershipModel,
+    OperationalAlarmModel,
+    OutboxEventModel,
+    UserModel,
+)
 from red2pr_control.db.engine import run_alembic_downgrade, run_alembic_upgrade
 from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
+from red2pr_control.operations.alarms import OperationalAlarmWorker
+from red2pr_control.orchestrator.queue import DurableTaskQueueService
+from red2pr_control.secrets.broker import INFERENCE_SECRET_CAPABILITY, SecretBroker
 
 _SUPPORT_PATH = Path(__file__).with_name("test_agents_and_state_machine.py")
 _SPEC = importlib.util.spec_from_file_location("red2pr_u24_test_support", _SUPPORT_PATH)
@@ -66,16 +78,30 @@ async def test_0020_upgrade_downgrade_upgrade_and_tenant_rls(
                     text(
                         "SELECT relname, relrowsecurity, relforcerowsecurity "
                         "FROM pg_class WHERE relname IN "
-                        "('reporting_projections','report_exports')"
+                        "('reporting_projections','report_exports',"
+                        "'artifact_deletion_jobs','release_exceptions')"
                     )
                 )
             ).all()
-            assert len(policies) == 2
+            assert len(policies) == 4
             assert all(row.relrowsecurity and row.relforcerowsecurity for row in policies)
             assert await db.scalar(text("SELECT count(*) FROM public.reporting_projections")) == 0
             assert await db.scalar(text("SELECT count(*) FROM public.report_exports")) == 0
     finally:
         await harness.app_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_0021_retention_and_release_exception_migration_is_reversible(
+    migrated_db: object,
+) -> None:
+    run_alembic_downgrade(migrated_db.admin_url, "0020_reporting_projections_and_exports")
+    run_alembic_upgrade(
+        migrated_db.admin_url,
+        "head",
+        app_role_name=_SUPPORT.APP_ROLE_NAME,
+        app_role_password=_SUPPORT.APP_ROLE_PASSWORD,
+    )
 
 
 @pytest.mark.asyncio
@@ -98,6 +124,9 @@ async def test_a17_analytics_safe_export_idempotency_and_expiry(
         )
         assert analytics.status_code == 200, analytics.text
         data = analytics.json()
+        unverified_audit = await client.get("/api/v1/workspaces/u24-analytics/audit")
+        assert unverified_audit.status_code == 503
+        assert unverified_audit.json()["code"] == "audit_verification_unavailable"
         assert len(data["funnel"]) == 8
         assert data["repository_count"] == 1
         assert data["funnel"][0]["key"] == "ingested"
@@ -189,6 +218,14 @@ async def test_a17_analytics_safe_export_idempotency_and_expiry(
         harness.api_app.state.audit_checkpoint_keyring = (
             configured_app.state.audit_checkpoint_keyring
         )
+        verified_audit_page = await client.get(
+            "/api/v1/workspaces/u24-analytics/audit?action=u24.audit_export.test_record"
+        )
+        assert verified_audit_page.status_code == 200, verified_audit_page.text
+        audit_items = verified_audit_page.json()["items"]
+        assert len(audit_items) == 1
+        assert audit_items[0]["action"] == "u24.audit_export.test_record"
+        assert audit_items[0]["correlation_id"]
         verified_audit_export = await client.post(
             "/api/v1/workspaces/u24-analytics/exports",
             headers=_SUPPORT._csrf_headers(csrf, extra={"Idempotency-Key": new_uuid7(now=clock())}),
@@ -285,6 +322,45 @@ async def test_a17_analytics_safe_export_idempotency_and_expiry(
                     updated_at=clock(),
                 )
             )
+        exception_body = {
+            "finding_ref": "CVE-2026-U25-1",
+            "artifact_digest": "a" * 64,
+            "security_reviewer_user_id": backup_admin_id,
+            "mitigation": "Restrict ingress to the affected worker pool until patched.",
+            "expires_at": (clock() + __import__("datetime").timedelta(days=14)).isoformat(),
+        }
+        async with instance_rls_session(harness.app_factory, mode="instance_admin") as db:
+            await db.execute(
+                text("UPDATE public.sessions SET step_up_at=NULL WHERE user_id=:user_id"),
+                {"user_id": _owner},
+            )
+        missing_step_up = await client.post(
+            "/api/v1/workspaces/u24-analytics/release-exceptions",
+            headers=_SUPPORT._csrf_headers(csrf),
+            json=exception_body,
+        )
+        assert missing_step_up.status_code == 403
+        assert missing_step_up.json()["code"] == "step_up_required"
+        async with instance_rls_session(harness.app_factory, mode="instance_admin") as db:
+            await db.execute(
+                text("UPDATE public.sessions SET step_up_at=:now WHERE user_id=:user_id"),
+                {"now": clock(), "user_id": _owner},
+            )
+        created_exception = await client.post(
+            "/api/v1/workspaces/u24-analytics/release-exceptions",
+            headers=_SUPPORT._csrf_headers(csrf),
+            json=exception_body,
+        )
+        assert created_exception.status_code == 201, created_exception.text
+        exception_id = created_exception.json()["id"]
+        listed_exceptions = await client.get("/api/v1/workspaces/u24-analytics/release-exceptions")
+        assert listed_exceptions.status_code == 200
+        assert listed_exceptions.json()["items"][0]["artifact_digest"] == "a" * 64
+        revoked_exception = await client.delete(
+            f"/api/v1/workspaces/u24-analytics/release-exceptions/{exception_id}",
+            headers=_SUPPORT._csrf_headers(csrf),
+        )
+        assert revoked_exception.status_code == 204
         async with workspace_rls_session(harness.app_factory, workspace_id=workspace_id) as db:
             await db.execute(
                 text(
@@ -321,6 +397,177 @@ async def test_a17_analytics_safe_export_idempotency_and_expiry(
         await harness.app_engine.dispose()
 
 
+@pytest.mark.asyncio
+async def test_u25_alarm_transitions_and_storage_admission_pause(
+    migrated_db: object, tmp_path: Path
+) -> None:
+    clock = _SUPPORT.ManualClock()
+    harness = _SUPPORT._build_u17_harness(
+        migrated_db.app_url, clock=clock, store_dir=tmp_path / "u25-alarms"
+    )
+    client, _csrf, _owner, workspace_id, _repo_id = await _SUPPORT._bootstrap_workspace_and_repo(
+        harness, clock=clock, ws_slug="u25-alarms"
+    )
+    queue_service = DurableTaskQueueService(
+        session_factory=harness.app_factory,
+        signing_key=harness.iam.csrf_signing_key,
+    )
+    alarm_worker = OperationalAlarmWorker(
+        session_factory=harness.app_factory,
+        artifact_store=harness.artifact_store,
+        task_queue_service=queue_service,
+        storage_usage_probe=lambda: 95.0,
+    )
+    try:
+        await queue_service.enqueue_job(
+            workspace_id=workspace_id,
+            kind="repair.alarm-test",
+            resource_id=new_uuid7(now=clock()),
+            correlation_id="u25-alarm-correlation",
+            now=clock() - __import__("datetime").timedelta(minutes=2),
+            is_repair_job=True,
+        )
+        assert await alarm_worker.process_once(now=clock()) == 1
+        with pytest.raises(DependencyUnavailableError) as paused:
+            await queue_service.enqueue_job(
+                workspace_id=workspace_id,
+                kind="repair.alarm-test-paused",
+                resource_id=new_uuid7(now=clock()),
+                correlation_id="u25-paused-correlation",
+                now=clock(),
+                is_repair_job=True,
+            )
+        assert paused.value.code == "storage_capacity_exceeded"
+        clock.advance(minutes=3)
+        assert await alarm_worker.process_once(now=clock()) == 1
+        async with workspace_rls_session(harness.app_factory, workspace_id=workspace_id) as db:
+            alarms = list((await db.scalars(select(OperationalAlarmModel))).all())
+            alarm_events = list(
+                (
+                    await db.scalars(
+                        select(OutboxEventModel).where(
+                            OutboxEventModel.event_type == "operations.alarm"
+                        )
+                    )
+                ).all()
+            )
+        assert {item.alarm_code: item.state for item in alarms} == {
+            "queue_lag": "firing",
+            "storage_hard_limit": "firing",
+        }
+        assert len(alarm_events) == 2
+    finally:
+        await client.aclose()
+        await harness.app_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_u25_secret_metadata_and_cluster_key_rotation_api(
+    migrated_db: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _SUPPORT.ManualClock()
+    harness = _SUPPORT._build_u17_harness(
+        migrated_db.app_url, clock=clock, store_dir=tmp_path / "u25-key-rotation"
+    )
+    client, csrf, owner_id, workspace_id, _repo_id = await _SUPPORT._bootstrap_workspace_and_repo(
+        harness, clock=clock, ws_slug="u25-key-rotation"
+    )
+    key_file = tmp_path / "master-keys.json"
+    key_v1 = os.urandom(32)
+    key_v2 = os.urandom(32)
+    key_file.write_text(
+        json.dumps({"active_version": 1, "keys": {"1": base64.b64encode(key_v1).decode()}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("RED2PR_MASTER_KEY_FILE", str(key_file))
+    broker = SecretBroker(key_ring=MasterKeyRing(active_version=1, keys={1: key_v1}))
+    harness.api_app.state.notification_secret_broker = broker
+    secret_value = b"u25-secret-rotation-canary-987654321"
+    async with workspace_rls_session(harness.app_factory, workspace_id=workspace_id) as db:
+        stored = await broker.store_secret(
+            db,
+            plaintext=secret_value,
+            purpose="meta_inference",
+            workspace_id=workspace_id,
+            now=clock(),
+        )
+
+    async with instance_rls_session(harness.app_factory, mode="instance_admin") as db:
+        await db.execute(
+            text("UPDATE public.sessions SET step_up_at=NULL WHERE user_id=:user_id"),
+            {"user_id": owner_id},
+        )
+    try:
+        metadata = await client.get("/api/v1/workspaces/u25-key-rotation/security/secrets")
+        assert metadata.status_code == 200, metadata.text
+        assert metadata.json()["active_kek_version"] == 1
+        assert metadata.json()["items"][0]["kek_version"] == 1
+        assert stored.secret_ref not in metadata.text
+        assert secret_value.decode() not in metadata.text
+
+        headers = _SUPPORT._csrf_headers(csrf)
+        missing_step_up = await client.post(
+            "/api/v1/workspaces/u25-key-rotation/security/secrets/rotate", headers=headers
+        )
+        assert missing_step_up.status_code == 403
+        assert missing_step_up.json()["code"] == "step_up_required"
+
+        async with instance_rls_session(harness.app_factory, mode="instance_admin") as db:
+            await db.execute(
+                text("UPDATE public.sessions SET step_up_at=:now WHERE user_id=:user_id"),
+                {"now": clock(), "user_id": owner_id},
+            )
+        key_file.write_text(
+            json.dumps(
+                {
+                    "active_version": 2,
+                    "keys": {
+                        "1": base64.b64encode(key_v1).decode(),
+                        "2": base64.b64encode(key_v2).decode(),
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        rotated = await client.post(
+            "/api/v1/workspaces/u25-key-rotation/security/secrets/rotate", headers=headers
+        )
+        assert rotated.status_code == 200, rotated.text
+        assert rotated.json()["active_kek_version"] == 2
+        assert rotated.json()["rotated_count"] == 1
+        assert secret_value.decode() not in rotated.text
+        repeated_rotation = await client.post(
+            "/api/v1/workspaces/u25-key-rotation/security/secrets/rotate", headers=headers
+        )
+        assert repeated_rotation.status_code == 200, repeated_rotation.text
+        assert repeated_rotation.json()["active_kek_version"] == 2
+        assert repeated_rotation.json()["rotated_count"] == 0
+        async with instance_rls_session(harness.app_factory, mode="audit_verifier") as db:
+            rotation_audit_count = await db.scalar(
+                select(func.count(AuditLogModel.id)).where(
+                    AuditLogModel.action == "security.secret_keyring.rotated"
+                )
+            )
+            assert rotation_audit_count == 2
+
+        metadata_after = await client.get("/api/v1/workspaces/u25-key-rotation/security/secrets")
+        assert metadata_after.status_code == 200
+        assert metadata_after.json()["active_kek_version"] == 2
+        assert metadata_after.json()["items"][0]["kek_version"] == 2
+        assert metadata_after.json()["items"][0]["rotated_at"]
+        async with workspace_rls_session(harness.app_factory, workspace_id=workspace_id) as db:
+            resolved = await broker.resolve_secret_bytes(
+                db,
+                secret_ref=stored.secret_ref,
+                capability=INFERENCE_SECRET_CAPABILITY,
+                workspace_id=workspace_id,
+            )
+        assert resolved == secret_value
+    finally:
+        await client.aclose()
+        await harness.app_engine.dispose()
+
+
 def test_openapi_publishes_a17_contracts() -> None:
     from red2pr_control.api.app import render_openapi_v1_json
 
@@ -329,6 +576,7 @@ def test_openapi_publishes_a17_contracts() -> None:
     assert "/api/v1/workspaces/{ws}/usage" in spec["paths"]
     assert "/api/v1/workspaces/{ws}/exports" in spec["paths"]
     assert "/api/v1/workspaces/{ws}/exports/{export_id}/download" in spec["paths"]
+    assert "/api/v1/workspaces/{ws}/audit" in spec["paths"]
     assert "WorkspaceAnalyticsResponse" in spec["components"]["schemas"]
     assert "WorkspaceUsageResponse" in spec["components"]["schemas"]
     assert "ReportExportReceipt" in spec["components"]["schemas"]

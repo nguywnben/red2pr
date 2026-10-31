@@ -143,6 +143,7 @@ function buildDefaultNavItems(workspaceSlug: string | undefined): readonly Shell
       href: `${prefix}/notifications`,
     },
     { id: "analytics", labelKey: "app.nav.analytics", href: `${prefix}/analytics` },
+    { id: "security", labelKey: "app.nav.security", href: `${prefix}/security` },
     { id: "audit", labelKey: "app.nav.audit", href: `${prefix}/audit` },
     { id: "members", labelKey: "app.nav.members", href: `${prefix}/members` },
     { id: "settings", labelKey: "app.nav.settings", href: `${prefix}/settings` },

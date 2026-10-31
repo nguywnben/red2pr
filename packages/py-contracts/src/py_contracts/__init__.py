@@ -57,8 +57,12 @@ from py_contracts.evidence import (
     ModelToolProvenance,
     ModelUsageRecord,
     RegressionSuiteSummary,
+    ReleaseExceptionCreateRequest,
+    ReleaseExceptionList,
+    ReleaseExceptionRecord,
     ReportExportReceipt,
     ReportExportRequest,
+    SecurityFindingV1,
     WorkspaceAnalyticsResponse,
     WorkspaceUsageResponse,
 )
@@ -352,6 +356,12 @@ from py_contracts.repairs import (
     VerificationGateResult,
 )
 from py_contracts.schema_export import render_canonical_json_schemas, write_canonical_json_schemas
+from py_contracts.secrets import (
+    SecretKeyMetadata,
+    SecretKeyMetadataPage,
+    SecretKeyRotationResult,
+    SecretPurpose,
+)
 from py_contracts.tools import (
     AGENT_TOOL_NAMES,
     DIAGNOSIS_ALLOWED_TOOLS,
@@ -679,6 +689,9 @@ __all__ = [
     "RecoveryResponse",
     "RegistrableCidrStr",
     "RegressionSuiteSummary",
+    "ReleaseExceptionCreateRequest",
+    "ReleaseExceptionList",
+    "ReleaseExceptionRecord",
     "RemoteCheck",
     "RemoteCheckObservation",
     "RemoteStatus",
@@ -726,7 +739,12 @@ __all__ = [
     "SearchMatch",
     "SearchRepoArgs",
     "SearchRepoResult",
+    "SecretKeyMetadata",
+    "SecretKeyMetadataPage",
+    "SecretKeyRotationResult",
     "SecretPresence",
+    "SecretPurpose",
+    "SecurityFindingV1",
     "Session",
     "SessionListItem",
     "SessionPage",

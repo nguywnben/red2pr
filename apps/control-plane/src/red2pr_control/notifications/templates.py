@@ -33,6 +33,7 @@ _TITLES: dict[str, tuple[str, str]] = {
     "identity.permission_revoked": ("Access changed", "critical"),
     "notification.delivery.failed": ("Notification delivery failed", "warning"),
     "operations.restore.completed": ("Restore operation completed", "info"),
+    "operations.alarm": ("Operational alarm", "warning"),
 }
 _SECRET_MARKER = re.compile(r"(?i)(?:token|secret|password|authorization|api[_-]?key)\s*[:=]\s*\S+")
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\u202a-\u202e\u2066-\u2069]")
@@ -82,6 +83,12 @@ def render_event_template(
         detail = f"Failed run {payload.get('attempt_key', 'unknown')}"
     elif event.type == "notification.delivery.failed":
         detail = "A notification could not be delivered."
+    elif event.type == "operations.alarm":
+        code = payload.get("alarm_code", "unknown")
+        state = payload.get("state", "unknown")
+        detail = f"{code}: {state}"
+        if code in {"storage_hard_limit", "audit_chain_mismatch", "backup_failed"}:
+            severity = "critical"
 
     parts = [label] if label else []
     if detail:

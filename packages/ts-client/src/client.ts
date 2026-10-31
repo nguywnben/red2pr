@@ -192,6 +192,12 @@ export type WebhookSigningKeyRotateResponse = SchemaOf<"WebhookSigningKeyRotateR
 export type NotificationCredentialWriteRequest = SchemaOf<"NotificationCredentialWriteRequest">;
 export type NotificationTestRequest = SchemaOf<"NotificationTestRequest">;
 export type AuditRecord = SchemaOf<"AuditRecord">;
+export type ReleaseExceptionCreateRequest = SchemaOf<"ReleaseExceptionCreateRequest">;
+export type ReleaseExceptionList = SchemaOf<"ReleaseExceptionList">;
+export type ReleaseExceptionRecord = SchemaOf<"ReleaseExceptionRecord">;
+export type SecretKeyMetadataPage = SchemaOf<"SecretKeyMetadataPage">;
+export type SecretKeyRotationResult = SchemaOf<"SecretKeyRotationResult">;
+export type AuditPage = SchemaOf<"Page_AuditRecord_">;
 export type ModelUsageRecord = SchemaOf<"ModelUsageRecord">;
 export type ReportExportRequest = SchemaOf<"ReportExportRequest">;
 export type ReportExportReceipt = SchemaOf<"ReportExportReceipt">;
@@ -782,6 +788,12 @@ export interface Red2PrClient {
   testNotificationDestination(ws: string, destinationId: string, body: NotificationTestRequest, options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
   listNotificationDeliveries(ws: string, query?: { readonly destination_id?: string; readonly state?: string; readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<NotificationDeliveryPage>>;
   listApiTokens(ws: string, query?: { readonly limit?: number; readonly cursor?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<ApiTokenPage>>;
+  listWorkspaceAudit(ws: string, query?: { readonly limit?: number; readonly cursor?: string; readonly action?: string; readonly correlation_id?: string }, options?: RequestCallOptions): Promise<ApiEnvelope<AuditPage>>;
+  listWorkspaceReleaseExceptions(ws: string, options?: RequestCallOptions): Promise<ApiEnvelope<ReleaseExceptionList>>;
+  createWorkspaceReleaseException(ws: string, body: ReleaseExceptionCreateRequest, options?: RequestCallOptions): Promise<ApiEnvelope<ReleaseExceptionRecord>>;
+  revokeWorkspaceReleaseException(ws: string, exceptionId: string, options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
+  listWorkspaceSecretMetadata(ws: string, options?: RequestCallOptions): Promise<ApiEnvelope<SecretKeyMetadataPage>>;
+  rotateWorkspaceSecretKeys(ws: string, options?: RequestCallOptions): Promise<ApiEnvelope<SecretKeyRotationResult>>;
   createApiToken(ws: string, body: ApiTokenCreateRequest, options?: RequestCallOptions): Promise<ApiEnvelope<ApiTokenCreateResponse>>;
   revokeApiToken(ws: string, tokenId: string, options?: RequestCallOptions): Promise<{ correlationId: string | null }>;
   rotateWebhookSigningKey(ws: string, destinationId: string, options?: RequestCallOptions): Promise<ApiEnvelope<WebhookSigningKeyRotateResponse>>;
@@ -1403,6 +1415,18 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       callJson("GET", "/api/v1/workspaces/{ws}/notification-deliveries", { path: { ws }, query, options }),
     listApiTokens: (ws, query, options) =>
       callJson("GET", "/api/v1/workspaces/{ws}/api-tokens", { path: { ws }, query, options }),
+    listWorkspaceAudit: (ws, query, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/audit", { path: { ws }, query, options }),
+    listWorkspaceReleaseExceptions: (ws, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/release-exceptions", { path: { ws }, options }),
+    createWorkspaceReleaseException: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/release-exceptions", { path: { ws }, body, options }),
+    revokeWorkspaceReleaseException: (ws, exceptionId, options) =>
+      callVoid("DELETE", "/api/v1/workspaces/{ws}/release-exceptions/{exception_id}", { path: { ws, exception_id: exceptionId }, options }),
+    listWorkspaceSecretMetadata: (ws, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/security/secrets", { path: { ws }, options }),
+    rotateWorkspaceSecretKeys: (ws, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/security/secrets/rotate", { path: { ws }, options }),
     createApiToken: (ws, body, options) =>
       callJson("POST", "/api/v1/workspaces/{ws}/api-tokens", { path: { ws }, body, options }),
     revokeApiToken: (ws, tokenId, options) =>

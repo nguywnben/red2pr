@@ -6,22 +6,31 @@ import hashlib
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response
 from fastapi.responses import Response as RawResponse
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from py_contracts import (
+    AuditRecord,
+    ReleaseExceptionCreateRequest,
+    ReleaseExceptionList,
+    ReleaseExceptionRecord,
     ReportExportReceipt,
     ReportExportRequest,
+    SecretKeyMetadata,
+    SecretKeyMetadataPage,
+    SecretKeyRotationResult,
+    SecretPurpose,
     WorkspaceAnalyticsResponse,
     WorkspaceUsageResponse,
 )
 from py_contracts.crypto import KeyRing, canonical_json_bytes
-from py_contracts.primitives import new_uuid7
+from py_contracts.evidence import AuditDecision, ReportFormat, ReportKind
+from py_contracts.primitives import Page, new_uuid7
 from red2pr_control.analytics_audit.audit_chain import (
     ExternalCheckpointStore,
     append_audit_entry,
@@ -35,6 +44,7 @@ from red2pr_control.core.errors import (
     ForbiddenError,
     GoneError,
     NotFoundError,
+    UnprocessableEntityError,
 )
 from red2pr_control.core.redaction import DEFAULT_REDACTOR
 from red2pr_control.db.base import (
@@ -44,18 +54,27 @@ from red2pr_control.db.base import (
     EvidenceManifestModel,
     MembershipModel,
     PublicationRecordModel,
+    ReleaseExceptionModel,
     RepairSessionModel,
     RepoGrantModel,
     ReportExportModel,
     ReportingProjectionModel,
     RepositoryModel,
     ReproductionRunModel,
+    SecretEntryModel,
+    SecretKeyringStateModel,
     UsageLedgerModel,
 )
 from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
-from red2pr_control.iam.rbac import WorkspaceAccessContext, make_workspace_rbac_dependency
+from red2pr_control.iam.rbac import (
+    WorkspaceAccessContext,
+    compute_query_filter_hash,
+    decode_signed_cursor,
+    encode_signed_cursor,
+    make_workspace_rbac_dependency,
+)
 from red2pr_control.iam.router import get_iam_service
-from red2pr_control.iam.sessions import IamService, extract_client_ip
+from red2pr_control.iam.sessions import IamService, extract_client_ip, is_step_up_fresh
 from red2pr_control.triage_evidence.artifact_store import (
     ArtifactStoreProtocol,
     StagedBlobHandle,
@@ -68,6 +87,18 @@ _READ = make_workspace_rbac_dependency(
     action="workspace.analytics_read",
 )
 _AUDIT_ROLES = frozenset({"admin", "auditor"})
+_EXCEPTION_WRITE = make_workspace_rbac_dependency(
+    allowed_roles=frozenset({"admin"}),
+    require_csrf=True,
+    allow_break_glass=False,
+    action="workspace.release_exception_write",
+)
+_SECURITY_METADATA_READ = make_workspace_rbac_dependency(
+    allowed_roles=frozenset({"admin", "auditor"}),
+    require_csrf=False,
+    allow_break_glass=False,
+    action="workspace.security_metadata_read",
+)
 _EXPORT_TTL = timedelta(hours=24)
 _MAX_EXPORT_BYTES = 20 * 1024 * 1024
 _INITIAL_STATES = frozenset({"received", "authorized", "collecting"})
@@ -385,6 +416,474 @@ def build_analytics_router() -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
     @router.get(
+        "/workspaces/{ws}/audit",
+        operation_id="listWorkspaceAudit",
+        tags=["audit"],
+        response_model=Page[AuditRecord],
+    )
+    async def list_workspace_audit(
+        ws: Annotated[str, Path(min_length=1, max_length=120)],
+        request: Request,
+        ctx: Annotated[WorkspaceAccessContext, Depends(_READ)],
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        limit: Annotated[int, Query(ge=1, le=100)] = 25,
+        cursor: Annotated[str | None, Query(max_length=2048)] = None,
+        action: Annotated[str | None, Query(max_length=120)] = None,
+        correlation_id: Annotated[str | None, Query(max_length=120)] = None,
+    ) -> Page[AuditRecord]:
+        if ctx.effective_role not in _AUDIT_ROLES:
+            raise ForbiddenError(
+                code="insufficient_role", detail="Audit search requires admin or auditor role."
+            )
+        checkpoint_store = getattr(request.app.state, "audit_checkpoint_store", None)
+        checkpoint_keyring = getattr(request.app.state, "audit_checkpoint_keyring", None)
+        if (
+            not isinstance(checkpoint_store, ExternalCheckpointStore)
+            or not isinstance(checkpoint_keyring, KeyRing)
+            or not checkpoint_store.list_checkpoints()
+        ):
+            raise DependencyUnavailableError(
+                code="audit_verification_unavailable",
+                detail="Verified audit search requires a signed external checkpoint.",
+            )
+        now = iam.now().astimezone(UTC)
+        async with instance_rls_session(iam.session_factory, mode="audit_verifier") as audit_db:
+            await verify_audit_chain(
+                audit_db,
+                external_store=checkpoint_store,
+                keyring=checkpoint_keyring,
+            )
+        filters = {
+            "endpoint": "workspace.audit",
+            "action": action,
+            "correlation_id": correlation_id,
+        }
+        query_hash = compute_query_filter_hash(filters)
+        decoded = (
+            decode_signed_cursor(
+                cursor,
+                signing_key=iam.csrf_signing_key,
+                expected_workspace_scope=ctx.workspace_id,
+                expected_principal_id=ctx.auth.user.id,
+                current_grant_epoch=ctx.auth.user.grant_epoch,
+                expected_query_hash=query_hash,
+                now=now,
+            )
+            if cursor
+            else None
+        )
+        async with workspace_rls_session(iam.session_factory, workspace_id=ctx.workspace_id) as db:
+            live_membership = await db.scalar(
+                select(MembershipModel).where(
+                    MembershipModel.workspace_id == ctx.workspace_id,
+                    MembershipModel.user_id == ctx.auth.user.id,
+                )
+            )
+            if (
+                ctx.auth.api_token is not None
+                or live_membership is None
+                or live_membership.role not in _AUDIT_ROLES
+            ):
+                raise ForbiddenError(
+                    code="insufficient_role",
+                    detail="Audit search requires a live admin or auditor membership.",
+                )
+            query = select(AuditLogModel).where(AuditLogModel.workspace_id == ctx.workspace_id)
+            if action:
+                query = query.where(AuditLogModel.action == action)
+            if correlation_id:
+                query = query.where(AuditLogModel.correlation_id == correlation_id)
+            if decoded is not None:
+                query = query.where(
+                    or_(
+                        AuditLogModel.occurred_at < decoded.created_at,
+                        and_(
+                            AuditLogModel.occurred_at == decoded.created_at,
+                            AuditLogModel.id < decoded.item_id,
+                        ),
+                    )
+                )
+            rows = list(
+                (
+                    await db.scalars(
+                        query.order_by(
+                            AuditLogModel.occurred_at.desc(), AuditLogModel.id.desc()
+                        ).limit(limit + 1)
+                    )
+                ).all()
+            )
+            visible = rows[:limit]
+            next_cursor = (
+                encode_signed_cursor(
+                    signing_key=iam.csrf_signing_key,
+                    workspace_scope=ctx.workspace_id,
+                    principal_id=ctx.auth.user.id,
+                    grant_epoch=ctx.auth.user.grant_epoch,
+                    query_hash=query_hash,
+                    created_at=visible[-1].occurred_at,
+                    item_id=visible[-1].id,
+                    now=now,
+                )
+                if len(rows) > limit and visible
+                else None
+            )
+            items = [
+                AuditRecord(
+                    id=row.id,
+                    version=row.version,
+                    created_at=row.occurred_at,
+                    updated_at=row.occurred_at,
+                    workspace_id=ctx.workspace_id,
+                    actor=row.actor_type,
+                    action=row.action,
+                    target=DEFAULT_REDACTOR.redact_text(row.target),
+                    decision=cast(AuditDecision, row.decision),
+                    reason_code=row.reason_code,
+                    correlation_id=row.correlation_id,
+                    prev_hash=row.prev_hash,
+                    entry_hash=row.entry_hash,
+                )
+                for row in visible
+            ]
+            return Page[AuditRecord](items=items, next_cursor=next_cursor, snapshot_at=now)
+
+    @router.get(
+        "/workspaces/{ws}/release-exceptions",
+        operation_id="listWorkspaceReleaseExceptions",
+        tags=["security"],
+        response_model=ReleaseExceptionList,
+    )
+    async def list_release_exceptions(
+        ws: Annotated[str, Path(min_length=1, max_length=120)],
+        ctx: Annotated[WorkspaceAccessContext, Depends(_READ)],
+        iam: Annotated[IamService, Depends(get_iam_service)],
+    ) -> ReleaseExceptionList:
+        if ctx.effective_role not in _AUDIT_ROLES or ctx.auth.api_token is not None:
+            raise ForbiddenError(
+                code="insufficient_role",
+                detail="Release exceptions require a live admin or auditor session.",
+            )
+        async with workspace_rls_session(iam.session_factory, workspace_id=ctx.workspace_id) as db:
+            member = await db.scalar(
+                select(MembershipModel).where(
+                    MembershipModel.workspace_id == ctx.workspace_id,
+                    MembershipModel.user_id == ctx.auth.user.id,
+                    MembershipModel.role.in_(_AUDIT_ROLES),
+                )
+            )
+            if member is None:
+                raise ForbiddenError(
+                    code="workspace_access_revoked", detail="Audit access has been revoked."
+                )
+            rows = list(
+                (
+                    await db.scalars(
+                        select(ReleaseExceptionModel)
+                        .where(ReleaseExceptionModel.workspace_id == ctx.workspace_id)
+                        .order_by(ReleaseExceptionModel.created_at.desc())
+                        .limit(500)
+                    )
+                ).all()
+            )
+            return ReleaseExceptionList(
+                items=[
+                    ReleaseExceptionRecord(
+                        id=row.id,
+                        finding_ref=row.finding_ref,
+                        severity="high",
+                        artifact_digest=row.artifact_digest,
+                        owner_user_id=row.owner_user_id,
+                        security_reviewer_user_id=row.security_reviewer_user_id,
+                        mitigation=row.mitigation,
+                        created_at=row.created_at,
+                        expires_at=row.expires_at,
+                        revoked_at=row.revoked_at,
+                    )
+                    for row in rows
+                ]
+            )
+
+    @router.post(
+        "/workspaces/{ws}/release-exceptions",
+        operation_id="createWorkspaceReleaseException",
+        tags=["security"],
+        response_model=ReleaseExceptionRecord,
+        status_code=201,
+    )
+    async def create_release_exception(
+        ws: Annotated[str, Path(min_length=1, max_length=120)],
+        body: ReleaseExceptionCreateRequest,
+        request: Request,
+        ctx: Annotated[WorkspaceAccessContext, Depends(_EXCEPTION_WRITE)],
+        iam: Annotated[IamService, Depends(get_iam_service)],
+    ) -> ReleaseExceptionRecord:
+        now = iam.now().astimezone(UTC)
+        if ctx.auth.api_token is not None or not is_step_up_fresh(ctx.auth.session, now=now):
+            raise ForbiddenError(
+                code="step_up_required",
+                detail="A recent web-session MFA step-up is required for a High exception.",
+            )
+        expires_at = body.expires_at.astimezone(UTC)
+        if expires_at <= now or expires_at > now + timedelta(days=30):
+            raise UnprocessableEntityError(
+                code="release_exception_expiry_invalid",
+                detail="High exceptions must expire within 30 days.",
+            )
+        if body.security_reviewer_user_id == ctx.auth.user.id:
+            raise UnprocessableEntityError(
+                code="release_exception_reviewer_not_independent",
+                detail="The owner and security reviewer must be different users.",
+            )
+        async with workspace_rls_session(iam.session_factory, workspace_id=ctx.workspace_id) as db:
+            await db.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                {
+                    "key": (
+                        f"release-exception:{ctx.workspace_id}:{body.finding_ref}:"
+                        f"{body.artifact_digest}"
+                    )
+                },
+            )
+            memberships = list(
+                (
+                    await db.scalars(
+                        select(MembershipModel).where(
+                            MembershipModel.workspace_id == ctx.workspace_id,
+                            MembershipModel.user_id.in_(
+                                [ctx.auth.user.id, body.security_reviewer_user_id]
+                            ),
+                        )
+                    )
+                ).all()
+            )
+            roles = {item.user_id: item.role for item in memberships}
+            if roles.get(ctx.auth.user.id) != "admin":
+                raise ForbiddenError(
+                    code="insufficient_role", detail="A workspace admin must own the exception."
+                )
+            if roles.get(body.security_reviewer_user_id) != "admin":
+                raise UnprocessableEntityError(
+                    code="release_exception_reviewer_invalid",
+                    detail="The independent security reviewer must be a workspace admin.",
+                )
+            existing = await db.scalar(
+                select(ReleaseExceptionModel.id).where(
+                    ReleaseExceptionModel.workspace_id == ctx.workspace_id,
+                    ReleaseExceptionModel.finding_ref == body.finding_ref,
+                    ReleaseExceptionModel.artifact_digest == body.artifact_digest,
+                    ReleaseExceptionModel.revoked_at.is_(None),
+                    ReleaseExceptionModel.expires_at > now,
+                )
+            )
+            if existing is not None:
+                raise ConflictError(
+                    code="release_exception_exists",
+                    detail="An active exception already exists for this finding and digest.",
+                )
+            row = ReleaseExceptionModel(
+                id=new_uuid7(now=now),
+                workspace_id=ctx.workspace_id,
+                finding_ref=body.finding_ref,
+                severity="high",
+                artifact_digest=body.artifact_digest,
+                owner_user_id=ctx.auth.user.id,
+                security_reviewer_user_id=body.security_reviewer_user_id,
+                mitigation=DEFAULT_REDACTOR.redact_text(body.mitigation)[:2000],
+                created_at=now,
+                expires_at=expires_at,
+            )
+            db.add(row)
+            await db.flush()
+            await append_audit_entry(
+                db,
+                workspace_id=ctx.workspace_id,
+                actor_type="user",
+                actor_id=ctx.auth.user.id,
+                action="security.release_exception.created",
+                target=f"release_exception:{row.id}",
+                decision="allow",
+                reason_code="high_finding_exception",
+                correlation_id=getattr(request.state, "correlation_id", "release-exception"),
+                client_ip=extract_client_ip(request),
+                metadata={
+                    "finding_ref": body.finding_ref,
+                    "artifact_digest": body.artifact_digest,
+                    "security_reviewer_user_id": body.security_reviewer_user_id,
+                    "expires_at": expires_at.isoformat(),
+                },
+                occurred_at=now,
+            )
+            return ReleaseExceptionRecord(
+                id=row.id,
+                finding_ref=row.finding_ref,
+                severity="high",
+                artifact_digest=row.artifact_digest,
+                owner_user_id=row.owner_user_id,
+                security_reviewer_user_id=row.security_reviewer_user_id,
+                mitigation=row.mitigation,
+                created_at=row.created_at,
+                expires_at=row.expires_at,
+                revoked_at=row.revoked_at,
+            )
+
+    @router.delete(
+        "/workspaces/{ws}/release-exceptions/{exception_id}",
+        operation_id="revokeWorkspaceReleaseException",
+        tags=["security"],
+        status_code=204,
+        response_class=Response,
+    )
+    async def revoke_release_exception(
+        ws: Annotated[str, Path(min_length=1, max_length=120)],
+        exception_id: Annotated[str, Path(min_length=36, max_length=36)],
+        request: Request,
+        ctx: Annotated[WorkspaceAccessContext, Depends(_EXCEPTION_WRITE)],
+        iam: Annotated[IamService, Depends(get_iam_service)],
+    ) -> Response:
+        now = iam.now().astimezone(UTC)
+        if ctx.auth.api_token is not None or not is_step_up_fresh(ctx.auth.session, now=now):
+            raise ForbiddenError(
+                code="step_up_required",
+                detail="A recent web-session MFA step-up is required to revoke an exception.",
+            )
+        async with workspace_rls_session(iam.session_factory, workspace_id=ctx.workspace_id) as db:
+            row = await db.scalar(
+                select(ReleaseExceptionModel)
+                .where(
+                    ReleaseExceptionModel.workspace_id == ctx.workspace_id,
+                    ReleaseExceptionModel.id == exception_id,
+                )
+                .with_for_update()
+            )
+            if row is None:
+                raise NotFoundError(
+                    code="release_exception_not_found", detail="Release exception was not found."
+                )
+            membership = await db.scalar(
+                select(MembershipModel).where(
+                    MembershipModel.workspace_id == ctx.workspace_id,
+                    MembershipModel.user_id == ctx.auth.user.id,
+                    MembershipModel.role == "admin",
+                )
+            )
+            if membership is None:
+                raise ForbiddenError(
+                    code="insufficient_role", detail="A workspace admin must revoke exceptions."
+                )
+            if row.revoked_at is None:
+                row.revoked_at = now
+                await append_audit_entry(
+                    db,
+                    workspace_id=ctx.workspace_id,
+                    actor_type="user",
+                    actor_id=ctx.auth.user.id,
+                    action="security.release_exception.revoked",
+                    target=f"release_exception:{row.id}",
+                    decision="allow",
+                    reason_code="owner_revoked_exception",
+                    correlation_id=getattr(request.state, "correlation_id", "release-exception"),
+                    client_ip=extract_client_ip(request),
+                    metadata={"artifact_digest": row.artifact_digest},
+                    occurred_at=now,
+                )
+        return Response(status_code=204)
+
+    @router.get(
+        "/workspaces/{ws}/security/secrets",
+        operation_id="listWorkspaceSecretMetadata",
+        tags=["security"],
+        response_model=SecretKeyMetadataPage,
+    )
+    async def list_workspace_secret_metadata(
+        ws: Annotated[str, Path(min_length=1, max_length=120)],
+        ctx: Annotated[WorkspaceAccessContext, Depends(_SECURITY_METADATA_READ)],
+        iam: Annotated[IamService, Depends(get_iam_service)],
+    ) -> SecretKeyMetadataPage:
+        async with workspace_rls_session(iam.session_factory, workspace_id=ctx.workspace_id) as db:
+            state = await db.scalar(
+                select(SecretKeyringStateModel).where(
+                    SecretKeyringStateModel.singleton_id == "global"
+                )
+            )
+            if state is None:
+                raise DependencyUnavailableError(
+                    code="secret_keyring_state_missing",
+                    detail=(
+                        "Secret key metadata is unavailable until key rotation state "
+                        "is initialized."
+                    ),
+                )
+            rows = list(
+                (
+                    await db.scalars(
+                        select(SecretEntryModel)
+                        .where(SecretEntryModel.workspace_id == ctx.workspace_id)
+                        .order_by(SecretEntryModel.purpose, SecretEntryModel.id)
+                        .limit(5000)
+                    )
+                ).all()
+            )
+            return SecretKeyMetadataPage(
+                active_kek_version=state.active_kek_version,
+                items=[
+                    SecretKeyMetadata(
+                        id=row.id,
+                        purpose=cast(SecretPurpose, row.purpose),
+                        active_key_version=row.active_key_version,
+                        kek_version=row.kek_version,
+                        configured=row.revoked_at is None,
+                        rotated_at=row.rotated_at,
+                        revoked_at=row.revoked_at,
+                        created_at=row.created_at,
+                        updated_at=row.updated_at,
+                    )
+                    for row in rows
+                ],
+            )
+
+    @router.post(
+        "/workspaces/{ws}/security/secrets/rotate",
+        operation_id="rotateWorkspaceSecretKeys",
+        tags=["security"],
+        response_model=SecretKeyRotationResult,
+    )
+    async def rotate_workspace_secret_keys(
+        ws: Annotated[str, Path(min_length=1, max_length=120)],
+        request: Request,
+        ctx: Annotated[WorkspaceAccessContext, Depends(_EXCEPTION_WRITE)],
+        iam: Annotated[IamService, Depends(get_iam_service)],
+    ) -> SecretKeyRotationResult:
+        now = iam.now().astimezone(UTC)
+        if (
+            ctx.auth.api_token is not None
+            or not ctx.auth.user.is_instance_owner
+            or not is_step_up_fresh(ctx.auth.session, now=now)
+        ):
+            raise ForbiddenError(
+                code="step_up_required",
+                detail=(
+                    "A recent web-session MFA step-up by the instance owner is required "
+                    "to rotate the master key."
+                ),
+            )
+        broker = getattr(request.app.state, "notification_secret_broker", None)
+        rotate_all = getattr(broker, "rotate_all_secret_keks", None)
+        if not callable(rotate_all):
+            raise DependencyUnavailableError(
+                code="secret_rotation_unavailable",
+                detail="The host has not configured the secret broker for key rotation.",
+            )
+        return cast(
+            SecretKeyRotationResult,
+            await rotate_all(
+                session_factory=iam.session_factory,
+                actor_id=ctx.auth.user.id,
+                correlation_id=str(getattr(request.state, "correlation_id", "secret-key-rotation")),
+                now=now,
+            ),
+        )
+
+    @router.get(
         "/workspaces/{ws}/analytics",
         operation_id="getWorkspaceAnalytics",
         tags=["analytics"],
@@ -593,8 +1092,8 @@ def build_analytics_router() -> APIRouter:
                     )
                 result = ReportExportReceipt(
                     export_id=existing.id,
-                    kind=existing.kind,
-                    format=existing.format,
+                    kind=cast(ReportKind, existing.kind),
+                    format=cast(ReportFormat, existing.format),
                     digest=existing.digest,
                     size_bytes=existing.size_bytes,
                     expires_at=existing.expires_at,

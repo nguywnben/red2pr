@@ -14,6 +14,7 @@ import asyncio
 import json
 import pathlib
 import re
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime
@@ -23,6 +24,10 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
+from opentelemetry import context as otel_context
+from opentelemetry import trace
+from opentelemetry.sdk.metrics.export import MetricReader
+from opentelemetry.sdk.trace.export import SpanExporter
 from pydantic.json_schema import GenerateJsonSchema, models_json_schema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -143,6 +148,9 @@ from py_contracts import (
     PublicationReconciliationRequest,
     RecoveryRequest,
     RecoveryResponse,
+    ReleaseExceptionCreateRequest,
+    ReleaseExceptionList,
+    ReleaseExceptionRecord,
     RemoteCheck,
     Repair,
     RepairActionRequest,
@@ -170,6 +178,7 @@ from py_contracts import (
     RunnerProfileManifest,
     SandboxJobV1,
     SecretPresence,
+    SecurityFindingV1,
     Session,
     SessionListItem,
     SessionPage,
@@ -243,6 +252,7 @@ from red2pr_control.core.logging import (
     current_correlation_id,
     get_structured_logger,
 )
+from red2pr_control.core.telemetry import configure_telemetry, extract_trace_context
 from red2pr_control.iam.api_tokens import build_api_tokens_router
 from red2pr_control.iam.router import build_iam_router
 from red2pr_control.iam.sessions import IamService
@@ -263,6 +273,8 @@ from red2pr_control.notifications import NotificationDispatcher, build_notificat
 from red2pr_control.notifications.channels.runtime import build_external_notification_adapters
 from red2pr_control.notifications.telegram.poller import TelegramBotService
 from red2pr_control.notifications.telegram.router import build_telegram_router
+from red2pr_control.operations.alarms import OperationalAlarmWorker
+from red2pr_control.operations.retention import RetentionPurgeWorker
 from red2pr_control.operations.setup_wizard import (
     SetupStepRegistry,
     SetupWizardService,
@@ -447,6 +459,9 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     TelegramIntentResponse,
     TelegramIntentConfirmationResponse,
     AuditRecord,
+    ReleaseExceptionCreateRequest,
+    ReleaseExceptionList,
+    ReleaseExceptionRecord,
     ModelUsageRecord,
     BudgetAccountSummary,
     BudgetPolicyDefaults,
@@ -493,6 +508,7 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     RunnerProfileManifest,
     ReproductionRunRecord,
     EvidenceManifestV1,
+    SecurityFindingV1,
 )
 
 
@@ -526,9 +542,20 @@ def _problem_json_response(
 class _CorrelationAndBodyLimitMiddleware:
     """Enforces S-01 1 MiB JSON body ceiling (100 MiB on mTLS upload) and correlation ID."""
 
-    def __init__(self, app: ASGIApp, *, max_body_bytes: int = MAX_JSON_BODY_BYTES) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        max_body_bytes: int = MAX_JSON_BODY_BYTES,
+        tracer: Any | None = None,
+        request_counter: Any | None = None,
+        request_duration: Any | None = None,
+    ) -> None:
         self._app = app
         self._max_body_bytes = max_body_bytes
+        self._tracer = tracer or trace.get_tracer("red2pr.api")
+        self._request_counter = request_counter
+        self._request_duration = request_duration
 
     def _effective_limit_for_scope(self, scope: Scope) -> int:
         method = str(scope.get("method", "")).upper()
@@ -546,6 +573,11 @@ class _CorrelationAndBodyLimitMiddleware:
         corr_id = _extract_safe_correlation_id(raw_headers)
         scope.setdefault("state", {})["correlation_id"] = corr_id
         max_bytes = self._effective_limit_for_scope(scope)
+        started_at = time.perf_counter()
+        method = str(scope.get("method", "OTHER")).upper()
+        if method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"}:
+            method = "OTHER"
+        response_status = 500
 
         with bind_telemetry_context(correlation_id=corr_id, entry_point="api"):
             for h_name, h_val in raw_headers:
@@ -618,7 +650,38 @@ class _CorrelationAndBodyLimitMiddleware:
                     message = {**message, "headers": out_headers}
                 await send(message)
 
-            await self._app(scope, _replay_receive, _correlated_send)
+            trace_carrier = {
+                name.decode("latin-1"): value.decode("latin-1")
+                for name, value in raw_headers
+                if name.lower() in {b"traceparent", b"tracestate"}
+            }
+            parent_context = extract_trace_context(trace_carrier)
+            context_token = otel_context.attach(parent_context)
+            span_holder: list[Any | None] = [None]
+            original_send = _correlated_send
+
+            async def traced_send(message: Message) -> None:
+                nonlocal response_status
+                if message["type"] == "http.response.start" and span_holder[0] is not None:
+                    response_status = int(message.get("status", 500))
+                    span_holder[0].set_attribute("http.response.status_code", response_status)
+                await original_send(message)
+
+            try:
+                with self._tracer.start_as_current_span("http.server") as span:
+                    span_holder[0] = span
+                    span.set_attribute("http.request.method", str(scope.get("method", "")))
+                    await self._app(scope, _replay_receive, traced_send)
+            finally:
+                otel_context.detach(context_token)
+                attributes = {
+                    "http.request.method": method,
+                    "http.response.status_class": f"{response_status // 100}xx",
+                }
+                if self._request_counter is not None:
+                    self._request_counter.add(1, attributes)
+                if self._request_duration is not None:
+                    self._request_duration.record(time.perf_counter() - started_at, attributes)
 
 
 def _request_correlation_id(request: Request) -> str:
@@ -652,12 +715,25 @@ def create_app(
     notification_secret_broker: SecretBroker | None = None,
     audit_checkpoint_store: ExternalCheckpointStore | None = None,
     audit_checkpoint_keyring: KeyRing | None = None,
+    telemetry_span_exporter: SpanExporter | None = None,
+    telemetry_metric_reader: MetricReader | None = None,
 ) -> FastAPI:
     """Create the FastAPI /api/v1 control-plane application shell."""
     if (audit_checkpoint_store is None) != (audit_checkpoint_keyring is None):
         raise ValueError(
             "Audit checkpoint store and verification keyring must be configured together."
         )
+    tracer_provider, meter_provider = configure_telemetry(
+        span_exporter=telemetry_span_exporter,
+        metric_reader=telemetry_metric_reader,
+    )
+    meter = meter_provider.get_meter("red2pr.control_plane")
+    request_counter = meter.create_counter(
+        "red2pr.http.server.requests", description="Completed HTTP server requests"
+    )
+    request_duration = meter.create_histogram(
+        "red2pr.http.server.duration", unit="s", description="HTTP server request duration"
+    )
     if notification_dispatcher is None and iam_service is not None:
         notification_dispatcher = NotificationDispatcher(
             session_factory=iam_service.session_factory
@@ -683,6 +759,8 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         worker = None
         telegram_worker = None
+        retention_task = None
+        alarms_task = None
         dispatcher = getattr(app.state, "notification_dispatcher", None)
         if dispatcher is not None:
             worker = asyncio.create_task(
@@ -693,6 +771,16 @@ def create_app(
             telegram_worker = asyncio.create_task(
                 telegram_service.run_forever(), name="telegram-bot-runtime"
             )
+        retention_worker = getattr(app.state, "retention_worker", None)
+        if retention_worker is not None:
+            retention_task = asyncio.create_task(
+                retention_worker.run_forever(), name="retention-purge-worker"
+            )
+        alarm_worker = getattr(app.state, "operational_alarm_worker", None)
+        if alarm_worker is not None:
+            alarms_task = asyncio.create_task(
+                alarm_worker.run_forever(), name="operational-alarm-worker"
+            )
         try:
             yield
         finally:
@@ -702,6 +790,14 @@ def create_app(
                     await worker
             if dispatcher is not None:
                 await dispatcher.aclose()
+            if retention_task is not None:
+                retention_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await retention_task
+            if alarms_task is not None:
+                alarms_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await alarms_task
             if telegram_worker is not None:
                 telegram_worker.cancel()
                 with suppress(asyncio.CancelledError):
@@ -759,6 +855,25 @@ def create_app(
     app.state.publisher_saga = publisher_saga
     app.state.remote_ci_observer = remote_ci_observer
     app.state.notification_dispatcher = notification_dispatcher
+    app.state.retention_worker = (
+        RetentionPurgeWorker(
+            session_factory=iam_service.session_factory,
+            store=artifact_store,
+        )
+        if iam_service is not None
+        else None
+    )
+    app.state.operational_alarm_worker = (
+        OperationalAlarmWorker(
+            session_factory=iam_service.session_factory,
+            artifact_store=artifact_store,
+            task_queue_service=task_queue_service,
+            checkpoint_store=audit_checkpoint_store,
+            checkpoint_keyring=audit_checkpoint_keyring,
+        )
+        if iam_service is not None
+        else None
+    )
     app.state.notification_secret_broker = notification_secret_broker
     app.state.telegram_bot_service = telegram_bot_service
     app.state.audit_checkpoint_store = audit_checkpoint_store
@@ -908,7 +1023,13 @@ def create_app(
         return schema
 
     app.openapi = _custom_openapi  # type: ignore[method-assign]
-    app.add_middleware(_CorrelationAndBodyLimitMiddleware, max_body_bytes=MAX_JSON_BODY_BYTES)
+    app.add_middleware(
+        _CorrelationAndBodyLimitMiddleware,
+        max_body_bytes=MAX_JSON_BODY_BYTES,
+        tracer=tracer_provider.get_tracer("red2pr.api"),
+        request_counter=request_counter,
+        request_duration=request_duration,
+    )
     return app
 
 

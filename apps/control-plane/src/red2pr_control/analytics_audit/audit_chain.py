@@ -431,9 +431,7 @@ async def verify_audit_chain(
                 detail=f"Database checkpoint {db_row.id} failed Ed25519 verification.",
             ) from exc
 
-    entries = (
-        await session.scalars(select(AuditLogModel).order_by(AuditLogModel.seq.asc()))
-    ).all()
+    entries = (await session.scalars(select(AuditLogModel).order_by(AuditLogModel.seq.asc()))).all()
 
     expected_seq = 1
     expected_prev_hash = GENESIS_PREV_HASH

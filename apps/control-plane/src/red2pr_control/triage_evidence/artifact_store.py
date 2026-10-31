@@ -29,6 +29,7 @@ from urllib.parse import quote
 
 import httpx
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from py_contracts.crypto import (
@@ -40,6 +41,7 @@ from py_contracts.crypto import (
 )
 from py_contracts.evidence import Artifact, ArtifactAccessClass
 from py_contracts.primitives import new_uuid7
+from red2pr_control.analytics_audit.audit_chain import append_audit_entry
 from red2pr_control.core.egress import EgressPolicyEngine
 from red2pr_control.core.errors import (
     ConflictError,
@@ -48,7 +50,7 @@ from red2pr_control.core.errors import (
     GoneError,
     NotFoundError,
 )
-from red2pr_control.db.base import ArtifactBlobModel, ArtifactModel
+from red2pr_control.db.base import ArtifactBlobModel, ArtifactDeletionJobModel, ArtifactModel
 from red2pr_control.triage_evidence.s3_sigv4 import S3Credentials, sign_s3_v4_headers
 
 StorageBackendKind = Literal["local_encrypted", "s3_encrypted"]
@@ -1052,7 +1054,7 @@ async def purge_expired_artifacts_in_tx(
     workspace_id: str,
     now: datetime,
 ) -> int:
-    """Mark expired artifacts `purged` and delete unreferenced tenant blobs (`A-10`, `OPS-03`)."""
+    """Mark expired artifacts and enqueue durable, retryable physical blob deletion."""
     ref_now = now.astimezone(UTC)
     expired_rows = list(
         (
@@ -1096,12 +1098,33 @@ async def purge_expired_artifacts_in_tx(
             )
         )
         if blob_row is not None and blob_row.blob_state == "finalized":
-            await store.delete_blob(
-                workspace_id=workspace_id,
-                storage_ref=blob_row.storage_ref,
+            await db.execute(
+                pg_insert(ArtifactDeletionJobModel)
+                .values(
+                    id=new_uuid7(now=ref_now),
+                    workspace_id=workspace_id,
+                    blob_id=blob_row.id,
+                    correlation_id=f"retention:{blob_row.id}",
+                    state="pending",
+                    attempts=0,
+                    available_at=ref_now,
+                    created_at=ref_now,
+                )
+                .on_conflict_do_nothing(index_elements=["workspace_id", "blob_id"])
             )
-            blob_row.blob_state = "purged"
-            blob_row.version += 1
-            blob_row.updated_at = ref_now
+    for row in expired_rows:
+        await append_audit_entry(
+            db,
+            actor_type="system",
+            actor_id="retention-worker",
+            action="artifact.retention.purged",
+            target=f"artifact:{row.id}",
+            decision="allow",
+            reason_code="retention_expired",
+            correlation_id=f"retention:{row.id}",
+            workspace_id=workspace_id,
+            occurred_at=ref_now,
+            metadata={"lifecycle_state": "purged"},
+        )
     await db.flush()
     return purged_count

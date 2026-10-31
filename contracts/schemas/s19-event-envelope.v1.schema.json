@@ -76,6 +76,36 @@
       "title": "DeliveryEventPayload",
       "type": "object"
     },
+    "OperationalAlarmEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "alarm_code": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Alarm Code",
+          "type": "string"
+        },
+        "alarm_id": {
+          "title": "Alarm Id",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "firing",
+            "resolved"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alarm_id",
+        "alarm_code",
+        "state"
+      ],
+      "title": "OperationalAlarmEventPayload",
+      "type": "object"
+    },
     "OperationsEventPayload": {
       "additionalProperties": false,
       "properties": {
@@ -381,6 +411,9 @@
           "$ref": "#/$defs/OperationsEventPayload"
         },
         {
+          "$ref": "#/$defs/OperationalAlarmEventPayload"
+        },
+        {
           "$ref": "#/$defs/DeliveryEventPayload"
         }
       ],
@@ -441,7 +474,8 @@
         "release.update_available",
         "identity.permission_revoked",
         "notification.delivery.failed",
-        "operations.restore.completed"
+        "operations.restore.completed",
+        "operations.alarm"
       ],
       "title": "Type",
       "type": "string"

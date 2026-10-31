@@ -41,6 +41,7 @@ const TelegramIntentConfirmPage = lazy(() => import("../features/approvals/Teleg
 const PullRequestsPage = lazy(() => import("../features/prs").then((module) => ({ default: module.PullRequestsPage })));
 const NotificationsPage = lazy(() => import("../features/notifications").then((module) => ({ default: module.NotificationsPage })));
 const AnalyticsPage = lazy(() => import("../features/analytics/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
+const SecurityPage = lazy(() => import("../features/security/SecurityPage").then((module) => ({ default: module.SecurityPage })));
 const OverviewPage = lazy(() => import("../features/overview/OverviewPage").then((module) => ({ default: module.OverviewPage })));
 import {
   ApiClientProvider,
@@ -86,6 +87,7 @@ function WorkspaceSectionOutlet({
     <Routes>
       <Route path="overview" element={<OverviewPage workspace={workspace} me={meData} />} />
       <Route path="analytics" element={<AnalyticsPage workspace={workspace} me={meData} />} />
+      <Route path="security" element={<SecurityPage workspace={workspace} />} />
       <Route path="members" element={<MembersPage workspace={workspace} me={meData} />} />
       <Route path="pipelines" element={<PipelinesPage workspace={workspace} me={meData} />} />
       <Route path="failures" element={<Navigate to="../pipelines" replace />} />

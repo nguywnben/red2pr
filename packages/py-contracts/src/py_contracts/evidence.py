@@ -263,6 +263,40 @@ class RegressionSuiteSummary(StrictContractModel):
     result_job_id: InternalId
 
 
+class SecurityFindingV1(StrictContractModel):
+    """Structured verifier finding covered by the signed evidence manifest."""
+
+    finding_ref: BoundedName
+    severity: Literal["info", "low", "medium", "high", "critical"]
+    artifact_digest: Sha256Digest
+    invariant_violation: StrictBool = False
+
+
+class ReleaseExceptionCreateRequest(StrictContractModel):
+    finding_ref: BoundedName
+    artifact_digest: Sha256Digest
+    security_reviewer_user_id: InternalId
+    mitigation: Annotated[str, Field(min_length=20, max_length=2000)]
+    expires_at: UtcTimestamp
+
+
+class ReleaseExceptionRecord(StrictContractModel):
+    id: InternalId
+    finding_ref: BoundedName
+    severity: Literal["high"]
+    artifact_digest: Sha256Digest
+    owner_user_id: InternalId
+    security_reviewer_user_id: InternalId
+    mitigation: Annotated[str, Field(min_length=20, max_length=2000)]
+    created_at: UtcTimestamp
+    expires_at: UtcTimestamp
+    revoked_at: UtcTimestamp | None = None
+
+
+class ReleaseExceptionList(StrictContractModel):
+    items: list[ReleaseExceptionRecord] = Field(max_length=500)
+
+
 class EvidenceManifestV1(StrictContractModel):
     """S-22 canonical domain-separated Ed25519-signed local proof manifest."""
 
@@ -294,6 +328,7 @@ class EvidenceManifestV1(StrictContractModel):
     regression: RegressionSuiteSummary
     integrity_outcome: GateOutcome
     security_outcome: GateOutcome
+    security_findings: list[SecurityFindingV1] = Field(default_factory=list, max_length=500)
     policy_outcome: GateOutcome
     provenance: list[ModelToolProvenance] = Field(default_factory=list)
     redaction_revision: BoundedName

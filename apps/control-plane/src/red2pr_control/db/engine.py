@@ -138,8 +138,7 @@ async def assert_non_bypassrls_role(session: AsyncSession) -> str:
     row = (
         await session.execute(
             text(
-                "SELECT rolname, rolsuper, rolbypassrls "
-                "FROM pg_roles WHERE rolname = current_user"
+                "SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"
             )
         )
     ).one_or_none()

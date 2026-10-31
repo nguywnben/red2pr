@@ -13,12 +13,13 @@ Enforces docs/36_CANONICAL_CONTRACTS.md (S-05) and docs/37_NFR_AND_RECOVERY.md (
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, cast
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +34,7 @@ from py_contracts.primitives import (
 )
 from red2pr_control.core.errors import BadRequestError, ConflictError, NotFoundError
 from red2pr_control.db.base import (
+    EffectReplayGuardModel,
     EffectTombstoneModel,
     IdempotencyRecordModel,
     OperationReceiptModel,
@@ -155,6 +157,24 @@ async def claim_idempotent_operation(
     operation_id = new_uuid7(now=ref_now)
     effective_status_url = status_url or f"/api/v1/operations/{operation_id}"
     expires_at = ref_now + record_ttl
+
+    effect_digest = hashlib.sha256(logical_effect_key.encode("utf-8", errors="strict")).hexdigest()
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+        {"key": f"effect-replay:{workspace_id}:{operation}:{effect_digest}"},
+    )
+    prior_guard = await session.scalar(
+        select(EffectReplayGuardModel.id).where(
+            EffectReplayGuardModel.workspace_id == workspace_id,
+            EffectReplayGuardModel.operation == operation,
+            EffectReplayGuardModel.logical_effect_key_digest == effect_digest,
+        )
+    )
+    if prior_guard is not None:
+        raise ConflictError(
+            code="duplicate_logical_effect",
+            detail="This logical side effect is protected by the retained replay guard.",
+        )
 
     insert_record_stmt = (
         pg_insert(IdempotencyRecordModel)

@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Literal, cast, get_args
 
 from pydantic import StrictBool
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from py_contracts.crypto import (
@@ -43,9 +43,20 @@ from py_contracts.primitives import (
     UtcTimestamp,
     new_uuid7,
 )
-from red2pr_control.core.errors import DependencyUnavailableError, ForbiddenError, NotFoundError
+from py_contracts.secrets import SecretKeyRotationResult
+from red2pr_control.analytics_audit.audit_chain import append_audit_entry
+from red2pr_control.core.errors import (
+    ConflictError,
+    DependencyUnavailableError,
+    ForbiddenError,
+    NotFoundError,
+)
 from red2pr_control.core.redaction import DEFAULT_REDACTOR, MIN_CANARY_LENGTH, Redactor
-from red2pr_control.db.base import SecretEntryModel
+from red2pr_control.db.base import SecretEntryModel, SecretKeyringStateModel, WorkspaceModel
+from red2pr_control.db.rls import instance_rls_session
+from red2pr_control.secrets.rotation import RotationDrain
+
+_KEY_ROTATION_LOCK = "red2pr:secret-keyring-rotation:v1"
 
 SecretPurpose = Literal[
     "provider_read",
@@ -240,6 +251,136 @@ class SecretBroker:
     ) -> None:
         self._key_ring = key_ring
         self._redactor = redactor if redactor is not None else DEFAULT_REDACTOR
+        self.rotation_drain = RotationDrain()
+
+    def _refresh_key_ring(self) -> None:
+        """Reload the shared external key file so every process observes rotations."""
+        key_path = os.environ.get("RED2PR_MASTER_KEY_FILE")
+        if key_path:
+            self._key_ring = load_master_key_ring_from_file(key_path)
+
+    async def _acquire_keyring_read_lock(self, session: AsyncSession) -> int:
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock_shared(hashtextextended(:key, 0))"),
+            {"key": _KEY_ROTATION_LOCK},
+        )
+        state = await session.get(SecretKeyringStateModel, "global")
+        if state is None:
+            raise DependencyUnavailableError(
+                code="secret_keyring_state_missing",
+                detail="The global secret key rotation state is not initialized.",
+            )
+        if self._key_ring.get(state.active_kek_version) is None:
+            raise DependencyUnavailableError(
+                code="master_key_rotation_reload_required",
+                detail=(
+                    "This process must reload the active external key ring before secret access."
+                ),
+            )
+        return state.active_kek_version
+
+    async def rotate_all_secret_keks(
+        self,
+        *,
+        session_factory: Any,
+        actor_id: str,
+        correlation_id: str,
+        now: datetime | None = None,
+    ) -> SecretKeyRotationResult:
+        """Atomically re-encrypt all entries while every process's broker leases drain."""
+        ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+        async with self.rotation_drain.rotation():
+            self._refresh_key_ring()
+            async with instance_rls_session(session_factory, mode="instance_admin") as db:
+                await db.execute(
+                    text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                    {"key": _KEY_ROTATION_LOCK},
+                )
+                state = await db.scalar(
+                    select(SecretKeyringStateModel)
+                    .where(SecretKeyringStateModel.singleton_id == "global")
+                    .with_for_update()
+                )
+                if state is None:
+                    raise DependencyUnavailableError(
+                        code="secret_keyring_state_missing",
+                        detail="The global secret key rotation state is not initialized.",
+                    )
+                target_version = self._key_ring.active_version
+                if target_version < state.active_kek_version:
+                    raise ConflictError(
+                        code="master_key_version_regression",
+                        detail="The configured active master key version cannot move backwards.",
+                    )
+                workspace_ids = list(
+                    await db.scalars(select(WorkspaceModel.id).order_by(WorkspaceModel.id))
+                )
+                rotated = 0
+                for workspace_id in workspace_ids:
+                    await db.execute(
+                        text(
+                            "SELECT set_config('red2pr.scope_mode', 'workspace', true), "
+                            "set_config('red2pr.workspace_id', :workspace_id, true)"
+                        ),
+                        {"workspace_id": workspace_id},
+                    )
+                    rows = list(
+                        (
+                            await db.scalars(
+                                select(SecretEntryModel)
+                                .where(SecretEntryModel.workspace_id == workspace_id)
+                                .order_by(SecretEntryModel.id)
+                                .with_for_update()
+                            )
+                        ).all()
+                    )
+                    rotated += self._reencrypt_secret_rows(
+                        rows, target_version=target_version, now=ref_now
+                    )
+                    await db.flush()
+                await db.execute(
+                    text(
+                        "SELECT set_config('red2pr.scope_mode', 'instance_admin', true), "
+                        "set_config('red2pr.workspace_id', '', true)"
+                    )
+                )
+                instance_rows = list(
+                    (
+                        await db.scalars(
+                            select(SecretEntryModel)
+                            .where(SecretEntryModel.workspace_id.is_(None))
+                            .order_by(SecretEntryModel.id)
+                            .with_for_update()
+                        )
+                    ).all()
+                )
+                rotated += self._reencrypt_secret_rows(
+                    instance_rows, target_version=target_version, now=ref_now
+                )
+                await db.flush()
+                state.active_kek_version = target_version
+                state.version += 1
+                state.updated_at = ref_now
+                await append_audit_entry(
+                    db,
+                    actor_type="user",
+                    actor_id=actor_id,
+                    action="security.secret_keyring.rotated",
+                    target="instance:secret-keyring",
+                    decision="allow",
+                    reason_code="all_secret_entries_reencrypted",
+                    correlation_id=correlation_id,
+                    metadata={
+                        "rotated_count": rotated,
+                        "active_kek_version": target_version,
+                    },
+                    occurred_at=ref_now,
+                )
+            return SecretKeyRotationResult(
+                active_kek_version=target_version,
+                rotated_count=rotated,
+                completed_at=ref_now,
+            )
 
     def _register_canary_if_textual(self, secret_bytes: bytes) -> None:
         try:
@@ -249,7 +390,53 @@ class SecretBroker:
         if len(as_text) >= MIN_CANARY_LENGTH:
             self._redactor.register_canary(as_text)
 
+    def _reencrypt_secret_rows(
+        self, rows: list[SecretEntryModel], *, target_version: int, now: datetime
+    ) -> int:
+        rotated = 0
+        for row in rows:
+            aad_ctx = _build_aad_context(
+                secret_ref=row.secret_ref,
+                workspace_id=row.workspace_id,
+                purpose=row.purpose,
+            )
+            old_envelope = EnvelopeCiphertext.model_validate(row.envelope_json)
+            plaintext = decrypt_envelope(old_envelope, key_ring=self._key_ring, aad_context=aad_ctx)
+            if row.kek_version != target_version:
+                envelope = encrypt_envelope(plaintext, key_ring=self._key_ring, aad_context=aad_ctx)
+                row.envelope_json = envelope.model_dump(mode="json")
+                row.kek_version = envelope.kek_version
+                row.aad_digest = envelope.aad_digest
+                row.rotated_at = now
+                row.updated_at = now
+                row.version += 1
+                rotated += 1
+            row.previous_envelope_json = None
+            self._register_canary_if_textual(plaintext)
+        return rotated
+
     async def store_secret(
+        self,
+        session: AsyncSession,
+        *,
+        plaintext: bytes,
+        purpose: SecretPurpose,
+        workspace_id: str | None = None,
+        secret_ref: str | None = None,
+        now: datetime | None = None,
+    ) -> SecretMetadata:
+        async with self.rotation_drain.operation():
+            self._refresh_key_ring()
+            return await self._store_secret_unlocked(
+                session,
+                plaintext=plaintext,
+                purpose=purpose,
+                workspace_id=workspace_id,
+                secret_ref=secret_ref,
+                now=now,
+            )
+
+    async def _store_secret_unlocked(
         self,
         session: AsyncSession,
         *,
@@ -265,6 +452,7 @@ class SecretBroker:
         if purpose not in ALL_SECRET_PURPOSES:
             raise ValueError(f"Unsupported secret purpose: {purpose!r}")
 
+        active_version = await self._acquire_keyring_read_lock(session)
         ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
         assigned_ref = secret_ref or f"sec_{secrets.token_urlsafe(18)}"
         aad_ctx = _build_aad_context(
@@ -274,7 +462,10 @@ class SecretBroker:
         )
         envelope = encrypt_envelope(
             plaintext,
-            key_ring=self._key_ring,
+            key_ring=MasterKeyRing(
+                active_version=active_version,
+                keys={active_version: self._key_ring.get(active_version) or b""},
+            ),
             aad_context=aad_ctx,
         )
         self._register_canary_if_textual(plaintext)
@@ -307,7 +498,25 @@ class SecretBroker:
         capability: SecretCallerCapability,
         workspace_id: str | None = None,
     ) -> bytes:
+        async with self.rotation_drain.operation():
+            self._refresh_key_ring()
+            return await self._resolve_secret_bytes_unlocked(
+                session,
+                secret_ref=secret_ref,
+                capability=capability,
+                workspace_id=workspace_id,
+            )
+
+    async def _resolve_secret_bytes_unlocked(
+        self,
+        session: AsyncSession,
+        *,
+        secret_ref: str,
+        capability: SecretCallerCapability,
+        workspace_id: str | None = None,
+    ) -> bytes:
         """Unwrap and return raw secret bytes strictly to authorized Z2 capability callers."""
+        await self._acquire_keyring_read_lock(session)
         scope_clause = (
             SecretEntryModel.workspace_id == workspace_id
             if workspace_id is not None
@@ -363,7 +572,37 @@ class SecretBroker:
         workspace_id: str | None = None,
         now: datetime | None = None,
     ) -> SecretMetadata:
+        async with self.rotation_drain.rotation():
+            return await self._rotate_secret_kek_unlocked(
+                session,
+                secret_ref=secret_ref,
+                capability=capability,
+                new_key_ring=new_key_ring,
+                workspace_id=workspace_id,
+                now=now,
+            )
+
+    async def _rotate_secret_kek_unlocked(
+        self,
+        session: AsyncSession,
+        *,
+        secret_ref: str,
+        capability: SecretCallerCapability,
+        new_key_ring: MasterKeyRing,
+        workspace_id: str | None = None,
+        now: datetime | None = None,
+    ) -> SecretMetadata:
         """Re-encrypt an existing secret entry under `new_key_ring.active_version` (OPS-03)."""
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+            {"key": _KEY_ROTATION_LOCK},
+        )
+        state = await session.get(SecretKeyringStateModel, "global")
+        if state is None or new_key_ring.active_version != state.active_kek_version:
+            raise ConflictError(
+                code="global_key_rotation_required",
+                detail="KEK version changes must use the audited all-secret rotation operation.",
+            )
         ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
         scope_clause = (
             SecretEntryModel.workspace_id == workspace_id
@@ -432,6 +671,8 @@ class SecretBroker:
         now: datetime | None = None,
     ) -> SecretMetadata:
         """Immediately revoke a secret entry so subsequent resolution attempts fail."""
+        self._refresh_key_ring()
+        await self._acquire_keyring_read_lock(session)
         ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
         scope_clause = (
             SecretEntryModel.workspace_id == workspace_id

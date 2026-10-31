@@ -21,12 +21,13 @@ from sqlalchemy.exc import DBAPIError
 
 from py_contracts.crypto import (
     DOMAIN_RESULT_V1,
+    CryptoVerificationError,
     KeyRing,
     canonical_json_bytes,
     export_ed25519_public_key_record,
     sign_model_ed25519,
 )
-from py_contracts.evidence import RegressionSuiteSummary
+from py_contracts.evidence import RegressionSuiteSummary, SecurityFindingV1
 from py_contracts.primitives import new_uuid7
 from py_contracts.worker import IsolationCheckResult, ResultV1, SandboxResourceUsage
 from red2pr_control.core.errors import ConflictError
@@ -45,6 +46,10 @@ from red2pr_control.db.engine import (
     run_alembic_upgrade,
 )
 from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
+from red2pr_control.operations.exceptions import (
+    ReleaseException,
+    evaluate_signed_manifest_release_gate,
+)
 from red2pr_control.orchestrator.state_machine import validate_repair_transition
 from red2pr_control.verification.diff_integrity import DiffIntegrityGuard, IntegrityDisposition
 from red2pr_control.verification.pr_reporter import render_pr_summary
@@ -614,6 +619,94 @@ def test_signed_manifest_validates_worker_results_and_artifact_hashes(signed_man
         artifact_blobs=blobs,
         expected_signer_trust_domain=evidence_domain,
     )
+
+
+def test_security_severity_is_signed_and_tampering_is_rejected(signed_manifest_case) -> None:
+    manifest, keyring, blobs, evidence_domain, private_key = signed_manifest_case
+    candidate_digest = manifest.diff_digest
+    payload = manifest.model_dump(mode="python", exclude={"signature", "signer_key_id"})
+    candidate_artifact_id = new_uuid7()
+    candidate_artifact = b"candidate-build-artifact"
+    blobs[candidate_artifact_id] = candidate_artifact
+    payload["artifact_digests"][candidate_artifact_id] = hashlib.sha256(
+        candidate_artifact
+    ).hexdigest()
+    payload["security_findings"] = [
+        SecurityFindingV1(
+            finding_ref="SEC-039-test",
+            severity="high",
+            artifact_digest=candidate_digest,
+            invariant_violation=False,
+        ).model_dump(mode="python")
+    ]
+    signed = create_signed_evidence_manifest(
+        payload, private_key=private_key, key_id=manifest.signer_key_id
+    )
+    verify_evidence_manifest(
+        signed,
+        keyring=keyring,
+        artifact_blobs=blobs,
+        expected_signer_trust_domain=evidence_domain,
+    )
+    tampered = signed.model_copy(
+        update={
+            "security_findings": [
+                signed.security_findings[0].model_copy(update={"severity": "critical"})
+            ]
+        }
+    )
+    with pytest.raises(CryptoVerificationError):
+        verify_evidence_manifest(
+            tampered,
+            keyring=keyring,
+            artifact_blobs=blobs,
+            expected_signer_trust_domain=evidence_domain,
+        )
+
+
+def test_release_gate_uses_signed_findings_and_exact_candidate_digest(
+    signed_manifest_case,
+) -> None:
+    manifest, keyring, _blobs, evidence_domain, private_key = signed_manifest_case
+    candidate_digest = manifest.diff_digest
+    payload = manifest.model_dump(mode="python", exclude={"signature", "signer_key_id"})
+
+    payload["security_findings"] = [
+        {
+            "finding_ref": "SEC-039-high-1",
+            "severity": "high",
+            "artifact_digest": candidate_digest,
+            "invariant_violation": False,
+        }
+    ]
+    signed = create_signed_evidence_manifest(
+        payload, private_key=private_key, key_id=manifest.signer_key_id
+    )
+    now = signed.created_at
+    exception = ReleaseException(
+        finding_ref="SEC-039-high-1",
+        severity="high",
+        artifact_digest=candidate_digest,
+        expires_at=now + timedelta(days=1),
+    )
+    permitted = evaluate_signed_manifest_release_gate(
+        signed,
+        [exception],
+        keyring=keyring,
+        expected_signer_trust_domain=evidence_domain,
+        artifact_digest=candidate_digest,
+        now=now,
+    )
+    assert permitted.ready
+    changed_build = evaluate_signed_manifest_release_gate(
+        signed,
+        [exception],
+        keyring=keyring,
+        expected_signer_trust_domain=evidence_domain,
+        artifact_digest="f" * 64,
+        now=now,
+    )
+    assert changed_build.blocking_reasons == ("candidate_artifact_digest_mismatch",)
 
 
 def test_manifest_rejects_tampered_result_blob(signed_manifest_case) -> None:

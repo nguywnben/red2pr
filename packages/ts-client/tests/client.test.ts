@@ -2087,4 +2087,28 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(download.filename, "funnel.csv");
     assert.equal(await download.blob.text(), '"stage"\r\n"ingested"\r\n');
   });
+
+  it("serializes U25 safe secret metadata and CSRF-protected global key rotation", async () => {
+    const calls: Request[] = [];
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u25-client",
+      fetch: async (request: Request) => {
+        calls.push(request);
+        return Response.json(
+          request.method === "GET"
+            ? { active_kek_version: 2, items: [] }
+            : { active_kek_version: 3, rotated_count: 4, completed_at: "2026-10-31T09:00:00Z" },
+        );
+      },
+    });
+    const metadata = await client.listWorkspaceSecretMetadata("acme");
+    const rotation = await client.rotateWorkspaceSecretKeys("acme");
+    assert.equal(calls[0]?.url, "http://127.0.0.1:4280/api/v1/workspaces/acme/security/secrets");
+    assert.equal(metadata.data.active_kek_version, 2);
+    assert.equal(calls[1]?.method, "POST");
+    assert.equal(calls[1]?.url, "http://127.0.0.1:4280/api/v1/workspaces/acme/security/secrets/rotate");
+    assert.equal(calls[1]?.headers.get("X-CSRF-Token"), "csrf-u25-client");
+    assert.equal(rotation.data.rotated_count, 4);
+  });
 });

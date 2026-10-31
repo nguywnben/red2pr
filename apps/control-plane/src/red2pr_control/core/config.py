@@ -188,9 +188,7 @@ class Red2PrConfig(StrictContractModel):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     ai: AiConfig = Field(default_factory=AiConfig)
     notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
-    repository_defaults: RepositoryDefaultsConfig = Field(
-        default_factory=RepositoryDefaultsConfig
-    )
+    repository_defaults: RepositoryDefaultsConfig = Field(default_factory=RepositoryDefaultsConfig)
 
     def to_redacted_export_dict(self) -> dict[str, Any]:
         """Export schema-versioned settings with secret references replaced by safe status."""
@@ -239,9 +237,9 @@ def _apply_bootstrap_env_overrides(data: dict[str, Any], env: Mapping[str, str])
             env["RED2PR_AUTO_MERGE"]
         )
     if "RED2PR_NETWORK_EXECUTION" in env:
-        data.setdefault("runtime", {})["network_execution"] = (
-            env["RED2PR_NETWORK_EXECUTION"].strip()
-        )
+        data.setdefault("runtime", {})["network_execution"] = env[
+            "RED2PR_NETWORK_EXECUTION"
+        ].strip()
 
 
 def _check_retired_and_secret_keys(raw: Mapping[str, Any]) -> None:
@@ -362,8 +360,7 @@ def _validate_urls_and_modes(cfg: Red2PrConfig) -> None:
             raise ConfigValidationError(
                 code="CONFIG_INVALID_VALUE",
                 detail=(
-                    "server and distributed modes require a non-loopback "
-                    "https:// public_base_url."
+                    "server and distributed modes require a non-loopback https:// public_base_url."
                 ),
                 field="instance.public_base_url",
             )
@@ -371,8 +368,7 @@ def _validate_urls_and_modes(cfg: Red2PrConfig) -> None:
         raise ConfigValidationError(
             code="CONFIG_INVALID_VALUE",
             detail=(
-                "Plain HTTP public_base_url is permitted only on loopback "
-                "addresses in local mode."
+                "Plain HTTP public_base_url is permitted only on loopback addresses in local mode."
             ),
             field="instance.public_base_url",
         )

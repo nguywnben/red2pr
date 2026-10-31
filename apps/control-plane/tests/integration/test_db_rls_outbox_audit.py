@@ -65,6 +65,7 @@ from red2pr_control.core.errors import (
 from red2pr_control.core.redaction import Redactor
 from red2pr_control.db.base import (
     AuditLogModel,
+    EffectReplayGuardModel,
     EffectTombstoneModel,
     IdempotencyRecordModel,
     InstanceModel,
@@ -100,9 +101,9 @@ from red2pr_control.db.rls import (
     instance_rls_session,
     workspace_rls_session,
 )
+from red2pr_control.operations.retention import RetentionPurgeWorker
 from red2pr_control.secrets.broker import (
     INFERENCE_SECRET_CAPABILITY,
-    OPS_ROTATION_SECRET_CAPABILITY,
     PUBLISHER_SECRET_CAPABILITY,
     SecretBroker,
     load_master_key_ring_from_file,
@@ -861,6 +862,37 @@ async def test_s05_idempotency_concurrency_mismatch_expiry_and_tombstones(
                     now=eight_days_later,
                 )
         assert tomb_err.value.code == "duplicate_logical_effect"
+
+        # 6. After the 90d window, purge sensitive tombstone details but keep a hash-only guard.
+        ninety_one_days_later = now + timedelta(days=91)
+        retention = RetentionPurgeWorker(session_factory=app_factory, store=None)
+        purged_tombstones = await retention.purge_expired_tombstones(
+            workspace_id=ws_id,
+            now=ninety_one_days_later,
+        )
+        assert purged_tombstones == 1
+        async with workspace_rls_session(app_factory, workspace_id=ws_id) as sess:
+            assert await sess.scalar(select(EffectTombstoneModel.id)) is None
+            guard = await sess.scalar(select(EffectReplayGuardModel))
+            assert guard is not None
+            assert len(guard.logical_effect_key_digest) == 64
+            assert not hasattr(guard, "logical_effect_key")
+        with pytest.raises(ConflictError) as long_term_guard_err:
+            async with workspace_rls_session(app_factory, workspace_id=ws_id) as sess:
+                await claim_idempotent_operation(
+                    sess,
+                    workspace_id=ws_id,
+                    principal_id="usr_1",
+                    operation="repairs.create",
+                    idempotency_key=new_uuid7(now=ninety_one_days_later),
+                    request_payload=shared_payload,
+                    logical_effect_key="repair:run_concurrent:attempt_1",
+                    resource_id=new_uuid7(now=ninety_one_days_later),
+                    status_url="/api/v1/operations/dup-after-90d",
+                    correlation_id="corr-dup-after-90d",
+                    now=ninety_one_days_later,
+                )
+        assert long_term_guard_err.value.code == "duplicate_logical_effect"
     finally:
         await app_engine.dispose()
 
@@ -868,6 +900,7 @@ async def test_s05_idempotency_concurrency_mismatch_expiry_and_tombstones(
 async def test_z2_secret_broker_envelope_aad_rotation_and_revocation(
     migrated_db: PgTestUrls,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify external MasterKeyRing loading, Z2 capability isolation, AAD, rotation & revoke."""
     # Missing master key file raises 503 DependencyUnavailableError
@@ -935,6 +968,15 @@ async def test_z2_secret_broker_envelope_aad_rotation_and_revocation(
             assert db_row is not None
             assert "meta_muse_live_canary" not in json.dumps(db_row.envelope_json)
 
+        async with workspace_rls_session(app_factory, workspace_id=ws_b) as sess:
+            workspace_b_secret = await broker.store_secret(
+                sess,
+                plaintext=b"workspace_b_rotation_canary_5566778899",
+                purpose="meta_inference",
+                workspace_id=ws_b,
+                now=now,
+            )
+
         # Redactor must automatically scrub the stored secret canary
         assert "[REDACTED:" in redactor.redact_text(
             f"Outbound error with key={raw_meta_secret.decode('utf-8')}"
@@ -960,19 +1002,31 @@ async def test_z2_secret_broker_envelope_aad_rotation_and_revocation(
             assert cap_err.value.code == "secret_purpose_denied"
 
         # Live KEK rotation v1 -> v2
-        ring_v2 = MasterKeyRing(active_version=2, keys={1: k1, 2: k2})
-        async with workspace_rls_session(app_factory, workspace_id=ws_a) as sess:
-            rotated = await broker.rotate_secret_kek(
-                sess,
-                secret_ref=pub_dto.secret_ref,
-                capability=OPS_ROTATION_SECRET_CAPABILITY,
-                new_key_ring=ring_v2,
-                workspace_id=ws_a,
-                now=now + timedelta(minutes=1),
-            )
-            assert rotated.kek_version == 2
+        key_file.write_text(
+            json.dumps(
+                {
+                    "active_version": 2,
+                    "keys": {
+                        "1": base64.b64encode(k1).decode("ascii"),
+                        "2": base64.b64encode(k2).decode("ascii"),
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("RED2PR_MASTER_KEY_FILE", str(key_file))
+        rotated = await broker.rotate_all_secret_keks(
+            session_factory=app_factory,
+            actor_id="u25-key-rotation-test",
+            correlation_id="u25-key-rotation-correlation",
+            now=now + timedelta(minutes=1),
+        )
+        assert rotated.active_kek_version == 2
+        assert rotated.rotated_count == 3
 
+        monkeypatch.delenv("RED2PR_MASTER_KEY_FILE")
         broker_v2_only = SecretBroker(key_ring=MasterKeyRing(active_version=2, keys={2: k2}))
+        stale_broker = SecretBroker(key_ring=ring_v1)
         async with workspace_rls_session(app_factory, workspace_id=ws_a) as sess:
             resolved_pub = await broker_v2_only.resolve_secret_bytes(
                 sess,
@@ -981,6 +1035,24 @@ async def test_z2_secret_broker_envelope_aad_rotation_and_revocation(
                 workspace_id=ws_a,
             )
             assert resolved_pub == raw_pub_secret
+            with pytest.raises(DependencyUnavailableError) as stale_process_err:
+                await stale_broker.resolve_secret_bytes(
+                    sess,
+                    secret_ref=meta_dto.secret_ref,
+                    capability=INFERENCE_SECRET_CAPABILITY,
+                    workspace_id=ws_a,
+                )
+            assert stale_process_err.value.code == "master_key_rotation_reload_required"
+        async with workspace_rls_session(app_factory, workspace_id=ws_b) as sess:
+            assert (
+                await broker_v2_only.resolve_secret_bytes(
+                    sess,
+                    secret_ref=workspace_b_secret.secret_ref,
+                    capability=INFERENCE_SECRET_CAPABILITY,
+                    workspace_id=ws_b,
+                )
+                == b"workspace_b_rotation_canary_5566778899"
+            )
 
         # Cross-tenant ciphertext transplant attack (AAD mismatch check)
         async with workspace_rls_session(app_factory, workspace_id=ws_b) as sess_b:

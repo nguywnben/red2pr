@@ -209,7 +209,7 @@ class CiRunCollectorService:
         max_archive_compressed_bytes: int = MAX_ARCHIVE_COMPRESSED_BYTES,
         max_archive_expanded_bytes: int = MAX_ARCHIVE_EXPANDED_BYTES,
         max_archive_files: int = MAX_ARCHIVE_FILES,
-        log_retention_delta: timedelta = timedelta(days=30),
+        log_retention_delta: timedelta = timedelta(days=7),
         artifact_retention_delta: timedelta = timedelta(days=30),
         clock: Callable[[], datetime] = _default_utc_clock,
     ) -> None:

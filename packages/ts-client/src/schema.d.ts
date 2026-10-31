@@ -744,6 +744,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Workspace Audit */
+        get: operations["listWorkspaceAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/break-glass": {
         parameters: {
             query?: never;
@@ -1314,6 +1331,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/release-exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Release Exceptions */
+        get: operations["listWorkspaceReleaseExceptions"];
+        put?: never;
+        /** Create Release Exception */
+        post: operations["createWorkspaceReleaseException"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/release-exceptions/{exception_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Release Exception */
+        delete: operations["revokeWorkspaceReleaseException"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/repairs": {
         parameters: {
             query?: never;
@@ -1583,6 +1635,40 @@ export interface paths {
         get: operations["listWorkspaceRunJobs"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/security/secrets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Workspace Secret Metadata */
+        get: operations["listWorkspaceSecretMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/security/secrets/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate Workspace Secret Keys */
+        post: operations["rotateWorkspaceSecretKeys"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2144,11 +2230,8 @@ export interface components {
             action: string;
             /** Actor */
             actor: string;
-            /**
-             * Checkpoint Id
-             * @default null
-             */
-            checkpoint_id: string | null;
+            /** Checkpoint Id */
+            checkpoint_id?: string | null;
             /** Correlation Id */
             correlation_id: string;
             /** Created At */
@@ -2172,11 +2255,8 @@ export interface components {
             updated_at: string;
             /** Version */
             version: number;
-            /**
-             * Workspace Id
-             * @default null
-             */
-            workspace_id: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
         };
         /**
          * BranchPolicyEvaluation
@@ -3583,7 +3663,7 @@ export interface components {
             /** Occurred At */
             occurred_at: string;
             /** Payload */
-            payload: components["schemas"]["ProviderConnectionEventPayload"] | components["schemas"]["RunEventPayload"] | components["schemas"]["RepairPhaseEventPayload"] | components["schemas"]["ReproVerificationEventPayload"] | components["schemas"]["ApprovalEventPayload"] | components["schemas"]["PublicationEventPayload"] | components["schemas"]["RemoteCiEventPayload"] | components["schemas"]["WorkerEventPayload"] | components["schemas"]["BudgetEventPayload"] | components["schemas"]["SecurityIdentityEventPayload"] | components["schemas"]["OperationsEventPayload"] | components["schemas"]["DeliveryEventPayload"];
+            payload: components["schemas"]["ProviderConnectionEventPayload"] | components["schemas"]["RunEventPayload"] | components["schemas"]["RepairPhaseEventPayload"] | components["schemas"]["ReproVerificationEventPayload"] | components["schemas"]["ApprovalEventPayload"] | components["schemas"]["PublicationEventPayload"] | components["schemas"]["RemoteCiEventPayload"] | components["schemas"]["WorkerEventPayload"] | components["schemas"]["BudgetEventPayload"] | components["schemas"]["SecurityIdentityEventPayload"] | components["schemas"]["OperationsEventPayload"] | components["schemas"]["OperationalAlarmEventPayload"] | components["schemas"]["DeliveryEventPayload"];
             /**
              * Repository Id
              * @default null
@@ -3604,7 +3684,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed";
+            type: "provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed" | "operations.alarm";
             /**
              * Workspace Id
              * @default null
@@ -3704,6 +3784,8 @@ export interface components {
              * @constant
              */
             schema_version: 1;
+            /** Security Findings */
+            security_findings?: components["schemas"]["SecurityFindingV1"][];
             /**
              * Security Outcome
              * @enum {string}
@@ -4582,7 +4664,7 @@ export interface components {
              * Event Type
              * @enum {string}
              */
-            event_type: "provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed";
+            event_type: "provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed" | "operations.alarm";
             /** Id */
             id: string;
             /** Is Security */
@@ -4605,7 +4687,7 @@ export interface components {
             /** Created At */
             created_at: string;
             /** Event Types */
-            event_types?: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed")[];
+            event_types?: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed" | "operations.alarm")[];
             /** Id */
             id: string;
             /**
@@ -4634,7 +4716,7 @@ export interface components {
         /** NotificationPreferencesPatchRequest */
         NotificationPreferencesPatchRequest: {
             /** Event Types */
-            event_types?: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed")[] | null;
+            event_types?: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed" | "operations.alarm")[] | null;
             /** Min Severity */
             min_severity?: ("info" | "warning" | "action" | "success" | "error" | "high" | "critical") | null;
             quiet_hours?: components["schemas"]["QuietHoursWindow"] | null;
@@ -4646,7 +4728,7 @@ export interface components {
         /** NotificationPreferencesState */
         NotificationPreferencesState: {
             /** Event Types */
-            event_types: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed")[];
+            event_types: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed" | "operations.alarm")[];
             /**
              * Min Severity
              * @enum {string}
@@ -4669,6 +4751,18 @@ export interface components {
         NotificationTestRequest: {
             /** Confirmed */
             confirmed: boolean;
+        };
+        /** OperationalAlarmEventPayload */
+        OperationalAlarmEventPayload: {
+            /** Alarm Code */
+            alarm_code: string;
+            /** Alarm Id */
+            alarm_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "firing" | "resolved";
         };
         /** OperationsEventPayload */
         OperationsEventPayload: {
@@ -4702,6 +4796,15 @@ export interface components {
         Page_ApiToken_: {
             /** Items */
             items: components["schemas"]["ApiToken"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Snapshot At */
+            snapshot_at: string;
+        };
+        /** Page[AuditRecord] */
+        Page_AuditRecord_: {
+            /** Items */
+            items: components["schemas"]["AuditRecord"][];
             /** Next Cursor */
             next_cursor?: string | null;
             /** Snapshot At */
@@ -5292,6 +5395,53 @@ export interface components {
             selection_id: string;
             /** Skipped Count */
             skipped_count: number;
+        };
+        /** ReleaseExceptionCreateRequest */
+        ReleaseExceptionCreateRequest: {
+            /** Artifact Digest */
+            artifact_digest: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Finding Ref */
+            finding_ref: string;
+            /** Mitigation */
+            mitigation: string;
+            /** Security Reviewer User Id */
+            security_reviewer_user_id: string;
+        };
+        /** ReleaseExceptionList */
+        ReleaseExceptionList: {
+            /** Items */
+            items: components["schemas"]["ReleaseExceptionRecord"][];
+        };
+        /** ReleaseExceptionRecord */
+        ReleaseExceptionRecord: {
+            /** Artifact Digest */
+            artifact_digest: string;
+            /** Created At */
+            created_at: string;
+            /** Expires At */
+            expires_at: string;
+            /** Finding Ref */
+            finding_ref: string;
+            /** Id */
+            id: string;
+            /** Mitigation */
+            mitigation: string;
+            /** Owner User Id */
+            owner_user_id: string;
+            /** Revoked At */
+            revoked_at?: string | null;
+            /** Security Reviewer User Id */
+            security_reviewer_user_id: string;
+            /**
+             * Severity
+             * @constant
+             */
+            severity: "high";
         };
         /**
          * RemoteCheck
@@ -6598,6 +6748,49 @@ export interface components {
             truncated: boolean;
         };
         /**
+         * SecretKeyMetadata
+         * @description Safe metadata only; never includes secret references or encrypted values.
+         */
+        SecretKeyMetadata: {
+            /** Active Key Version */
+            active_key_version: number;
+            /** Configured */
+            configured: boolean;
+            /** Created At */
+            created_at: string;
+            /** Id */
+            id: string;
+            /** Kek Version */
+            kek_version: number;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "provider_read" | "provider_write" | "webhook_auth" | "meta_inference" | "notification_channel" | "mfa_totp" | "oidc_client" | "storage_encryption";
+            /** Revoked At */
+            revoked_at?: string | null;
+            /** Rotated At */
+            rotated_at?: string | null;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** SecretKeyMetadataPage */
+        SecretKeyMetadataPage: {
+            /** Active Kek Version */
+            active_kek_version: number;
+            /** Items */
+            items: components["schemas"]["SecretKeyMetadata"][];
+        };
+        /** SecretKeyRotationResult */
+        SecretKeyRotationResult: {
+            /** Active Kek Version */
+            active_kek_version: number;
+            /** Completed At */
+            completed_at: string;
+            /** Rotated Count */
+            rotated_count: number;
+        };
+        /**
          * SecretPresence
          * @description Safe read-only secret metadata (never exposes secret values or internal refs).
          */
@@ -6606,6 +6799,26 @@ export interface components {
             configured: boolean;
             /** Secret Version */
             secret_version?: number | null;
+        };
+        /**
+         * SecurityFindingV1
+         * @description Structured verifier finding covered by the signed evidence manifest.
+         */
+        SecurityFindingV1: {
+            /** Artifact Digest */
+            artifact_digest: string;
+            /** Finding Ref */
+            finding_ref: string;
+            /**
+             * Invariant Violation
+             * @default false
+             */
+            invariant_violation: boolean;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "low" | "medium" | "high" | "critical";
         };
         /** SecurityIdentityEventPayload */
         SecurityIdentityEventPayload: {
@@ -12973,6 +13186,42 @@ export interface operations {
             };
         };
     };
+    listWorkspaceAudit: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                action?: string | null;
+                correlation_id?: string | null;
+            };
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AuditRecord_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listBreakGlassGrants: {
         parameters: {
             query?: never;
@@ -13347,7 +13596,7 @@ export interface operations {
             query?: {
                 last_event_id?: string | null;
                 repository_id?: string | null;
-                event_type?: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed") | null;
+                event_type?: ("provider.connection.created" | "provider.run.failed" | "provider.run.retried" | "repair.session.created" | "repair.diagnosed" | "repair.reproduction.completed" | "repair.patch.proposed" | "repair.verification.completed" | "repair.approval.requested" | "repair.approval.decided" | "repair.publication.created" | "repair.remote_ci.completed" | "repair.blocked" | "repair.cancelled" | "worker.offline" | "worker.quarantined" | "integration.disconnected" | "usage.budget.exceeded" | "security.policy.denied" | "backup.failed" | "release.update_available" | "identity.permission_revoked" | "notification.delivery.failed" | "operations.restore.completed" | "operations.alarm") | null;
             };
             header?: {
                 "Last-Event-ID"?: string | null;
@@ -16791,6 +17040,102 @@ export interface operations {
             };
         };
     };
+    listWorkspaceReleaseExceptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseExceptionList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    createWorkspaceReleaseException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseExceptionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseExceptionRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revokeWorkspaceReleaseException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+                exception_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_repairs_api_v1_workspaces__ws__repairs_get: {
         parameters: {
             query?: {
@@ -18433,6 +18778,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    listWorkspaceSecretMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecretKeyMetadataPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rotateWorkspaceSecretKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecretKeyRotationResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

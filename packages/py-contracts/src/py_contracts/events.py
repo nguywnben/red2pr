@@ -1,6 +1,6 @@
 """Canonical versioned domain events and SSE envelope contracts (S-19, docs/08).
 
-Enforces the exact 24-event canonical v1 registry from docs/08_EVENTS_STATE_MACHINES.md
+Enforces the exact 25-event canonical v1 registry from docs/08_EVENTS_STATE_MACHINES.md
 and allowlisted per-family payload schemas from docs/36_CANONICAL_CONTRACTS.md (S-19).
 Retired legacy aliases (e.g. 'ci.failure_detected', 'repair.pr_created') are rejected.
 """
@@ -45,6 +45,7 @@ EventType = Literal[
     "identity.permission_revoked",
     "notification.delivery.failed",
     "operations.restore.completed",
+    "operations.alarm",
 ]
 
 _INSTANCE_LEVEL_EVENTS: frozenset[str] = frozenset(
@@ -120,6 +121,12 @@ class OperationsEventPayload(StrictContractModel):
     status: BoundedName
 
 
+class OperationalAlarmEventPayload(StrictContractModel):
+    alarm_id: InternalId
+    alarm_code: BoundedName
+    state: Literal["firing", "resolved"]
+
+
 class DeliveryEventPayload(StrictContractModel):
     delivery_id: InternalId
     reason_code: BoundedName
@@ -137,6 +144,7 @@ EventPayload = (
     | BudgetEventPayload
     | SecurityIdentityEventPayload
     | OperationsEventPayload
+    | OperationalAlarmEventPayload
     | DeliveryEventPayload
 )
 
@@ -164,6 +172,7 @@ _EVENT_TYPE_TO_PAYLOAD_MODEL: dict[str, type[StrictContractModel]] = {
     "backup.failed": OperationsEventPayload,
     "release.update_available": OperationsEventPayload,
     "operations.restore.completed": OperationsEventPayload,
+    "operations.alarm": OperationalAlarmEventPayload,
     "notification.delivery.failed": DeliveryEventPayload,
 }
 

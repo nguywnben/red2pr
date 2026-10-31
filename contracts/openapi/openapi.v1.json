@@ -1486,7 +1486,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Checkpoint Id"
           },
           "correlation_id": {
@@ -1539,7 +1538,7 @@
             "type": "string"
           },
           "version": {
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "type": "integer"
           },
@@ -1552,7 +1551,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Workspace Id"
           }
         },
@@ -5374,6 +5372,9 @@
                 "$ref": "#/components/schemas/OperationsEventPayload"
               },
               {
+                "$ref": "#/components/schemas/OperationalAlarmEventPayload"
+              },
+              {
                 "$ref": "#/components/schemas/DeliveryEventPayload"
               }
             ],
@@ -5434,7 +5435,8 @@
               "release.update_available",
               "identity.permission_revoked",
               "notification.delivery.failed",
-              "operations.restore.completed"
+              "operations.restore.completed",
+              "operations.alarm"
             ],
             "title": "Type",
             "type": "string"
@@ -5669,6 +5671,14 @@
             "default": 1,
             "title": "Schema Version",
             "type": "integer"
+          },
+          "security_findings": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityFindingV1"
+            },
+            "maxItems": 500,
+            "title": "Security Findings",
+            "type": "array"
           },
           "security_outcome": {
             "enum": [
@@ -8215,7 +8225,8 @@
               "release.update_available",
               "identity.permission_revoked",
               "notification.delivery.failed",
-              "operations.restore.completed"
+              "operations.restore.completed",
+              "operations.alarm"
             ],
             "title": "Event Type",
             "type": "string"
@@ -8306,7 +8317,8 @@
                 "release.update_available",
                 "identity.permission_revoked",
                 "notification.delivery.failed",
-                "operations.restore.completed"
+                "operations.restore.completed",
+                "operations.alarm"
               ],
               "type": "string"
             },
@@ -8411,7 +8423,8 @@
                     "release.update_available",
                     "identity.permission_revoked",
                     "notification.delivery.failed",
-                    "operations.restore.completed"
+                    "operations.restore.completed",
+                    "operations.alarm"
                   ],
                   "type": "string"
                 },
@@ -8510,7 +8523,8 @@
                 "release.update_available",
                 "identity.permission_revoked",
                 "notification.delivery.failed",
-                "operations.restore.completed"
+                "operations.restore.completed",
+                "operations.alarm"
               ],
               "type": "string"
             },
@@ -8598,6 +8612,36 @@
           "confirmed"
         ],
         "title": "NotificationTestRequest",
+        "type": "object"
+      },
+      "OperationalAlarmEventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "alarm_code": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Alarm Code",
+            "type": "string"
+          },
+          "alarm_id": {
+            "title": "Alarm Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "firing",
+              "resolved"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alarm_id",
+          "alarm_code",
+          "state"
+        ],
+        "title": "OperationalAlarmEventPayload",
         "type": "object"
       },
       "OperationsEventPayload": {
@@ -8694,6 +8738,40 @@
           "snapshot_at"
         ],
         "title": "Page[ApiToken]",
+        "type": "object"
+      },
+      "Page_AuditRecord_": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_at": {
+            "title": "Snapshot At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "snapshot_at"
+        ],
+        "title": "Page[AuditRecord]",
         "type": "object"
       },
       "Page_BreakGlassGrant_": {
@@ -10389,6 +10467,135 @@
           "result_job_id"
         ],
         "title": "RegressionSuiteSummary",
+        "type": "object"
+      },
+      "ReleaseExceptionCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Artifact Digest",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "finding_ref": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Finding Ref",
+            "type": "string"
+          },
+          "mitigation": {
+            "maxLength": 2000,
+            "minLength": 20,
+            "title": "Mitigation",
+            "type": "string"
+          },
+          "security_reviewer_user_id": {
+            "title": "Security Reviewer User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "finding_ref",
+          "artifact_digest",
+          "security_reviewer_user_id",
+          "mitigation",
+          "expires_at"
+        ],
+        "title": "ReleaseExceptionCreateRequest",
+        "type": "object"
+      },
+      "ReleaseExceptionList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseExceptionRecord"
+            },
+            "maxItems": 500,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReleaseExceptionList",
+        "type": "object"
+      },
+      "ReleaseExceptionRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Artifact Digest",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "finding_ref": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Finding Ref",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mitigation": {
+            "maxLength": 2000,
+            "minLength": 20,
+            "title": "Mitigation",
+            "type": "string"
+          },
+          "owner_user_id": {
+            "title": "Owner User Id",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "security_reviewer_user_id": {
+            "title": "Security Reviewer User Id",
+            "type": "string"
+          },
+          "severity": {
+            "const": "high",
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "finding_ref",
+          "severity",
+          "artifact_digest",
+          "owner_user_id",
+          "security_reviewer_user_id",
+          "mitigation",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "ReleaseExceptionRecord",
         "type": "object"
       },
       "RemoteCheck": {
@@ -13890,6 +14097,136 @@
         "title": "SearchRepoResult",
         "type": "object"
       },
+      "SecretKeyMetadata": {
+        "additionalProperties": false,
+        "description": "Safe metadata only; never includes secret references or encrypted values.",
+        "properties": {
+          "active_key_version": {
+            "minimum": 1.0,
+            "title": "Active Key Version",
+            "type": "integer"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kek_version": {
+            "minimum": 1.0,
+            "title": "Kek Version",
+            "type": "integer"
+          },
+          "purpose": {
+            "enum": [
+              "provider_read",
+              "provider_write",
+              "webhook_auth",
+              "meta_inference",
+              "notification_channel",
+              "mfa_totp",
+              "oidc_client",
+              "storage_encryption"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "rotated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotated At"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "purpose",
+          "active_key_version",
+          "kek_version",
+          "configured",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SecretKeyMetadata",
+        "type": "object"
+      },
+      "SecretKeyMetadataPage": {
+        "additionalProperties": false,
+        "properties": {
+          "active_kek_version": {
+            "minimum": 1.0,
+            "title": "Active Kek Version",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SecretKeyMetadata"
+            },
+            "maxItems": 5000,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "active_kek_version",
+          "items"
+        ],
+        "title": "SecretKeyMetadataPage",
+        "type": "object"
+      },
+      "SecretKeyRotationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "active_kek_version": {
+            "minimum": 1.0,
+            "title": "Active Kek Version",
+            "type": "integer"
+          },
+          "completed_at": {
+            "title": "Completed At",
+            "type": "string"
+          },
+          "rotated_count": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Rotated Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active_kek_version",
+          "rotated_count",
+          "completed_at"
+        ],
+        "title": "SecretKeyRotationResult",
+        "type": "object"
+      },
       "SecretPresence": {
         "additionalProperties": false,
         "description": "Safe read-only secret metadata (never exposes secret values or internal refs).",
@@ -13915,6 +14252,46 @@
           "configured"
         ],
         "title": "SecretPresence",
+        "type": "object"
+      },
+      "SecurityFindingV1": {
+        "additionalProperties": false,
+        "description": "Structured verifier finding covered by the signed evidence manifest.",
+        "properties": {
+          "artifact_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Artifact Digest",
+            "type": "string"
+          },
+          "finding_ref": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Finding Ref",
+            "type": "string"
+          },
+          "invariant_violation": {
+            "default": false,
+            "title": "Invariant Violation",
+            "type": "boolean"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "finding_ref",
+          "severity",
+          "artifact_digest"
+        ],
+        "title": "SecurityFindingV1",
         "type": "object"
       },
       "SecurityIdentityEventPayload": {
@@ -24359,6 +24736,113 @@
         ]
       }
     },
+    "/api/v1/workspaces/{ws}/audit": {
+      "get": {
+        "operationId": "listWorkspaceAudit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "correlation_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Correlation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AuditRecord_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Workspace Audit",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
     "/api/v1/workspaces/{ws}/break-glass": {
       "get": {
         "operationId": "listBreakGlassGrants",
@@ -24880,7 +25364,8 @@
                     "release.update_available",
                     "identity.permission_revoked",
                     "notification.delivery.failed",
-                    "operations.restore.completed"
+                    "operations.restore.completed",
+                    "operations.alarm"
                   ],
                   "type": "string"
                 },
@@ -29896,6 +30381,150 @@
         ]
       }
     },
+    "/api/v1/workspaces/{ws}/release-exceptions": {
+      "get": {
+        "operationId": "listWorkspaceReleaseExceptions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseExceptionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Release Exceptions",
+        "tags": [
+          "security"
+        ]
+      },
+      "post": {
+        "operationId": "createWorkspaceReleaseException",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseExceptionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseExceptionRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Release Exception",
+        "tags": [
+          "security"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/release-exceptions/{exception_id}": {
+      "delete": {
+        "operationId": "revokeWorkspaceReleaseException",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 36,
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Release Exception",
+        "tags": [
+          "security"
+        ]
+      }
+    },
     "/api/v1/workspaces/{ws}/repairs": {
       "get": {
         "operationId": "list_repairs_api_v1_workspaces__ws__repairs_get",
@@ -32483,6 +33112,94 @@
         "summary": "List matrix & retry CI jobs for a specific CI run attempt (A-08)",
         "tags": [
           "triage_evidence"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/security/secrets": {
+      "get": {
+        "operationId": "listWorkspaceSecretMetadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretKeyMetadataPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Workspace Secret Metadata",
+        "tags": [
+          "security"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/security/secrets/rotate": {
+      "post": {
+        "operationId": "rotateWorkspaceSecretKeys",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretKeyRotationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rotate Workspace Secret Keys",
+        "tags": [
+          "security"
         ]
       }
     },

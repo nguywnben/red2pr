@@ -44,6 +44,7 @@ _SECURITY_EVENTS = frozenset(
         "identity.permission_revoked",
         "worker.quarantined",
         "backup.failed",
+        "operations.alarm",
     }
 )
 _SEVERITY_ORDER = {
