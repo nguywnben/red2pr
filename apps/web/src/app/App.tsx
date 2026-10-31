@@ -42,6 +42,7 @@ const PullRequestsPage = lazy(() => import("../features/prs").then((module) => (
 const NotificationsPage = lazy(() => import("../features/notifications").then((module) => ({ default: module.NotificationsPage })));
 const AnalyticsPage = lazy(() => import("../features/analytics/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
 const SecurityPage = lazy(() => import("../features/security/SecurityPage").then((module) => ({ default: module.SecurityPage })));
+const SystemPage = lazy(() => import("../features/system/SystemPage").then((module) => ({ default: module.SystemPage })));
 const OverviewPage = lazy(() => import("../features/overview/OverviewPage").then((module) => ({ default: module.OverviewPage })));
 import {
   ApiClientProvider,
@@ -613,6 +614,7 @@ export function AppRoutes(): React.JSX.Element {
         <Route path="/integrations/github/callback" element={<GitHubCallbackRedirectRoute />} />
         <Route path="/account" element={<AccountRouteShell />} />
         <Route path="/telegram/confirm" element={<TelegramIntentConfirmPage />} />
+        <Route path="/system" element={<SystemPage />} />
         <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
         <Route path="/admin/*" element={<AdminRouteShell />} />
         <Route path="*" element={<Navigate to="/w/default/overview" replace />} />

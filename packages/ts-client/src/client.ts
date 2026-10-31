@@ -225,6 +225,22 @@ export type SetupWizardPhase = SetupState["phase"];
 export type SetupReadiness = SetupState["readiness"];
 export type LifecycleOperation = SchemaOf<"LifecycleOperation">;
 export type SystemHealthResponse = SchemaOf<"SystemHealthResponse">;
+export type SystemStatus = SchemaOf<"SystemStatus">;
+export type DoctorResponse = SchemaOf<"DoctorResponse">;
+export type MaintenanceRequest = SchemaOf<"MaintenanceRequest">;
+export type BackupCreateRequest = SchemaOf<"BackupCreateRequest">;
+export type BackupRecord = SchemaOf<"BackupRecord">;
+export type RestoreDryRunRequest = SchemaOf<"RestoreDryRunRequest">;
+export type RestorePlan = SchemaOf<"RestorePlan">;
+export type RestoreStartRequest = SchemaOf<"RestoreStartRequest">;
+export type RestoreExecutionResult = SchemaOf<"RestoreExecutionResult">;
+export type OperationCancelRequest = SchemaOf<"OperationCancelRequest">;
+export type OperationCancelStatus = SchemaOf<"OperationCancelStatus">;
+export type UpgradePreflightRequest = SchemaOf<"UpgradePreflightRequest">;
+export type UpgradePreflightResponse = SchemaOf<"UpgradePreflightResponse">;
+export type SupportBundlePreview = SchemaOf<"SupportBundlePreview">;
+export type SupportBundleCreateRequest = SchemaOf<"SupportBundleCreateRequest">;
+export type SupportBundleRecord = SchemaOf<"SupportBundleRecord">;
 export type EventEnvelope = SchemaOf<"EventEnvelope">;
 export type ToolCallRequest = SchemaOf<"ToolCallRequest">;
 export type ToolCallResponse = SchemaOf<"ToolCallResponse">;
@@ -426,6 +442,15 @@ export interface Red2PrClient {
   readonly raw: Client<paths>;
   setCsrfToken(token: string | null): void;
   getSystemHealth(options?: RequestCallOptions): Promise<ApiEnvelope<SystemHealthResponse>>;
+  getSystemStatus(options?: RequestCallOptions): Promise<ApiEnvelope<SystemStatus>>;
+  getSystemDoctor(options?: RequestCallOptions): Promise<ApiEnvelope<DoctorResponse>>;
+  createSystemBackup(body: BackupCreateRequest, options?: RequestCallOptions): Promise<ApiEnvelope<BackupRecord>>;
+  dryRunSystemRestore(body: RestoreDryRunRequest, options?: RequestCallOptions): Promise<ApiEnvelope<RestorePlan>>;
+  restoreSystemBackup(body: RestoreStartRequest, options?: RequestCallOptions): Promise<ApiEnvelope<RestoreExecutionResult>>;
+  setSystemMaintenance(body: MaintenanceRequest, options?: RequestCallOptions): Promise<ApiEnvelope<SystemStatus>>;
+  runSystemUpgradePreflight(body: UpgradePreflightRequest, options?: RequestCallOptions): Promise<ApiEnvelope<UpgradePreflightResponse>>;
+  previewSystemSupportBundle(body: SupportBundlePreview["file_ids"], options?: RequestCallOptions): Promise<ApiEnvelope<SupportBundlePreview>>;
+  createSystemSupportBundle(body: SupportBundleCreateRequest, options?: RequestCallOptions): Promise<ApiEnvelope<SupportBundleRecord>>;
   getAuthCsrf(options?: RequestCallOptions): Promise<ApiEnvelope<CsrfBootstrapResponse>>;
   claimInstanceOwner(
     body: SetupClaimRequest,
@@ -574,6 +599,15 @@ export interface Red2PrClient {
   getOperationReceipt(
     operationId: string,
     options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<ActionReceipt>>;
+  getOperationCancellationStatus(
+    operationId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<OperationCancelStatus>>;
+  cancelOperation(
+    operationId: string,
+    body: OperationCancelRequest,
+    options: IdempotentMutationOptions,
   ): Promise<ApiEnvelope<ActionReceipt>>;
   listConnections(
     ws: string,
@@ -1042,6 +1076,15 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       memoryCsrfToken = token;
     },
     getSystemHealth: (options) => callJson("GET", "/api/v1/system/health", { options }),
+    getSystemStatus: (options) => callJson("GET", "/api/v1/system/status", { options }),
+    getSystemDoctor: (options) => callJson("GET", "/api/v1/system/doctor", { options }),
+    createSystemBackup: (body, options) => callJson("POST", "/api/v1/system/backups", { body, options }),
+    dryRunSystemRestore: (body, options) => callJson("POST", "/api/v1/system/restore/dry-run", { body, options }),
+    restoreSystemBackup: (body, options) => callJson("POST", "/api/v1/system/restore", { body, options }),
+    setSystemMaintenance: (body, options) => callJson("POST", "/api/v1/system/maintenance", { body, options }),
+    runSystemUpgradePreflight: (body, options) => callJson("POST", "/api/v1/system/upgrade-preflight", { body, options }),
+    previewSystemSupportBundle: (body, options) => callJson("POST", "/api/v1/system/support-bundles/preview", { body, options }),
+    createSystemSupportBundle: (body, options) => callJson("POST", "/api/v1/system/support-bundles", { body, options }),
     getAuthCsrf: async (options) => syncCsrf(await callJson("GET", "/api/v1/auth/csrf", { options })),
     async claimInstanceOwner(body, options) {
       await ensurePreAuthCsrf(options);
@@ -1161,6 +1204,17 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
     getOperationReceipt: (operationId, options) =>
       callJson("GET", "/api/v1/operations/{operation_id}", {
         path: { operation_id: operationId },
+        options,
+      }),
+    getOperationCancellationStatus: (operationId, options) =>
+      callJson("GET", "/api/v1/operations/{operation_id}/cancel", {
+        path: { operation_id: operationId },
+        options,
+      }),
+    cancelOperation: (operationId, body, options) =>
+      callJson("POST", "/api/v1/operations/{operation_id}/cancel", {
+        path: { operation_id: operationId },
+        body,
         options,
       }),
     listConnections: (ws, query, options) =>

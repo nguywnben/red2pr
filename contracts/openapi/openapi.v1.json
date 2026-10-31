@@ -1571,6 +1571,344 @@
         "title": "AuditRecord",
         "type": "object"
       },
+      "BackupCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "title": "BackupCreateRequest",
+        "type": "object"
+      },
+      "BackupKeyReference": {
+        "additionalProperties": false,
+        "properties": {
+          "active_key_version": {
+            "minimum": 1,
+            "title": "Active Key Version",
+            "type": "integer"
+          },
+          "kek_version": {
+            "minimum": 1,
+            "title": "Kek Version",
+            "type": "integer"
+          },
+          "purpose": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Purpose",
+            "type": "string"
+          },
+          "secret_ref": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Secret Ref",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "secret_ref",
+          "purpose",
+          "active_key_version",
+          "kek_version"
+        ],
+        "title": "BackupKeyReference",
+        "type": "object"
+      },
+      "BackupManifestV1": {
+        "additionalProperties": false,
+        "description": "Signed inventory for one internally consistent, encrypted recovery bundle.",
+        "properties": {
+          "application_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Application Version",
+            "type": "string"
+          },
+          "backup_id": {
+            "title": "Backup Id",
+            "type": "string"
+          },
+          "build_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Build Digest",
+            "type": "string"
+          },
+          "config_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Config Digest",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "database_character_type": {
+            "maxLength": 4096,
+            "title": "Database Character Type",
+            "type": "string"
+          },
+          "database_collation": {
+            "maxLength": 4096,
+            "title": "Database Collation",
+            "type": "string"
+          },
+          "database_encoding": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Database Encoding",
+            "type": "string"
+          },
+          "database_icu_locale": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Database Icu Locale"
+          },
+          "database_locale_provider": {
+            "enum": [
+              "libc",
+              "icu"
+            ],
+            "title": "Database Locale Provider",
+            "type": "string"
+          },
+          "key_references": {
+            "items": {
+              "$ref": "#/components/schemas/BackupKeyReference"
+            },
+            "title": "Key References",
+            "type": "array"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/BackupObjectEntry"
+            },
+            "title": "Objects",
+            "type": "array"
+          },
+          "payload_kek_version": {
+            "minimum": 1,
+            "title": "Payload Kek Version",
+            "type": "integer"
+          },
+          "payload_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Payload Sha256",
+            "type": "string"
+          },
+          "postgres_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Postgres Version",
+            "type": "string"
+          },
+          "schema_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Schema Revision",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "signature": {
+            "maxLength": 4096,
+            "title": "Signature",
+            "type": "string"
+          },
+          "signer_key_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Signer Key Id",
+            "type": "string"
+          },
+          "snapshot_lsn": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Snapshot Lsn",
+            "type": "string"
+          },
+          "workspace_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Workspace Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "backup_id",
+          "created_at",
+          "snapshot_lsn",
+          "postgres_version",
+          "database_encoding",
+          "database_locale_provider",
+          "database_collation",
+          "database_character_type",
+          "schema_revision",
+          "application_version",
+          "build_digest",
+          "config_digest",
+          "workspace_ids",
+          "objects",
+          "key_references",
+          "payload_sha256",
+          "payload_kek_version",
+          "signer_key_id",
+          "signature"
+        ],
+        "title": "BackupManifestV1",
+        "type": "object"
+      },
+      "BackupObjectEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "blob_id": {
+            "title": "Blob Id",
+            "type": "string"
+          },
+          "digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "storage_ref": {
+            "maxLength": 4096,
+            "title": "Storage Ref",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "blob_id",
+          "digest",
+          "size_bytes",
+          "storage_ref"
+        ],
+        "title": "BackupObjectEntry",
+        "type": "object"
+      },
+      "BackupRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "manifest_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Digest"
+          },
+          "object_count": {
+            "minimum": 0.0,
+            "title": "Object Count",
+            "type": "integer"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "creating",
+              "succeeded",
+              "failed",
+              "expired"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "created_at",
+          "size_bytes",
+          "object_count"
+        ],
+        "title": "BackupRecord",
+        "type": "object"
+      },
       "BranchPolicyEvaluation": {
         "additionalProperties": false,
         "description": "Per-branch dry-run policy decision (`deny` always overrides `allow`).",
@@ -4850,6 +5188,38 @@
         "title": "DiagnosisHypothesis",
         "type": "object"
       },
+      "DoctorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/SystemCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "overall_state": {
+            "enum": [
+              "healthy",
+              "degraded",
+              "failed"
+            ],
+            "title": "Overall State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "overall_state",
+          "checks"
+        ],
+        "title": "DoctorResponse",
+        "type": "object"
+      },
       "EffectiveRepositoryPolicy": {
         "additionalProperties": false,
         "description": "Resolved policy after `hard_invariant > instance > workspace > repository` merge.",
@@ -6786,6 +7156,32 @@
         "title": "LogoutRequest",
         "type": "object"
       },
+      "MaintenanceRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "reason": {
+            "maxLength": 4096,
+            "minLength": 8,
+            "title": "Reason",
+            "type": "string"
+          },
+          "reconciliation_confirmed": {
+            "default": false,
+            "title": "Reconciliation Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "reason"
+        ],
+        "title": "MaintenanceRequest",
+        "type": "object"
+      },
       "MeResponse": {
         "additionalProperties": false,
         "description": "A-03 current principal profile, session, MFA posture, and workspace grants.",
@@ -8612,6 +9008,78 @@
           "confirmed"
         ],
         "title": "NotificationTestRequest",
+        "type": "object"
+      },
+      "OperationCancelRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
+          "reason": {
+            "maxLength": 4096,
+            "minLength": 8,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "OperationCancelRequest",
+        "type": "object"
+      },
+      "OperationCancelStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "cancelable": {
+            "title": "Cancelable",
+            "type": "boolean"
+          },
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "state": {
+            "enum": [
+              "accepted",
+              "running",
+              "succeeded",
+              "failed",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id",
+          "state",
+          "cancelable"
+        ],
+        "title": "OperationCancelStatus",
         "type": "object"
       },
       "OperationalAlarmEventPayload": {
@@ -13386,6 +13854,192 @@
         "title": "RequestReproductionArgs",
         "type": "object"
       },
+      "RestoreDryRunRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "backup_id": {
+            "title": "Backup Id",
+            "type": "string"
+          },
+          "target_schema_revision": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Schema Revision"
+          }
+        },
+        "required": [
+          "backup_id"
+        ],
+        "title": "RestoreDryRunRequest",
+        "type": "object"
+      },
+      "RestoreExecutionResult": {
+        "additionalProperties": false,
+        "properties": {
+          "backup_id": {
+            "title": "Backup Id",
+            "type": "string"
+          },
+          "maintenance_enabled": {
+            "title": "Maintenance Enabled",
+            "type": "boolean"
+          },
+          "message": {
+            "maxLength": 4096,
+            "title": "Message",
+            "type": "string"
+          },
+          "recovery_epoch": {
+            "minimum": 1.0,
+            "title": "Recovery Epoch",
+            "type": "integer"
+          },
+          "requires_external_reconciliation": {
+            "title": "Requires External Reconciliation",
+            "type": "boolean"
+          },
+          "restore_id": {
+            "title": "Restore Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "succeeded",
+              "blocked",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "restore_id",
+          "backup_id",
+          "state",
+          "recovery_epoch",
+          "maintenance_enabled",
+          "requires_external_reconciliation",
+          "message"
+        ],
+        "title": "RestoreExecutionResult",
+        "type": "object"
+      },
+      "RestorePlan": {
+        "additionalProperties": false,
+        "properties": {
+          "backup_id": {
+            "title": "Backup Id",
+            "type": "string"
+          },
+          "blockers": {
+            "default": [],
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "compatible": {
+            "title": "Compatible",
+            "type": "boolean"
+          },
+          "manifest_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Digest",
+            "type": "string"
+          },
+          "plan_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Plan Digest",
+            "type": "string"
+          },
+          "reapplies_retention_tombstones": {
+            "default": true,
+            "title": "Reapplies Retention Tombstones",
+            "type": "boolean"
+          },
+          "requires_maintenance": {
+            "default": true,
+            "title": "Requires Maintenance",
+            "type": "boolean"
+          },
+          "requires_remote_reconciliation": {
+            "default": true,
+            "title": "Requires Remote Reconciliation",
+            "type": "boolean"
+          },
+          "restores_artifacts": {
+            "title": "Restores Artifacts",
+            "type": "boolean"
+          },
+          "rotates_recovery_epoch": {
+            "default": true,
+            "title": "Rotates Recovery Epoch",
+            "type": "boolean"
+          },
+          "target_schema_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Target Schema Revision",
+            "type": "string"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "backup_id",
+          "manifest_digest",
+          "plan_digest",
+          "target_schema_revision",
+          "compatible",
+          "restores_artifacts"
+        ],
+        "title": "RestorePlan",
+        "type": "object"
+      },
+      "RestoreStartRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "backup_id": {
+            "title": "Backup Id",
+            "type": "string"
+          },
+          "manifest_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Digest",
+            "type": "string"
+          },
+          "plan_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Plan Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "backup_id",
+          "manifest_digest",
+          "plan_digest"
+        ],
+        "title": "RestoreStartRequest",
+        "type": "object"
+      },
       "ResultArtifactRef": {
         "additionalProperties": false,
         "description": "S-21 content-addressed execution output artifact descriptor.",
@@ -15406,6 +16060,177 @@
         "title": "StepUpResponse",
         "type": "object"
       },
+      "SupportBundleCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirm_export": {
+            "title": "Confirm Export",
+            "type": "boolean"
+          },
+          "file_ids": {
+            "items": {
+              "enum": [
+                "health_summary",
+                "doctor_report",
+                "migration_status",
+                "worker_status",
+                "telemetry_snapshot",
+                "recent_redacted_logs"
+              ],
+              "type": "string"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "File Ids",
+            "type": "array"
+          },
+          "manifest_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "manifest_digest",
+          "file_ids",
+          "confirm_export"
+        ],
+        "title": "SupportBundleCreateRequest",
+        "type": "object"
+      },
+      "SupportBundlePreview": {
+        "additionalProperties": false,
+        "properties": {
+          "excluded_repository_source": {
+            "default": true,
+            "title": "Excluded Repository Source",
+            "type": "boolean"
+          },
+          "excluded_secrets": {
+            "default": true,
+            "title": "Excluded Secrets",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "file_ids": {
+            "items": {
+              "enum": [
+                "health_summary",
+                "doctor_report",
+                "migration_status",
+                "worker_status",
+                "telemetry_snapshot",
+                "recent_redacted_logs"
+              ],
+              "type": "string"
+            },
+            "title": "File Ids",
+            "type": "array"
+          },
+          "manifest_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Digest",
+            "type": "string"
+          },
+          "redacted_file_count": {
+            "minimum": 0.0,
+            "title": "Redacted File Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "manifest_digest",
+          "file_ids",
+          "redacted_file_count",
+          "expires_at"
+        ],
+        "title": "SupportBundlePreview",
+        "type": "object"
+      },
+      "SupportBundleRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "download_url": {
+            "maxLength": 4096,
+            "title": "Download Url",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "file_count": {
+            "minimum": 1.0,
+            "title": "File Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "manifest_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Digest",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "manifest_digest",
+          "created_at",
+          "expires_at",
+          "file_count",
+          "size_bytes",
+          "download_url"
+        ],
+        "title": "SupportBundleRecord",
+        "type": "object"
+      },
+      "SystemCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "check_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Check Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "ok",
+              "warning",
+              "failed",
+              "blocked"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 4096,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check_id",
+          "state",
+          "summary"
+        ],
+        "title": "SystemCheck",
+        "type": "object"
+      },
       "SystemHealthResponse": {
         "additionalProperties": false,
         "description": "A-18 public minimal liveness response (zero host/secret/tenant disclosure).",
@@ -15440,6 +16265,98 @@
           "timestamp"
         ],
         "title": "SystemHealthResponse",
+        "type": "object"
+      },
+      "SystemStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "application_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Application Version",
+            "type": "string"
+          },
+          "checks": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SystemCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "database_version": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database Version"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "maintenance_enabled": {
+            "title": "Maintenance Enabled",
+            "type": "boolean"
+          },
+          "maintenance_reason": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maintenance Reason"
+          },
+          "recovery_epoch": {
+            "minimum": 1.0,
+            "title": "Recovery Epoch",
+            "type": "integer"
+          },
+          "schema_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Schema Revision",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "degraded",
+              "maintenance",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "worker_protocols": {
+            "default": [],
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Worker Protocols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "state",
+          "generated_at",
+          "application_version",
+          "schema_revision",
+          "recovery_epoch",
+          "maintenance_enabled"
+        ],
+        "title": "SystemStatus",
         "type": "object"
       },
       "TaskAttemptSummary": {
@@ -16582,6 +17499,109 @@
         "title": "TrustedExecutionResultRef",
         "type": "object"
       },
+      "UpgradePreflightRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "target_schema_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Target Schema Revision",
+            "type": "string"
+          },
+          "target_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Target Version",
+            "type": "string"
+          },
+          "target_worker_protocols": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Target Worker Protocols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "target_version",
+          "target_schema_revision",
+          "target_worker_protocols"
+        ],
+        "title": "UpgradePreflightRequest",
+        "type": "object"
+      },
+      "UpgradePreflightResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "compatible": {
+            "title": "Compatible",
+            "type": "boolean"
+          },
+          "current_schema_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Current Schema Revision",
+            "type": "string"
+          },
+          "current_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Current Version",
+            "type": "string"
+          },
+          "incompatible_workers": {
+            "default": [],
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Incompatible Workers",
+            "type": "array"
+          },
+          "pending_effects": {
+            "minimum": 0.0,
+            "title": "Pending Effects",
+            "type": "integer"
+          },
+          "required_actions": {
+            "default": [],
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Required Actions",
+            "type": "array"
+          },
+          "target_schema_revision": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Target Schema Revision",
+            "type": "string"
+          },
+          "target_version": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Target Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "compatible",
+          "current_version",
+          "target_version",
+          "current_schema_revision",
+          "target_schema_revision",
+          "pending_effects"
+        ],
+        "title": "UpgradePreflightResponse",
+        "type": "object"
+      },
       "User": {
         "additionalProperties": false,
         "description": "S-06 user profile DTO (never exposes password hashes or secret credentials).",
@@ -17043,6 +18063,16 @@
               "type": "string"
             },
             "title": "Profile Ids",
+            "type": "array"
+          },
+          "protocol_versions": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Protocol Versions",
             "type": "array"
           },
           "quarantine_reason": {
@@ -20838,6 +21868,336 @@
         ]
       }
     },
+    "/api/v1/operations/{operation_id}/cancel": {
+      "get": {
+        "operationId": "getOperationCancellationStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Operation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationCancelStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Read cancellation eligibility in the operation's originating scope (A-24)",
+        "tags": [
+          "operations"
+        ]
+      },
+      "post": {
+        "operationId": "cancelOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Operation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperationCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Cancel an asynchronous task operation with live RBAC and idempotency (A-24)",
+        "tags": [
+          "operations"
+        ]
+      }
+    },
     "/api/v1/setup": {
       "get": {
         "operationId": "getSetupState",
@@ -22094,6 +23454,168 @@
         ]
       }
     },
+    "/api/v1/system/backups": {
+      "post": {
+        "operationId": "createSystemBackup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Create Backup",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/doctor": {
+      "get": {
+        "operationId": "getSystemDoctor",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DoctorResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Doctor",
+        "tags": [
+          "system"
+        ]
+      }
+    },
     "/api/v1/system/health": {
       "get": {
         "operationId": "getSystemHealth",
@@ -22132,6 +23654,695 @@
           }
         },
         "summary": "Public minimal instance liveness probe (A-18)",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/maintenance": {
+      "post": {
+        "operationId": "setSystemMaintenance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Set Maintenance",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/restore": {
+      "post": {
+        "operationId": "restoreSystemBackup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreExecutionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Restore Backup",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/restore/dry-run": {
+      "post": {
+        "operationId": "dryRunSystemRestore",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreDryRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestorePlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Restore Dry Run",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "operationId": "getSystemStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Status",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/support-bundles": {
+      "post": {
+        "operationId": "createSystemSupportBundle",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportBundleCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportBundleRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Create Support Bundle Endpoint",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/support-bundles/preview": {
+      "post": {
+        "operationId": "previewSystemSupportBundle",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "enum": [
+                    "health_summary",
+                    "doctor_report",
+                    "migration_status",
+                    "worker_status",
+                    "telemetry_snapshot",
+                    "recent_redacted_logs"
+                  ],
+                  "type": "string"
+                },
+                "title": "File Ids",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportBundlePreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Preview Support Bundle",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/support-bundles/{bundle_id}": {
+      "get": {
+        "operationId": "downloadSystemSupportBundle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bundle_id",
+            "required": true,
+            "schema": {
+              "title": "Bundle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Download Support Bundle",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/upgrade-preflight": {
+      "post": {
+        "operationId": "runSystemUpgradePreflight",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpgradePreflightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpgradePreflightResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Upgrade Preflight",
         "tags": [
           "system"
         ]

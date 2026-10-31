@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import pathlib
 import re
 import time
@@ -20,7 +21,7 @@ from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
@@ -30,6 +31,7 @@ from opentelemetry.sdk.metrics.export import MetricReader
 from opentelemetry.sdk.trace.export import SpanExporter
 from pydantic.json_schema import GenerateJsonSchema, models_json_schema
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from py_contracts import (
@@ -51,6 +53,11 @@ from py_contracts import (
     ApprovalPageResponse,
     Artifact,
     AuditRecord,
+    BackupCreateRequest,
+    BackupKeyReference,
+    BackupManifestV1,
+    BackupObjectEntry,
+    BackupRecord,
     BranchPolicyEvaluation,
     BreakGlassCreateRequest,
     BreakGlassGrant,
@@ -88,6 +95,7 @@ from py_contracts import (
     DeadLetterJobSummary,
     Diagnosis,
     DiagnosisHypothesis,
+    DoctorResponse,
     EffectiveRepositoryPolicy,
     EndpointRegistration,
     EndpointRegistrationCreateRequest,
@@ -114,6 +122,7 @@ from py_contracts import (
     LoginRequest,
     LoginResponse,
     LogoutRequest,
+    MaintenanceRequest,
     Membership,
     MembershipPage,
     MemberUpdateRequest,
@@ -173,6 +182,9 @@ from py_contracts import (
     RepositoryRunTriggerSummary,
     RepositoryUpdateRequest,
     ReproductionRunRecord,
+    RestoreDryRunRequest,
+    RestorePlan,
+    RestoreStartRequest,
     ResultV1,
     RunnerProfileCommandSpec,
     RunnerProfileManifest,
@@ -191,7 +203,12 @@ from py_contracts import (
     StepUpRequest,
     StepUpResponse,
     StrictContractModel,
+    SupportBundleCreateRequest,
+    SupportBundlePreview,
+    SupportBundleRecord,
+    SystemCheck,
     SystemHealthResponse,
+    SystemStatus,
     TaskAttemptSummary,
     TaskJob,
     TaskJobActionRequest,
@@ -206,6 +223,8 @@ from py_contracts import (
     ToolCallRequest,
     ToolCallResponse,
     ToolCapabilityPolicyItem,
+    UpgradePreflightRequest,
+    UpgradePreflightResponse,
     User,
     Verification,
     WebhookIngressReceipt,
@@ -274,7 +293,13 @@ from red2pr_control.notifications.channels.runtime import build_external_notific
 from red2pr_control.notifications.telegram.poller import TelegramBotService
 from red2pr_control.notifications.telegram.router import build_telegram_router
 from red2pr_control.operations.alarms import OperationalAlarmWorker
+from red2pr_control.operations.backup_restore import recover_interrupted_restore
 from red2pr_control.operations.retention import RetentionPurgeWorker
+from red2pr_control.operations.router import build_operations_router
+from red2pr_control.operations.runtime import (
+    dispose_operation_lock_engine,
+    shared_operation_lease,
+)
 from red2pr_control.operations.setup_wizard import (
     SetupStepRegistry,
     SetupWizardService,
@@ -314,6 +339,23 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     ActionReceipt,
     AnalyticsCostSummary,
     AnalyticsFunnelStage,
+    BackupCreateRequest,
+    BackupKeyReference,
+    BackupManifestV1,
+    BackupObjectEntry,
+    BackupRecord,
+    DoctorResponse,
+    MaintenanceRequest,
+    RestoreDryRunRequest,
+    RestorePlan,
+    RestoreStartRequest,
+    SupportBundleCreateRequest,
+    SupportBundlePreview,
+    SupportBundleRecord,
+    SystemCheck,
+    SystemStatus,
+    UpgradePreflightRequest,
+    UpgradePreflightResponse,
     PageParams,
     Money,
     User,
@@ -684,6 +726,65 @@ class _CorrelationAndBodyLimitMiddleware:
                     self._request_duration.record(time.perf_counter() - started_at, attributes)
 
 
+class _SystemMaintenanceMiddleware(BaseHTTPMiddleware):
+    """Serialize mutating HTTP requests against restore and fail closed in maintenance."""
+
+    _RESTORE_ALLOWED = frozenset(
+        {
+            "/api/v1/system/maintenance",
+            "/api/v1/system/restore",
+            "/api/v1/system/restore/dry-run",
+            "/api/v1/system/support-bundles/preview",
+            "/api/v1/system/support-bundles",
+        }
+    )
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+            return await call_next(request)
+        if request.url.path in self._RESTORE_ALLOWED or (
+            request.url.path.startswith("/api/v1/operations/")
+            and request.url.path.endswith("/cancel")
+        ):
+            return await call_next(request)
+        iam = getattr(request.app.state, "iam_service", None)
+        if iam is None:
+            return await call_next(request)
+        bind = iam.session_factory.kw.get("bind")
+        if getattr(getattr(bind, "dialect", None), "name", None) != "postgresql":
+            return await call_next(request)
+        try:
+            async with shared_operation_lease(iam.session_factory) as state:
+                if state.enabled:
+                    return JSONResponse(
+                        status_code=503,
+                        headers={"Retry-After": "30", "Cache-Control": "no-store"},
+                        content={
+                            "type": "about:blank",
+                            "title": "Service unavailable",
+                            "status": 503,
+                            "code": "instance_maintenance",
+                            "detail": "Instance writes are paused during maintenance or recovery.",
+                        },
+                        media_type="application/problem+json",
+                    )
+                return await call_next(request)
+        except Exception:
+            _LOGGER.error("system_write_fence_unavailable")
+            return JSONResponse(
+                status_code=503,
+                headers={"Retry-After": "30", "Cache-Control": "no-store"},
+                content={
+                    "type": "about:blank",
+                    "title": "Service unavailable",
+                    "status": 503,
+                    "code": "system_write_fence_unavailable",
+                    "detail": "Instance writes are paused because recovery fencing is unavailable.",
+                },
+                media_type="application/problem+json",
+            )
+
+
 def _request_correlation_id(request: Request) -> str:
     state_corr = getattr(request.state, "correlation_id", None)
     if isinstance(state_corr, str) and state_corr:
@@ -761,6 +862,10 @@ def create_app(
         telegram_worker = None
         retention_task = None
         alarms_task = None
+        admin_database_url = os.environ.get("RED2PR_ADMIN_DATABASE_URL", "").strip()
+        backup_directory = os.environ.get("RED2PR_BACKUP_DIRECTORY", "").strip()
+        if admin_database_url and backup_directory:
+            await recover_interrupted_restore(admin_database_url, pathlib.Path(backup_directory))
         dispatcher = getattr(app.state, "notification_dispatcher", None)
         if dispatcher is not None:
             worker = asyncio.create_task(
@@ -804,6 +909,8 @@ def create_app(
                     await telegram_worker
                 if telegram_service is not None:
                     await telegram_service.api.aclose()
+            if iam_service is not None:
+                await dispose_operation_lock_engine(iam_service.session_factory)
 
     app = FastAPI(
         title="Red2PR Control Plane API",
@@ -911,6 +1018,7 @@ def create_app(
     app.include_router(build_notifications_router())
     app.include_router(build_telegram_router())
     app.include_router(build_analytics_router())
+    app.include_router(build_operations_router())
 
     @app.exception_handler(Red2PrError)
     async def _handle_red2pr_error(request: Request, exc: Red2PrError) -> JSONResponse:
@@ -1023,6 +1131,7 @@ def create_app(
         return schema
 
     app.openapi = _custom_openapi  # type: ignore[method-assign]
+    app.add_middleware(_SystemMaintenanceMiddleware)
     app.add_middleware(
         _CorrelationAndBodyLimitMiddleware,
         max_body_bytes=MAX_JSON_BODY_BYTES,

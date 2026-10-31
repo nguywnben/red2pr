@@ -20,6 +20,7 @@ from red2pr_control.db.base import (
     WorkspaceModel,
 )
 from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
+from red2pr_control.operations.backup_restore import BACKUP_HOLD_LOCK
 from red2pr_control.triage_evidence.artifact_store import (
     ArtifactStoreProtocol,
     purge_expired_artifacts_in_tx,
@@ -41,6 +42,22 @@ class RetentionPurgeWorker:
         self.poll_interval = poll_interval
 
     async def process_one(self, *, workspace_id: str, now: datetime | None = None) -> bool:
+        """Hold the shared backup/deletion fence through physical object deletion."""
+        async with self.session_factory() as hold_db:
+            await hold_db.execute(
+                text("SELECT pg_advisory_lock(:lock_id)"), {"lock_id": BACKUP_HOLD_LOCK}
+            )
+            try:
+                return await self._process_one_under_backup_hold(workspace_id=workspace_id, now=now)
+            finally:
+                await hold_db.execute(
+                    text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": BACKUP_HOLD_LOCK}
+                )
+                await hold_db.commit()
+
+    async def _process_one_under_backup_hold(
+        self, *, workspace_id: str, now: datetime | None = None
+    ) -> bool:
         ref_now = now.astimezone(UTC) if now else datetime.now(tz=UTC)
         if self.store is None:
             return False
@@ -227,22 +244,28 @@ class RetentionPurgeWorker:
 
     async def run_forever(self) -> None:
         """Poll each workspace, preserving tenant RLS for every data mutation."""
+        from red2pr_control.operations.runtime import shared_operation_lease
+
         while True:
-            async with instance_rls_session(self.session_factory, mode="instance_admin") as db:
-                workspace_ids = list(await db.scalars(select(WorkspaceModel.id)))
             worked = False
-            for workspace_id in workspace_ids:
-                async with workspace_rls_session(
-                    self.session_factory, workspace_id=workspace_id
-                ) as db:
-                    if self.store is not None:
-                        await purge_expired_artifacts_in_tx(
-                            db,
-                            store=self.store,
-                            workspace_id=workspace_id,
-                            now=datetime.now(tz=UTC),
-                        )
-                await self.purge_expired_tombstones(workspace_id=workspace_id)
-                worked = await self.process_one(workspace_id=workspace_id) or worked
+            async with shared_operation_lease(self.session_factory) as state:
+                if not state.enabled:
+                    async with instance_rls_session(
+                        self.session_factory, mode="instance_admin"
+                    ) as db:
+                        workspace_ids = list(await db.scalars(select(WorkspaceModel.id)))
+                    for workspace_id in workspace_ids:
+                        async with workspace_rls_session(
+                            self.session_factory, workspace_id=workspace_id
+                        ) as db:
+                            if self.store is not None:
+                                await purge_expired_artifacts_in_tx(
+                                    db,
+                                    store=self.store,
+                                    workspace_id=workspace_id,
+                                    now=datetime.now(tz=UTC),
+                                )
+                        await self.purge_expired_tombstones(workspace_id=workspace_id)
+                        worked = await self.process_one(workspace_id=workspace_id) or worked
             if not worked:
                 await asyncio.sleep(self.poll_interval)

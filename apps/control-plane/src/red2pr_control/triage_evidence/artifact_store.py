@@ -169,6 +169,18 @@ class ArtifactStoreProtocol(Protocol):
         expected_digest: str,
     ) -> bytes: ...
 
+    async def export_encrypted_blob(
+        self, *, workspace_id: str, storage_ref: str, expected_digest: str
+    ) -> bytes: ...
+
+    async def restore_encrypted_blob(
+        self, *, workspace_id: str, storage_ref: str, expected_digest: str, ciphertext: bytes
+    ) -> None: ...
+
+    async def verify_encrypted_blob(
+        self, *, workspace_id: str, expected_digest: str, ciphertext: bytes
+    ) -> int: ...
+
     async def delete_blob(
         self,
         *,
@@ -382,6 +394,69 @@ class LocalEncryptedArtifactStore:
                 detail="Stored artifact SHA-256 digest mismatch on read (SEC-025).",
             )
         return plaintext
+
+    async def export_encrypted_blob(
+        self, *, workspace_id: str, storage_ref: str, expected_digest: str
+    ) -> bytes:
+        """Verify plaintext integrity before exporting the original ciphertext unchanged."""
+        await self.read_verified(
+            workspace_id=workspace_id, storage_ref=storage_ref, expected_digest=expected_digest
+        )
+        return self._ref_to_confined_path(
+            workspace_id=workspace_id, storage_ref=storage_ref
+        ).read_bytes()
+
+    async def restore_encrypted_blob(
+        self, *, workspace_id: str, storage_ref: str, expected_digest: str, ciphertext: bytes
+    ) -> None:
+        """Validate AEAD + digest before atomically restoring opaque encrypted bytes."""
+        ws, digest = _validate_workspace_and_digest(workspace_id, expected_digest)
+        envelope, _ = _deserialize_envelope(ciphertext)
+        try:
+            plaintext = decrypt_envelope(
+                envelope, key_ring=self._key_ring, aad_context=_build_aad_context(ws, digest)
+            )
+        except CryptoVerificationError as exc:
+            raise ArtifactIntegrityError(
+                code="artifact_missing_key_or_tampered",
+                detail="Encrypted backup object cannot be authenticated with configured keys.",
+            ) from exc
+        if not hmac.compare_digest(hashlib.sha256(plaintext).hexdigest(), digest):
+            raise ArtifactIntegrityError(
+                code="artifact_sha256_mismatch",
+                detail="Restored object digest does not match inventory.",
+            )
+        path = self._ref_to_confined_path(workspace_id=ws, storage_ref=storage_ref)
+        if path.exists():
+            await self.read_verified(
+                workspace_id=ws, storage_ref=storage_ref, expected_digest=digest
+            )
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp = path.with_suffix(f".restore.{os.urandom(6).hex()}")
+        temp.write_bytes(ciphertext)
+        os.replace(temp, path)
+
+    async def verify_encrypted_blob(
+        self, *, workspace_id: str, expected_digest: str, ciphertext: bytes
+    ) -> int:
+        ws, digest = _validate_workspace_and_digest(workspace_id, expected_digest)
+        envelope, _ = _deserialize_envelope(ciphertext)
+        try:
+            plaintext = decrypt_envelope(
+                envelope, key_ring=self._key_ring, aad_context=_build_aad_context(ws, digest)
+            )
+        except CryptoVerificationError as exc:
+            raise ArtifactIntegrityError(
+                code="artifact_missing_key_or_tampered",
+                detail="Encrypted backup object cannot be authenticated with configured keys.",
+            ) from exc
+        if not hmac.compare_digest(hashlib.sha256(plaintext).hexdigest(), digest):
+            raise ArtifactIntegrityError(
+                code="artifact_sha256_mismatch",
+                detail="Backup object plaintext digest does not match manifest.",
+            )
+        return len(plaintext)
 
     async def delete_blob(self, *, workspace_id: str, storage_ref: str) -> bool:
         blob_path = self._ref_to_confined_path(
@@ -733,6 +808,79 @@ class S3CompatibleArtifactStore:
                 detail="Stored S3 artifact SHA-256 digest mismatch on read (SEC-025).",
             )
         return plaintext
+
+    async def export_encrypted_blob(
+        self, *, workspace_id: str, storage_ref: str, expected_digest: str
+    ) -> bytes:
+        await self.read_verified(
+            workspace_id=workspace_id, storage_ref=storage_ref, expected_digest=expected_digest
+        )
+        key = self._ref_to_object_key(workspace_id=workspace_id, storage_ref=storage_ref)
+        response = await self._s3_request("GET", self._build_object_url(key))
+        if response.status_code != 200:
+            raise NotFoundError(
+                code="artifact_blob_missing",
+                detail="Encrypted artifact is missing from object storage.",
+            )
+        return response.content
+
+    async def restore_encrypted_blob(
+        self, *, workspace_id: str, storage_ref: str, expected_digest: str, ciphertext: bytes
+    ) -> None:
+        ws, digest = _validate_workspace_and_digest(workspace_id, expected_digest)
+        envelope, _ = _deserialize_envelope(ciphertext)
+        try:
+            plaintext = decrypt_envelope(
+                envelope, key_ring=self._key_ring, aad_context=_build_aad_context(ws, digest)
+            )
+        except CryptoVerificationError as exc:
+            raise ArtifactIntegrityError(
+                code="artifact_missing_key_or_tampered",
+                detail="Encrypted backup object cannot be authenticated with configured keys.",
+            ) from exc
+        if not hmac.compare_digest(hashlib.sha256(plaintext).hexdigest(), digest):
+            raise ArtifactIntegrityError(
+                code="artifact_sha256_mismatch",
+                detail="Restored object digest does not match inventory.",
+            )
+        key = self._ref_to_object_key(workspace_id=ws, storage_ref=storage_ref)
+        existing = await self._s3_request("GET", self._build_object_url(key))
+        if existing.status_code == 200:
+            await self.read_verified(
+                workspace_id=ws, storage_ref=storage_ref, expected_digest=digest
+            )
+            return
+        response = await self._s3_request(
+            "PUT",
+            self._build_object_url(key),
+            body=ciphertext,
+            extra_headers={"Content-Type": "application/octet-stream"},
+        )
+        if response.status_code not in (200, 201):
+            raise DependencyUnavailableError(
+                code="s3_restore_write_failed", detail="Encrypted artifact restore write failed."
+            )
+
+    async def verify_encrypted_blob(
+        self, *, workspace_id: str, expected_digest: str, ciphertext: bytes
+    ) -> int:
+        ws, digest = _validate_workspace_and_digest(workspace_id, expected_digest)
+        envelope, _ = _deserialize_envelope(ciphertext)
+        try:
+            plaintext = decrypt_envelope(
+                envelope, key_ring=self._key_ring, aad_context=_build_aad_context(ws, digest)
+            )
+        except CryptoVerificationError as exc:
+            raise ArtifactIntegrityError(
+                code="artifact_missing_key_or_tampered",
+                detail="Encrypted backup object cannot be authenticated with configured keys.",
+            ) from exc
+        if not hmac.compare_digest(hashlib.sha256(plaintext).hexdigest(), digest):
+            raise ArtifactIntegrityError(
+                code="artifact_sha256_mismatch",
+                detail="Backup object plaintext digest does not match manifest.",
+            )
+        return len(plaintext)
 
     async def delete_blob(self, *, workspace_id: str, storage_ref: str) -> bool:
         obj_key = self._ref_to_object_key(

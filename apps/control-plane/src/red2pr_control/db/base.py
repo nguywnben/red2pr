@@ -68,6 +68,16 @@ class InstanceModel(Base):
         ),
         CheckConstraint("config_revision >= 1", name="config_revision_pos"),
         CheckConstraint("recovery_epoch >= 1", name="recovery_epoch_pos"),
+        CheckConstraint(
+            "(maintenance_enabled IS TRUE AND maintenance_reason IS NOT NULL) OR "
+            "(maintenance_enabled IS FALSE AND maintenance_reason IS NULL)",
+            name="maintenance_state_valid",
+        ),
+        ForeignKeyConstraint(
+            ["maintenance_started_by_user_id"],
+            ["users.id"],
+            ondelete="RESTRICT",
+        ),
         CheckConstraint("version >= 1", name="version_pos"),
     )
 
@@ -77,6 +87,12 @@ class InstanceModel(Base):
     public_base_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     config_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     recovery_epoch: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    maintenance_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    maintenance_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    maintenance_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    maintenance_started_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     initialized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
@@ -1449,6 +1465,100 @@ class OperationReceiptModel(Base):
     )
 
 
+class BackupRecordModel(Base):
+    """Instance-scoped signed backup inventory and lifecycle state (U26)."""
+
+    __tablename__ = "backup_records"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('creating', 'succeeded', 'failed', 'expired', 'restoring')",
+            name="backup_state_valid",
+        ),
+        CheckConstraint("size_bytes >= 0 AND object_count >= 0", name="backup_sizes_nonnegative"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_backup_records_created", "created_at", "id"),
+        ForeignKeyConstraint(["created_by_user_id"], ["users.id"], ondelete="RESTRICT"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_by_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    bundle_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    manifest_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    manifest_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    snapshot_lsn: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    schema_revision: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    object_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class MigrationRunModel(Base):
+    """Durable preflight/upgrade/rollback activity record (U26)."""
+
+    __tablename__ = "migration_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('preflight', 'running', 'succeeded', 'failed', 'blocked', 'rolled_back')",
+            name="migration_run_state_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_migration_runs_created", "created_at", "id"),
+        ForeignKeyConstraint(["actor_user_id"], ["users.id"], ondelete="RESTRICT"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    actor_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    current_revision: Mapped[str] = mapped_column(String(120), nullable=False)
+    target_revision: Mapped[str] = mapped_column(String(120), nullable=False)
+    target_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class SupportBundleModel(Base):
+    """Short-lived allowlisted redacted support export inventory (U26)."""
+
+    __tablename__ = "support_bundles"
+    __table_args__ = (
+        CheckConstraint("file_count > 0 AND size_bytes >= 0", name="support_bundle_sizes_valid"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_support_bundles_expiry", "expires_at", "id"),
+        ForeignKeyConstraint(["actor_user_id"], ["users.id"], ondelete="RESTRICT"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    actor_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    manifest_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    file_ids_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    bundle_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    file_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
 class ProviderConnectionModel(Base):
     """S-08 / SRC-01 workspace-scoped source provider connection (secrets stored in Z2 broker)."""
 
@@ -2630,6 +2740,7 @@ class WorkerModel(Base):
     isolation_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="oci_rootless")
     runtime_name: Mapped[str] = mapped_column(String(120), nullable=False)
     profile_ids_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    protocol_versions_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     capabilities_json: Mapped[dict[str, bool]] = mapped_column(JSONB, nullable=False, default=dict)
     cpu_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
     memory_limit_bytes: Mapped[int] = mapped_column(

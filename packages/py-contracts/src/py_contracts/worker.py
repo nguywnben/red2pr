@@ -67,6 +67,7 @@ DeadLetterStatus = Literal["open", "requeued", "reconciled", "discarded"]
 QueueTransportStatus = Literal["healthy", "degraded", "unconfigured"]
 TaskJobAction = Literal["cancel", "requeue", "reconcile"]
 TaskJobReconcileOutcome = Literal["confirmed_absent", "confirmed_applied"]
+WORKER_PROTOCOL_V1 = "worker-v1"
 
 
 class Worker(InstanceResourceBase):
@@ -74,6 +75,9 @@ class Worker(InstanceResourceBase):
 
     trust_domain: BoundedName
     profile_ids: list[BoundedName]
+    protocol_versions: Annotated[list[BoundedName], Field(max_length=16)] = Field(
+        default_factory=list
+    )
     capabilities: dict[BoundedName, StrictBool] = Field(default_factory=dict)
     heartbeat_at: UtcTimestamp
     status: WorkerStatus
@@ -441,6 +445,9 @@ class WorkerEnrollHandshakeRequest(StrictContractModel):
     signer_public_key: PublicKeyRecord
     attestation: WorkerIsolationAttestation
     profile_ids: Annotated[list[BoundedName], Field(min_length=1, max_length=32)]
+    protocol_versions: Annotated[list[BoundedName], Field(max_length=16)] = Field(
+        default_factory=list
+    )
 
 
 class WorkerEnrollHandshakeResponse(StrictContractModel):
@@ -457,6 +464,9 @@ class WorkerPollRequest(StrictContractModel):
 
     status_hint: Literal["ready", "draining"] = "ready"
     capabilities: dict[BoundedName, StrictBool] = Field(default_factory=dict)
+    protocol_versions: Annotated[list[BoundedName], Field(max_length=16)] = Field(
+        default_factory=list
+    )
 
 
 class WorkerPollResponse(StrictContractModel):

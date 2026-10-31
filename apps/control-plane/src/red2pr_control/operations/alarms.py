@@ -251,9 +251,13 @@ class OperationalAlarmWorker:
 
     async def run_forever(self) -> None:
         """Keep monitoring through transient DB faults without swallowing cancellation."""
+        from red2pr_control.operations.runtime import shared_operation_lease
+
         while True:
             try:
-                await self.process_once()
+                async with shared_operation_lease(self.session_factory) as state:
+                    if not state.enabled:
+                        await self.process_once()
             except asyncio.CancelledError:
                 raise
             except Exception:

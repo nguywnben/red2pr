@@ -762,11 +762,12 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
         auth_mode: "gitlab_signed_v19",
         display_name: "GitLab Cloud Prod",
         access_token: "glpat-write-only-token-example",
-        webhook_secret: "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        webhook_secret: "test-gitlab-webhook-secret",
       },
       { idempotencyKey: "019a2600-0000-7000-8000-000000000902" },
     );
     assert.equal(capturedBody?.["auth_mode"], "gitlab_signed_v19");
+    assert.equal(capturedBody?.["webhook_secret"], "test-gitlab-webhook-secret");
     assert.equal(capturedBody?.["access_token"], "glpat-write-only-token-example");
     assert.equal(created.data.provider, "gitlab");
     assert.equal(created.data.auth_mode, "gitlab_signed_v19");
@@ -2110,5 +2111,36 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(calls[1]?.url, "http://127.0.0.1:4280/api/v1/workspaces/acme/security/secrets/rotate");
     assert.equal(calls[1]?.headers.get("X-CSRF-Token"), "csrf-u25-client");
     assert.equal(rotation.data.rotated_count, 4);
+  });
+
+  it("serializes U26 restore confirmation and A-24 cancellation contracts", async () => {
+    const operationId = "019a2900-0000-7000-8000-000000000404";
+    const requests: Request[] = [];
+    const client = createRed2PrClient({
+      baseUrl: "http://127.0.0.1:4280",
+      getCsrfToken: () => "csrf-u26-token",
+      fetch: async (request: Request) => {
+        requests.push(request);
+        const url = new URL(request.url);
+        if (request.method === "POST" && url.pathname === "/api/v1/system/restore") {
+          return Response.json({ restore_id: operationId, backup_id: operationId, state: "succeeded", recovery_epoch: 2, maintenance_enabled: true, requires_external_reconciliation: true, message: "Restore completed." });
+        }
+        if (request.method === "GET" && url.pathname === `/api/v1/operations/${operationId}/cancel`) {
+          return Response.json({ operation_id: operationId, state: "running", cancelable: true, reason: null });
+        }
+        if (request.method === "POST" && url.pathname === `/api/v1/operations/${operationId}/cancel`) {
+          return Response.json({ operation_id: operationId, resource_id: operationId, state: "running", correlation_id: "corr-u26-cancel", status_url: `/api/v1/operations/${operationId}` }, { status: 202 });
+        }
+        return new Response(null, { status: 404 });
+      },
+    });
+    const restore = await client.restoreSystemBackup({ backup_id: operationId, manifest_digest: "a".repeat(64), plan_digest: "b".repeat(64) });
+    assert.equal(restore.data.recovery_epoch, 2);
+    const status = await client.getOperationCancellationStatus(operationId);
+    assert.equal(status.data.cancelable, true);
+    await client.cancelOperation(operationId, { reason: "Owner requested safe cancellation." }, { idempotencyKey: "u26-cancel-once" });
+    assert.equal(requests[0]?.headers.get("X-CSRF-Token"), "csrf-u26-token");
+    assert.equal(requests[2]?.headers.get("Idempotency-Key"), "u26-cancel-once");
+    assert.equal(requests[2]?.headers.get("X-CSRF-Token"), "csrf-u26-token");
   });
 });

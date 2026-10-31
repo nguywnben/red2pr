@@ -7,6 +7,9 @@ dependencies = [
     "py-contracts",
 ]
 
+[project.scripts]
+red2pr = "red2pr_cli.main:main"
+
 [tool.uv.sources]
 py-contracts = { workspace = true }
 

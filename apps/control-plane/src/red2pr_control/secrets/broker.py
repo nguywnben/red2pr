@@ -259,6 +259,11 @@ class SecretBroker:
         if key_path:
             self._key_ring = load_master_key_ring_from_file(key_path)
 
+    def has_master_key_version(self, version: int) -> bool:
+        """Expose only key-version availability for restore preflight; never key material."""
+        self._refresh_key_ring()
+        return self._key_ring.get(version) is not None
+
     async def _acquire_keyring_read_lock(self, session: AsyncSession) -> int:
         await session.execute(
             text("SELECT pg_advisory_xact_lock_shared(hashtextextended(:key, 0))"),

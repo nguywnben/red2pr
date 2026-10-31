@@ -63,7 +63,7 @@ import pgserver
 import pytest
 import redis
 from fakeredis import TcpFakeServer
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -96,9 +96,11 @@ from red2pr_control.db.engine import (
     run_alembic_downgrade,
     run_alembic_upgrade,
 )
-from red2pr_control.db.rls import workspace_rls_session
+from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
 from red2pr_control.iam.mfa import generate_totp_code_at
 from red2pr_control.iam.sessions import IamService
+from red2pr_control.operations.backup_encryption import decrypt_backup_chunks
+from red2pr_control.operations.backup_restore import _run_pg_dump, _run_pg_restore
 from red2pr_control.orchestrator import (
     DurableTaskQueueService,
     OperationReceiptService,
@@ -238,6 +240,644 @@ async def migrated_db(pg_urls: PgTestUrls) -> AsyncIterator[PgTestUrls]:
         app_role_password=APP_ROLE_PASSWORD,
     )
     yield pg_urls
+
+
+async def test_keyring_metadata_is_readable_but_not_writable_in_instance_scope(
+    migrated_db: PgTestUrls,
+) -> None:
+    engine = create_app_engine(migrated_db.app_url)
+    try:
+        factory = create_session_factory(engine)
+        async with instance_rls_session(factory, mode="instance_only") as db:
+            assert (
+                await db.execute(text("SELECT count(*) FROM secret_keyring_state"))
+            ).scalar_one() == 1
+            result = await db.execute(
+                text(
+                    "UPDATE secret_keyring_state SET active_kek_version = 2 "
+                    "WHERE singleton_id = 'global'"
+                )
+            )
+            assert result.rowcount == 0
+        async with instance_rls_session(factory, mode="instance_admin") as db:
+            assert (
+                await db.execute(text("SELECT active_kek_version FROM secret_keyring_state"))
+            ).scalar_one() == 1
+    finally:
+        await engine.dispose()
+
+
+async def test_u26_keyring_policy_downgrade_and_upgrade(pg_urls: PgTestUrls) -> None:
+    run_alembic_downgrade(pg_urls.admin_url, "base", app_role_name=APP_ROLE_NAME)
+    run_alembic_upgrade(
+        pg_urls.admin_url,
+        "0021_retention_jobs_and_exceptions",
+        app_role_name=APP_ROLE_NAME,
+        app_role_password=APP_ROLE_PASSWORD,
+    )
+    engine = create_app_engine(pg_urls.app_url)
+    factory = create_session_factory(engine)
+    try:
+        async with instance_rls_session(factory, mode="instance_only") as db:
+            assert (
+                await db.execute(text("SELECT count(*) FROM secret_keyring_state"))
+            ).scalar_one() == 0
+        run_alembic_upgrade(
+            pg_urls.admin_url,
+            "head",
+            app_role_name=APP_ROLE_NAME,
+            app_role_password=APP_ROLE_PASSWORD,
+        )
+        async with instance_rls_session(factory, mode="instance_only") as db:
+            assert (
+                await db.execute(text("SELECT count(*) FROM secret_keyring_state"))
+            ).scalar_one() == 1
+        run_alembic_downgrade(
+            pg_urls.admin_url, "0021_retention_jobs_and_exceptions", app_role_name=APP_ROLE_NAME
+        )
+        async with instance_rls_session(factory, mode="instance_only") as db:
+            assert (
+                await db.execute(text("SELECT count(*) FROM secret_keyring_state"))
+            ).scalar_one() == 0
+    finally:
+        await engine.dispose()
+
+
+async def test_u26_pg_dump_is_encrypted_and_can_be_authenticated(
+    migrated_db: PgTestUrls, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pg_dump = Path(pgserver.__file__).parent / "pginstall" / "bin" / "pg_dump"
+    pg_restore = pg_dump.with_name("pg_restore")
+    monkeypatch.setenv("RED2PR_PG_DUMP", str(pg_dump))
+    monkeypatch.setenv("RED2PR_PG_RESTORE", str(pg_restore))
+    keys = MasterKeyRing(active_version=1, keys={1: b"b" * 32})
+    path = tmp_path / "dump.enc"
+    engine = create_admin_engine(migrated_db.admin_url)
+    try:
+        async with engine.connect() as db:
+            await db.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"))
+            snapshot = (await db.execute(text("SELECT pg_export_snapshot()"))).scalar_one()
+            await _run_pg_dump(
+                migrated_db.admin_url, snapshot, path, keys=keys, backup_id="backup-1"
+            )
+        assert b"PGDMP" not in path.read_bytes()
+        plaintext = b"".join(
+            decrypt_backup_chunks(path, keys=keys, backup_id="backup-1", expected_version=1)
+        )
+        assert plaintext.startswith(b"PGDMP")
+        async with engine.connect() as db:
+            await db.execution_options(isolation_level="AUTOCOMMIT")
+            await db.execute(text("CREATE DATABASE r2pr_test_restore OWNER red2pr_app"))
+        await _run_pg_restore(
+            migrated_db.admin_url,
+            "r2pr_test_restore",
+            path,
+            keys=keys,
+            backup_id="backup-1",
+            key_version=1,
+        )
+        from sqlalchemy.engine import make_url
+
+        restored_url = make_url(migrated_db.admin_url).set(database="r2pr_test_restore")
+        restored = create_admin_engine(restored_url.render_as_string(hide_password=False))
+        try:
+            async with restored.connect() as db:
+                assert (
+                    await db.execute(text("SELECT count(*) FROM alembic_version"))
+                ).scalar_one() == 1
+        finally:
+            await restored.dispose()
+        restored_app_url = make_url(migrated_db.app_url).set(database="r2pr_test_restore")
+        restored_app = create_app_engine(restored_app_url.render_as_string(hide_password=False))
+        try:
+            factory = create_session_factory(restored_app)
+            async with instance_rls_session(factory, mode="instance_only") as db:
+                assert (
+                    await db.execute(text("SELECT count(*) FROM secret_keyring_state"))
+                ).scalar_one() == 1
+                result = await db.execute(
+                    text("UPDATE secret_keyring_state SET active_kek_version = 2")
+                )
+                assert result.rowcount == 0
+        finally:
+            await restored_app.dispose()
+    finally:
+        await engine.dispose()
+
+
+async def test_u26_consistent_backup_and_dry_run_use_encrypted_database(
+    pg_urls: PgTestUrls,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import json
+    from decimal import Decimal
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from sqlalchemy.engine import make_url
+
+    import red2pr_control.operations.backup_restore as backup_restore_module
+    from py_contracts.crypto import export_ed25519_public_key_record
+    from py_contracts.operations import UpgradePreflightRequest
+    from red2pr_control.db.base import (
+        ApprovalRequestModel,
+        ArtifactBlobModel,
+        ArtifactModel,
+        BudgetAccountModel,
+        CiRunModel,
+        InstanceModel,
+        NotificationDeliveryModel,
+        NotificationDestinationModel,
+        NotificationEventModel,
+        OperationReceiptModel,
+        OutboxEventModel,
+        ProviderConnectionModel,
+        PublicationRecordModel,
+        RepairSessionModel,
+        RepositoryModel,
+        UserModel,
+        WorkerModel,
+        WorkspaceModel,
+    )
+    from red2pr_control.operations.backup_restore import (
+        build_restore_dry_run,
+        create_consistent_backup,
+        execute_restore,
+        read_bundle,
+    )
+    from red2pr_control.operations.upgrade_preflight import run_upgrade_preflight
+    from red2pr_control.triage_evidence.artifact_store import (
+        LocalEncryptedArtifactStore,
+        persist_encrypted_artifact,
+    )
+
+    database_name = "r2pr_u26_accept"
+    base_engine = create_admin_engine(pg_urls.admin_url)
+    try:
+        async with base_engine.connect() as connection:
+            await connection.execution_options(isolation_level="AUTOCOMMIT")
+            await connection.execute(text(f"CREATE DATABASE {database_name}"))
+    finally:
+        await base_engine.dispose()
+    admin_url = make_url(pg_urls.admin_url).set(database=database_name)
+    app_url = make_url(pg_urls.app_url).set(database=database_name)
+    migrated_db = PgTestUrls(
+        admin_url=admin_url.render_as_string(hide_password=False),
+        app_url=app_url.render_as_string(hide_password=False),
+    )
+    run_alembic_upgrade(
+        migrated_db.admin_url,
+        "head",
+        app_role_name=APP_ROLE_NAME,
+        app_role_password=APP_ROLE_PASSWORD,
+    )
+
+    now = datetime.now(UTC)
+    owner_id = new_uuid7(now=now)
+    workspace_id = new_uuid7(now=now)
+    connection_id = new_uuid7(now=now)
+    repository_id = new_uuid7(now=now)
+    worker_id = new_uuid7(now=now)
+    ci_run_id = new_uuid7(now=now)
+    budget_account_id = new_uuid7(now=now)
+    repair_id = new_uuid7(now=now)
+    approval_id = new_uuid7(now=now)
+    publication_id = new_uuid7(now=now)
+    notification_event_id = new_uuid7(now=now)
+    notification_destination_id = new_uuid7(now=now)
+    notification_delivery_id = new_uuid7(now=now)
+    operation_receipt_id = new_uuid7(now=now)
+    outbox_event_id = new_uuid7(now=now)
+    pg_dump = Path(pgserver.__file__).parent / "pginstall" / "bin" / "pg_dump"
+    private_key = Ed25519PrivateKey.generate()
+    signing_path = tmp_path / "sign.pem"
+    signing_path.write_bytes(
+        private_key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+    )
+    public_record = export_ed25519_public_key_record(
+        private_key=private_key,
+        key_id="u26-test",
+        not_before=now - timedelta(minutes=1),
+        trust_domain="red2pr-backup",
+    )
+    trust_path = tmp_path / "trust.json"
+    trust_path.write_text(json.dumps({"keys": [public_record.model_dump(mode="json")]}))
+    master_path = tmp_path / "master.key"
+    master_path.write_bytes(b"m" * 32)
+    for name, value in {
+        "RED2PR_PG_DUMP": str(pg_dump),
+        "RED2PR_PG_RESTORE": str(pg_dump.with_name("pg_restore")),
+        "RED2PR_ADMIN_DATABASE_URL": migrated_db.admin_url,
+        "RED2PR_BACKUP_DIRECTORY": str(tmp_path / "backups"),
+        "RED2PR_BUILD_DIGEST": "a" * 64,
+        "RED2PR_CONFIG_DIGEST": "b" * 64,
+        "RED2PR_BACKUP_SIGNING_KEY_FILE": str(signing_path),
+        "RED2PR_BACKUP_SIGNER_KEY_ID": "u26-test",
+        "RED2PR_BACKUP_TRUSTED_KEYS_FILE": str(trust_path),
+        "RED2PR_MASTER_KEY_FILE": str(master_path),
+    }.items():
+        monkeypatch.setenv(name, value)
+    admin = create_admin_engine(migrated_db.admin_url)
+    app = create_app_engine(migrated_db.app_url)
+    keys = MasterKeyRing(active_version=1, keys={1: b"m" * 32})
+    store = LocalEncryptedArtifactStore(root_dir=tmp_path / "objects", key_ring=keys)
+    try:
+        async with create_session_factory(admin)() as session, session.begin():
+            session.add(
+                UserModel(
+                    id=owner_id,
+                    username="backup-owner",
+                    display_name="Owner",
+                    password_hash="fixture",
+                )
+            )
+            session.add(
+                InstanceModel(
+                    id=new_uuid7(now=now),
+                    deployment_mode="local",
+                    public_base_url="http://127.0.0.1:4280",
+                )
+            )
+            session.add(
+                WorkspaceModel(
+                    id=workspace_id,
+                    name="Backup Workspace",
+                    slug="backup-workspace",
+                    owner_user_id=owner_id,
+                    status="active",
+                    paused=False,
+                    retention_policy={},
+                )
+            )
+        factory = create_session_factory(app)
+        async with instance_rls_session(factory, mode="instance_admin") as session:
+            session.add(
+                WorkerModel(
+                    id=worker_id,
+                    host_id="u26-test-worker",
+                    trust_domain="u26-test",
+                    runtime_name="oci",
+                    protocol_versions_json=["worker.v1"],
+                    capabilities_json={},
+                    mtls_cert_serial="u26-test-serial",
+                    mtls_cert_fingerprint_sha256="c" * 64,
+                    mtls_cert_pem="test-certificate",
+                    mtls_cert_expires_at=now + timedelta(days=30),
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+        preflight_request = UpgradePreflightRequest(
+            target_version="1.0.0",
+            target_schema_revision="0022_backups_migrations_ops",
+            target_worker_protocols=("worker.v1",),
+        )
+        preflight = await run_upgrade_preflight(factory, preflight_request, current_version="1.0.0")
+        assert preflight.compatible
+        async with instance_rls_session(factory, mode="instance_admin") as session:
+            worker = await session.get(WorkerModel, worker_id)
+            assert worker is not None
+            worker.protocol_versions_json = ["worker.v0"]
+        preflight = await run_upgrade_preflight(factory, preflight_request, current_version="1.0.0")
+        assert not preflight.compatible
+        assert preflight.incompatible_workers == (worker_id,)
+        async with instance_rls_session(factory, mode="instance_admin") as session:
+            worker = await session.get(WorkerModel, worker_id)
+            assert worker is not None
+            worker.protocol_versions_json = ["worker.v1"]
+        async with workspace_rls_session(factory, workspace_id=workspace_id) as session:
+            session.add(
+                ProviderConnectionModel(
+                    id=connection_id,
+                    workspace_id=workspace_id,
+                    provider="github",
+                    display_name="Backup test provider",
+                    base_url="https://api.github.com",
+                    status="ready",
+                    auth_mode="github_app",
+                    capabilities_json={},
+                    granted_permissions_json={},
+                )
+            )
+            await session.flush()
+            session.add(
+                RepositoryModel(
+                    id=repository_id,
+                    workspace_id=workspace_id,
+                    provider_connection_id=connection_id,
+                    external_repo_id="u26-backup-repository",
+                    name="u26/backup-repository",
+                    visibility="private",
+                    mode="monitor",
+                    workflow_hazard_status="clean",
+                    workflow_hazards_json=[],
+                )
+            )
+            await session.flush()
+            session.add(
+                BudgetAccountModel(
+                    id=budget_account_id,
+                    workspace_id=workspace_id,
+                    scope_kind="workspace_total",
+                    scope_key="u26-restore-acceptance",
+                    cost_cap=Decimal("100"),
+                    token_cap=1000,
+                    call_cap=100,
+                    window_started_at=now,
+                    window_ends_at=now + timedelta(days=1),
+                )
+            )
+            session.add(
+                CiRunModel(
+                    id=ci_run_id,
+                    workspace_id=workspace_id,
+                    repository_id=repository_id,
+                    connection_id=connection_id,
+                    provider="github",
+                    external_id="u26-restore-run",
+                    attempt_key="u26-restore-attempt",
+                    head_sha="d" * 40,
+                    ref="refs/heads/main",
+                    event_type="workflow_run",
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            await session.flush()
+            session.add(
+                RepairSessionModel(
+                    id=repair_id,
+                    workspace_id=workspace_id,
+                    repository_id=repository_id,
+                    ci_run_id=ci_run_id,
+                    semantic_trigger_key="u26-restore-trigger",
+                    base_sha="d" * 40,
+                    target_ref="refs/heads/main",
+                    policy_revision=1,
+                    state="publishing",
+                    proof_grade="locally_verified",
+                    remote_status="pending",
+                    budget_account_id=budget_account_id,
+                    correlation_id="u26-restore-publish",
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            await session.flush()
+            session.add(
+                ApprovalRequestModel(
+                    id=approval_id,
+                    workspace_id=workspace_id,
+                    repository_id=repository_id,
+                    repair_id=repair_id,
+                    intent_type="publish_draft_pr",
+                    patch_digest="e" * 64,
+                    base_sha="d" * 40,
+                    target_ref="refs/heads/main",
+                    policy_revision=1,
+                    requested_by=owner_id,
+                    scope_description="U26 restore acceptance fixture",
+                    expires_at=now + timedelta(days=1),
+                    status="approved",
+                    decision="approve",
+                    decision_actor=owner_id,
+                    decided_at=now,
+                    correlation_id="u26-restore-publish",
+                    created_at=now,
+                )
+            )
+            await session.flush()
+            session.add(
+                PublicationRecordModel(
+                    id=publication_id,
+                    workspace_id=workspace_id,
+                    repository_id=repository_id,
+                    repair_id=repair_id,
+                    approval_request_id=approval_id,
+                    provider="github",
+                    intent_id=new_uuid7(now=now),
+                    correlation_id="u26-restore-publish",
+                    marker="red2pr:u26:restore-acceptance",
+                    branch="red2pr/u26-restore-acceptance",
+                    base_sha="d" * 40,
+                    target_ref="refs/heads/main",
+                    policy_revision=1,
+                    status="intent",
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            session.add(
+                NotificationDestinationModel(
+                    id=notification_destination_id,
+                    workspace_id=workspace_id,
+                    channel="email",
+                    scope="workspace",
+                    address="ops@example.invalid",
+                    status="ready",
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            session.add(
+                NotificationEventModel(
+                    id=notification_event_id,
+                    workspace_id=workspace_id,
+                    event_type="repair.publish.started",
+                    correlation_id="u26-restore-notification",
+                    payload_json={},
+                    occurred_at=now,
+                    created_at=now,
+                )
+            )
+            await session.flush()
+            session.add(
+                NotificationDeliveryModel(
+                    id=notification_delivery_id,
+                    workspace_id=workspace_id,
+                    event_id=notification_event_id,
+                    destination_id=notification_destination_id,
+                    state="sending",
+                    attempt=1,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            session.add(
+                OperationReceiptModel(
+                    id=operation_receipt_id,
+                    scope="workspace",
+                    workspace_id=workspace_id,
+                    repository_id=repository_id,
+                    principal_id=owner_id,
+                    required_role="maintainer",
+                    operation_kind="publication",
+                    resource_id=repair_id,
+                    state="running",
+                    correlation_id="u26-restore-publish",
+                    status_url=f"/api/v1/workspaces/{workspace_id}/operations/{operation_receipt_id}",
+                    logical_effect_key="u26:publish:restore-acceptance",
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            session.add(
+                OutboxEventModel(
+                    id=outbox_event_id,
+                    workspace_id=workspace_id,
+                    workspace_seq=9_000_000_001,
+                    event_type="publication.intent.created",
+                    schema_version=1,
+                    repository_id=repository_id,
+                    aggregate_id=repair_id,
+                    aggregate_version=1,
+                    correlation_id="u26-restore-publish",
+                    payload={},
+                    status="claimed",
+                    attempts=1,
+                    next_attempt_at=now,
+                    occurred_at=now,
+                    created_at=now,
+                )
+            )
+            await session.flush()
+            artifact = await persist_encrypted_artifact(
+                session,
+                store=store,
+                workspace_id=workspace_id,
+                repository_id=repository_id,
+                name="retained-before-backup.txt",
+                kind="test_fixture",
+                mime="text/plain",
+                plaintext=b"artifact deleted after backup",
+                now=now,
+            )
+            artifact_id = artifact.id
+            blob_id = artifact.blob_id
+            storage_ref = artifact.storage_ref
+        backup, path = await create_consistent_backup(
+            session_factory=factory,
+            artifact_store=store,
+            created_by_user_id=owner_id,
+            correlation_id="u26-backup-test",
+            now=now,
+        )
+        manifest, payload, objects = read_bundle(
+            path.read_bytes(), keyring=KeyRing([public_record])
+        )
+        assert b"PGDMP" not in payload
+        assert manifest.backup_id == backup.id
+        assert len(objects) == 1
+        async with instance_rls_session(factory, mode="instance_admin") as session:
+            workspace = await session.get(WorkspaceModel, workspace_id)
+            assert workspace is not None
+            workspace.deleted_at = now + timedelta(minutes=1)
+            workspace.status = "deleting"
+            workspace.paused = True
+        async with workspace_rls_session(factory, workspace_id=workspace_id) as session:
+            artifact = await session.get(ArtifactModel, artifact_id)
+            blob = await session.get(ArtifactBlobModel, blob_id)
+            assert artifact is not None and blob is not None
+            artifact.lifecycle_state = "purged"
+            artifact.purge_reason = "retention_expired"
+            artifact.updated_at = now + timedelta(minutes=1)
+            blob.blob_state = "purged"
+            blob.updated_at = now + timedelta(minutes=1)
+        assert await store.delete_blob(workspace_id=workspace_id, storage_ref=storage_ref)
+        plan = await build_restore_dry_run(
+            session_factory=factory,
+            artifact_store=store,
+            backup_id=backup.id,
+            key_version_available=lambda version: version == 1,
+        )
+        assert plan.compatible, plan.blockers
+        assert plan.reapplies_retention_tombstones
+        master_path.write_bytes(b"different-test-key-material-32!!")
+        plan = await build_restore_dry_run(
+            session_factory=factory,
+            artifact_store=store,
+            backup_id=backup.id,
+            key_version_available=lambda version: version == 1,
+        )
+        assert not plan.compatible
+        assert "backup_payload_key_or_integrity_missing" in plan.blockers
+        master_path.write_bytes(b"m" * 32)
+        async with instance_rls_session(factory, mode="instance_admin") as session:
+            instance = await session.scalar(select(InstanceModel))
+            assert instance is not None
+            instance.maintenance_enabled = True
+            instance.maintenance_reason = "Restore test"
+        restored_plan = await build_restore_dry_run(
+            session_factory=factory,
+            artifact_store=store,
+            backup_id=backup.id,
+            key_version_available=lambda version: version == 1,
+        )
+        assert restored_plan.compatible
+
+        real_rename_database = backup_restore_module._rename_database
+        rename_calls = 0
+
+        async def interrupt_after_quarantine(
+            database_url: str, source: str, destination: str
+        ) -> None:
+            nonlocal rename_calls
+            rename_calls += 1
+            if rename_calls == 2:
+                raise RuntimeError("simulated_restore_interruption")
+            await real_rename_database(database_url, source, destination)
+
+        monkeypatch.setattr(backup_restore_module, "_rename_database", interrupt_after_quarantine)
+        _, epoch = await execute_restore(
+            session_factory=factory,
+            artifact_store=store,
+            backup_id=backup.id,
+            manifest_digest=restored_plan.manifest_digest,
+            plan_digest=restored_plan.plan_digest,
+            key_version_available=lambda version: version == 1,
+            now=now,
+        )
+        assert epoch == 2
+        assert rename_calls == 3  # second attempt was recovered after the injected interruption
+        async with instance_rls_session(factory, mode="instance_admin") as session:
+            restored_workspace = await session.get(WorkspaceModel, workspace_id)
+            assert restored_workspace is not None
+            assert restored_workspace.deleted_at is not None
+            assert restored_workspace.status == "deleting"
+            assert restored_workspace.paused
+        async with workspace_rls_session(factory, workspace_id=workspace_id) as session:
+            restored_artifact = await session.get(ArtifactModel, artifact_id)
+            restored_blob = await session.get(ArtifactBlobModel, blob_id)
+            assert restored_artifact is not None
+            assert restored_artifact.lifecycle_state == "purged"
+            assert restored_artifact.purge_reason == "retention_expired"
+            assert restored_blob is not None and restored_blob.blob_state == "purged"
+            restored_delivery = await session.get(
+                NotificationDeliveryModel, notification_delivery_id
+            )
+            assert restored_delivery is not None
+            assert restored_delivery.state == "unknown"
+            assert restored_delivery.next_retry_at is None
+            assert restored_delivery.last_error_code == "restore_reconciliation_required"
+            restored_publication = await session.get(PublicationRecordModel, publication_id)
+            assert restored_publication is not None
+            assert restored_publication.status == "unknown"
+            assert restored_publication.error_code == "restore_reconciliation_required"
+            restored_receipt = await session.get(OperationReceiptModel, operation_receipt_id)
+            assert restored_receipt is not None and restored_receipt.state == "unknown"
+            restored_outbox = await session.get(OutboxEventModel, outbox_event_id)
+            assert restored_outbox is not None
+            assert restored_outbox.status == "dead_letter"
+            assert restored_outbox.last_error_code == "restore_reconciliation_required"
+        assert not list(store.root_dir.rglob("*.enc"))
+    finally:
+        await app.dispose()
+        await admin.dispose()
 
 
 def _build_iam_stack(
@@ -1374,6 +2014,31 @@ async def test_a14_a24_http_queue_controls_dlq_scoped_requeue_reconcile_and_rbac
         cancel_receipt = cancel_resp.json()
         assert cancel_receipt["state"] == "running"
         cancel_op_id = cancel_receipt["operation_id"]
+
+        cancel_status = await maint_client.get(f"/api/v1/operations/{cancel_op_id}/cancel")
+        assert cancel_status.status_code == 200, cancel_status.text
+        assert cancel_status.json()["cancelable"] is True
+        assert (
+            await outsider_client.get(f"/api/v1/operations/{cancel_op_id}/cancel")
+        ).status_code == 404
+        assert (
+            await viewer_client.get(f"/api/v1/operations/{cancel_op_id}/cancel")
+        ).status_code == 403
+        cancel_missing_idempotency = await maint_client.post(
+            f"/api/v1/operations/{cancel_op_id}/cancel",
+            headers=_csrf_headers(maint_csrf),
+            json={"reason": "Missing idempotency header."},
+        )
+        assert cancel_missing_idempotency.status_code == 400
+        cancel_via_operation = await maint_client.post(
+            f"/api/v1/operations/{cancel_op_id}/cancel",
+            headers=_csrf_headers(
+                maint_csrf,
+                extra={"Idempotency-Key": new_uuid7(now=clock())},
+            ),
+            json={"reason": "Cancel through scoped operation endpoint."},
+        )
+        assert cancel_via_operation.status_code == 202, cancel_via_operation.text
 
         # Polling A-24 while worker is still tearing down returns state='running'
         op_poll_1 = await maint_client.get(f"/api/v1/operations/{cancel_op_id}")

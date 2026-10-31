@@ -279,19 +279,27 @@ class TelegramBotService:
 
     async def run_forever(self) -> None:
         """Run durable inbox dispatch in both modes; only polling mode calls getUpdates."""
+        from red2pr_control.operations.runtime import shared_operation_lease
+
         configured = False
         while True:
             try:
-                if not configured:
-                    configured = await self.reconcile_mode()
-                    if not configured:
-                        await asyncio.sleep(5.0)
-                        continue
-                if self.settings.mode == "polling":
-                    await self.poll_once()
-                else:
-                    await self.commands.process_pending(limit=100)
-                await asyncio.sleep(1.0 if self.settings.mode == "webhook" else 0.25)
+                async with shared_operation_lease(self._sessions) as state:
+                    if state.enabled:
+                        configured = False
+                    else:
+                        if not configured:
+                            configured = await self.reconcile_mode()
+                            if not configured:
+                                await asyncio.sleep(5.0)
+                                continue
+                        if self.settings.mode == "polling":
+                            await self.poll_once()
+                        else:
+                            await self.commands.process_pending(limit=100)
+                await asyncio.sleep(
+                    2.0 if state.enabled else 1.0 if self.settings.mode == "webhook" else 0.25
+                )
             except asyncio.CancelledError:
                 raise
             except Exception:

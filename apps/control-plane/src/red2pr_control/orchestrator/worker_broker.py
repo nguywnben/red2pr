@@ -187,6 +187,7 @@ def _to_worker_dto(row: WorkerModel, *, active_leases: int = 0) -> Worker:
         updated_at=row.updated_at,
         trust_domain=row.trust_domain,
         profile_ids=list(row.profile_ids_json),
+        protocol_versions=list(row.protocol_versions_json),
         capabilities=dict(row.capabilities_json),
         heartbeat_at=row.heartbeat_at,
         status=cast(WorkerStatus, row.status),
@@ -1576,6 +1577,7 @@ class WorkerBrokerService:
                 isolation_mode=enrollment.isolation_mode,
                 runtime_name=att.runtime_name.strip(),
                 profile_ids_json=effective_profiles,
+                protocol_versions_json=sorted(set(payload.protocol_versions)),
                 capabilities_json=capabilities,
                 cpu_limit=att.cpu_limit,
                 memory_limit_bytes=att.memory_limit_bytes,
@@ -1745,6 +1747,7 @@ class WorkerBrokerService:
                 select(WorkerModel).where(WorkerModel.id == mtls_worker.id).with_for_update()
             )
             assert w_row is not None
+            w_row.protocol_versions_json = sorted(set(payload.protocol_versions))
             w_row.heartbeat_at = ref_now
             if w_row.status == "offline" and w_row.mtls_cert_revoked_at is None:
                 w_row.status = "online"

@@ -8,8 +8,10 @@ from pathlib import Path as FsPath
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response
+from sqlalchemy import select
 
 from py_contracts.crypto import MasterKeyRing
+from py_contracts.operations import OperationCancelRequest, OperationCancelStatus
 from py_contracts.primitives import ActionReceipt, Problem
 from py_contracts.worker import (
     ResultV1,
@@ -39,12 +41,17 @@ from py_contracts.worker import (
 )
 from red2pr_control.core.errors import (
     PROBLEM_JSON_MEDIA_TYPE,
+    ConflictError,
     DependencyUnavailableError,
+    NotFoundError,
 )
 from red2pr_control.core.logging import current_correlation_id
+from red2pr_control.db.base import OperationReceiptModel, TaskJobModel
+from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
 from red2pr_control.iam.rbac import (
     ALL_WORKSPACE_ROLES,
     WorkspaceAccessContext,
+    authorize_workspace_access,
     format_version_etag,
     make_workspace_rbac_dependency,
 )
@@ -436,6 +443,134 @@ def build_orchestrator_router() -> APIRouter:
         return await op_svc.get_operation_receipt(
             auth,
             operation_id=operation_id,
+            client_ip=extract_client_ip(request),
+            correlation_id=corr_id,
+            now=iam.now(),
+        )
+
+    @router.get(
+        "/operations/{operation_id}/cancel",
+        operation_id="getOperationCancellationStatus",
+        tags=["operations"],
+        response_model=OperationCancelStatus,
+        summary="Read cancellation eligibility in the operation's originating scope (A-24)",
+        responses=_COMMON_PROBLEM_RESPONSES,
+    )
+    async def get_operation_cancellation_status(
+        operation_id: Annotated[str, Path(min_length=1, max_length=64)],
+        request: Request,
+        iam: Annotated[IamService, Depends(_resolve_iam)],
+        op_svc: Annotated[
+            OperationReceiptService,
+            Depends(_resolve_operation_receipt_service),
+        ],
+    ) -> OperationCancelStatus:
+        corr_id = _req_corr_id(request)
+        auth = await iam.authenticate_request(request, require_csrf=False, correlation_id=corr_id)
+        receipt = await op_svc.get_operation_receipt(
+            auth,
+            operation_id=operation_id,
+            client_ip=extract_client_ip(request),
+            correlation_id=corr_id,
+            now=iam.now(),
+        )
+        async with instance_rls_session(iam.session_factory, mode="instance_admin") as db:
+            row = await db.scalar(
+                select(OperationReceiptModel).where(OperationReceiptModel.id == operation_id)
+            )
+        cancelable = False
+        reason: str | None = "operation_not_cancellable"
+        if (
+            row is not None
+            and row.scope == "workspace"
+            and row.workspace_id is not None
+            and row.operation_kind.startswith("task_job.")
+        ):
+            workspace_id = row.workspace_id
+            async with workspace_rls_session(iam.session_factory, workspace_id=workspace_id) as db:
+                job = await db.get(TaskJobModel, row.resource_id)
+            cancelable = job is not None and job.state in {
+                "queued",
+                "leased",
+                "running",
+                "cancel_requested",
+            }
+            reason = None if cancelable else "operation_already_terminal"
+        return OperationCancelStatus(
+            operation_id=receipt.operation_id,
+            state=receipt.state,
+            cancelable=cancelable,
+            reason=reason,
+        )
+
+    @router.post(
+        "/operations/{operation_id}/cancel",
+        operation_id="cancelOperation",
+        tags=["operations"],
+        status_code=202,
+        response_model=ActionReceipt,
+        summary="Cancel an asynchronous task operation with live RBAC and idempotency (A-24)",
+        responses=_COMMON_PROBLEM_RESPONSES,
+    )
+    async def cancel_operation(
+        operation_id: Annotated[str, Path(min_length=1, max_length=64)],
+        payload: OperationCancelRequest,
+        request: Request,
+        iam: Annotated[IamService, Depends(_resolve_iam)],
+        idempotency_key: Annotated[
+            str | None, Header(alias="Idempotency-Key", max_length=128)
+        ] = None,
+        if_match: Annotated[str | None, Header(alias="If-Match", max_length=128)] = None,
+    ) -> ActionReceipt:
+        corr_id = _req_corr_id(request)
+        auth = await iam.authenticate_request(request, require_csrf=True, correlation_id=corr_id)
+        async with instance_rls_session(iam.session_factory, mode="instance_admin") as db:
+            row = await db.scalar(
+                select(OperationReceiptModel).where(OperationReceiptModel.id == operation_id)
+            )
+            if row is not None:
+                db.expunge(row)
+        if row is None:
+            raise NotFoundError(code="operation_not_found", detail="Operation receipt not found.")
+        if (
+            row.scope != "workspace"
+            or row.workspace_id is None
+            or not row.operation_kind.startswith("task_job.")
+        ):
+            raise ConflictError(
+                code="operation_not_cancellable",
+                detail="This operation does not expose a safe cooperative cancellation action.",
+            )
+        operation_workspace_id = row.workspace_id
+        ws_ctx = await authorize_workspace_access(
+            iam.session_factory,
+            auth=auth,
+            raw_ws=operation_workspace_id,
+            allowed_roles=QUEUE_OPERATOR_ROLES,
+            allow_break_glass=False,
+            action="operation.cancel",
+            client_ip=extract_client_ip(request),
+            correlation_id=corr_id,
+            now=iam.now(),
+        )
+        queue = getattr(request.app.state, "task_queue_service", None)
+        if not isinstance(queue, DurableTaskQueueService):
+            queue = DurableTaskQueueService(
+                session_factory=iam.session_factory,
+                signing_key=iam.csrf_signing_key,
+            )
+            request.app.state.task_queue_service = queue
+        action = TaskJobActionRequest(
+            action="cancel",
+            reason=payload.reason,
+            expected_version=payload.expected_version,
+        )
+        return await queue.perform_job_action(
+            ws_ctx,
+            job_id=row.resource_id,
+            payload=action,
+            idempotency_key=idempotency_key,
+            if_match_header=if_match,
             client_ip=extract_client_ip(request),
             correlation_id=corr_id,
             now=iam.now(),

@@ -22,6 +22,7 @@ import httpx
 
 from py_contracts.crypto import sha256_canonical_json
 from py_contracts.worker import (
+    WORKER_PROTOCOL_V1,
     ResultArtifactRef,
     ResultTermination,
     ResultV1,
@@ -204,6 +205,7 @@ class WorkerSupervisor:
                 "seccomp": True,
                 "external_ed25519_signer": True,
             },
+            protocol_versions=[WORKER_PROTOCOL_V1],
         )
         poll_http = await client.post(
             f"/internal/v1/workers/{self.worker_id}/poll",

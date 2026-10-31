@@ -114,6 +114,7 @@ async def instance_rls_session(
     session_factory: async_sessionmaker[AsyncSession],
     *,
     mode: InstanceScopeMode = "instance_only",
+    isolation_level: Literal["READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"] | None = None,
 ) -> AsyncIterator[AsyncSession]:
     """Execute an explicitly scoped non-tenant transaction (instance or audit verifier)."""
     if mode not in {"instance_only", "instance_admin", "audit_verifier"}:
@@ -122,6 +123,10 @@ async def instance_rls_session(
             detail=f"Unsupported instance RLS scope mode: {mode!r}",
         )
     async with session_factory() as session, session.begin():
+        if isolation_level is not None:
+            # The isolation token is a closed Literal allowlist, not caller input.
+            # Keep this as the transaction's first statement so PostgreSQL accepts it.
+            await session.execute(text(f"SET TRANSACTION ISOLATION LEVEL {isolation_level}"))
         await session.execute(
             text(
                 "SELECT set_config('red2pr.scope_mode', :mode, true), "

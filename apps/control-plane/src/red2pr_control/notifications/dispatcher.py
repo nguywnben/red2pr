@@ -1025,9 +1025,13 @@ class NotificationDispatcher:
 
     async def run_forever(self) -> None:
         """Poll committed events; PostgreSQL row locks coordinate app replicas."""
+        from red2pr_control.operations.runtime import shared_operation_lease
+
         while True:
             try:
-                await self.dispatch_all_once()
+                async with shared_operation_lease(self._session_factory) as state:
+                    if not state.enabled:
+                        await self.dispatch_all_once()
             except asyncio.CancelledError:
                 raise
             except Exception:

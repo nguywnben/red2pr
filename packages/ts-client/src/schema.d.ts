@@ -346,6 +346,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operations/{operation_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read cancellation eligibility in the operation's originating scope (A-24) */
+        get: operations["getOperationCancellationStatus"];
+        put?: never;
+        /** Cancel an asynchronous task operation with live RBAC and idempotency (A-24) */
+        post: operations["cancelOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/setup": {
         parameters: {
             query?: never;
@@ -467,6 +485,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Backup */
+        post: operations["createSystemBackup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/doctor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Doctor */
+        get: operations["getSystemDoctor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/health": {
         parameters: {
             query?: never;
@@ -478,6 +530,142 @@ export interface paths {
         get: operations["getSystemHealth"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Maintenance */
+        post: operations["setSystemMaintenance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Backup */
+        post: operations["restoreSystemBackup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/restore/dry-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Dry Run */
+        post: operations["dryRunSystemRestore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Status */
+        get: operations["getSystemStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/support-bundles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Support Bundle Endpoint */
+        post: operations["createSystemSupportBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/support-bundles/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Support Bundle */
+        post: operations["previewSystemSupportBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/support-bundles/{bundle_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Support Bundle */
+        get: operations["downloadSystemSupportBundle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/upgrade-preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upgrade Preflight */
+        post: operations["runSystemUpgradePreflight"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2258,6 +2446,120 @@ export interface components {
             /** Workspace Id */
             workspace_id?: string | null;
         };
+        /** BackupCreateRequest */
+        BackupCreateRequest: {
+            /** Label */
+            label?: string | null;
+        };
+        /** BackupKeyReference */
+        BackupKeyReference: {
+            /** Active Key Version */
+            active_key_version: number;
+            /** Kek Version */
+            kek_version: number;
+            /** Purpose */
+            purpose: string;
+            /** Secret Ref */
+            secret_ref: string;
+            /**
+             * Workspace Id
+             * @default null
+             */
+            workspace_id: string | null;
+        };
+        /**
+         * BackupManifestV1
+         * @description Signed inventory for one internally consistent, encrypted recovery bundle.
+         */
+        BackupManifestV1: {
+            /** Application Version */
+            application_version: string;
+            /** Backup Id */
+            backup_id: string;
+            /** Build Digest */
+            build_digest: string;
+            /** Config Digest */
+            config_digest: string;
+            /** Created At */
+            created_at: string;
+            /** Database Character Type */
+            database_character_type: string;
+            /** Database Collation */
+            database_collation: string;
+            /** Database Encoding */
+            database_encoding: string;
+            /**
+             * Database Icu Locale
+             * @default null
+             */
+            database_icu_locale: string | null;
+            /**
+             * Database Locale Provider
+             * @enum {string}
+             */
+            database_locale_provider: "libc" | "icu";
+            /** Key References */
+            key_references: components["schemas"]["BackupKeyReference"][];
+            /** Objects */
+            objects: components["schemas"]["BackupObjectEntry"][];
+            /** Payload Kek Version */
+            payload_kek_version: number;
+            /** Payload Sha256 */
+            payload_sha256: string;
+            /** Postgres Version */
+            postgres_version: string;
+            /** Schema Revision */
+            schema_revision: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Signature */
+            signature: string;
+            /** Signer Key Id */
+            signer_key_id: string;
+            /** Snapshot Lsn */
+            snapshot_lsn: string;
+            /** Workspace Ids */
+            workspace_ids: string[];
+        };
+        /** BackupObjectEntry */
+        BackupObjectEntry: {
+            /** Blob Id */
+            blob_id: string;
+            /** Digest */
+            digest: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Storage Ref */
+            storage_ref: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /** BackupRecord */
+        BackupRecord: {
+            /** Completed At */
+            completed_at?: string | null;
+            /** Created At */
+            created_at: string;
+            /** Error Code */
+            error_code?: string | null;
+            /** Id */
+            id: string;
+            /** Manifest Digest */
+            manifest_digest?: string | null;
+            /** Object Count */
+            object_count: number;
+            /** Size Bytes */
+            size_bytes: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "creating" | "succeeded" | "failed" | "expired";
+        };
         /**
          * BranchPolicyEvaluation
          * @description Per-branch dry-run policy decision (`deny` always overrides `allow`).
@@ -3457,6 +3759,18 @@ export interface components {
             /** Suspected Paths */
             suspected_paths?: string[];
         };
+        /** DoctorResponse */
+        DoctorResponse: {
+            /** Checks */
+            checks: components["schemas"]["SystemCheck"][];
+            /** Generated At */
+            generated_at: string;
+            /**
+             * Overall State
+             * @enum {string}
+             */
+            overall_state: "healthy" | "degraded" | "failed";
+        };
         /**
          * EffectiveRepositoryPolicy
          * @description Resolved policy after `hard_invariant > instance > workspace > repository` merge.
@@ -4181,6 +4495,18 @@ export interface components {
          * @description A-02 explicit logout request body.
          */
         LogoutRequest: Record<string, never>;
+        /** MaintenanceRequest */
+        MaintenanceRequest: {
+            /** Enabled */
+            enabled: boolean;
+            /** Reason */
+            reason: string;
+            /**
+             * Reconciliation Confirmed
+             * @default false
+             */
+            reconciliation_confirmed: boolean;
+        };
         /**
          * MeResponse
          * @description A-03 current principal profile, session, MFA posture, and workspace grants.
@@ -4751,6 +5077,27 @@ export interface components {
         NotificationTestRequest: {
             /** Confirmed */
             confirmed: boolean;
+        };
+        /** OperationCancelRequest */
+        OperationCancelRequest: {
+            /** Expected Version */
+            expected_version?: number | null;
+            /** Reason */
+            reason: string;
+        };
+        /** OperationCancelStatus */
+        OperationCancelStatus: {
+            /** Cancelable */
+            cancelable: boolean;
+            /** Operation Id */
+            operation_id: string;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "accepted" | "running" | "succeeded" | "failed" | "unknown";
         };
         /** OperationalAlarmEventPayload */
         OperationalAlarmEventPayload: {
@@ -6461,6 +6808,87 @@ export interface components {
             /** Profile Id */
             profile_id: string;
         };
+        /** RestoreDryRunRequest */
+        RestoreDryRunRequest: {
+            /** Backup Id */
+            backup_id: string;
+            /** Target Schema Revision */
+            target_schema_revision?: string | null;
+        };
+        /** RestoreExecutionResult */
+        RestoreExecutionResult: {
+            /** Backup Id */
+            backup_id: string;
+            /** Maintenance Enabled */
+            maintenance_enabled: boolean;
+            /** Message */
+            message: string;
+            /** Recovery Epoch */
+            recovery_epoch: number;
+            /** Requires External Reconciliation */
+            requires_external_reconciliation: boolean;
+            /** Restore Id */
+            restore_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "succeeded" | "blocked" | "failed";
+        };
+        /** RestorePlan */
+        RestorePlan: {
+            /** Backup Id */
+            backup_id: string;
+            /**
+             * Blockers
+             * @default []
+             */
+            blockers: string[];
+            /** Compatible */
+            compatible: boolean;
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Plan Digest */
+            plan_digest: string;
+            /**
+             * Reapplies Retention Tombstones
+             * @default true
+             */
+            reapplies_retention_tombstones: boolean;
+            /**
+             * Requires Maintenance
+             * @default true
+             */
+            requires_maintenance: boolean;
+            /**
+             * Requires Remote Reconciliation
+             * @default true
+             */
+            requires_remote_reconciliation: boolean;
+            /** Restores Artifacts */
+            restores_artifacts: boolean;
+            /**
+             * Rotates Recovery Epoch
+             * @default true
+             */
+            rotates_recovery_epoch: boolean;
+            /** Target Schema Revision */
+            target_schema_revision: string;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+        };
+        /** RestoreStartRequest */
+        RestoreStartRequest: {
+            /** Backup Id */
+            backup_id: string;
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Plan Digest */
+            plan_digest: string;
+        };
         /**
          * ResultArtifactRef
          * @description S-21 content-addressed execution output artifact descriptor.
@@ -7129,6 +7557,65 @@ export interface components {
             /** Step Up Expires At */
             step_up_expires_at: string;
         };
+        /** SupportBundleCreateRequest */
+        SupportBundleCreateRequest: {
+            /** Confirm Export */
+            confirm_export: boolean;
+            /** File Ids */
+            file_ids: ("health_summary" | "doctor_report" | "migration_status" | "worker_status" | "telemetry_snapshot" | "recent_redacted_logs")[];
+            /** Manifest Digest */
+            manifest_digest: string;
+        };
+        /** SupportBundlePreview */
+        SupportBundlePreview: {
+            /**
+             * Excluded Repository Source
+             * @default true
+             */
+            excluded_repository_source: boolean;
+            /**
+             * Excluded Secrets
+             * @default true
+             */
+            excluded_secrets: boolean;
+            /** Expires At */
+            expires_at: string;
+            /** File Ids */
+            file_ids: ("health_summary" | "doctor_report" | "migration_status" | "worker_status" | "telemetry_snapshot" | "recent_redacted_logs")[];
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Redacted File Count */
+            redacted_file_count: number;
+        };
+        /** SupportBundleRecord */
+        SupportBundleRecord: {
+            /** Created At */
+            created_at: string;
+            /** Download Url */
+            download_url: string;
+            /** Expires At */
+            expires_at: string;
+            /** File Count */
+            file_count: number;
+            /** Id */
+            id: string;
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** SystemCheck */
+        SystemCheck: {
+            /** Check Id */
+            check_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "warning" | "failed" | "blocked";
+            /** Summary */
+            summary: string;
+        };
         /**
          * SystemHealthResponse
          * @description A-18 public minimal liveness response (zero host/secret/tenant disclosure).
@@ -7153,6 +7640,38 @@ export interface components {
             status: "ok" | "degraded";
             /** Timestamp */
             timestamp: string;
+        };
+        /** SystemStatus */
+        SystemStatus: {
+            /** Application Version */
+            application_version: string;
+            /**
+             * Checks
+             * @default []
+             */
+            checks: components["schemas"]["SystemCheck"][];
+            /** Database Version */
+            database_version?: string | null;
+            /** Generated At */
+            generated_at: string;
+            /** Maintenance Enabled */
+            maintenance_enabled: boolean;
+            /** Maintenance Reason */
+            maintenance_reason?: string | null;
+            /** Recovery Epoch */
+            recovery_epoch: number;
+            /** Schema Revision */
+            schema_revision: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "degraded" | "maintenance" | "failed";
+            /**
+             * Worker Protocols
+             * @default []
+             */
+            worker_protocols: string[];
         };
         /**
          * TaskAttemptSummary
@@ -7523,6 +8042,40 @@ export interface components {
             /** Termination */
             termination: string;
         };
+        /** UpgradePreflightRequest */
+        UpgradePreflightRequest: {
+            /** Target Schema Revision */
+            target_schema_revision: string;
+            /** Target Version */
+            target_version: string;
+            /** Target Worker Protocols */
+            target_worker_protocols: string[];
+        };
+        /** UpgradePreflightResponse */
+        UpgradePreflightResponse: {
+            /** Compatible */
+            compatible: boolean;
+            /** Current Schema Revision */
+            current_schema_revision: string;
+            /** Current Version */
+            current_version: string;
+            /**
+             * Incompatible Workers
+             * @default []
+             */
+            incompatible_workers: string[];
+            /** Pending Effects */
+            pending_effects: number;
+            /**
+             * Required Actions
+             * @default []
+             */
+            required_actions: string[];
+            /** Target Schema Revision */
+            target_schema_revision: string;
+            /** Target Version */
+            target_version: string;
+        };
         /**
          * User
          * @description S-06 user profile DTO (never exposes password hashes or secret credentials).
@@ -7717,6 +8270,8 @@ export interface components {
             pids_limit: number;
             /** Profile Ids */
             profile_ids: string[];
+            /** Protocol Versions */
+            protocol_versions?: string[];
             /** Quarantine Reason */
             quarantine_reason?: string | null;
             /** Runtime Name */
@@ -10251,6 +10806,257 @@ export interface operations {
             };
         };
     };
+    getOperationCancellationStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationCancelStatus"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    cancelOperation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "If-Match"?: string | null;
+            };
+            path: {
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperationCancelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionReceipt"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     getSetupState: {
         parameters: {
             query?: never;
@@ -11283,6 +12089,150 @@ export interface operations {
             };
         };
     };
+    createSystemBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupRecord"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getSystemDoctor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoctorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     getSystemHealth: {
         parameters: {
             query?: never;
@@ -11303,6 +12253,592 @@ export interface operations {
             };
             /** @description Too Many Requests */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    setSystemMaintenance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaintenanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    restoreSystemBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreStartRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreExecutionResult"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    dryRunSystemRestore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreDryRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestorePlan"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getSystemStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    createSystemSupportBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportBundleCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportBundleRecord"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    previewSystemSupportBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": ("health_summary" | "doctor_report" | "migration_status" | "worker_status" | "telemetry_snapshot" | "recent_redacted_logs")[];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportBundlePreview"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    downloadSystemSupportBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bundle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    runSystemUpgradePreflight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpgradePreflightRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpgradePreflightResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

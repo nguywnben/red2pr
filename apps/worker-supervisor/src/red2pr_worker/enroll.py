@@ -20,6 +20,7 @@ from py_contracts.crypto import (
     verify_worker_client_certificate,
 )
 from py_contracts.worker import (
+    WORKER_PROTOCOL_V1,
     WorkerEnrollHandshakeRequest,
     WorkerEnrollHandshakeResponse,
     WorkerIsolationAttestation,
@@ -198,6 +199,7 @@ class WorkerEnroller:
             signer_public_key=signer.public_key_record,
             attestation=attestation,
             profile_ids=list(supported_profiles),
+            protocol_versions=[WORKER_PROTOCOL_V1],
         )
 
         resp = await client.post(
