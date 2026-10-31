@@ -1,0 +1,91 @@
+name: red2pr-local
+services:
+  control:
+    image: "${RED2PR_CONTROL_REPOSITORY:?release manifest required}@sha256:${RED2PR_CONTROL_DIGEST:?release manifest required}"
+    container_name: red2pr-control
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:rw,noexec,nosuid,size=64m]
+    environment:
+      RED2PR_CONFIG: /etc/red2pr/config.yaml
+      RED2PR_DATABASE_URL_FILE: /run/secrets/database_url
+      RED2PR_BOOTSTRAP_ISSUER_SECRET: "${RED2PR_BOOTSTRAP_ISSUER_SECRET:?installer bootstrap issuer secret required}"
+    volumes:
+      - "${RED2PR_CONFIG_FILE:?configure Red2PR first}:/etc/red2pr/config.yaml:ro"
+      - "${RED2PR_DATABASE_URL_FILE:?configure database access}:/run/secrets/database_url:ro"
+    ports: ["127.0.0.1:${RED2PR_HTTP_PORT:-8080}:8080"]
+    networks: [ingress, data]
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+  worker:
+    image: "${RED2PR_WORKER_REPOSITORY:?release manifest required}@sha256:${RED2PR_WORKER_DIGEST:?release manifest required}"
+    container_name: red2pr-worker
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:rw,noexec,nosuid,size=64m]
+    environment:
+      RED2PR_CONTROL_URL: https://control:8443
+      RED2PR_DATABASE_URL_FILE: /run/secrets/database_url
+    volumes:
+      - "${RED2PR_DATABASE_URL_FILE:?configure database access}:/run/secrets/database_url:ro"
+    networks: [data]
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+  database:
+    image: "${RED2PR_DATABASE_REPOSITORY:?release manifest required}@sha256:${RED2PR_DATABASE_DIGEST:?release manifest required}"
+    container_name: red2pr-database
+    user: "999:999"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:rw,noexec,nosuid,size=64m]
+    environment:
+      POSTGRES_DB: red2pr
+      POSTGRES_USER: red2pr
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - "${RED2PR_POSTGRES_PASSWORD_FILE:?provision database secret}:/run/secrets/postgres_password:ro"
+      - database_data:/var/lib/postgresql/data
+    networks:
+      data:
+        aliases: [database]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U red2pr -d red2pr]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+  redis:
+    image: "${RED2PR_REDIS_REPOSITORY:?release manifest required}@sha256:${RED2PR_REDIS_DIGEST:?release manifest required}"
+    container_name: red2pr-redis
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:rw,noexec,nosuid,size=32m]
+    command: [redis-server, --appendonly, "yes", --dir, /data, --requirepass, "${RED2PR_REDIS_PASSWORD:?provision Redis secret}"]
+    volumes: [redis_data:/data]
+    networks: [data]
+    healthcheck:
+      test: [CMD-SHELL, "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+networks:
+  ingress: {}
+  data:
+    internal: true
+volumes:
+  database_data: {}
+  redis_data: {}

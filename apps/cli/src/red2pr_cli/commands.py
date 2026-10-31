@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import urllib.error
 import urllib.request
@@ -307,6 +308,36 @@ def _safe_api_url(url: str) -> bool:
         return False
 
 
+def _load_bootstrap_issuer_secret(env: dict[str, str]) -> str:
+    """Read the installer issuer secret from the protected data directory when not supplied."""
+    direct = env.get("RED2PR_BOOTSTRAP_ISSUER_SECRET", "").strip()
+    if direct:
+        return direct if re.fullmatch(r"[0-9a-f]{64}", direct) else ""
+    configured_path = env.get("RED2PR_BOOTSTRAP_ISSUER_SECRET_FILE", "").strip()
+    if configured_path:
+        secret_path = Path(configured_path)
+    elif env.get("RED2PR_DATA_DIR", "").strip():
+        secret_path = Path(env["RED2PR_DATA_DIR"]) / "secrets" / "bootstrap_issuer"
+    elif os.name == "nt":
+        secret_path = (
+            Path(env.get("ProgramData", r"C:\ProgramData"))
+            / "Red2PR"
+            / "secrets"
+            / "bootstrap_issuer"
+        )
+    else:
+        secret_path = Path("/var/lib/red2pr/secrets/bootstrap_issuer")
+    try:
+        if secret_path.is_symlink() or not secret_path.is_file():
+            return ""
+        if os.name != "nt" and stat.S_IMODE(secret_path.stat().st_mode) & 0o077:
+            return ""
+        secret = secret_path.read_text(encoding="ascii").strip()
+    except (OSError, UnicodeError):
+        return ""
+    return secret if re.fullmatch(r"[0-9a-f]{64}", secret) else ""
+
+
 def _status_to_exit(status: int, payload: bytes) -> int:
     if status in (200, 201, 202, 204):
         return OK
@@ -425,6 +456,64 @@ def execute_command(
             USAGE_OR_CONFIG,
             "RED2PR_API_URL must use HTTPS or loopback HTTP without credentials.",
         )
+    if command == "setup" and "--bootstrap-link" in args:
+        parsed_base = urlsplit(base)
+        issuer_secret = _load_bootstrap_issuer_secret(env)
+        if parsed_base.scheme != "http" or parsed_base.hostname not in {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+        }:
+            return CliResult(
+                USAGE_OR_CONFIG, "Bootstrap links can only be issued through a loopback API URL."
+            )
+        if not re.fullmatch(r"[0-9a-f]{64}", issuer_secret):
+            return CliResult(
+                USAGE_OR_CONFIG, "Installer bootstrap issuer secret is missing or invalid."
+            )
+        origin = f"{parsed_base.scheme}://{parsed_base.netloc}"
+        csrf_status, csrf_response = http_call(
+            base + "/api/v1/auth/csrf", "GET", None, {"Accept": "application/json"}
+        )
+        if csrf_status != 200:
+            return CliResult(
+                _status_to_exit(csrf_status, csrf_response), "Control plane is not ready for setup."
+            )
+        try:
+            csrf_token = json.loads(csrf_response.decode("utf-8"))["csrf_token"]
+        except (ValueError, UnicodeDecodeError, KeyError, TypeError):
+            return CliResult(
+                RUNTIME_DEGRADED, "Control plane returned an invalid setup CSRF response."
+            )
+        issue_headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Cookie": f"red2pr_csrf={csrf_token}",
+            "Origin": origin,
+            "X-CSRF-Token": csrf_token,
+            "X-Red2PR-Bootstrap-Issuer": issuer_secret,
+        }
+        issue_status, issue_response = http_call(
+            base + "/api/v1/setup/bootstrap-token", "POST", b"{}", issue_headers
+        )
+        if issue_status == 409:
+            return CliResult(OK, "Instance owner is already claimed; no bootstrap link was issued.")
+        if issue_status != 200:
+            return CliResult(
+                _status_to_exit(issue_status, issue_response), _safe_json_output(issue_response)
+            )
+        try:
+            issued = json.loads(issue_response.decode("utf-8"))
+            token = issued["bootstrap_token"]
+            expires_at = issued["expires_at"]
+            if not isinstance(token, str) or not token.startswith("r2pr" + "_boot_"):
+                raise ValueError("invalid token")
+        except (ValueError, UnicodeDecodeError, KeyError, TypeError):
+            return CliResult(
+                RUNTIME_DEGRADED, "Control plane returned an invalid bootstrap token response."
+            )
+        setup_url = f"{origin}/setup#bootstrap_token={quote(token, safe='')}"
+        return CliResult(OK, f"One-use setup link (expires {expires_at}): {setup_url}")
     if command == "uninstall":
         return _uninstall(args, env)
     if command == "logs":

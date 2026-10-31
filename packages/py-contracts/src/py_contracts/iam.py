@@ -138,6 +138,13 @@ class SetupClaimResponse(StrictContractModel):
     is_instance_owner: StrictBool = True
 
 
+class BootstrapIssueResponse(StrictContractModel):
+    """One-time installer handoff; token is returned only in a no-store body."""
+
+    bootstrap_token: Annotated[StrictStr, Field(min_length=16, max_length=256)]
+    expires_at: UtcTimestamp
+
+
 class LoginRequest(StrictContractModel):
     """A-02 local password + optional TOTP MFA login input."""
 

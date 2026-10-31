@@ -1,0 +1,23 @@
+name: red2pr-distributed-worker
+services:
+  worker:
+    image: "${RED2PR_WORKER_REPOSITORY:?release manifest required}@sha256:${RED2PR_WORKER_DIGEST:?release manifest required}"
+    container_name: red2pr-worker
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:rw,noexec,nosuid,size=64m]
+    environment:
+      RED2PR_CONTROL_URL: "${RED2PR_CONTROL_URL:?configure control-plane mTLS endpoint}"
+      RED2PR_WORKER_CERT: /run/red2pr/worker.crt
+      RED2PR_WORKER_KEY: /run/red2pr/worker.key
+      RED2PR_WORKER_CA: /run/red2pr/ca.crt
+    volumes:
+      - "${RED2PR_WORKER_CERT_DIR:?enroll the worker first}:/run/red2pr:ro"
+    networks: [worker_egress]
+    restart: unless-stopped
+networks:
+  worker_egress:
+    external: true
+    name: "${RED2PR_WORKER_NETWORK:?provision a restricted mTLS egress network}"

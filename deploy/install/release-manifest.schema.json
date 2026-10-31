@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://red2pr.dev/schemas/release-manifest-v1.json",
+  "title": "Red2PR ReleaseManifestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "version", "key_id", "artifacts", "images", "minimums"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"},
+    "key_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "contains": {
+        "type": "object",
+        "required": ["kind"],
+        "properties": {"kind": {"const": "cli"}}
+      },
+      "minContains": 1,
+      "items": {"$ref": "#/$defs/artifact"}
+    },
+    "images": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {"$ref": "#/$defs/image"}
+    },
+    "minimums": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["linux", "macos", "windows"],
+      "properties": {
+        "linux": {"$ref": "#/$defs/linux"},
+        "macos": {"$ref": "#/$defs/macos"},
+        "windows": {"$ref": "#/$defs/windows"}
+      }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "url", "sha256"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$"},
+        "kind": {"enum": ["cli", "installer", "support"]},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "reference"],
+      "properties": {
+        "name": {"enum": ["control", "worker", "database", "redis", "caddy"]},
+        "reference": {"type": "string", "pattern": "^[A-Za-z0-9._:/-]+@sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "linux": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architectures", "cpus", "ram_bytes", "disk_bytes"],
+      "properties": {
+        "architectures": {"type": "array", "minItems": 1, "items": {"enum": ["x86_64", "arm64"]}},
+        "cpus": {"type": "integer", "minimum": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1},
+        "disk_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "macos": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architectures", "major_version", "cpus", "ram_bytes", "disk_bytes"],
+      "properties": {
+        "architectures": {"type": "array", "minItems": 1, "items": {"enum": ["arm64"]}},
+        "major_version": {"type": "integer", "minimum": 15},
+        "cpus": {"type": "integer", "minimum": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1},
+        "disk_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "windows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architectures", "build", "cpus", "ram_bytes", "disk_bytes"],
+      "properties": {
+        "architectures": {"type": "array", "minItems": 1, "items": {"enum": ["x86_64"]}},
+        "build": {"type": "integer", "minimum": 22000},
+        "cpus": {"type": "integer", "minimum": 1},
+        "ram_bytes": {"type": "integer", "minimum": 1},
+        "disk_bytes": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

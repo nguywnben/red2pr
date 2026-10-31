@@ -232,6 +232,32 @@ describe("U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SE
     document.cookie = "red2pr_csrf=csrf-u07-tok; path=/";
   });
 
+  it("hydrates installer bootstrap token from the URL fragment and immediately removes it from browser history", async () => {
+    window.history.replaceState(window.history.state, "", "/setup#bootstrap_token=r2pr_boot_fragment_fixture");
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/v1/auth/csrf")) {
+        return jsonResponse({ csrf_token: "csrf-fragment-test" });
+      }
+      if (url.endsWith("/api/v1/setup")) {
+        return jsonResponse(
+          buildSetupState({ phase: "owner_claim", checkpoint: "fragment-test", ownerClaimed: false }),
+        );
+      }
+      if (url.endsWith("/api/v1/auth/me")) {
+        return problemResponse({ status: 401, code: "unauthenticated", title: "Unauthenticated", detail: "Sign in required." });
+      }
+      return jsonResponse({ items: [], next_cursor: null, has_more: false, snapshot_at: NOW_ISO });
+    });
+
+    renderSetupApp({ fetchImpl: fetchMock as unknown as typeof fetch, themeMode: "light" });
+
+    const tokenInput = await screen.findByLabelText(/One-time bootstrap token/i);
+    await waitFor(() => expect(tokenInput).toHaveValue("r2pr_boot_fragment_fixture"));
+    expect(window.location.hash).toBe("");
+    assertZeroWebStorageSecrets();
+  });
+
   it("claims owner from Phase 1, resumes at server checkpoint, skips optional phases as Not Configured, and distinguishes Monitor Ready from Repair Blocked (UX-SETUP-001, UX-01)", async () => {
     const user = userEvent.setup();
     let claimed = false;

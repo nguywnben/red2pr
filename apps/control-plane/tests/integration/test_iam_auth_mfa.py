@@ -41,7 +41,7 @@ import httpx
 import pgserver
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -665,6 +665,80 @@ async def test_end_to_end_bootstrap_mfa_login_sessions_recovery_and_audit_chain(
                     assert any(
                         ev.event_type == "identity.permission_revoked" for ev in outbox_events
                     )
+    finally:
+        await app_engine.dispose()
+
+
+async def test_installer_bootstrap_issuer_requires_secret_csrf_audits_and_rate_limits(
+    migrated_db: PgTestUrls, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """U27 handoff stays loopback-only, CSRF-protected, one-use and durably rate-limited."""
+    clock = ManualClock()
+    app_engine, iam, _ = _build_iam_stack(migrated_db.app_url, clock=clock)
+    app = create_app(iam_service=iam)
+    issuer_secret = "issuer-secret-for-u27-integration-test-0123456789abcdef"
+    monkeypatch.setenv("RED2PR_BOOTSTRAP_ISSUER_SECRET", issuer_secret)
+
+    try:
+        transport = httpx.ASGITransport(app=app, client=("127.0.0.1", 51991))
+        async with httpx.AsyncClient(transport=transport, base_url=PUBLIC_BASE_URL) as client:
+            csrf_response = await client.get("/api/v1/auth/csrf")
+            csrf = csrf_response.json()["csrf_token"]
+            endpoint = "/api/v1/setup/bootstrap-token"
+
+            missing_secret = await client.post(
+                endpoint,
+                headers={**_csrf_headers(csrf), "Cookie": f"{CSRF_COOKIE_NAME}={csrf}"},
+                json={},
+            )
+            assert missing_secret.status_code == 403
+
+            missing_csrf = await client.post(
+                endpoint,
+                headers={"Origin": PUBLIC_BASE_URL, "X-Red2PR-Bootstrap-Issuer": issuer_secret},
+                json={},
+            )
+            assert missing_csrf.status_code == 403
+
+            cross_origin = await client.post(
+                endpoint,
+                headers={
+                    **_csrf_headers(csrf, origin="https://attacker.example"),
+                    "Cookie": f"{CSRF_COOKIE_NAME}={csrf}",
+                    "X-Red2PR-Bootstrap-Issuer": issuer_secret,
+                },
+                json={},
+            )
+            assert cross_origin.status_code == 403
+
+            headers = {
+                **_csrf_headers(csrf),
+                "Cookie": f"{CSRF_COOKIE_NAME}={csrf}",
+                "X-Red2PR-Bootstrap-Issuer": issuer_secret,
+            }
+            issued_tokens = []
+            for _ in range(5):
+                response = await client.post(endpoint, headers=headers, json={})
+                assert response.status_code == 200
+                assert response.headers["Cache-Control"] == "no-store"
+                assert response.headers["Pragma"] == "no-cache"
+                issued_tokens.append(response.json()["bootstrap_token"])
+                assert b"bootstrap_token" not in response.url.query
+            assert len(set(issued_tokens)) == 5
+
+            rate_limited = await client.post(endpoint, headers=headers, json={})
+            assert rate_limited.status_code == 429
+            assert rate_limited.headers.get("Retry-After")
+        async with instance_rls_session(iam.session_factory, mode="instance_only") as db:
+            denial_count = await db.scalar(
+                select(func.count())
+                .select_from(AuditLogModel)
+                .where(
+                    AuditLogModel.action == "setup.bootstrap_token_issued",
+                    AuditLogModel.reason_code == "rate_limited",
+                )
+            )
+            assert denial_count == 1
     finally:
         await app_engine.dispose()
 

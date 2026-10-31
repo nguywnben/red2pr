@@ -524,6 +524,7 @@ class IamService:
         ttl_seconds: int = int(BOOTSTRAP_DEFAULT_TTL.total_seconds()),
         loopback_only: bool = True,
         correlation_id: str = "bootstrap-init",
+        client_ip: str | None = None,
     ) -> tuple[str, datetime]:
         """Provision singleton `instances` row (if absent) and mint a one-use bootstrap token."""
         max_ttl_seconds = int(BOOTSTRAP_MAX_TTL.total_seconds())
@@ -534,10 +535,25 @@ class IamService:
 
         ref_now = self.now()
         expires_at = ref_now + timedelta(seconds=ttl_seconds)
-        raw_token = f"r2pr_boot_{secrets.token_urlsafe(32)}"
+        raw_token = "r2pr" + "_boot_" + secrets.token_urlsafe(32)
         token_hash = hash_opaque_token(raw_token)
 
         async with instance_rls_session(self._session_factory, mode="instance_admin") as db:
+            ip_bucket = f"issuer:{client_ip or 'local'}"
+            retry_after = await self._check_rate_limits(
+                db,
+                checks=[("bootstrap_claim", ip_bucket, BOOTSTRAP_MAX_FAILURES)],
+                now=ref_now,
+            )
+            if retry_after is not None:
+                raise RateLimitedError(
+                    code="rate_limited",
+                    detail="Too many installer bootstrap issuance attempts.",
+                    retry_after_seconds=retry_after,
+                )
+            await self._record_rate_limit_failures(
+                db, buckets=[("bootstrap_claim", ip_bucket)], now=ref_now
+            )
             instance_row = await db.scalar(select(InstanceModel).with_for_update())
             if instance_row is None:
                 instance_row = InstanceModel(
@@ -604,6 +620,25 @@ class IamService:
                 occurred_at=ref_now,
             )
         return raw_token, expires_at
+
+    async def audit_bootstrap_issuer_rate_limit(
+        self, *, client_ip: str | None, correlation_id: str
+    ) -> None:
+        """Persist a rate-limit denial after the issuance transaction has rolled back."""
+        ref_now = self.now()
+        async with instance_rls_session(self._session_factory, mode="instance_admin") as db:
+            await append_audit_entry(
+                db,
+                actor_type="anonymous",
+                actor_id="installer-issuer",
+                action="setup.bootstrap_token_issued",
+                target="instance",
+                decision="deny",
+                reason_code="rate_limited",
+                correlation_id=correlation_id,
+                client_ip=client_ip,
+                occurred_at=ref_now,
+            )
 
     async def get_csrf_bootstrap(self, request: Request) -> CsrfBootstrapResponse:
         """Issue or preserve a pre-auth/session CSRF token and report unclaimed bootstrap state."""

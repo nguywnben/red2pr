@@ -32,6 +32,8 @@ Mounted under `/api/v1`:
 
 from __future__ import annotations
 
+import hmac
+import os
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Header, Path, Query, Request, Response, status
@@ -39,6 +41,7 @@ from fastapi.responses import StreamingResponse
 
 from py_contracts.events import EventType
 from py_contracts.iam import (
+    BootstrapIssueResponse,
     BreakGlassCreateRequest,
     BreakGlassGrant,
     BreakGlassGrantPage,
@@ -77,6 +80,7 @@ from red2pr_control.core.errors import (
     PROBLEM_JSON_MEDIA_TYPE,
     DependencyUnavailableError,
     ForbiddenError,
+    RateLimitedError,
 )
 from red2pr_control.core.logging import current_correlation_id
 from red2pr_control.iam.csrf import (
@@ -339,6 +343,54 @@ def build_iam_router() -> APIRouter:
         boot = await iam.get_csrf_bootstrap(request)
         set_csrf_cookie(response, csrf_token=boot.csrf_token, secure=iam.secure_cookies)
         return boot
+
+    @router.post(
+        "/setup/bootstrap-token",
+        operation_id="issueInstallerBootstrapToken",
+        tags=["setup"],
+        response_model=BootstrapIssueResponse,
+        summary="Issue a one-use installer bootstrap token through the local operator channel",
+        responses=_PROBLEM_RESPONSES,
+    )
+    async def issue_installer_bootstrap_token(
+        request: Request,
+        response: Response,
+        iam: Annotated[IamService, Depends(get_iam_service)],
+        issuer_secret: Annotated[str | None, Header(alias="X-Red2PR-Bootstrap-Issuer")] = None,
+    ) -> BootstrapIssueResponse:
+        _apply_no_store_headers(response)
+        assert_no_secret_in_query_url(request)
+        expected_secret = os.environ.get("RED2PR_BOOTSTRAP_ISSUER_SECRET", "")
+        if (
+            len(expected_secret) < 32
+            or not issuer_secret
+            or not hmac.compare_digest(issuer_secret, expected_secret)
+        ):
+            raise ForbiddenError(
+                code="bootstrap_issuer_forbidden",
+                detail="Installer issuer authorization is required.",
+            )
+        origin = request.headers.get("origin", "")
+        if origin.rstrip("/") != str(request.base_url).rstrip("/"):
+            raise ForbiddenError(
+                code="csrf_origin_mismatch",
+                detail="Installer bootstrap issuance must be same-origin.",
+            )
+        await _enforce_preauth_csrf(request, iam)
+        client_ip = extract_client_ip(request)
+        correlation_id = _correlation_id(request)
+        try:
+            raw_token, expires_at = await iam.issue_bootstrap_token(
+                loopback_only=True,
+                correlation_id=correlation_id,
+                client_ip=client_ip,
+            )
+        except RateLimitedError:
+            await iam.audit_bootstrap_issuer_rate_limit(
+                client_ip=client_ip, correlation_id=correlation_id
+            )
+            raise
+        return BootstrapIssueResponse(bootstrap_token=raw_token, expires_at=expires_at)
 
     @router.post(
         "/setup/claim",

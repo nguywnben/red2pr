@@ -1909,6 +1909,28 @@
         "title": "BackupRecord",
         "type": "object"
       },
+      "BootstrapIssueResponse": {
+        "additionalProperties": false,
+        "description": "One-time installer handoff; token is returned only in a no-store body.",
+        "properties": {
+          "bootstrap_token": {
+            "maxLength": 256,
+            "minLength": 16,
+            "title": "Bootstrap Token",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bootstrap_token",
+          "expires_at"
+        ],
+        "title": "BootstrapIssueResponse",
+        "type": "object"
+      },
       "BranchPolicyEvaluation": {
         "additionalProperties": false,
         "description": "Per-branch dry-run policy decision (`deny` always overrides `allow`).",
@@ -22313,6 +22335,155 @@
           }
         },
         "summary": "Read durable 10-phase setup wizard checkpoint and readiness state (A-01, INS-02)",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
+    "/api/v1/setup/bootstrap-token": {
+      "post": {
+        "operationId": "issueInstallerBootstrapToken",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Red2PR-Bootstrap-Issuer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Red2Pr-Bootstrap-Issuer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapIssueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Issue a one-use installer bootstrap token through the local operator channel",
         "tags": [
           "setup"
         ]

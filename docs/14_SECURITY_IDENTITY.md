@@ -5,6 +5,7 @@ Hostile repo maintainer/PR author; poisoned install script/dependency; forged we
 
 ## Auth and RBAC
 - Local owner bootstrap once: single-use random token; first-use lock; browser loopback or restricted setup binding; password salted KDF (Argon2id preferred) and secure cookies/CSRF; brute-force limit; TOTP privileged-role requirement proposed ADR-034; passkeys/OIDC remain optional extensions after evaluation.
+- Installer issuance is available only on the host loopback binding, requires the mode-0600 installer issuer secret, same-origin double-submit CSRF, a durable five-per-15-minute issuance bucket, and emits a no-store response. The one-use token is carried to the setup UI in a URL fragment, removed from browser history immediately, and never placed in a query string or persistent browser storage.
 - Roles `instance_owner`, `workspace_admin`, `maintainer`, `reviewer`, `viewer`, `auditor`, scoped grants per repository. Deny by default and check server-side on every route, artifact URL, background job, Telegram command and webhook-controlled action.
 - Privileged operations may require reauthentication; audit on login, role/policy edits, model egress consent, key rotation, publication/approval, backup restore.
 - Strict separation `worker`, `publisher`, `provider_reader`, `notification_sender` service identities; never reuse superuser token.

@@ -1,0 +1,29 @@
+[Unit]
+Description=Red2PR isolated worker container
+Documentation=https://red2pr.dev/docs/operations
+After=network-online.target red2pr-control.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=red2pr
+Group=red2pr
+Environment=HOME=/var/lib/red2pr
+Environment=RED2PR_DATA_DIR=/var/lib/red2pr
+ExecStart=/usr/bin/podman start --attach red2pr-worker
+ExecStop=/usr/bin/podman stop --time=30 red2pr-worker
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictSUIDSGID=true
+ReadWritePaths=/var/lib/red2pr
+
+[Install]
+WantedBy=default.target

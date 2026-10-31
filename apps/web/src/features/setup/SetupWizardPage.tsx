@@ -11,7 +11,7 @@ import {
   type SetupWizardPhase,
 } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useId, useMemo, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import {
   StepUpDialog,
@@ -140,7 +140,15 @@ export function SetupWizardPage(): React.JSX.Element {
   const [checkpointConflict, setCheckpointConflict] = useState(false);
 
   // Phase 1 bootstrap claim state (held strictly in component memory)
-  const [bootToken, setBootToken] = useState("");
+  const [bootToken, setBootToken] = useState(() => {
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    return fragment.get("bootstrap_token") ?? "";
+  });
+  useEffect(() => {
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    if (!fragment.has("bootstrap_token")) return;
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`);
+  }, []);
   const [ownerDisplayName, setOwnerDisplayName] = useState("Instance Owner");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
