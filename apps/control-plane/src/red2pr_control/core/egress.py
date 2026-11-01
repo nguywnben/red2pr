@@ -28,7 +28,7 @@ import socket
 import ssl
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
 import httpcore
 import httpx
@@ -333,12 +333,12 @@ def _ip_matches_rule_cidrs(ip_obj: IpAddress, cidrs: Sequence[IpNetwork]) -> boo
 def _effective_port(scheme: str, explicit_port: int | None) -> int:
     if explicit_port is not None:
         return explicit_port
-    return 443 if scheme == "https" else 80
+    return 443 if scheme in {"https", "wss"} else 80
 
 
 def _sanitize_url_for_log(url: httpx.URL) -> str:
     port_suffix = ""
-    default_port = 443 if url.scheme == "https" else 80
+    default_port = 443 if url.scheme in {"https", "wss"} else 80
     if url.port is not None and url.port != default_port:
         port_suffix = f":{url.port}"
     host_display = f"[{url.host}]" if ":" in url.host else url.host
@@ -445,17 +445,24 @@ class EgressPolicyEngine:
         url: httpx.URL,
     ) -> PinnedEgressTarget:
         scheme_raw = url.scheme.lower()
-        if scheme_raw not in ("https", "http"):
+        if scheme_raw not in ("https", "http", "wss"):
             raise await self._deny(
                 adapter=adapter,
                 url=url,
                 code="egress_scheme_denied",
                 detail=(
                     f"Outbound scheme '{scheme_raw}' is forbidden; "
-                    "only HTTPS (or registered HTTP) is allowed."
+                    "only HTTPS/WSS (or registered HTTP) is allowed."
                 ),
             )
-        scheme: EndpointScheme = "https" if scheme_raw == "https" else "http"
+        if scheme_raw == "wss" and adapter != "webhook":
+            raise await self._deny(
+                adapter=adapter,
+                url=url,
+                code="egress_wss_adapter_denied",
+                detail="WSS egress is reserved for the registered webhook relay adapter.",
+            )
+        scheme: EndpointScheme = cast(EndpointScheme, scheme_raw)
 
         if url.username or url.password:
             raise await self._deny(

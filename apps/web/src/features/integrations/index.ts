@@ -13,3 +13,4 @@ export {
   type GitLabIntegrationPanelProps,
 } from "./GitLabIntegrationPanel";
 export { IntegrationsPage, type IntegrationsPageProps } from "./IntegrationsPage";
+export { RelayConfigCard, type RelayConfigCardProps } from "./RelayConfigCard";

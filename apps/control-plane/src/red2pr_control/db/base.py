@@ -1309,7 +1309,7 @@ class EndpointRegistrationModel(Base):
             name="endpoint_adapter_valid",
         ),
         CheckConstraint(
-            "scheme IN ('https', 'http')",
+            "scheme IN ('https', 'http', 'wss')",
             name="endpoint_scheme_valid",
         ),
         CheckConstraint("port >= 1 AND port <= 65535", name="endpoint_port_valid"),
@@ -5167,3 +5167,148 @@ class OperationalAlarmModel(Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+
+
+class RelaySubscriptionModel(Base):
+    """Opt-in customer-operated WSS relay subscription with tenant-bound cursor state."""
+
+    __tablename__ = "relay_subscriptions"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "provider_connection_id", name="uq_relay_subscriptions_ws_connection"
+        ),
+        UniqueConstraint("workspace_id", "id", name="uq_relay_subscriptions_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "provider_connection_id"],
+            ["provider_connections.workspace_id", "provider_connections.id"],
+            name="fk_relay_subscriptions_tenant_connection",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "consent_id"],
+            ["consents.workspace_id", "consents.id"],
+            name="fk_relay_subscriptions_tenant_consent",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["endpoint_registration_id"],
+            ["endpoint_registrations.id"],
+            name="fk_relay_subscriptions_endpoint_registration",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["relay_secret_ref"],
+            ["secret_entries.secret_ref"],
+            name="fk_relay_subscriptions_secret_ref",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "status IN ('disabled','ready','degraded','gap_detected')",
+            name="relay_subscription_status_valid",
+        ),
+        CheckConstraint("last_relay_seq >= 0", name="relay_subscription_seq_nonneg"),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_relay_subscriptions_enabled", "workspace_id", "enabled", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider_connection_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    endpoint_registration_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    consent_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    relay_secret_ref: Mapped[str] = mapped_column(String(128), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="disabled")
+    last_relay_seq: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    last_received_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status_detail: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class ModelFallbackPolicyModel(Base):
+    """Explicit repository-scoped secondary Meta profile policy (disabled by default)."""
+
+    __tablename__ = "model_fallback_policies"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "repository_id", name="uq_model_fallback_policy_workspace_repo"
+        ),
+        UniqueConstraint("workspace_id", "id", name="uq_model_fallback_policies_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            name="fk_model_fallback_policies_tenant_repository",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "consent_id"],
+            ["consents.workspace_id", "consents.id"],
+            name="fk_model_fallback_policies_tenant_consent",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "primary_model_profile_id"],
+            ["workspace_agent_profiles.workspace_id", "workspace_agent_profiles.id"],
+            name="fk_model_fallback_policies_primary_profile",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "secondary_model_profile_id"],
+            ["workspace_agent_profiles.workspace_id", "workspace_agent_profiles.id"],
+            name="fk_model_fallback_policies_secondary_profile",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["updated_by_user_id"],
+            ["users.id"],
+            name="fk_model_fallback_policies_updated_by_user",
+            ondelete="SET NULL",
+        ),
+        CheckConstraint(
+            "primary_model_profile_id <> secondary_model_profile_id",
+            name="model_fallback_profiles_distinct",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(trigger_conditions_json) = 'array' AND "
+            "trigger_conditions_json <@ '[\"429\",\"503\",\"capability_unavailable\"]'::jsonb",
+            name="model_fallback_triggers_valid",
+        ),
+        CheckConstraint(
+            "last_fallback_reason IS NULL OR last_fallback_reason IN "
+            "('429','503','capability_unavailable')",
+            name="model_fallback_reason_valid",
+        ),
+        CheckConstraint("version >= 1", name="version_pos"),
+        Index("ix_model_fallback_policies_enabled", "workspace_id", "repository_id", "enabled"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    primary_model_profile_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    secondary_model_profile_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    trigger_conditions_json: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=lambda: ["429", "503", "capability_unavailable"]
+    )
+    consent_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_fallback_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_fallback_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    updated_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )

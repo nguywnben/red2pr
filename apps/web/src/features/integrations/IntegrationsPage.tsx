@@ -4,6 +4,7 @@ import { useI18n } from "../../shared/i18n";
 import { StatusGlyph } from "../../shared/ui";
 import { GitHubIntegrationPanel } from "./GitHubIntegrationPanel";
 import { GitLabIntegrationPanel } from "./GitLabIntegrationPanel";
+import { RelayConfigCard } from "./RelayConfigCard";
 
 export interface IntegrationsPageProps {
   readonly workspace: Workspace;
@@ -53,6 +54,7 @@ export function IntegrationsPage({ workspace, me }: IntegrationsPageProps): Reac
       ) : (
         <GitLabIntegrationPanel workspace={workspace} me={me} />
       )}
+      <RelayConfigCard workspace={workspace} me={me} />
     </div>
   );
 }

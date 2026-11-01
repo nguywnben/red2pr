@@ -1708,6 +1708,96 @@ describe("@red2pr/ts-client generated OpenAPI v1 contracts", () => {
     assert.equal(calls[2]?.idem, "019a2b00-0000-7000-8000-000000000902");
   });
 
+  it("sends U29 relay and fallback requests with optimistic and idempotency headers", async () => {
+    const workspaceId = "019a2c00-0000-7000-8000-000000000301";
+    const connectionId = "019a2c00-0000-7000-8000-000000000401";
+    const repositoryId = "019a2c00-0000-7000-8000-000000000501";
+    const calls: Request[] = [];
+    const client = createRed2PrClient({
+      baseUrl: "https://red2pr.example.invalid",
+      getCsrfToken: () => "csrf-u29",
+      fetch: async (request: Request) => {
+        calls.push(request);
+        if (request.method === "GET") {
+          return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        if (request.url.endsWith("/model-fallback")) {
+          return Response.json({
+            id: "019a2c00-0000-7000-8000-000000000602",
+            version: 1,
+            workspace_id: workspaceId,
+            repository_id: repositoryId,
+            primary_model_profile_id: "019a2c00-0000-7000-8000-000000000701",
+            secondary_model_profile_id: "019a2c00-0000-7000-8000-000000000702",
+            consent_id: "019a2c00-0000-7000-8000-000000000801",
+            enabled: false,
+            last_fallback_at: null,
+            last_fallback_reason: null,
+          });
+        }
+        if (request.url.endsWith("/relay/pull")) {
+          return Response.json({ subscription_id: "019a2c00-0000-7000-8000-000000000601", status: "idle", relay_seq: null, polling_required: false });
+        }
+        return Response.json({
+          id: "019a2c00-0000-7000-8000-000000000601",
+          version: 1,
+          workspace_id: workspaceId,
+          provider_connection_id: connectionId,
+          endpoint_registration_id: "019a2c00-0000-7000-8000-000000000701",
+          consent_id: "019a2c00-0000-7000-8000-000000000801",
+          enabled: false,
+          status: "disabled",
+          last_relay_seq: 0,
+          last_received_at: null,
+          status_detail: null,
+        });
+      },
+    });
+
+    await client.getRelaySubscription("acme", connectionId);
+    await client.putRelaySubscription(
+      "acme",
+      connectionId,
+      {
+        provider_connection_id: connectionId,
+        endpoint_registration_id: "019a2c00-0000-7000-8000-000000000701",
+        consent_id: "019a2c00-0000-7000-8000-000000000801",
+        relay_hmac_secret: "u29-relay-frame-key-".repeat(2),
+        client_certificate_pem: "x".repeat(80),
+        client_private_key_pem: "y".repeat(80),
+        enabled: false,
+        expected_version: 1,
+      },
+      { idempotencyKey: "019a2c00-0000-7000-8000-000000000901", ifMatch: '"v1"' },
+    );
+    await client.pullRelaySubscription("acme", connectionId, {
+      idempotencyKey: "019a2c00-0000-7000-8000-000000000902",
+    });
+    await client.getRepositoryModelFallback("acme", repositoryId);
+    await client.putRepositoryModelFallback(
+      "acme",
+      repositoryId,
+      {
+        primary_model_profile_id: "019a2c00-0000-7000-8000-000000000701",
+        secondary_model_profile_id: "019a2c00-0000-7000-8000-000000000702",
+        consent_id: "019a2c00-0000-7000-8000-000000000801",
+        enabled: false,
+      },
+      { idempotencyKey: "019a2c00-0000-7000-8000-000000000903" },
+    );
+
+    assert.equal(calls[0]?.url, `https://red2pr.example.invalid/api/v1/workspaces/acme/integrations/${connectionId}/relay`);
+    assert.equal(calls[1]?.method, "PUT");
+    assert.equal(calls[1]?.headers.get("Idempotency-Key"), "019a2c00-0000-7000-8000-000000000901");
+    assert.equal(calls[1]?.headers.get("If-Match"), '"v1"');
+    assert.equal(calls[1]?.headers.get("X-CSRF-Token"), "csrf-u29");
+    assert.equal(calls[2]?.url, `https://red2pr.example.invalid/api/v1/workspaces/acme/integrations/${connectionId}/relay/pull`);
+    assert.equal(calls[2]?.headers.get("Idempotency-Key"), "019a2c00-0000-7000-8000-000000000902");
+    assert.equal(calls[3]?.url, `https://red2pr.example.invalid/api/v1/workspaces/acme/repositories/${repositoryId}/model-fallback`);
+    assert.equal(calls[4]?.method, "PUT");
+    assert.equal(calls[4]?.headers.get("Idempotency-Key"), "019a2c00-0000-7000-8000-000000000903");
+  });
+
   it("serializes U17 A-20 & S-20 workspace agent profiles and immutable capability matrix", async () => {
     const wsId = "019a2c00-0000-7000-8000-000000000001";
     const profileId = "019a2c00-0000-7000-8000-000000000101";

@@ -845,7 +845,7 @@ EgressAdapterKind = Literal[
     "webhook",
     "smtp",
 ]
-EndpointScheme = Literal["https", "http"]
+EndpointScheme = Literal["https", "http", "wss"]
 EndpointRegistrationStatus = Literal["active", "revoked"]
 
 _FORBIDDEN_V4_CIDRS: tuple[ipaddress.IPv4Network, ...] = (

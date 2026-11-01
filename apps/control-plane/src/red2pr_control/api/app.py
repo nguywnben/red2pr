@@ -256,9 +256,17 @@ from py_contracts import (
     new_uuid7,
 )
 from py_contracts.crypto import KeyRing
+from py_contracts.extensions import (
+    ModelFallbackPolicyRequest,
+    ModelFallbackPolicyResponse,
+    RelayPullResponse,
+    RelaySubscriptionResponse,
+    RelaySubscriptionUpsertRequest,
+)
 from red2pr_control.analytics_audit.audit_chain import ExternalCheckpointStore
 from red2pr_control.analytics_audit.router import build_analytics_router
 from red2pr_control.approvals.router import build_approvals_router
+from red2pr_control.core.egress import EgressPolicyEngine
 from red2pr_control.core.errors import (
     PROBLEM_JSON_MEDIA_TYPE,
     PayloadTooLargeError,
@@ -273,6 +281,7 @@ from red2pr_control.core.logging import (
 )
 from red2pr_control.core.telemetry import configure_telemetry, extract_trace_context
 from red2pr_control.extensions.router import build_extensions_router
+from red2pr_control.extensions.webhook_relay import CustomerWebhookRelayRunner
 from red2pr_control.iam.api_tokens import build_api_tokens_router
 from red2pr_control.iam.oidc import build_oidc_router
 from red2pr_control.iam.router import build_iam_router
@@ -303,6 +312,7 @@ from red2pr_control.operations.runtime import (
     shared_operation_lease,
 )
 from red2pr_control.operations.setup_wizard import (
+    DbEndpointAllowlistProvider,
     SetupStepRegistry,
     SetupWizardService,
     build_setup_router,
@@ -408,6 +418,11 @@ CANONICAL_OPENAPI_MODELS: tuple[type[StrictContractModel], ...] = (
     ConnectionReconcileRequest,
     ConnectionReconcileResponse,
     ProviderSyncCursor,
+    RelaySubscriptionResponse,
+    RelaySubscriptionUpsertRequest,
+    RelayPullResponse,
+    ModelFallbackPolicyRequest,
+    ModelFallbackPolicyResponse,
     WebhookIngressReceipt,
     GitHubInstallStateCreateRequest,
     GitHubInstallStateResponse,
@@ -816,6 +831,8 @@ def create_app(
     notification_dispatcher: NotificationDispatcher | None = None,
     telegram_bot_service: TelegramBotService | None = None,
     notification_secret_broker: SecretBroker | None = None,
+    relay_secret_broker: SecretBroker | None = None,
+    webhook_relay_runner: CustomerWebhookRelayRunner | None = None,
     oidc_secret_broker: SecretBroker | None = None,
     audit_checkpoint_store: ExternalCheckpointStore | None = None,
     audit_checkpoint_keyring: KeyRing | None = None,
@@ -858,6 +875,21 @@ def create_app(
         )
     if notification_dispatcher is not None and setup_step_registry is not None:
         notification_dispatcher.register_setup_probe(setup_step_registry)
+    effective_relay_secret_broker = relay_secret_broker or notification_secret_broker
+    if (
+        webhook_relay_runner is None
+        and iam_service is not None
+        and webhook_ingest_service is not None
+        and effective_relay_secret_broker is not None
+    ):
+        webhook_relay_runner = CustomerWebhookRelayRunner(
+            session_factory=iam_service.session_factory,
+            secret_broker=effective_relay_secret_broker,
+            webhook_ingest_service=webhook_ingest_service,
+            egress_policy=EgressPolicyEngine(
+                allowlist_provider=DbEndpointAllowlistProvider(iam_service.session_factory)
+            ),
+        )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -865,6 +897,7 @@ def create_app(
         telegram_worker = None
         retention_task = None
         alarms_task = None
+        relay_task = None
         admin_database_url = os.environ.get("RED2PR_ADMIN_DATABASE_URL", "").strip()
         backup_directory = os.environ.get("RED2PR_BACKUP_DIRECTORY", "").strip()
         if admin_database_url and backup_directory:
@@ -889,6 +922,11 @@ def create_app(
             alarms_task = asyncio.create_task(
                 alarm_worker.run_forever(), name="operational-alarm-worker"
             )
+        relay_runner = getattr(app.state, "webhook_relay_runner", None)
+        if relay_runner is not None:
+            relay_task = asyncio.create_task(
+                relay_runner.run_forever(), name="customer-webhook-relay-worker"
+            )
         try:
             yield
         finally:
@@ -906,6 +944,10 @@ def create_app(
                 alarms_task.cancel()
                 with suppress(asyncio.CancelledError):
                     await alarms_task
+            if relay_task is not None:
+                relay_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await relay_task
             if telegram_worker is not None:
                 telegram_worker.cancel()
                 with suppress(asyncio.CancelledError):
@@ -985,6 +1027,8 @@ def create_app(
         else None
     )
     app.state.notification_secret_broker = notification_secret_broker
+    app.state.relay_secret_broker = effective_relay_secret_broker
+    app.state.webhook_relay_runner = webhook_relay_runner
     app.state.oidc_secret_broker = oidc_secret_broker
     app.state.telegram_bot_service = telegram_bot_service
     app.state.audit_checkpoint_store = audit_checkpoint_store

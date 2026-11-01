@@ -112,8 +112,10 @@ from red2pr_control.db.base import (
     EndpointRegistrationModel,
     IdempotencyRecordModel,
     ModelCapabilitySnapshotModel,
+    ModelFallbackPolicyModel,
     SecretEntryModel,
     UsageLedgerModel,
+    WorkspaceAgentProfileModel,
     WorkspaceModel,
     WorkspaceModelConfigModel,
 )
@@ -126,6 +128,11 @@ from red2pr_control.db.idempotency import (
 )
 from red2pr_control.db.outbox import enqueue_outbox_event
 from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
+from red2pr_control.extensions.model_fallback import (
+    FallbackDecision,
+    FallbackReason,
+    select_fallback_model,
+)
 from red2pr_control.iam.rbac import (
     ADMIN_ONLY_ROLES,
     ALL_WORKSPACE_ROLES,
@@ -2658,11 +2665,225 @@ class MetaMuseInferenceService:
                 return ESCALATION_META_MODEL_ID
             return PRIMARY_META_MODEL_ID
 
+    async def _fallback_policy_for_request(
+        self, request: MetaChatCompletionRequest
+    ) -> tuple[
+        ModelFallbackPolicyModel | None,
+        str | None,
+        MetaModelId | None,
+        MetaModelId | None,
+        str | None,
+    ]:
+        """Load a repository policy only when its exact repository consent is active."""
+        if (
+            request.repository_id is None
+            or request.session_budget_account_id is None
+            or request.model_profile_id is None
+        ):
+            return None, None, None, None, None
+        async with workspace_rls_session(
+            self._session_factory, workspace_id=request.workspace_id
+        ) as db:
+            policy = await db.scalar(
+                select(ModelFallbackPolicyModel).where(
+                    ModelFallbackPolicyModel.workspace_id == request.workspace_id,
+                    ModelFallbackPolicyModel.repository_id == request.repository_id,
+                    ModelFallbackPolicyModel.enabled.is_(True),
+                )
+            )
+            if policy is None:
+                return None, None, None, None, None
+            profiles = list(
+                (
+                    await db.scalars(
+                        select(WorkspaceAgentProfileModel).where(
+                            WorkspaceAgentProfileModel.workspace_id == request.workspace_id,
+                            WorkspaceAgentProfileModel.id.in_(
+                                {
+                                    policy.primary_model_profile_id,
+                                    policy.secondary_model_profile_id,
+                                }
+                            ),
+                        )
+                    )
+                ).all()
+            )
+            profiles_by_id = {profile.id: profile for profile in profiles}
+            primary_profile = profiles_by_id.get(policy.primary_model_profile_id)
+            secondary_profile = profiles_by_id.get(policy.secondary_model_profile_id)
+            if (
+                primary_profile is None
+                or secondary_profile is None
+                or not primary_profile.enabled
+                or not secondary_profile.enabled
+            ):
+                return None, None, None, None, None
+            primary_model = validate_supported_meta_model_id(primary_profile.model_id)
+            secondary_model = validate_supported_meta_model_id(secondary_profile.model_id)
+            if (
+                request.model_profile_id != primary_profile.id
+                or request.model_id != primary_model
+                or primary_model == secondary_model
+            ):
+                return None, None, None, None, None
+            cfg = await self._ensure_workspace_config_in_tx(
+                db, workspace_id=request.workspace_id, now=self._iam.now()
+            )
+            endpoint, _, endpoint_denial = await self._validate_meta_endpoint_in_tx(
+                db,
+                endpoint_base_url=cfg.endpoint_base_url,
+                endpoint_registration_id=cfg.endpoint_registration_id,
+            )
+            if endpoint_denial is not None:
+                return None, None, None, None, None
+            consent, consent_error = await self._verify_active_inference_consent_in_tx(
+                db,
+                workspace_id=request.workspace_id,
+                consent_id=policy.consent_id,
+                endpoint_base_url=endpoint,
+                repository_id=request.repository_id,
+            )
+            if consent_error is not None or consent is None:
+                return None, None, None, None, None
+            snapshot = await db.scalar(
+                select(ModelCapabilitySnapshotModel)
+                .where(
+                    ModelCapabilitySnapshotModel.workspace_id == request.workspace_id,
+                    ModelCapabilitySnapshotModel.model_id == secondary_model,
+                    ModelCapabilitySnapshotModel.status == "available",
+                )
+                .order_by(
+                    ModelCapabilitySnapshotModel.probed_at.desc(),
+                    ModelCapabilitySnapshotModel.id.desc(),
+                )
+                .limit(1)
+            )
+            if snapshot is None:
+                return None, None, None, None, None
+            return policy, consent.id, primary_model, secondary_model, secondary_profile.id
+
     async def complete_chat(
         self,
         request: MetaChatCompletionRequest,
         *,
         cancel_check: Callable[[], bool] | None = None,
+    ) -> MetaChatCompletionResult:
+        """Run approved same-vendor fallback only within the existing repair budget account."""
+        (
+            policy,
+            policy_consent_id,
+            primary_model,
+            secondary_model,
+            secondary_profile_id,
+        ) = await self._fallback_policy_for_request(request)
+        if (
+            policy is None
+            or policy_consent_id is None
+            or primary_model is None
+            or secondary_model is None
+            or secondary_profile_id is None
+        ):
+            return await self._complete_chat_once(request, cancel_check=cancel_check)
+
+        async with workspace_rls_session(
+            self._session_factory, workspace_id=request.workspace_id
+        ) as db:
+            primary_snapshot = await db.scalar(
+                select(ModelCapabilitySnapshotModel)
+                .where(
+                    ModelCapabilitySnapshotModel.workspace_id == request.workspace_id,
+                    ModelCapabilitySnapshotModel.model_id == primary_model,
+                )
+                .order_by(
+                    ModelCapabilitySnapshotModel.probed_at.desc(),
+                    ModelCapabilitySnapshotModel.id.desc(),
+                )
+                .limit(1)
+            )
+            primary_available = (
+                primary_snapshot is not None and primary_snapshot.status == "available"
+            )
+
+        requested_model = cast(MetaModelId, request.model_id)
+
+        def use_fallback(reason: FallbackReason) -> FallbackDecision | None:
+            return select_fallback_model(
+                requested_model=requested_model,
+                primary_model=primary_model,
+                secondary_model=secondary_model,
+                reason=reason,
+                policy_enabled=policy.enabled,
+                consent_active=True,
+                secondary_available=True,
+                repository_scope_matches=True,
+            )
+
+        capability_decision = None if primary_available else use_fallback("capability_unavailable")
+        if capability_decision is not None:
+            result = await self._complete_chat_once(
+                request.model_copy(
+                    update={
+                        "model_id": capability_decision.model_id,
+                        "model_profile_id": secondary_profile_id,
+                        "consent_id": policy_consent_id,
+                    }
+                ),
+                cancel_check=cancel_check,
+            )
+            reason = "capability_unavailable"
+        else:
+            try:
+                return await self._complete_chat_once(
+                    request.model_copy(
+                        update={
+                            "model_profile_id": policy.primary_model_profile_id,
+                            "consent_id": policy_consent_id,
+                        }
+                    ),
+                    cancel_check=cancel_check,
+                    allow_transient_fallback=True,
+                )
+            except Red2PrError as exc:
+                trigger: FallbackReason | None = (
+                    "429" if exc.code == "meta_rate_limited_429" else
+                    "503" if exc.code == "meta_upstream_503" else None
+                )
+                decision = use_fallback(trigger) if trigger is not None else None
+                if decision is None:
+                    raise
+                result = await self._complete_chat_once(
+                    request.model_copy(
+                        update={
+                            "model_id": decision.model_id,
+                            "model_profile_id": secondary_profile_id,
+                            "consent_id": policy_consent_id,
+                        }
+                    ),
+                    cancel_check=cancel_check,
+                )
+                reason = decision.reason or trigger or "503"
+
+        async with workspace_rls_session(
+            self._session_factory, workspace_id=request.workspace_id
+        ) as db:
+            current = await db.scalar(
+                select(ModelFallbackPolicyModel)
+                .where(ModelFallbackPolicyModel.id == policy.id)
+                .with_for_update()
+            )
+            if current is not None and current.enabled:
+                current.last_fallback_at = self._iam.now()
+                current.last_fallback_reason = reason
+                current.version += 1
+                current.updated_at = self._iam.now()
+        return result
+
+    async def _complete_chat_once(
+        self,
+        request: MetaChatCompletionRequest,
+        *,
+        cancel_check: Callable[[], bool] | None = None,
+        allow_transient_fallback: bool = False,
     ) -> MetaChatCompletionResult:
         """Execute a consented, scrubbed, budget-governed Meta `/v1/chat/completions` call."""
         if cancel_check is not None and cancel_check():
@@ -2958,21 +3179,35 @@ class MetaMuseInferenceService:
                 provider_request_id=scrubbed_req_id,
                 now=done_now,
             )
-            await self._record_workspace_suspension(
-                workspace_id=ws_id,
-                reason="model_unavailable",
-                detail=f"Meta Model API returned HTTP {http_resp.status_code} ({err_code}).",
-                retry_after_seconds=retry_secs,
-                now=done_now,
-            )
+            fallback_status = http_resp.status_code in (429, 503)
+            if not (allow_transient_fallback and fallback_status):
+                await self._record_workspace_suspension(
+                    workspace_id=ws_id,
+                    reason="model_unavailable",
+                    detail=f"Meta Model API returned HTTP {http_resp.status_code} ({err_code}).",
+                    retry_after_seconds=retry_secs,
+                    now=done_now,
+                )
             if http_resp.status_code == 429:
                 raise RateLimitedError(
-                    code="model_unavailable",
-                    detail="Meta Model API rate limit reached; suspended as model_unavailable.",
+                    code=(
+                        "meta_rate_limited_429"
+                        if allow_transient_fallback
+                        else "model_unavailable"
+                    ),
+                    detail=(
+                        "Meta Model API rate limit reached; approved fallback may be attempted."
+                        if allow_transient_fallback
+                        else "Meta Model API rate limit reached; suspended as model_unavailable."
+                    ),
                     retry_after_seconds=retry_secs,
                 )
             raise _dep_unavailable(
-                code="model_unavailable",
+                code=(
+                    "meta_upstream_503"
+                    if allow_transient_fallback and http_resp.status_code == 503
+                    else "model_unavailable"
+                ),
                 detail=(
                     f"Meta Model API returned HTTP {http_resp.status_code}; "
                     "suspended as model_unavailable."

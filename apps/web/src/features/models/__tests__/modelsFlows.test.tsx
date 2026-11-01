@@ -451,6 +451,41 @@ describe("U16 Models & Budgets Screen (UI-S12, AGT-01, AGT-03, SEC-012, SEC-018,
       if (url.pathname === "/api/v1/workspaces/acme/events") {
         return sseIdleConnectedResponse();
       }
+      if (url.pathname === "/api/v1/workspaces/acme/repositories" && method === "GET") {
+        return jsonResponse({
+          items: [
+            {
+              id: REPO_ID,
+              name: "payments-api",
+              organization: "acme",
+              connection_id: "0196ed16-0000-7000-8000-000000000a01",
+              external_id: "repo-501",
+              default_branch: "main",
+              active: true,
+              archived: false,
+              auto_repair_blocked: false,
+              grant_review_required: false,
+              is_fork: false,
+              mode: "monitor",
+              paused: false,
+              policy_revision: 1,
+              visibility: "private",
+              created_at: NOW_ISO,
+              updated_at: NOW_ISO,
+            },
+          ],
+          next_cursor: null,
+        });
+      }
+      if (url.pathname === "/api/v1/workspaces/acme/agent-profiles" && method === "GET") {
+        return jsonResponse({ profiles: [] });
+      }
+      if (
+        url.pathname === `/api/v1/workspaces/acme/repositories/${REPO_ID}/model-fallback` &&
+        method === "GET"
+      ) {
+        return jsonResponse(null);
+      }
       if (url.pathname === "/api/v1/workspaces/acme/models" && method === "GET") {
         return jsonResponse(currentState, {
           extraHeaders: { ETag: `"v${String(currentState.version)}"` },
@@ -576,10 +611,15 @@ describe("U16 Models & Budgets Screen (UI-S12, AGT-01, AGT-03, SEC-012, SEC-018,
     expect(seenConfigIdempotencyKeys[0]).toBe(seenConfigIdempotencyKeys[1]);
 
     // Grant workspace inference consent
-    await user.click(screen.getByRole("button", { name: "Grant workspace inference consent" }));
+    const grantConsentButton = screen.getByRole("button", {
+      name: "Grant workspace inference consent",
+    });
+    await waitFor(() => expect(grantConsentButton).toBeEnabled());
+    await user.click(grantConsentButton);
     await waitFor(() => {
       expect(screen.getByTestId("inference-consent-badge")).toHaveTextContent("Consent Active");
     });
+    await waitFor(() => expect(grantConsentButton).toBeEnabled());
 
     // Open paid capability probe confirmation modal for muse-spark-1.3
     const probeSparkBtn = screen.getByRole("button", { name: "Probe muse-spark-1.3" });
@@ -641,6 +681,12 @@ describe("U16 Models & Budgets Screen (UI-S12, AGT-01, AGT-03, SEC-012, SEC-018,
       }
       if (url.pathname === "/api/v1/workspaces/acme/events") {
         return sseIdleConnectedResponse();
+      }
+      if (url.pathname === "/api/v1/workspaces/acme/repositories" && method === "GET") {
+        return jsonResponse({ items: [], next_cursor: null });
+      }
+      if (url.pathname === "/api/v1/workspaces/acme/agent-profiles" && method === "GET") {
+        return jsonResponse({ profiles: [] });
       }
       if (url.pathname === "/api/v1/workspaces/acme/models" && method === "GET") {
         return jsonResponse(suspendedState, { extraHeaders: { ETag: '"v3"' } });

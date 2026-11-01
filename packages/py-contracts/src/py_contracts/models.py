@@ -472,6 +472,7 @@ class MetaChatCompletionRequest(StrictContractModel):
     repository_id: InternalId | None = None
     repair_id: InternalId | None = None
     session_budget_account_id: InternalId | None = None
+    model_profile_id: InternalId | None = None
     consent_id: InternalId | None = None
     model_id: BoundedName = PRIMARY_META_MODEL_ID
     messages: Annotated[list[MetaChatMessage], Field(min_length=1, max_length=128)]

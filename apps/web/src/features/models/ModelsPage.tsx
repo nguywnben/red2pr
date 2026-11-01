@@ -31,6 +31,7 @@ import {
   type AuthProblemSummary,
 } from "../auth";
 import { generateClientUuidV7 } from "../queues";
+import { FallbackPolicyCard } from "./FallbackPolicyCard";
 
 export interface ModelsPageProps {
   readonly workspace: Workspace;
@@ -988,6 +989,13 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
           data={modelRows}
         />
       </section>
+
+      <FallbackPolicyCard
+        workspace={workspace}
+        me={me}
+        consents={availableConsents}
+        isAdmin={isAdmin}
+      />
 
       <section
         className="red2pr-surface red2pr-card-section"

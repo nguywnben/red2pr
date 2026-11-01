@@ -1276,6 +1276,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/relay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Relay Subscription */
+        get: operations["getRelaySubscription"];
+        /** Put Relay Subscription */
+        put: operations["putRelaySubscription"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/relay/pull": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pull Relay Subscription */
+        post: operations["pullRelaySubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{ws}/integrations/{connection_id}/sync": {
         parameters: {
             query?: never;
@@ -1895,6 +1930,24 @@ export interface paths {
         head?: never;
         /** Update repository mode, pause state, tags, or W-02 grant review (A-07) */
         patch: operations["updateWorkspaceRepository"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/repositories/{repository_id}/model-fallback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Repository Model Fallback Policy */
+        get: operations["getRepositoryModelFallbackPolicy"];
+        /** Put Repository Model Fallback Policy */
+        put: operations["putRepositoryModelFallbackPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/workspaces/{ws}/repositories/{repository_id}/policy": {
@@ -4056,7 +4109,7 @@ export interface components {
              * Scheme
              * @enum {string}
              */
-            scheme: "https" | "http";
+            scheme: "https" | "http" | "wss";
             /**
              * Status
              * @enum {string}
@@ -4095,7 +4148,7 @@ export interface components {
              * @default https
              * @enum {string}
              */
-            scheme: "https" | "http";
+            scheme: "https" | "http" | "wss";
         };
         /**
          * EscalationPolicy
@@ -4871,6 +4924,51 @@ export interface components {
             tier_role: "primary" | "escalation";
             /** Updated At */
             updated_at: string;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * ModelFallbackPolicyRequest
+         * @description Repository-scoped, owner-consented same-vendor model fallback policy.
+         */
+        ModelFallbackPolicyRequest: {
+            /** Consent Id */
+            consent_id: string;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Expected Version */
+            expected_version?: number | null;
+            /** Primary Model Profile Id */
+            primary_model_profile_id: string;
+            /** Secondary Model Profile Id */
+            secondary_model_profile_id: string;
+        };
+        /**
+         * ModelFallbackPolicyResponse
+         * @description Model fallback state without secret or raw consent content.
+         */
+        ModelFallbackPolicyResponse: {
+            /** Consent Id */
+            consent_id: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Id */
+            id: string;
+            /** Last Fallback At */
+            last_fallback_at?: string | null;
+            /** Last Fallback Reason */
+            last_fallback_reason?: ("429" | "503" | "capability_unavailable") | null;
+            /** Primary Model Profile Id */
+            primary_model_profile_id: string;
+            /** Repository Id */
+            repository_id: string;
+            /** Secondary Model Profile Id */
+            secondary_model_profile_id: string;
             /** Version */
             version: number;
             /** Workspace Id */
@@ -5988,6 +6086,82 @@ export interface components {
             selection_id: string;
             /** Skipped Count */
             skipped_count: number;
+        };
+        /**
+         * RelayPullResponse
+         * @description One bounded relay receive result, useful for worker scheduling and health probes.
+         */
+        RelayPullResponse: {
+            /**
+             * Polling Required
+             * @default false
+             */
+            polling_required: boolean;
+            /** Relay Seq */
+            relay_seq?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "received" | "idle" | "gap_detected" | "disabled";
+            /** Subscription Id */
+            subscription_id: string;
+        };
+        /**
+         * RelaySubscriptionResponse
+         * @description Masked relay subscription status; credential material is never returned.
+         */
+        RelaySubscriptionResponse: {
+            /** Consent Id */
+            consent_id: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Endpoint Registration Id */
+            endpoint_registration_id: string;
+            /** Id */
+            id: string;
+            /** Last Received At */
+            last_received_at?: string | null;
+            /** Last Relay Seq */
+            last_relay_seq: number;
+            /** Provider Connection Id */
+            provider_connection_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "disabled" | "ready" | "degraded" | "gap_detected";
+            /** Status Detail */
+            status_detail?: string | null;
+            /** Version */
+            version: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * RelaySubscriptionUpsertRequest
+         * @description Opt-in connection to a registered customer-operated relay and its frame key.
+         */
+        RelaySubscriptionUpsertRequest: {
+            /** Client Certificate Pem */
+            client_certificate_pem?: string | null;
+            /** Client Private Key Pem */
+            client_private_key_pem?: string | null;
+            /** Consent Id */
+            consent_id: string;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Endpoint Registration Id */
+            endpoint_registration_id: string;
+            /** Expected Version */
+            expected_version?: number | null;
+            /** Provider Connection Id */
+            provider_connection_id: string;
+            /** Relay Hmac Secret */
+            relay_hmac_secret?: string | null;
         };
         /** ReleaseExceptionCreateRequest */
         ReleaseExceptionCreateRequest: {
@@ -17049,6 +17223,109 @@ export interface operations {
             };
         };
     };
+    getRelaySubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelaySubscriptionResponse"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    putRelaySubscription: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "If-Match"?: string | null;
+            };
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelaySubscriptionUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelaySubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pullRelaySubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelayPullResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     syncConnection: {
         parameters: {
             query?: never;
@@ -20134,6 +20411,259 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Repository"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    getRepositoryModelFallbackPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repository_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelFallbackPolicyResponse"] | null;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    putRepositoryModelFallbackPolicy: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "If-Match"?: string | null;
+            };
+            path: {
+                repository_id: string;
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelFallbackPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelFallbackPolicyResponse"];
                 };
             };
             /** @description Bad Request */

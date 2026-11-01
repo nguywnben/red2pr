@@ -624,6 +624,7 @@ class BoundedPatchAgentService:
                         repository_id=repository_id,
                         repair_id=repair_id,
                         session_budget_account_id=budget_account_id,
+                        model_profile_id=profile.id,
                         model_id=selected_model,
                         messages=messages,
                         tools=meta_tools if meta_tools else None,

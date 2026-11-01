@@ -285,6 +285,11 @@ export type ToolCapabilityPolicyItem = SchemaOf<"ToolCapabilityPolicyItem">;
 export type WorkspaceAgentProfilesResponse = SchemaOf<"WorkspaceAgentProfilesResponse">;
 export type AgentProfileUpdateRequest = SchemaOf<"AgentProfileUpdateRequest">;
 export type AgentProfileUpdateResponse = SchemaOf<"AgentProfileUpdateResponse">;
+export type ModelFallbackPolicyRequest = SchemaOf<"ModelFallbackPolicyRequest">;
+export type ModelFallbackPolicyResponse = SchemaOf<"ModelFallbackPolicyResponse">;
+export type RelayPullResponse = SchemaOf<"RelayPullResponse">;
+export type RelaySubscriptionResponse = SchemaOf<"RelaySubscriptionResponse">;
+export type RelaySubscriptionUpsertRequest = SchemaOf<"RelaySubscriptionUpsertRequest">;
 export type AgentStepRecord = SchemaOf<"AgentStepRecord">;
 export type ContextManifestEntry = SchemaOf<"ContextManifestEntry">;
 export type ContextManifest = SchemaOf<"ContextManifest">;
@@ -625,6 +630,22 @@ export interface Red2PrClient {
     query?: ListConnectionsQuery,
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<ConnectionPage>>;
+  getRelaySubscription(
+    ws: string,
+    connectionId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<RelaySubscriptionResponse | null>>;
+  putRelaySubscription(
+    ws: string,
+    connectionId: string,
+    body: RelaySubscriptionUpsertRequest,
+    options: IdempotentOptimisticMutationOptions,
+  ): Promise<ApiEnvelope<RelaySubscriptionResponse>>;
+  pullRelaySubscription(
+    ws: string,
+    connectionId: string,
+    options?: IdempotentMutationOptions,
+  ): Promise<ApiEnvelope<RelayPullResponse>>;
   createConnection(
     ws: string,
     body: ConnectionWrite,
@@ -688,6 +709,17 @@ export interface Red2PrClient {
     repositoryId: string,
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<RepositoryDetailResponse>>;
+  getRepositoryModelFallback(
+    ws: string,
+    repositoryId: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<ModelFallbackPolicyResponse | null>>;
+  putRepositoryModelFallback(
+    ws: string,
+    repositoryId: string,
+    body: ModelFallbackPolicyRequest,
+    options: IdempotentOptimisticMutationOptions,
+  ): Promise<ApiEnvelope<ModelFallbackPolicyResponse>>;
   updateRepository(
     ws: string,
     repositoryId: string,
@@ -1234,6 +1266,23 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       }),
     listConnections: (ws, query, options) =>
       callJson("GET", "/api/v1/workspaces/{ws}/integrations", { path: { ws }, query, options }),
+    getRelaySubscription: (ws, connectionId, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/integrations/{connection_id}/relay", {
+        path: { ws, connection_id: connectionId },
+        options,
+      }),
+    putRelaySubscription: (ws, connectionId, body, options) =>
+      callJson("PUT", "/api/v1/workspaces/{ws}/integrations/{connection_id}/relay", {
+        path: { ws, connection_id: connectionId },
+        body,
+        options,
+      }),
+    pullRelaySubscription: (ws, connectionId, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/integrations/{connection_id}/relay/pull", {
+        path: { ws, connection_id: connectionId },
+        body: {},
+        options,
+      }),
     createConnection: (ws, body, options) =>
       callJson("POST", "/api/v1/workspaces/{ws}/integrations", { path: { ws }, body, options }),
     getConnection: (ws, connectionId, options) =>
@@ -1293,6 +1342,18 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
         path: { ws, repository_id: repositoryId },
         options,
       }),
+    getRepositoryModelFallback: (ws, repositoryId, options) =>
+      callJson(
+        "GET",
+        "/api/v1/workspaces/{ws}/repositories/{repository_id}/model-fallback",
+        { path: { ws, repository_id: repositoryId }, options },
+      ),
+    putRepositoryModelFallback: (ws, repositoryId, body, options) =>
+      callJson(
+        "PUT",
+        "/api/v1/workspaces/{ws}/repositories/{repository_id}/model-fallback",
+        { path: { ws, repository_id: repositoryId }, body, options },
+      ),
     updateRepository: (ws, repositoryId, body, options) =>
       callJson("PATCH", "/api/v1/workspaces/{ws}/repositories/{repository_id}", {
         path: { ws, repository_id: repositoryId },

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Body, Depends, Header, Path, Request, Response
+from sqlalchemy import select
 
+from py_contracts.extensions import ModelFallbackPolicyRequest, ModelFallbackPolicyResponse
 from py_contracts.integrations import ConsentRecord, ConsentRevokeRequest
 from py_contracts.models import (
     AgentProfile,
@@ -18,14 +20,32 @@ from py_contracts.models import (
     WorkspaceModelsConfigUpdateRequest,
     WorkspaceModelsConfigUpdateResponse,
     WorkspaceModelsResponse,
+    validate_supported_meta_model_id,
 )
-from py_contracts.primitives import Problem
+from py_contracts.primitives import Problem, new_uuid7
+from red2pr_control.analytics_audit.audit_chain import append_audit_entry
 from red2pr_control.core.errors import (
     PROBLEM_JSON_MEDIA_TYPE,
     BadRequestError,
     DependencyUnavailableError,
+    ForbiddenError,
+    NotFoundError,
+    PreconditionFailedError,
+    UnprocessableEntityError,
 )
 from red2pr_control.core.logging import current_correlation_id
+from red2pr_control.db.base import (
+    ModelCapabilitySnapshotModel,
+    ModelFallbackPolicyModel,
+    RepositoryModel,
+    WorkspaceAgentProfileModel,
+)
+from red2pr_control.db.idempotency import (
+    claim_idempotent_operation,
+    complete_idempotent_operation,
+)
+from red2pr_control.db.rls import workspace_rls_session
+from red2pr_control.extensions.model_fallback import FallbackReason
 from red2pr_control.iam.csrf import set_csrf_cookie
 from red2pr_control.iam.rbac import (
     ADMIN_ONLY_ROLES,
@@ -33,8 +53,9 @@ from red2pr_control.iam.rbac import (
     WorkspaceAccessContext,
     format_version_etag,
     make_workspace_rbac_dependency,
+    parse_if_match_version,
 )
-from red2pr_control.iam.sessions import IamService, extract_client_ip
+from red2pr_control.iam.sessions import IamService, extract_client_ip, is_step_up_fresh
 from red2pr_control.inference.agent_profiles import AgentProfileService
 from red2pr_control.inference.meta_client import MetaMuseInferenceService
 
@@ -146,6 +167,274 @@ _require_agent_profiles_admin = make_workspace_rbac_dependency(
 def build_inference_router() -> APIRouter:
     """Build `/api/v1` router exposing `A-20` workspace Meta models, probes & agent profiles."""
     router = APIRouter(prefix="/api/v1")
+
+    @router.get(
+        "/workspaces/{ws}/repositories/{repository_id}/model-fallback",
+        operation_id="getRepositoryModelFallbackPolicy",
+        tags=["models"],
+        response_model=ModelFallbackPolicyResponse | None,
+        responses=_COMMON_PROBLEM_RESPONSES,
+    )
+    async def get_repository_model_fallback_policy(
+        repository_id: Annotated[str, Path(min_length=36, max_length=36)],
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_models_read)],
+        response: Response,
+        iam: Annotated[IamService, Depends(_resolve_iam)],
+    ) -> ModelFallbackPolicyResponse | None:
+        if not ws_ctx.can_read_repository(repository_id):
+            raise NotFoundError(code="repository_not_found", detail="Repository was not found.")
+        async with workspace_rls_session(
+            iam.session_factory, workspace_id=ws_ctx.workspace.id
+        ) as db:
+            row = await db.scalar(
+                select(ModelFallbackPolicyModel).where(
+                    ModelFallbackPolicyModel.workspace_id == ws_ctx.workspace.id,
+                    ModelFallbackPolicyModel.repository_id == repository_id,
+                )
+            )
+            if row is None:
+                return None
+            response.headers["ETag"] = format_version_etag(row.version)
+            return ModelFallbackPolicyResponse(
+                id=row.id,
+                version=row.version,
+                workspace_id=row.workspace_id,
+                repository_id=row.repository_id,
+                primary_model_profile_id=row.primary_model_profile_id,
+                secondary_model_profile_id=row.secondary_model_profile_id,
+                consent_id=row.consent_id,
+                enabled=row.enabled,
+                last_fallback_at=row.last_fallback_at,
+                last_fallback_reason=cast(FallbackReason | None, row.last_fallback_reason),
+            )
+
+    @router.put(
+        "/workspaces/{ws}/repositories/{repository_id}/model-fallback",
+        operation_id="putRepositoryModelFallbackPolicy",
+        tags=["models"],
+        response_model=ModelFallbackPolicyResponse,
+        responses=_COMMON_PROBLEM_RESPONSES,
+    )
+    async def put_repository_model_fallback_policy(
+        repository_id: Annotated[str, Path(min_length=36, max_length=36)],
+        payload: ModelFallbackPolicyRequest,
+        request: Request,
+        response: Response,
+        ws_ctx: Annotated[WorkspaceAccessContext, Depends(_require_models_admin)],
+        iam: Annotated[IamService, Depends(_resolve_iam)],
+        svc: Annotated[MetaMuseInferenceService, Depends(_resolve_meta_inference_service)],
+        idempotency_key: Annotated[
+            str | None,
+            Header(alias="Idempotency-Key", max_length=128),
+        ] = None,
+        if_match: Annotated[str | None, Header(alias="If-Match", max_length=64)] = None,
+    ) -> ModelFallbackPolicyResponse:
+        idem = _require_idempotency_key(
+            idempotency_key,
+            endpoint_label=(
+                "PUT /api/v1/workspaces/{ws}/repositories/{repository_id}/model-fallback"
+            ),
+        )
+        if not ws_ctx.can_act_on_repository(repository_id, allowed_roles={"admin"}):
+            raise NotFoundError(code="repository_not_found", detail="Repository was not found.")
+        if not is_step_up_fresh(ws_ctx.auth.session, now=iam.now()):
+            raise ForbiddenError(
+                code="step_up_required", detail="Fresh 5-minute step-up is required."
+            )
+        async with workspace_rls_session(
+            iam.session_factory, workspace_id=ws_ctx.workspace.id
+        ) as db:
+            repo = await db.scalar(
+                select(RepositoryModel).where(
+                    RepositoryModel.workspace_id == ws_ctx.workspace.id,
+                    RepositoryModel.id == repository_id,
+                )
+            )
+            if repo is None:
+                raise NotFoundError(code="repository_not_found", detail="Repository was not found.")
+            consent, consent_error = await svc._verify_active_inference_consent_in_tx(
+                db,
+                workspace_id=ws_ctx.workspace.id,
+                consent_id=payload.consent_id,
+                endpoint_base_url=(
+                    await svc._ensure_workspace_config_in_tx(
+                        db, workspace_id=ws_ctx.workspace.id, now=iam.now()
+                    )
+                ).endpoint_base_url,
+                repository_id=repository_id,
+            )
+            if consent_error is not None or consent is None:
+                raise ForbiddenError(
+                    code="repository_inference_consent_required",
+                    detail="An active inference consent scoped to this repository is required.",
+                )
+            profiles = list(
+                (
+                    await db.scalars(
+                        select(WorkspaceAgentProfileModel).where(
+                            WorkspaceAgentProfileModel.workspace_id == ws_ctx.workspace.id,
+                            WorkspaceAgentProfileModel.id.in_(
+                                {
+                                    payload.primary_model_profile_id,
+                                    payload.secondary_model_profile_id,
+                                }
+                            ),
+                        )
+                    )
+                ).all()
+            )
+            profiles_by_id = {profile.id: profile for profile in profiles}
+            primary_profile = profiles_by_id.get(payload.primary_model_profile_id)
+            secondary_profile = profiles_by_id.get(payload.secondary_model_profile_id)
+            if primary_profile is None or secondary_profile is None:
+                raise NotFoundError(
+                    code="model_profile_not_found",
+                    detail="Both model profiles must belong to this workspace.",
+                )
+            if not primary_profile.enabled or not secondary_profile.enabled:
+                raise UnprocessableEntityError(
+                    code="model_profile_disabled",
+                    detail="Fallback policies require two enabled model profiles.",
+                )
+            primary_model_id = validate_supported_meta_model_id(primary_profile.model_id)
+            secondary_model_id = validate_supported_meta_model_id(secondary_profile.model_id)
+            if primary_model_id == secondary_model_id:
+                raise UnprocessableEntityError(
+                    code="fallback_profiles_same_model",
+                    detail="Primary and secondary model profiles must use different models.",
+                )
+            if payload.enabled:
+                snapshot = await db.scalar(
+                    select(ModelCapabilitySnapshotModel)
+                    .where(
+                        ModelCapabilitySnapshotModel.workspace_id == ws_ctx.workspace.id,
+                        ModelCapabilitySnapshotModel.model_id == secondary_model_id,
+                        ModelCapabilitySnapshotModel.status == "available",
+                    )
+                    .order_by(
+                        ModelCapabilitySnapshotModel.probed_at.desc(),
+                        ModelCapabilitySnapshotModel.id.desc(),
+                    )
+                    .limit(1)
+                )
+                if snapshot is None:
+                    raise ForbiddenError(
+                        code="fallback_model_not_probed",
+                        detail="The secondary model must have a successful capability probe.",
+                    )
+            row = await db.scalar(
+                select(ModelFallbackPolicyModel)
+                .where(
+                    ModelFallbackPolicyModel.workspace_id == ws_ctx.workspace.id,
+                    ModelFallbackPolicyModel.repository_id == repository_id,
+                )
+                .with_for_update()
+            )
+            resource_id = row.id if row is not None else new_uuid7(now=iam.now())
+            current_version = row.version if row is not None else 0
+            claim = await claim_idempotent_operation(
+                db,
+                workspace_id=ws_ctx.workspace.id,
+                principal_id=ws_ctx.auth.user.id,
+                operation="extension.agt04.model_fallback.configure",
+                idempotency_key=idem,
+                request_payload={
+                    "payload": payload.model_dump(mode="json"),
+                    "if_match": if_match,
+                },
+                logical_effect_key=(
+                    f"model-fallback:{repository_id}:version:{current_version}"
+                ),
+                resource_id=resource_id,
+                correlation_id=_req_corr_id(request),
+                now=iam.now(),
+            )
+            if not claim.is_new_claim and claim.cached_response is not None:
+                replay = ModelFallbackPolicyResponse.model_validate(claim.cached_response)
+                response.headers["ETag"] = format_version_etag(replay.version)
+                return replay
+            if row is None:
+                if payload.expected_version is not None or if_match is not None:
+                    raise PreconditionFailedError(
+                        code="stale_policy_version",
+                        detail="No policy exists for the supplied ETag.",
+                    )
+                row = ModelFallbackPolicyModel(
+                    id=resource_id,
+                    workspace_id=ws_ctx.workspace.id,
+                    repository_id=repository_id,
+                    primary_model_profile_id=payload.primary_model_profile_id,
+                    secondary_model_profile_id=payload.secondary_model_profile_id,
+                    trigger_conditions_json=["429", "503", "capability_unavailable"],
+                    consent_id=consent.id,
+                    enabled=payload.enabled,
+                    updated_by_user_id=ws_ctx.auth.user.id,
+                    version=1,
+                    created_at=iam.now(),
+                    updated_at=iam.now(),
+                )
+                db.add(row)
+            else:
+                supplied = payload.expected_version
+                if if_match is not None:
+                    supplied = parse_if_match_version(if_match)
+                if supplied is None or supplied != row.version:
+                    raise PreconditionFailedError(
+                        code="stale_policy_version", detail="Reload the latest fallback policy."
+                    )
+                row.primary_model_profile_id = payload.primary_model_profile_id
+                row.secondary_model_profile_id = payload.secondary_model_profile_id
+                row.consent_id = consent.id
+                row.enabled = payload.enabled
+                row.updated_by_user_id = ws_ctx.auth.user.id
+                row.version += 1
+                row.updated_at = iam.now()
+            await db.flush()
+            await append_audit_entry(
+                db,
+                actor_type="user",
+                actor_id=ws_ctx.auth.user.id,
+                action="extension.agt04.model_fallback.configure",
+                target=f"repository:{repository_id}",
+                decision="allow",
+                reason_code="repository_fallback_policy_configured",
+                correlation_id=_req_corr_id(request),
+                workspace_id=ws_ctx.workspace.id,
+                repository_id=repository_id,
+                client_ip=extract_client_ip(request),
+                metadata={
+                    "enabled": row.enabled,
+                    "primary_model_profile_id": row.primary_model_profile_id,
+                    "secondary_model_profile_id": row.secondary_model_profile_id,
+                    "version": row.version,
+                },
+                occurred_at=iam.now(),
+            )
+            result = ModelFallbackPolicyResponse(
+                id=row.id,
+                version=row.version,
+                workspace_id=row.workspace_id,
+                repository_id=row.repository_id,
+                primary_model_profile_id=row.primary_model_profile_id,
+                secondary_model_profile_id=row.secondary_model_profile_id,
+                consent_id=row.consent_id,
+                enabled=row.enabled,
+                last_fallback_at=row.last_fallback_at,
+                last_fallback_reason=cast(FallbackReason | None, row.last_fallback_reason),
+            )
+            await complete_idempotent_operation(
+                db,
+                workspace_id=ws_ctx.workspace.id,
+                operation_id=claim.receipt.operation_id,
+                state="succeeded",
+                status_code=200,
+                result_id=result.id,
+                response_payload=result.model_dump(mode="json"),
+                now=iam.now(),
+            )
+        response.headers["ETag"] = format_version_etag(result.version)
+        _maybe_refresh_csrf(response, ws_ctx, iam)
+        return result
 
     @router.get(
         "/workspaces/{ws}/models",
