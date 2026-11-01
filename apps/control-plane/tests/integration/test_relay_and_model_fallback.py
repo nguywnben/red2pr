@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -30,6 +31,12 @@ class PostgresUrl:
 @pytest.fixture(scope="module")
 def postgres_url() -> Iterator[PostgresUrl]:
     ensure_compatible_event_loop()
+    external_admin = os.environ.get("RED2PR_TEST_ADMIN_DATABASE_URL")
+    if external_admin:
+        run_alembic_downgrade(external_admin, "base", app_role_name=APP_ROLE_NAME)
+        yield PostgresUrl(admin_url=external_admin)
+        return
+
     with (
         tempfile.TemporaryDirectory(prefix="red2pr_u29_pg16_") as temp_dir,
         pgserver.get_server(temp_dir, cleanup_mode="delete") as server,
@@ -51,14 +58,8 @@ def postgres_url() -> Iterator[PostgresUrl]:
 def test_u29_routes_are_in_openapi_and_extensions_default_off() -> None:
     schema = create_app().openapi()
 
-    assert (
-        "/api/v1/workspaces/{ws}/integrations/{connection_id}/relay"
-        in schema["paths"]
-    )
-    assert (
-        "/api/v1/workspaces/{ws}/repositories/{repository_id}/model-fallback"
-        in schema["paths"]
-    )
+    assert "/api/v1/workspaces/{ws}/integrations/{connection_id}/relay" in schema["paths"]
+    assert "/api/v1/workspaces/{ws}/repositories/{repository_id}/model-fallback" in schema["paths"]
     capabilities = schema["components"]["schemas"]["CapabilityInventoryResponse"]
     assert "capabilities" in capabilities["properties"]
     capability_states = {item.id: item.status for item in list_capabilities()}
@@ -82,7 +83,7 @@ async def test_migration_0024_rls_schema_and_downgrade_are_reversible(
             revision = await connection.scalar(
                 text("SELECT version_num FROM public.alembic_version")
             )
-            assert revision == "0024_relay_and_model_fallback"
+            assert revision == "0025_fleet_attestation_and_mcp"
             for table_name in ("relay_subscriptions", "model_fallback_policies"):
                 rls_result = await connection.execute(
                     text(
@@ -105,31 +106,41 @@ async def test_migration_0024_rls_schema_and_downgrade_are_reversible(
                 )
             ).all()
             policy_scopes = {(table, name): scope for table, name, scope in policies}
-            assert "instance_admin" in policy_scopes[
-                ("relay_subscriptions", "rls_relay_subscriptions_select")
-            ]
-            assert "instance_admin" not in policy_scopes[
-                ("model_fallback_policies", "rls_model_fallback_policies_select")
-            ]
-            relay_columns = (
-                await connection.execute(
-                    text(
-                        "SELECT column_name FROM information_schema.columns "
-                        "WHERE table_schema='public' AND table_name='relay_subscriptions'"
-                    )
-                )
-            ).scalars().all()
-            assert {"last_relay_seq", "relay_secret_ref", "consent_id"}.issubset(
-                set(relay_columns)
+            assert (
+                "instance_admin"
+                in policy_scopes[("relay_subscriptions", "rls_relay_subscriptions_select")]
             )
-            fallback_columns = (
-                await connection.execute(
-                    text(
-                        "SELECT column_name FROM information_schema.columns "
-                        "WHERE table_schema='public' AND table_name='model_fallback_policies'"
+            assert (
+                "instance_admin"
+                not in policy_scopes[
+                    ("model_fallback_policies", "rls_model_fallback_policies_select")
+                ]
+            )
+            relay_columns = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT column_name FROM information_schema.columns "
+                            "WHERE table_schema='public' AND table_name='relay_subscriptions'"
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
+            assert {"last_relay_seq", "relay_secret_ref", "consent_id"}.issubset(set(relay_columns))
+            fallback_columns = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT column_name FROM information_schema.columns "
+                            "WHERE table_schema='public' AND table_name='model_fallback_policies'"
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
             assert {
                 "primary_model_profile_id",
                 "secondary_model_profile_id",

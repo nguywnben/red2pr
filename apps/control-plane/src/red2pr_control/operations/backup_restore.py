@@ -48,6 +48,7 @@ from py_contracts.operations import (
     RestorePlan,
 )
 from py_contracts.primitives import new_uuid7
+from red2pr_control.core.keyring import load_master_key_ring_from_file
 from red2pr_control.db.base import (
     ArtifactBlobModel,
     ArtifactModel,
@@ -65,7 +66,6 @@ from red2pr_control.db.engine import normalize_psycopg_url
 from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
 from red2pr_control.operations.backup_encryption import BackupEncryptor, decrypt_backup_chunks
 from red2pr_control.operations.runtime import exclusive_recovery_lease
-from red2pr_control.secrets.broker import load_master_key_ring_from_file
 from red2pr_control.triage_evidence.artifact_store import ArtifactStoreProtocol
 
 DOMAIN_BACKUP_MANIFEST_V1 = "red2pr:backup_manifest:v1"

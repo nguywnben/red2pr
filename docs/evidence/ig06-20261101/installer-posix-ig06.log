@@ -1,0 +1,23 @@
+Release manifest signed.
+Verified signed release manifest (key 2136fdc37615).
+Verified signed release manifest (key 2136fdc37615).
+Preflight: mode=local data_dir=/var/lib/red2pr/installer-dryrun-local-1 os=debian arch=x86_64 cpu=6 memory=12541485056
+Dry run passed; no files, services, or host settings changed.
+Verified signed release manifest (key 2136fdc37615).
+Preflight: mode=worker data_dir=/var/lib/red2pr/installer-dryrun-worker-1 os=debian arch=x86_64 cpu=6 memory=12541485056
+Dry run passed; no files, services, or host settings changed.
+Verified signed release manifest (key 2136fdc37615).
+Preflight: mode=server data_dir=/var/lib/red2pr/installer-dryrun-server-1 os=debian arch=x86_64 cpu=6 memory=12541485056
+Dry run passed; no files, services, or host settings changed.
+Verified signed release manifest (key 2136fdc37615).
+Preflight: mode=local data_dir=/tmp/red2pr-installer-test.CQGeFr/mac-data os=macos arch=arm64 cpu=4 memory=8589934592
+Dry run passed; no files, services, or host settings changed.
+Verified signed release manifest (key 2136fdc37615).
+red2pr installer: container runtime is installed but not ready; start it and rerun the installer
+Verified signed release manifest (key 2136fdc37615).
+red2pr installer: one or more required host ports are already in use
+red2pr installer: release signature verification failed
+red2pr installer: release signing key is revoked
+Verified signed release manifest (key 2136fdc37615).
+red2pr installer: data directory resolves to a protected system path
+installer signed-manifest, topology and macOS dry-runs, port/runtime negatives, tamper, revoke, and path-guard tests passed

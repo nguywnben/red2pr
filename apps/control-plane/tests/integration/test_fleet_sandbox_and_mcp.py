@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import os
 import secrets
 import sys
 from collections.abc import AsyncIterator, Iterator
@@ -15,7 +16,7 @@ from urllib.parse import urlparse, urlunparse
 import pgserver
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import create_engine, select, text
 
 from py_contracts.primitives import new_uuid7
 from red2pr_control.api.app import create_app
@@ -430,6 +431,11 @@ async def test_mcp_a19_read_token_and_scope_denials(migrated_db: object, tmp_pat
 
 @pytest.fixture
 def migration_database(tmp_path: Path) -> Iterator[str]:
+    external_admin = os.environ.get("RED2PR_TEST_ADMIN_DATABASE_URL")
+    if external_admin:
+        yield external_admin
+        return
+
     directory = str(tmp_path / "u30-postgres")
     with pgserver.get_server(directory, cleanup_mode="delete") as server:
         parsed = urlparse(server.get_uri())
@@ -456,11 +462,39 @@ def test_migration_0025_round_trips_from_0024(migration_database: str) -> None:
         app_role_name=app_role,
         app_role_password=password,
     )
+    engine = create_engine(migration_database)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO public.auth_rate_limits "
+                    "(id, action, bucket_key, attempted_at, expires_at) "
+                    "VALUES (:id, 'mcp_read', 'test-mcp-read', now(), "
+                    "now() + interval '1 minute'), "
+                    "(:id2, 'login', 'test-login', now(), "
+                    "now() + interval '1 minute')"
+                ),
+                {"id": new_uuid7(), "id2": new_uuid7()},
+            )
+    finally:
+        engine.dispose()
     run_alembic_downgrade(
         migration_database,
         "0024_relay_and_model_fallback",
         app_role_name=app_role,
     )
+    engine = create_engine(migration_database)
+    try:
+        with engine.connect() as connection:
+            remaining = connection.execute(
+                text(
+                    "SELECT action, count(*) FROM public.auth_rate_limits "
+                    "WHERE action IN ('mcp_read', 'login') GROUP BY action"
+                )
+            ).all()
+        assert dict(remaining) == {"login": 1}
+    finally:
+        engine.dispose()
     run_alembic_upgrade(
         migration_database,
         "head",

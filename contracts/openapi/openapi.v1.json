@@ -837,7 +837,9 @@
                 "repairs:write",
                 "integrations:read",
                 "integrations:write",
-                "events:read"
+                "events:read",
+                "mcp:read",
+                "mcp:intent:create"
               ],
               "type": "string"
             },
@@ -907,7 +909,9 @@
                 "repairs:write",
                 "integrations:read",
                 "integrations:write",
-                "events:read"
+                "events:read",
+                "mcp:read",
+                "mcp:intent:create"
               ],
               "type": "string"
             },
@@ -20086,6 +20090,60 @@
         ],
         "title": "WorkspaceWorkerReadinessResponse",
         "type": "object"
+      },
+      "_ApprovalConfirmBody": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Token",
+            "type": "string"
+          },
+          "workspace_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "workspace_id"
+        ],
+        "title": "_ApprovalConfirmBody",
+        "type": "object"
+      },
+      "_ApprovalPreviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "intent_id": {
+            "title": "Intent Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id",
+          "repair_id",
+          "reason",
+          "expires_at"
+        ],
+        "title": "_ApprovalPreviewResponse",
+        "type": "object"
       }
     }
   },
@@ -20863,6 +20921,109 @@
         "summary": "Verify password (+ TOTP if enrolled) for 5-minute privileged step-up (A-02)",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/extensions/mcp": {
+      "post": {
+        "operationId": "postMcpMessage",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mcp Message",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/v1/extensions/mcp/approval/confirm": {
+      "post": {
+        "operationId": "confirmMcpApproval",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_ApprovalConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Confirmmcpapproval",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Mcp Approval",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/v1/extensions/mcp/approval/preview": {
+      "post": {
+        "operationId": "previewMcpApproval",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_ApprovalConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/_ApprovalPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Mcp Approval",
+        "tags": [
+          "extensions"
         ]
       }
     },

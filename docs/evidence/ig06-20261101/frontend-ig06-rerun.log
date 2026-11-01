@@ -1,0 +1,387 @@
+✨ openapi-typescript 7.13.0
+🚀 ../../contracts/openapi/openapi.v1.json → src/schema.d.ts [1.2s]
+TAP version 13
+# Subtest: @red2pr/ts-client generated OpenAPI v1 contracts
+    # Subtest: keeps Telegram challenge tokens in POST bodies and confirms with idempotency (U22)
+    ok 1 - keeps Telegram challenge tokens in POST bodies and confirms with idempotency (U22)
+      ---
+      duration_ms: 52.326606
+      type: 'test'
+      ...
+    # Subtest: fetches /api/v1/system/health with correlation propagation
+    ok 2 - fetches /api/v1/system/health with correlation propagation
+      ---
+      duration_ms: 1.866538
+      type: 'test'
+      ...
+    # Subtest: raises Red2PrApiError with Retry-After on 429 Problem+JSON responses
+    ok 3 - raises Red2PrApiError with Retry-After on 429 Problem+JSON responses
+      ---
+      duration_ms: 2.115115
+      type: 'test'
+      ...
+    # Subtest: preserves ADR-038 and ADR-031 compile-time enum invariants
+    ok 4 - preserves ADR-038 and ADR-031 compile-time enum invariants
+      ---
+      duration_ms: 0.191076
+      type: 'test'
+      ...
+    # Subtest: synchronizes heap-only CSRF tokens across auth mutations and wipes on logout
+    ok 5 - synchronizes heap-only CSRF tokens across auth mutations and wipes on logout
+      ---
+      duration_ms: 4.265403
+      type: 'test'
+      ...
+    # Subtest: propagates If-Match, Idempotency-Key, and ETag across U06 workspace & member routes
+    ok 6 - propagates If-Match, Idempotency-Key, and ETag across U06 workspace & member routes
+      ---
+      duration_ms: 4.033684
+      type: 'test'
+      ...
+    # Subtest: serializes U07 10-phase setup checkpoint, consent, and private endpoint contracts
+    ok 7 - serializes U07 10-phase setup checkpoint, consent, and private endpoint contracts
+      ---
+      duration_ms: 4.16341
+      type: 'test'
+      ...
+    # Subtest: handles U08 task-jobs listing, detail ETag, idempotent actions, and operation receipts
+    ok 8 - handles U08 task-jobs listing, detail ETag, idempotent actions, and operation receipts
+      ---
+      duration_ms: 6.765363
+      type: 'test'
+      ...
+    # Subtest: serializes U09 A-06 & A-23 GitHub App integration, callback state, and hazard contracts
+    ok 9 - serializes U09 A-06 & A-23 GitHub App integration, callback state, and hazard contracts
+      ---
+      duration_ms: 5.517958
+      type: 'test'
+      ...
+    # Subtest: serializes U10 GitLab pinned auth_mode, write-only access_token, and probe/sync contracts
+    ok 10 - serializes U10 GitLab pinned auth_mode, write-only access_token, and probe/sync contracts
+      ---
+      duration_ms: 2.319583
+      type: 'test'
+      ...
+    # Subtest: serializes U11 sync_cursors and reconcileConnectionRuns with honest complete_recovery=false
+    ok 11 - serializes U11 sync_cursors and reconcileConnectionRuns with honest complete_recovery=false
+      ---
+      duration_ms: 1.883189
+      type: 'test'
+      ...
+    # Subtest: serializes U12 A-07 repository catalog, versioned policy, ETag/If-Match, and dry-run previews
+    ok 12 - serializes U12 A-07 repository catalog, versioned policy, ETag/If-Match, and dry-run previews
+      ---
+      duration_ms: 3.670852
+      type: 'test'
+      ...
+    # Subtest: serializes U13 A-08 runs/jobs/logs and A-10 binary artifact downloads with 410 errors
+    ok 13 - serializes U13 A-08 runs/jobs/logs and A-10 binary artifact downloads with 410 errors
+      ---
+      duration_ms: 3.8638
+      type: 'test'
+      ...
+    # Subtest: serializes U14 A-13 isolated worker fleet, enrollment, actions, self-test & UI-S13 readiness
+    ok 14 - serializes U14 A-13 isolated worker fleet, enrollment, actions, self-test & UI-S13 readiness
+      ---
+      duration_ms: 3.748095
+      type: 'test'
+      ...
+    # Subtest: types U15 S-21 & S-22 RunnerProfileManifest, ReproductionRunRecord, and FidelityGrade contracts
+    ok 15 - types U15 S-21 & S-22 RunnerProfileManifest, ReproductionRunRecord, and FidelityGrade contracts
+      ---
+      duration_ms: 0.490828
+      type: 'test'
+      ...
+    # Subtest: serializes U16 A-20 & S-17 Meta models, consents, budgets, and paid capability probes
+    ok 16 - serializes U16 A-20 & S-17 Meta models, consents, budgets, and paid capability probes
+      ---
+      duration_ms: 3.024519
+      type: 'test'
+      ...
+    # Subtest: sends U29 relay and fallback requests with optimistic and idempotency headers
+    ok 17 - sends U29 relay and fallback requests with optimistic and idempotency headers
+      ---
+      duration_ms: 3.879579
+      type: 'test'
+      ...
+    # Subtest: serializes U17 A-20 & S-20 workspace agent profiles and immutable capability matrix
+    ok 18 - serializes U17 A-20 & S-20 workspace agent profiles and immutable capability matrix
+      ---
+      duration_ms: 4.449441
+      type: 'test'
+      ...
+    # Subtest: serializes U19 repair evidence, timeline, idempotent actions and step-up approval decisions
+    ok 19 - serializes U19 repair evidence, timeline, idempotent actions and step-up approval decisions
+      ---
+      duration_ms: 3.743435
+      type: 'test'
+      ...
+    # Subtest: serializes U20 publication reads and idempotent reconciliation
+    ok 20 - serializes U20 publication reads and idempotent reconciliation
+      ---
+      duration_ms: 1.543997
+      type: 'test'
+      ...
+    # Subtest: serializes U21 inbox, consent-bound destination writes, and scoped preferences
+    ok 21 - serializes U21 inbox, consent-bound destination writes, and scoped preferences
+      ---
+      duration_ms: 2.603933
+      type: 'test'
+      ...
+    # Subtest: serializes U23 scoped API tokens and write-only notification key operations
+    ok 22 - serializes U23 scoped API tokens and write-only notification key operations
+      ---
+      duration_ms: 2.402907
+      type: 'test'
+      ...
+    # Subtest: serializes U24 analytics, usage, idempotent export, and binary download
+    ok 23 - serializes U24 analytics, usage, idempotent export, and binary download
+      ---
+      duration_ms: 2.563273
+      type: 'test'
+      ...
+    # Subtest: serializes U25 safe secret metadata and CSRF-protected global key rotation
+    ok 24 - serializes U25 safe secret metadata and CSRF-protected global key rotation
+      ---
+      duration_ms: 0.79393
+      type: 'test'
+      ...
+    # Subtest: serializes U26 restore confirmation and A-24 cancellation contracts
+    ok 25 - serializes U26 restore confirmation and A-24 cancellation contracts
+      ---
+      duration_ms: 1.497504
+      type: 'test'
+      ...
+    1..25
+ok 1 - @red2pr/ts-client generated OpenAPI v1 contracts
+  ---
+  duration_ms: 127.328941
+  type: 'suite'
+  ...
+1..1
+# tests 25
+# suites 1
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 283.42439
+
+ RUN  v3.2.7 /workspace/apps/web
+
+stderr | src/features/members/__tests__/membersFlows.test.tsx > U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & Live SSE Revocation (UI-S19, FE-02, UX-ACCESS-001, SEC-032) > supports admin invitation once-only token display, invitation revocation, If-Match member update, 409 last_admin rollback, invite redemption, and zero axe violations in light & dark themes (UI-S19)
+An update to OidcMappingPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ src/features/integrations/__tests__/gitlabIntegrationsFlows.test.tsx (3 tests) 17496ms
+   ✓ U10 GitLab Integrations Panel (UI-S15, SRC-02, SEC-003/011/027/031, W-02) > completes admin GitLab onboarding: write-only token/whsec sealing, v19 capability probe, project sync, and .gitlab-ci.yml hazard rendering with XSS sanitization  8498ms
+   ✓ U10 GitLab Integrations Panel (UI-S15, SRC-02, SEC-003/011/027/031, W-02) > surfaces unsupported <19.0 signed auth without downgrade (SEC-027), read_api polling fallback, If-Match 412 conflict, W-02 reconnect review, and typed-name Disconnect & revoke  4754ms
+   ✓ U10 GitLab Integrations Panel (UI-S15, SRC-02, SEC-003/011/027/031, W-02) > enforces viewer read-only RBAC and passes WCAG 2.2 AA axe-core in both light and dark themes  4240ms
+ ✓ src/features/integrations/__tests__/githubIntegrationsFlows.test.tsx (5 tests) 18751ms
+   ✓ U09 GitHub App Integrations UI, Callback State & Hazard Flows (UI-S15 / SRC-01) > seals write-only RSA PEM & webhook secrets on create, wipes inputs, and redirects /connections alias  7512ms
+   ✓ U09 GitHub App Integrations UI, Callback State & Hazard Flows (UI-S15 / SRC-01) > executes A-23 single-use state minting, read-only callback redirect, and installation confirmation with SEC-031 hazards  2088ms
+   ✓ U09 GitHub App Integrations UI, Callback State & Hazard Flows (UI-S15 / SRC-01) > rejects forged callbacks missing state on both /integrations/github/callback and /w/:ws/integrations (T-SRC-01-N)  621ms
+   ✓ U09 GitHub App Integrations UI, Callback State & Hazard Flows (UI-S15 / SRC-01) > handles 412 optimistic concurrency conflict, typed-confirmation disconnect (SEC-011), and W-02 reconnect warning  3598ms
+   ✓ U09 GitHub App Integrations UI, Callback State & Hazard Flows (UI-S15 / SRC-01) > enforces viewer read-only RBAC, renders GitLab U10 notice tab, and passes WCAG 2.2 AA axe-core in light & dark themes  4929ms
+stderr | src/features/members/__tests__/membersFlows.test.tsx > U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & Live SSE Revocation (UI-S19, FE-02, UX-ACCESS-001, SEC-032) > supports admin invitation once-only token display, invitation revocation, If-Match member update, 409 last_admin rollback, invite redemption, and zero axe violations in light & dark themes (UI-S19)
+An update to OidcMappingPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ src/features/members/__tests__/membersFlows.test.tsx (6 tests) 20997ms
+   ✓ U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & Live SSE Revocation (UI-S19, FE-02, UX-ACCESS-001, SEC-032) > redirects anonymous direct navigation on /w/:ws/members to /login?next=... (FE-02)  813ms
+   ✓ U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & Live SSE Revocation (UI-S19, FE-02, UX-ACCESS-001, SEC-032) > blocks non-member workspace navigation with zero metadata leakage and allows switching to an authorized workspace (FE-02, UX-ACCESS-001)  2283ms
+   ✓ U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & Live SSE Revocation (UI-S19, FE-02, UX-ACCESS-001, SEC-032) > enforces ADR-034 Instance Owner step-up break-glass activation, read-only banner, and early break-glass revocation  4617ms
+   ✓ U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & Live SSE Revocation (UI-S19, FE-02, UX-ACCESS-001, SEC-032) > supports admin invitation once-only token display, invitation revocation, If-Match member update, 409 last_admin rollback, invite redemption, and zero axe violations in light & dark themes (UI-S19)  12479ms
+   ✓ U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & Live SSE Revocation (UI-S19, FE-02, UX-ACCESS-001, SEC-032) > hides admin mutation affordances and invitations table for non-admin viewer role (UX-ACCESS-001)  326ms
+   ✓ U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & Live SSE Revocation (UI-S19, FE-02, UX-ACCESS-001, SEC-032) > severs live workspace SSE stream on identity.permission_revoked, purges cached workspace state, and renders revoked guard (SEC-032, NFR-04)  476ms
+ ✓ src/features/setup/__tests__/setupWizardFlows.test.tsx (3 tests) 19155ms
+   ✓ U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SETUP-001, UX-01) > hydrates installer bootstrap token from the URL fragment and immediately removes it from browser history  826ms
+   ✓ U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SETUP-001, UX-01) > claims owner from Phase 1, resumes at server checkpoint, skips optional phases as Not Configured, and distinguishes Monitor Ready from Repair Blocked (UX-SETUP-001, UX-01)  8302ms
+   ✓ U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SETUP-001, UX-01) > grants and revokes explicit inference consent, handles 409 checkpoint_conflict recovery, and gates private endpoint registration behind StepUpDialog in dark theme (SEC-018, ADR-037)  10024ms
+ ✓ src/features/queues/__tests__/queuesFlows.test.tsx (4 tests) 20102ms
+   ✓ UI-S14 /w/:ws/queues Durable Task Queue & DLQ Screen (U08) > renders fairness cap summary, filters & signed cursor pagination, and inspects attempt + DLQ history  11012ms
+   ✓ UI-S14 /w/:ws/queues Durable Task Queue & DLQ Screen (U08) > enforces W-08 reconcile before requeue, previews preserved effect & budget keys, cancels with A-24 receipt refresh, and surfaces 409 conflicts  7055ms
+   ✓ UI-S14 /w/:ws/queues Durable Task Queue & DLQ Screen (U08) > renders degraded Redis banner, paused workspace banner, read-only viewer role gating, and passes dark-mode WCAG 2.2 AA  2030ms
+stderr | src/features/models/__tests__/modelsFlows.test.tsx > U16 Models & Budgets Screen (UI-S12, AGT-01, AGT-03, SEC-012, SEC-018, SEC-023, SEC-040) > renders suspension/cooldown banner truthfully, keeps unknown usage distinct from $0.00, handles 412 conflict reload, enforces viewer read-only RBAC, and passes axe in light & dark themes
+An update to FallbackPolicyCard inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ src/features/models/__tests__/modelsFlows.test.tsx (2 tests) 17412ms
+   ✓ U16 Models & Budgets Screen (UI-S12, AGT-01, AGT-03, SEC-012, SEC-018, SEC-023, SEC-040) > rotates write-only Meta API key via step-up retry without storing secrets, grants consent, and executes a consented paid capability probe  11443ms
+   ✓ U16 Models & Budgets Screen (UI-S12, AGT-01, AGT-03, SEC-012, SEC-018, SEC-023, SEC-040) > renders suspension/cooldown banner truthfully, keeps unknown usage distinct from $0.00, handles 412 conflict reload, enforces viewer read-only RBAC, and passes axe in light & dark themes  5966ms
+ ✓ src/features/auth/__tests__/authFlows.test.tsx (7 tests) 15016ms
+   ✓ U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (UI-S02, UI-S21, UX-LOGIN-001, SEC-026) > shows the SSO option only for a provider reported enabled by W-10  892ms
+   ✓ U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (UI-S02, UI-S21, UX-LOGIN-001, SEC-026) > completes initial bootstrap owner claim with X-CSRF-Token and zero Web Storage token persistence  4056ms
+   ✓ U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (UI-S02, UI-S21, UX-LOGIN-001, SEC-026) > handles two-step password -> cookie-free MFA challenge -> TOTP login, generic errors, 429 cooldown, and recovery reset  3485ms
+   ✓ U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (UI-S02, UI-S21, UX-LOGIN-001, SEC-026) > enforces 5m StepUpDialog, displays TOTP secret & 10 recovery codes once only, surfaces mandatory MFA policy 403, and revokes sessions  4865ms
+   ✓ U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (UI-S02, UI-S21, UX-LOGIN-001, SEC-026) > supports single-use recovery code reset on /login and routes to /account for MFA re-enrollment  1461ms
+stderr | src/features/repositories/__tests__/repositoriesAndPoliciesFlows.test.tsx > U12 UI-S04 & UI-S05 Repository Catalog, Detail 7-Tab & Policy Dry-Run Simulator > navigates all 7 WAI-ARIA tabs via keyboard, runs zero-mutation PolicyEditor dry-run, handles 412 stale reload, and passes axe in dark theme
+An update to LiveRegionProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ src/features/repositories/__tests__/repositoriesAndPoliciesFlows.test.tsx (3 tests) 14597ms
+   ✓ U12 UI-S04 & UI-S05 Repository Catalog, Detail 7-Tab & Policy Dry-Run Simulator > renders UI-S04 catalog with scoped UX-02 facets, SEC-040 sanitization, org grouping, bulk preview + step-up retry, and passes axe  8803ms
+   ✓ U12 UI-S04 & UI-S05 Repository Catalog, Detail 7-Tab & Policy Dry-Run Simulator > enforces viewer read-only RBAC on UI-S04 catalog without bulk or mutation controls  1424ms
+   ✓ U12 UI-S04 & UI-S05 Repository Catalog, Detail 7-Tab & Policy Dry-Run Simulator > navigates all 7 WAI-ARIA tabs via keyboard, runs zero-mutation PolicyEditor dry-run, handles 412 stale reload, and passes axe in dark theme  4367ms
+ ✓ src/features/workers/__tests__/workersFlows.test.tsx (2 tests) 13504ms
+   ✓ UI-S13 Workers & Sandbox Fleet flows (U14) > renders workspace readiness & leases for non-owner members without calling /api/v1/system/workers*  4009ms
+   ✓ UI-S13 Workers & Sandbox Fleet flows (U14) > supports instance-owner enrollment (ADR-016 + step-up retry), self-test, drain/412 conflict, SEC-040 sanitization & WCAG AA  9493ms
+ ✓ src/features/system/__tests__/systemFlows.test.tsx (5 tests) 10425ms
+   ✓ U26 system operations screen > renders actual status and allowlisted doctor results without exposing secret values  1533ms
+   ✓ U26 system operations screen > previews then step-up gates support export and sends the preview digest  2062ms
+   ✓ U26 system operations screen > step-up gates backup creation and displays the signed backup receipt  1222ms
+   ✓ U26 system operations screen > requires maintenance and fresh step-up before executing the exact restore plan  4840ms
+   ✓ U26 system operations screen > requires an explicit reconciliation confirmation before leaving restore maintenance  763ms
+ ✓ src/features/notifications/__tests__/notificationsFlows.test.tsx (5 tests) 11544ms
+   ✓ U21 notifications UI > shows a scoped inbox item and marks it read  1495ms
+   ✓ U21 notifications UI > saves quiet-hours preferences and describes credential verification  948ms
+   ✓ U21 notifications UI > creates only a consent-bound destination with an idempotency key  5938ms
+   ✓ U21 notifications UI > stores channel credentials write-only and verifies webhook keys are shown once  1297ms
+   ✓ U21 notifications UI > has no axe accessibility violations in the ready state  1860ms
+ ✓ src/features/security/__tests__/securityFlows.test.tsx (5 tests) 16458ms
+   ✓ U25 security screen > shows verified audit events, masked token metadata, retention and accessible search  2513ms
+   ✓ U25 security screen > filters audit search by correlation id and displays the verified-chain failure state  1631ms
+   ✓ U25 security screen > shows digest-bound exceptions and requires a distinct admin reviewer  8790ms
+   ✓ U25 security screen > shows metadata only and runs master key rotation through fresh MFA step-up  2212ms
+   ✓ U25 security screen > issues a scoped token and only then reveals its raw value once  1309ms
+ ✓ src/features/integrations/__tests__/relayConfigCard.test.tsx (2 tests) 7071ms
+   ✓ U29 customer-operated relay configuration > saves write-only mTLS/HMAC credentials and keeps relay opt-in  6745ms
+   ✓ U29 customer-operated relay configuration > lets an admin disable an existing relay without exposing or resubmitting its credentials  322ms
+ ✓ src/features/agents/__tests__/agentsFlows.test.tsx (2 tests) 10193ms
+   ✓ UI-S11 Workspace Agents & Tool Governance flows (U17) > renders bounded agent profiles, enforces diagnosis tool ceiling, saves with If-Match + Idempotency-Key, sanitizes SEC-040 text, and passes axe-core in light mode  6027ms
+   ✓ UI-S11 Workspace Agents & Tool Governance flows (U17) > surfaces 412 stale If-Match reload banner for admins and enforces viewer read-only RBAC + dark-mode axe-core parity  4131ms
+ ✓ src/features/pipelines/__tests__/pipelinesFlows.test.tsx (2 tests) 10081ms
+   ✓ U13 Pipelines Screen UI-S06 (TRI-01, TRI-03, A-08, A-10, SEC-016, SEC-040) > renders runs, switches attempts, handles 410 log_expired, downloads S-14 artifacts, and passes WCAG 2.2 AA  8994ms
+   ✓ U13 Pipelines Screen UI-S06 (TRI-01, TRI-03, A-08, A-10, SEC-016, SEC-040) > virtualizes a 50,000-line CI job log smoothly without rendering 50k DOM nodes (UI-S06)  1084ms
+stderr | src/features/integrations/__tests__/pollingReconcilerFlows.test.tsx > U11 UI-S15 Webhook Ingress, 429 Backoff, History-Gap & Reconcile Flows > surfaces offline >TTL history-gap & 429 rate-limit banners, acknowledges gap via S-05 reconcile, and passes axe
+An update to WorkspaceRouteShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/features/integrations/__tests__/pollingReconcilerFlows.test.tsx > U11 UI-S15 Webhook Ingress, 429 Backoff, History-Gap & Reconcile Flows > surfaces offline >TTL history-gap & 429 rate-limit banners, acknowledges gap via S-05 reconcile, and passes axe
+An update to WorkspaceRouteShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ src/features/integrations/__tests__/pollingReconcilerFlows.test.tsx (2 tests) 7586ms
+   ✓ U11 UI-S15 Webhook Ingress, 429 Backoff, History-Gap & Reconcile Flows > surfaces offline >TTL history-gap & 429 rate-limit banners, acknowledges gap via S-05 reconcile, and passes axe  6405ms
+   ✓ U11 UI-S15 Webhook Ingress, 429 Backoff, History-Gap & Reconcile Flows > hides mutating reconcile & gap-acknowledge buttons for read-only viewer role  1178ms
+ ✓ src/features/approvals/__tests__/approvalsInboxFlows.test.tsx (1 test) 4106ms
+   ✓ U19 approval inbox > shows the full patch binding and requires a recent step-up before recording a vote  4099ms
+ ✓ src/shared/ui/__tests__/astryxWrappersAndStates.test.tsx (7 tests) 8193ms
+   ✓ U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-UI-02-P) > renders Button with verified Astryx props, blocks unsafe href schemes, and passes axe in light & dark themes  1316ms
+   ✓ U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-UI-02-P) > traps keyboard Tab focus inside Dialog, closes on Escape for form/info, blocks Escape for required, and restores focus  671ms
+   ✓ U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-UI-02-P) > renders Table with Astryx plugins record, column sorting, and accessible paged keyboard fallback  1098ms
+   ✓ U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-UI-02-P) > renders all canonical Unified UX States with icon + text (never color alone) and passes axe in light & dark themes  3931ms
+   ✓ U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-UI-02-P) > renders ChartWithTableFallback with mandatory denominator, UTC watermark, and accessible table toggle  712ms
+   ✓ U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-UI-02-P) > renders AppShell with skip link, workspace switcher, SSE indicator, and throttled aria-live announcer  397ms
+ ✓ src/features/analytics/__tests__/analyticsFlows.test.tsx (3 tests) 3259ms
+   ✓ U24 analytics UI > renders the authorized workspace overview and analytics link accessibly  1662ms
+   ✓ U24 analytics UI > renders the denominator table and cost totals, exports with idempotency, and is accessible  1282ms
+   ✓ U24 analytics UI > marks an inverted date range and disables export  311ms
+ ✓ src/features/repairs/__tests__/repairsListFlows.test.tsx (1 test) 2310ms
+   ✓ U19 repairs list UX > starts an idempotent repair from a failed CI run and is keyboard accessible  2307ms
+ ✓ src/features/prs/__tests__/pullRequestsPage.test.tsx (1 test) 2844ms
+   ✓ U20 draft publications screen > shows exact-head remote evidence and allows a CSRF-protected reconciliation request  2842ms
+ ✓ src/features/approvals/__tests__/telegramIntentConfirm.test.tsx (2 tests) 1093ms
+   ✓ U22 web-confirm page (NOT-03, SEC-004, SEC-034) > previews without mutation and confirms only after an explicit click  966ms
+ ✓ src/shared/ui/__tests__/securityAndScaleViewers.test.tsx (6 tests) 2944ms
+   ✓ U04 SEC-040 Untrusted Log/Diff Sanitization & NFR-12 50k Virtualization (T-UI-01-N) > virtualizes 50,000 log lines in <= 2000ms (NFR-12) with bounded DOM nodes and supports paged keyboard mode  2124ms
+   ✓ U04 SEC-040 Untrusted Log/Diff Sanitization & NFR-12 50k Virtualization (T-UI-01-N) > virtualizes 50,000 unified diff lines in <= 2000ms (NFR-12) with bounded DOM nodes  507ms
+ ✓ src/features/repairs/__tests__/repairDetailEvidence.test.tsx (1 test) 3048ms
+   ✓ U19 repair evidence viewer > shows all seven evidence tabs, persisted Sandbox A/B data and redacted CI log chunks  3045ms
+ ✓ src/shared/ui/__tests__/useWorkspaceSse.test.tsx (4 tests) 462ms
+ ✓ src/features/models/__tests__/fallbackPolicyCard.test.tsx (2 tests) 717ms
+   ✓ U29 repository model fallback policy > requires repository consent and submits a disabled same-vendor policy by default  596ms
+ ✓ src/features/auth/__tests__/telegramLinkCard.test.tsx (1 test) 451ms
+   ✓ U22 Telegram account-link card (UI-S21, NOT-02) > requests a one-use link and renders the Telegram deep link without storing it  449ms
+ ✓ src/shared/ui/__tests__/bundleAndBoundaryIntegrity.test.ts (4 tests) 73ms
+
+ Test Files  28 passed (28)
+      Tests  91 passed (91)
+   Start at  11:09:22
+   Duration  175.25s (transform 8.58s, setup 17.46s, collect 140.48s, tests 259.89s, environment 71.25s, prepare 9.54s)
+
+vite v6.4.5 building for production...
+transforming...
+✓ 2578 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                      0.79 kB │ gzip:   0.40 kB
+dist/assets/analyticsShared-CE-8moNk.css             0.77 kB │ gzip:   0.36 kB
+dist/assets/index-BmE3qxLW.css                     228.30 kB │ gzip:  40.05 kB
+dist/assets/OverviewPage-SNne7Hmd.js                 1.49 kB │ gzip:   0.80 kB
+dist/assets/Table-D-Jv-hzU.js                        1.50 kB │ gzip:   0.79 kB
+dist/assets/analyticsShared-Bg-CmDhN.js              3.01 kB │ gzip:   0.84 kB
+dist/assets/TelegramIntentConfirmPage-Be7zZ423.js    3.54 kB │ gzip:   1.53 kB
+dist/assets/AnalyticsPage-B0uRwucv.js                4.23 kB │ gzip:   1.70 kB
+dist/assets/SafeLogViewer-DcrKV8Hb.js                4.41 kB │ gzip:   1.86 kB
+dist/assets/McpIntentConfirmPage-B-16pHfR.js         4.56 kB │ gzip:   1.85 kB
+dist/assets/index-DeZfci8a.js                        5.31 kB │ gzip:   2.07 kB
+dist/assets/index-ldsqc2Jl.js                        6.30 kB │ gzip:   2.33 kB
+dist/assets/SystemPage-D2hcInj7.js                   8.74 kB │ gzip:   2.82 kB
+dist/assets/index-CV9e4XYb.js                       14.89 kB │ gzip:   4.75 kB
+dist/assets/SecurityPage-CkWhkVNJ.js                16.83 kB │ gzip:   4.36 kB
+dist/assets/index-DUJFzla5.js                       17.71 kB │ gzip:   5.25 kB
+dist/assets/index-PN-ODdTH.js                       18.36 kB │ gzip:   5.05 kB
+dist/assets/index-C2lGYfPy.js                       19.86 kB │ gzip:   5.63 kB
+dist/assets/index-VENLSxIl.js                       22.97 kB │ gzip:   6.17 kB
+dist/assets/index-C3fZtn0r.js                       23.29 kB │ gzip:   5.43 kB
+dist/assets/index-CFPGS2Cf.js                       24.05 kB │ gzip:   7.44 kB
+dist/assets/index-8OlmNymR.js                       26.92 kB │ gzip:   6.25 kB
+dist/assets/index-DcXiNC4x.js                       27.65 kB │ gzip:   7.75 kB
+dist/assets/index-CL-JB7xs.js                       39.56 kB │ gzip:   9.32 kB
+dist/assets/index-C6hpPo3g.js                       56.47 kB │ gzip:  12.87 kB
+dist/assets/index-DWqFe2Yk.js                       72.81 kB │ gzip:  16.16 kB
+dist/assets/vendor-data-CRyVuTdM.js                 87.93 kB │ gzip:  26.14 kB
+dist/assets/index-CA4zIBe4.js                       97.96 kB │ gzip:  28.11 kB
+dist/assets/vendor-react-BtfaO4er.js               261.30 kB │ gzip:  83.09 kB
+dist/assets/vendor-astryx-R7vYLlS_.js              498.69 kB │ gzip: 154.69 kB
+✓ built in 11.71s

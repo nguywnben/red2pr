@@ -1,0 +1,75 @@
+........................................................................ [ 18%]
+........................................................................ [ 36%]
+...................................E.E..EE.............................. [ 54%]
+........................................................................ [ 72%]
+........................................................................ [ 90%]
+.......................................                                  [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_migration_0024_rls_schema_and_downgrade_are_reversible _
+apps/control-plane/tests/integration/test_relay_and_model_fallback.py:35: in postgres_url
+    pgserver.get_server(temp_dir, cleanup_mode="delete") as server,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:291: in get_server
+    return PostgresServer(pgdata, cleanup_mode=cleanup_mode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:51: in __init__
+    ensure_user_exists(self.system_user)
+/work/.venv/lib/python3.12/site-packages/pgserver/utils.py:144: in ensure_user_exists
+    subprocess.run(["useradd", "-s", "/bin/bash", username], check=True, capture_output=True, text=True)
+/usr/local/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['useradd', '-s', '/bin/bash', 'pgserver']' returned non-zero exit status 1.
+_ ERROR at setup of test_u12_migration_0008_reversibility_rls_and_immutability_trigger _
+apps/control-plane/tests/integration/test_repo_catalog_and_policies.py:205: in pg_urls
+    pgserver.get_server(tmp_dir, cleanup_mode="delete") as server,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:291: in get_server
+    return PostgresServer(pgdata, cleanup_mode=cleanup_mode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:63: in __init__
+    self.ensure_pgdata_inited()
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:91: in ensure_pgdata_inited
+    ensure_prefix_permissions(POSTGRES_BIN_PATH)
+/work/.venv/lib/python3.12/site-packages/pgserver/utils.py:162: in ensure_prefix_permissions
+    prefix.chmod(ensure_permissions)
+/usr/local/lib/python3.12/pathlib.py:1327: in chmod
+    os.chmod(self, mode, follow_symlinks=follow_symlinks)
+E   OSError: [Errno 30] Read-only file system: '/work/.venv/lib/python3.12/site-packages/pgserver/pginstall'
+_ ERROR at setup of test_t_rep_01_p_and_n_catalog_pagination_filters_and_ux02_zero_leakage _
+apps/control-plane/tests/integration/test_repo_catalog_and_policies.py:205: in pg_urls
+    pgserver.get_server(tmp_dir, cleanup_mode="delete") as server,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:291: in get_server
+    return PostgresServer(pgdata, cleanup_mode=cleanup_mode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:63: in __init__
+    self.ensure_pgdata_inited()
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:91: in ensure_pgdata_inited
+    ensure_prefix_permissions(POSTGRES_BIN_PATH)
+/work/.venv/lib/python3.12/site-packages/pgserver/utils.py:162: in ensure_prefix_permissions
+    prefix.chmod(ensure_permissions)
+/usr/local/lib/python3.12/pathlib.py:1327: in chmod
+    os.chmod(self, mode, follow_symlinks=follow_symlinks)
+E   OSError: [Errno 30] Read-only file system: '/work/.venv/lib/python3.12/site-packages/pgserver/pginstall'
+_ ERROR at setup of test_t_rep_02_p_and_n_immutable_revisions_concurrency_gates_sec022_and_dry_run _
+apps/control-plane/tests/integration/test_repo_catalog_and_policies.py:205: in pg_urls
+    pgserver.get_server(tmp_dir, cleanup_mode="delete") as server,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:291: in get_server
+    return PostgresServer(pgdata, cleanup_mode=cleanup_mode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:63: in __init__
+    self.ensure_pgdata_inited()
+/work/.venv/lib/python3.12/site-packages/pgserver/postgres_server.py:91: in ensure_pgdata_inited
+    ensure_prefix_permissions(POSTGRES_BIN_PATH)
+/work/.venv/lib/python3.12/site-packages/pgserver/utils.py:162: in ensure_prefix_permissions
+    prefix.chmod(ensure_permissions)
+/usr/local/lib/python3.12/pathlib.py:1327: in chmod
+    os.chmod(self, mode, follow_symlinks=follow_symlinks)
+E   OSError: [Errno 30] Read-only file system: '/work/.venv/lib/python3.12/site-packages/pgserver/pginstall'
+=========================== short test summary info ============================
+ERROR apps/control-plane/tests/integration/test_relay_and_model_fallback.py::test_migration_0024_rls_schema_and_downgrade_are_reversible
+ERROR apps/control-plane/tests/integration/test_repo_catalog_and_policies.py::test_u12_migration_0008_reversibility_rls_and_immutability_trigger
+ERROR apps/control-plane/tests/integration/test_repo_catalog_and_policies.py::test_t_rep_01_p_and_n_catalog_pagination_filters_and_ux02_zero_leakage
+ERROR apps/control-plane/tests/integration/test_repo_catalog_and_policies.py::test_t_rep_02_p_and_n_immutable_revisions_concurrency_gates_sec022_and_dry_run
+395 passed, 4 errors in 648.72s (0:10:48)

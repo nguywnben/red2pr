@@ -1268,6 +1268,16 @@
           "title": "Profile Ids",
           "type": "array"
         },
+        "protocol_versions": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Protocol Versions",
+          "type": "array"
+        },
         "quarantine_reason": {
           "anyOf": [
             {
@@ -1535,6 +1545,16 @@
           "title": "Profile Ids",
           "type": "array"
         },
+        "protocol_versions": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Protocol Versions",
+          "type": "array"
+        },
         "signer_public_key": {
           "$ref": "#/$defs/PublicKeyRecord"
         }
@@ -1611,6 +1631,33 @@
           "title": "Isolation Mode",
           "type": "string"
         },
+        "isolation_self_test_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Isolation Self Test Digest"
+        },
+        "kernel_version": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kernel Version"
+        },
         "memory_limit_bytes": {
           "minimum": 1,
           "title": "Memory Limit Bytes",
@@ -1634,11 +1681,53 @@
           "title": "Rootless Verified",
           "type": "boolean"
         },
+        "runtime_backend": {
+          "anyOf": [
+            {
+              "enum": [
+                "oci_rootless",
+                "gvisor_runsc",
+                "ephemeral_vm"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Backend"
+        },
+        "runtime_checks": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "propertyNames": {
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "title": "Runtime Checks",
+          "type": "object"
+        },
         "runtime_name": {
           "maxLength": 120,
           "minLength": 1,
           "title": "Runtime Name",
           "type": "string"
+        },
+        "runtime_version": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Version"
         },
         "seccomp_verified": {
           "title": "Seccomp Verified",
@@ -1766,6 +1855,16 @@
           },
           "title": "Capabilities",
           "type": "object"
+        },
+        "protocol_versions": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Protocol Versions",
+          "type": "array"
         },
         "status_hint": {
           "default": "ready",

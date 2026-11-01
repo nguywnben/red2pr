@@ -1,0 +1,8 @@
+PowerShell 7.4.22
+Release manifest signed.
+Verified signed release manifest (key 6bc54266af01).
+Preflight: mode=local data_dir=/var/lib/red2pr/windows-installer-dryrun os=debian arch=x86_64 cpu=6 memory=12541485056
+Dry run passed; no files, services, or host settings changed.
+red2pr installer: needs_restart: install or enable WSL2, reboot if requested, then rerun with -Resume
+red2pr installer: needs_restart: install or enable WSL2, reboot if requested, then rerun with -Resume
+PowerShell Windows mock dry-run and idempotent WSL2 reboot checkpoint tests passed

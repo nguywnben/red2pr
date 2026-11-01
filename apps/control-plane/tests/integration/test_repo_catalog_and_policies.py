@@ -33,6 +33,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import os
 import sys
 import tempfile
 from collections.abc import AsyncIterator, Iterator, Mapping
@@ -200,6 +201,16 @@ class _PublicDnsResolver:
 @pytest.fixture(scope="module")
 def pg_urls() -> Iterator[PgTestUrls]:
     ensure_compatible_event_loop()
+    external_admin = os.environ.get("RED2PR_TEST_ADMIN_DATABASE_URL")
+    if external_admin:
+        app_url = os.environ.get("RED2PR_TEST_APP_DATABASE_URL") or _build_role_url(
+            external_admin,
+            username=APP_ROLE_NAME,
+            password=APP_ROLE_PASSWORD,
+        )
+        yield PgTestUrls(admin_url=external_admin, app_url=app_url)
+        return
+
     with (
         tempfile.TemporaryDirectory(prefix="red2pr_u12_pg_") as tmp_dir,
         pgserver.get_server(tmp_dir, cleanup_mode="delete") as server,

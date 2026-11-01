@@ -334,7 +334,7 @@ from red2pr_control.repositories import (
     RepositoryCatalogService,
     build_repositories_router,
 )
-from red2pr_control.secrets.broker import SecretBroker
+from red2pr_control.secrets.broker import SecretBroker, SecretBrokerOidcAdapter
 from red2pr_control.triage_evidence import (
     ArtifactStoreProtocol,
     TriageEvidenceService,
@@ -1033,7 +1033,9 @@ def create_app(
     app.state.notification_secret_broker = notification_secret_broker
     app.state.relay_secret_broker = effective_relay_secret_broker
     app.state.webhook_relay_runner = webhook_relay_runner
-    app.state.oidc_secret_broker = oidc_secret_broker
+    app.state.oidc_secret_broker = (
+        SecretBrokerOidcAdapter(oidc_secret_broker) if oidc_secret_broker is not None else None
+    )
     app.state.telegram_bot_service = telegram_bot_service
     app.state.audit_checkpoint_store = audit_checkpoint_store
     app.state.audit_checkpoint_keyring = audit_checkpoint_keyring

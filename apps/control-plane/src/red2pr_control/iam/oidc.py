@@ -28,6 +28,7 @@ from py_contracts.iam import NormalizedEmail, WorkspaceRole
 from py_contracts.primitives import new_uuid7
 from red2pr_control.core.egress import EgressPolicyEngine, EgressSafeHttpClient
 from red2pr_control.core.errors import ConflictError, ForbiddenError, UnauthorizedError
+from red2pr_control.core.secret_ports import OidcSecretStore
 from red2pr_control.db.base import (
     ExtensionCapabilityModel,
     InstanceModel,
@@ -51,7 +52,6 @@ from red2pr_control.iam.sessions import (
     set_session_cookie,
     summarize_user_agent,
 )
-from red2pr_control.secrets.broker import IAM_SECRET_CAPABILITY, SecretBroker
 
 _ALLOWED_ALGORITHMS = {"RS256", "ES256"}
 _WORKSPACE_ROLES = {"admin", "maintainer", "reviewer", "viewer", "auditor"}
@@ -241,10 +241,10 @@ class OidcGroupMappingSummary(BaseModel):
     enabled: bool
 
 
-def _oidc_dependencies(request: Request) -> tuple[IamService, SecretBroker]:
+def _oidc_dependencies(request: Request) -> tuple[IamService, OidcSecretStore]:
     iam = getattr(request.app.state, "iam_service", None)
     broker = getattr(request.app.state, "oidc_secret_broker", None)
-    if not isinstance(iam, IamService) or not isinstance(broker, SecretBroker):
+    if not isinstance(iam, IamService) or not isinstance(broker, OidcSecretStore):
         raise ForbiddenError(
             code="oidc_unconfigured",
             detail="OIDC federation is not configured on this instance.",
@@ -376,9 +376,7 @@ async def _sync_group_memberships(
     # Keep one independently managed admin so IdP group loss can always remove an
     # OIDC-owned admin grant without violating the existing last-admin invariant.
     for workspace_id in sorted(
-        workspace_id
-        for workspace_id, mapping in desired.items()
-        if mapping.role == "admin"
+        workspace_id for workspace_id, mapping in desired.items() if mapping.role == "admin"
     ):
         await db.execute(
             text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
@@ -552,10 +550,9 @@ def build_oidc_router() -> APIRouter:
                 .where(OidcProviderModel.id == provider_id)
                 .with_for_update()
             )
-            metadata = await broker.store_secret(
+            metadata = await broker.store_client_secret(
                 db,
                 plaintext=body.client_secret.get_secret_value().encode(),
-                purpose="oidc_client",
                 secret_ref=f"oidc-client-{provider_id}-{secrets.token_hex(8)}",
                 now=iam.now(),
             )
@@ -576,7 +573,9 @@ def build_oidc_router() -> APIRouter:
                 )
                 db.add(row)
             else:
-                await broker.revoke_secret(db, secret_ref=existing.client_secret_ref, now=iam.now())
+                await broker.revoke_client_secret(
+                    db, secret_ref=existing.client_secret_ref, now=iam.now()
+                )
                 existing.issuer = issuer
                 existing.client_id = body.client_id
                 existing.client_secret_ref = metadata.secret_ref
@@ -811,7 +810,9 @@ def build_oidc_router() -> APIRouter:
                 user.updated_at = iam.now()
                 await _revoke_user_sessions(db, user_id=user.id, now=iam.now())
             if provider.client_secret_ref:
-                await broker.revoke_secret(db, secret_ref=provider.client_secret_ref, now=iam.now())
+                await broker.revoke_client_secret(
+                    db, secret_ref=provider.client_secret_ref, now=iam.now()
+                )
             provider.status = "disabled"
             provider.updated_at = iam.now()
             from red2pr_control.analytics_audit.audit_chain import append_audit_entry
@@ -980,9 +981,7 @@ def build_oidc_router() -> APIRouter:
             )
             txn.consumed_at = iam.now()
         async with instance_rls_session(iam.session_factory, mode="instance_admin") as db:
-            secret = await broker.resolve_secret_bytes(
-                db, secret_ref=provider_snapshot[2], capability=IAM_SECRET_CAPABILITY
-            )
+            secret = await broker.resolve_client_secret(db, secret_ref=provider_snapshot[2])
         token_url = provider_snapshot[3]
         basic = base64.b64encode(
             f"{quote_plus(provider_snapshot[1])}:{quote_plus(secret.decode())}".encode()

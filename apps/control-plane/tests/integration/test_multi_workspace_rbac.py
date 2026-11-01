@@ -1031,7 +1031,22 @@ async def test_invite_single_use_race_wrong_email_expiry_last_admin_race_and_adm
                 headers=_csrf_headers(intended_csrf),
             ),
         )
-        assert sorted([del_a1.status_code, del_a2.status_code]) == [204, 409]
+        # If the first request removes the second caller's membership, that caller's
+        # follow-up request is intentionally hidden as 404. Otherwise the last-admin
+        # guard rejects it as 409. In either ordering, exactly one admin remains.
+        assert sorted([del_a1.status_code, del_a2.status_code]) in ([204, 404], [204, 409])
+        async with workspace_rls_session(
+            iam.session_factory, workspace_id=ws_a["id"]
+        ) as workspace_db:
+            remaining_admins = list(
+                await workspace_db.scalars(
+                    select(MembershipModel).where(
+                        MembershipModel.workspace_id == ws_a["id"],
+                        MembershipModel.role == "admin",
+                    )
+                )
+            )
+        assert len(remaining_admins) == 1
 
         # 6. Non-owner workspace admin CANNOT disable mandatory TOTP MFA (ADR-034)
         admin2_pwd = "AdminTwoSup3rStr0ng!Pass#26"

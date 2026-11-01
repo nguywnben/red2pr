@@ -1,0 +1,28 @@
+All checks passed!
+10 files already formatted
+
+╔══╗─────────▶╔╗ ╔╗      ╔╗◀───┐
+╚╣╠╝◀─────┐  ╔╝╚╗║║────▶╔╝╚╗   │
+ ║║   ╔══╦══╦╩╗╔╝║║  ╔╦═╩╗╔╝╔═╦══╗
+ ║║╔══╣╔╗║╔╗║╔╣║ ║║ ╔╬╣╔╗║║ ║│║╔═╝
+╔╣╠╣║║║╚╝║╚╝║║║╚╗║╚═╝║║║║║╚╗║═╣║
+╚══╩╩╩╣╔═╩══╩╝╚═╝╚═══╩╩╝╚╩═╩╩═╩╝
+  └──▶║║                    ▲
+      ╚╝────────────────────┘
+
+
+---------
+Contracts
+---------
+
+Analyzed 223 files, 1919 dependencies.
+--------------------------------------
+
+Canonical contracts remain pure and independent of runtime apps KEPT
+Isolated Z3 worker supervisor never imports control-plane or ORM internals KEPT
+Z1 orchestrator, verifier, db, audit, iam, operations, integrations,
+repositories and triage_evidence never directly import Z2 raw secret, publisher
+or inference brokers KEPT
+Operator CLI never directly imports Z2 secret broker or Z3 worker runtime KEPT
+
+Contracts: 4 kept, 0 broken.

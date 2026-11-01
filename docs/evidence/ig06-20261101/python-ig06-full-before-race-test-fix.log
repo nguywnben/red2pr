@@ -1,0 +1,230 @@
+........................................................................ [ 18%]
+........................................................................ [ 36%]
+.....F.................................................................. [ 54%]
+........................................................................ [ 72%]
+........................................................................ [ 90%]
+.......................................                                  [100%]
+=================================== FAILURES ===================================
+_ test_invite_single_use_race_wrong_email_expiry_last_admin_race_and_admin_mfa_policy _
+
+migrated_db = PgTestUrls(admin_url='postgresql+psycopg://<redacted>@10.89.1.17:5432/postgres', app_url='postgresql+psycopg://<redacted>@10.89.1.17:5432/postgres')
+
+    async def test_invite_single_use_race_wrong_email_expiry_last_admin_race_and_admin_mfa_policy(
+        migrated_db: PgTestUrls,
+    ) -> None:
+        """Verify SEC-038 invite races/email/TTL, W-01 last_admin races & admin MFA policy."""
+        clock = ManualClock()
+        app_engine, iam = _build_iam_stack(migrated_db.app_url, clock=clock)
+        app = create_app(iam_service=iam)
+        transport = httpx.ASGITransport(app=app)
+
+        clients_to_close: list[httpx.AsyncClient] = []
+        try:
+            owner_client, owner_csrf, _ = await _claim_owner_client(transport, iam)
+            clients_to_close.append(owner_client)
+
+            ws_a = (
+                await owner_client.post(
+                    "/api/v1/workspaces",
+                    headers=_csrf_headers(owner_csrf),
+                    json={"name": "Race Guard A", "slug": "race-a"},
+                )
+            ).json()
+            ws_b = (
+                await owner_client.post(
+                    "/api/v1/workspaces",
+                    headers=_csrf_headers(owner_csrf),
+                    json={"name": "Race Guard B", "slug": "race-b"},
+                )
+            ).json()
+
+            # 1. Wrong-email acceptance -> 403 invite_email_mismatch (SEC-038)
+            inv_resp = await owner_client.post(
+                "/api/v1/workspaces/race-a/invitations",
+                headers=_csrf_headers(owner_csrf),
+                json={"email": "intended@red2pr.local", "role": "reviewer"},
+            )
+            raw_tok = inv_resp.json()["invite_token"]
+
+            attacker_client, attacker_csrf, _ = await _provision_and_login_client(
+                transport,
+                iam,
+                email="attacker@red2pr.local",
+                display_name="Attacker Mallory",
+            )
+            clients_to_close.append(attacker_client)
+
+            mismatch_resp = await attacker_client.post(
+                "/api/v1/invitations/accept",
+                headers=_csrf_headers(attacker_csrf),
+                json={"token": raw_tok},
+            )
+            assert mismatch_resp.status_code == 403
+            assert mismatch_resp.json()["code"] == "invite_email_mismatch"
+
+            # 2. Simultaneous single-use invite redemption race -> 1x 200 + 1x 409 (SEC-038)
+            intended_client, intended_csrf, _ = await _provision_and_login_client(
+                transport,
+                iam,
+                email="intended@red2pr.local",
+                display_name="Intended User",
+            )
+            clients_to_close.append(intended_client)
+
+            r1, r2 = await asyncio.gather(
+                intended_client.post(
+                    "/api/v1/invitations/accept",
+                    headers=_csrf_headers(intended_csrf),
+                    json={"token": raw_tok},
+                ),
+                intended_client.post(
+                    "/api/v1/invitations/accept",
+                    headers=_csrf_headers(intended_csrf),
+                    json={"token": raw_tok},
+                ),
+            )
+            race_statuses = sorted([r1.status_code, r2.status_code])
+            assert race_statuses == [200, 409]
+
+            # 3. Expired invitation -> 410 invite_expired
+            exp_inv = (
+                await owner_client.post(
+                    "/api/v1/workspaces/race-a/invitations",
+                    headers=_csrf_headers(owner_csrf),
+                    json={
+                        "email": "late@red2pr.local",
+                        "role": "viewer",
+                        "expires_at": (clock() + timedelta(minutes=10)).isoformat(),
+                    },
+                )
+            ).json()
+            late_client, late_csrf, _ = await _provision_and_login_client(
+                transport,
+                iam,
+                email="late@red2pr.local",
+                display_name="Late User",
+            )
+            clients_to_close.append(late_client)
+            clock.advance(minutes=11)
+            exp_accept = await late_client.post(
+                "/api/v1/invitations/accept",
+                headers=_csrf_headers(late_csrf),
+                json={"token": exp_inv["invite_token"]},
+            )
+            assert exp_accept.status_code == 410
+            assert exp_accept.json()["code"] == "invite_expired"
+
+            # 4. Cross-workspace S-04 cursor & cross-workspace repository_grants isolation (SEC-032)
+            ws_a_page1 = (
+                await owner_client.get("/api/v1/workspaces/race-a/members", params={"limit": 1})
+            ).json()
+            assert ws_a_page1["next_cursor"] is not None
+            foreign_cursor_resp = await owner_client.get(
+                "/api/v1/workspaces/race-b/members",
+                params={"cursor": ws_a_page1["next_cursor"]},
+            )
+            assert foreign_cursor_resp.status_code == 400
+            assert foreign_cursor_resp.json()["code"] == "invalid_cursor"
+
+            # Grant repo_only_a in ws_a, then attempt to grant repo_only_a inside ws_b -> 404
+            repo_only_a = new_uuid7(now=clock())
+            intended_mem_a = next(
+                m
+                for m in (await owner_client.get("/api/v1/workspaces/race-a/members")).json()["items"]
+                if m["role"] == "reviewer"
+            )
+            grant_a_ok = await owner_client.patch(
+                f"/api/v1/workspaces/race-a/members/{intended_mem_a['id']}",
+                headers=_csrf_headers(owner_csrf),
+                json={"repository_grants": [repo_only_a]},
+            )
+            assert grant_a_ok.status_code == 200
+
+            # Intended user's prior S-04 cursor in ws_a becomes 410 cursor_expired on grant_epoch bump
+            intended_page = (
+                await intended_client.get("/api/v1/workspaces/race-a/members", params={"limit": 1})
+            ).json()
+            stale_cursor = intended_page["next_cursor"]
+            assert stale_cursor is not None
+            await owner_client.patch(
+                f"/api/v1/workspaces/race-a/members/{intended_mem_a['id']}",
+                headers=_csrf_headers(owner_csrf),
+                json={"role": "maintainer"},
+            )
+            stale_cursor_resp = await intended_client.get(
+                "/api/v1/workspaces/race-a/members",
+                params={"cursor": stale_cursor, "limit": 1},
+            )
+            assert stale_cursor_resp.status_code == 410
+            assert stale_cursor_resp.json()["code"] == "cursor_expired"
+
+            cross_repo_inv = await owner_client.post(
+                "/api/v1/workspaces/race-b/invitations",
+                headers=_csrf_headers(owner_csrf),
+                json={
+                    "email": "attacker@red2pr.local",
+                    "role": "viewer",
+                    "repository_grants": [repo_only_a],
+                },
+            )
+            assert cross_repo_inv.status_code == 404
+            assert cross_repo_inv.json()["code"] == "repository_not_found"
+
+            # 5. Sole last_admin demotion & deletion -> 409 last_admin, plus concurrent 2-admin race!
+            ws_b_members = (await owner_client.get("/api/v1/workspaces/race-b/members")).json()["items"]
+            sole_admin_mem = ws_b_members[0]
+            demote_sole = await owner_client.patch(
+                f"/api/v1/workspaces/race-b/members/{sole_admin_mem['id']}",
+                headers=_csrf_headers(owner_csrf),
+                json={"role": "viewer"},
+            )
+            assert demote_sole.status_code == 409
+            assert demote_sole.json()["code"] == "last_admin"
+
+            delete_sole = await owner_client.delete(
+                f"/api/v1/workspaces/race-b/members/{sole_admin_mem['id']}",
+                headers=_csrf_headers(owner_csrf),
+            )
+            assert delete_sole.status_code == 409
+            assert delete_sole.json()["code"] == "last_admin"
+
+            # Promote a second admin in ws_a, then race two concurrent DELETEs against both admins!
+            promote_second = await owner_client.patch(
+                f"/api/v1/workspaces/race-a/members/{intended_mem_a['id']}",
+                headers=_csrf_headers(owner_csrf),
+                json={"role": "admin"},
+            )
+            assert promote_second.status_code == 200
+
+            ws_a_admins = [
+                m
+                for m in (await owner_client.get("/api/v1/workspaces/race-a/members")).json()["items"]
+                if m["role"] == "admin"
+            ]
+            assert len(ws_a_admins) == 2
+
+            del_a1, del_a2 = await asyncio.gather(
+                owner_client.delete(
+                    f"/api/v1/workspaces/race-a/members/{ws_a_admins[0]['id']}",
+                    headers=_csrf_headers(owner_csrf),
+                ),
+                intended_client.delete(
+                    f"/api/v1/workspaces/race-a/members/{ws_a_admins[1]['id']}",
+                    headers=_csrf_headers(intended_csrf),
+                ),
+            )
+>           assert sorted([del_a1.status_code, del_a2.status_code]) == [204, 409]
+E           assert [204, 404] == [204, 409]
+E
+E             At index 1 diff: 404 != 409
+E             Use -v to get more diff
+
+apps/control-plane/tests/integration/test_multi_workspace_rbac.py:1034: AssertionError
+=============================== warnings summary ===============================
+../work/.venv/lib/python3.12/site-packages/platformdirs/api.py:459
+  /work/.venv/lib/python3.12/site-packages/platformdirs/api.py:459: RuntimeDirWarning: XDG_RUNTIME_DIR is not set, falling back to /tmp/runtime-0
+    return Path(self.user_runtime_dir)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED apps/control-plane/tests/integration/test_multi_workspace_rbac.py::test_invite_single_use_race_wrong_email_expiry_last_admin_race_and_admin_mfa_policy

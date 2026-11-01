@@ -13,15 +13,11 @@ Implements docs/14_SECURITY_IDENTITY.md and docs/40_EXECUTION_MASTER_PLAN.md (U0
 
 from __future__ import annotations
 
-import base64
-import binascii
-import json
 import os
 import secrets
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, Literal, cast, get_args
 
 from pydantic import StrictBool
@@ -51,7 +47,9 @@ from red2pr_control.core.errors import (
     ForbiddenError,
     NotFoundError,
 )
+from red2pr_control.core.keyring import load_master_key_ring_from_file
 from red2pr_control.core.redaction import DEFAULT_REDACTOR, MIN_CANARY_LENGTH, Redactor
+from red2pr_control.core.secret_ports import OidcSecretStore
 from red2pr_control.db.base import SecretEntryModel, SecretKeyringStateModel, WorkspaceModel
 from red2pr_control.db.rls import instance_rls_session
 from red2pr_control.secrets.rotation import RotationDrain
@@ -124,91 +122,6 @@ class SecretMetadata(StrictContractModel):
     revoked_at: UtcTimestamp | None = None
     created_at: UtcTimestamp
     updated_at: UtcTimestamp
-
-
-def _decode_32byte_key_material(raw: str | bytes) -> bytes:
-    if isinstance(raw, bytes):
-        if len(raw) == 32:
-            return raw
-        text_val = raw.decode("ascii", errors="strict").strip()
-    else:
-        text_val = raw.strip()
-
-    if len(text_val) == 64:
-        try:
-            decoded_hex = bytes.fromhex(text_val)
-            if len(decoded_hex) == 32:
-                return decoded_hex
-        except ValueError:
-            pass
-
-    try:
-        padded = text_val + "=" * ((4 - (len(text_val) % 4)) % 4)
-        decoded_b64 = base64.b64decode(padded.encode("ascii"), validate=False)
-        if len(decoded_b64) == 32:
-            return decoded_b64
-    except (ValueError, binascii.Error):
-        pass
-
-    raise ValueError("Master key material must decode to exactly 32 bytes (256 bits)")
-
-
-def load_master_key_ring_from_file(
-    path: Path | str | None = None,
-    *,
-    env: Mapping[str, str] | None = None,
-) -> MasterKeyRing:
-    """Load versioned 256-bit MasterKeyRing from external file or RED2PR_MASTER_KEY_FILE."""
-    effective_env = env if env is not None else os.environ
-    resolved_target = (
-        Path(path)
-        if path is not None
-        else (
-            Path(effective_env["RED2PR_MASTER_KEY_FILE"])
-            if effective_env.get("RED2PR_MASTER_KEY_FILE")
-            else None
-        )
-    )
-    if resolved_target is None or not resolved_target.is_file():
-        raise DependencyUnavailableError(
-            code="master_key_unavailable",
-            detail=(
-                "External master encryption key file is missing or unconfigured; "
-                "cannot unwrap or seal secrets."
-            ),
-        )
-
-    try:
-        raw_bytes = resolved_target.read_bytes()
-    except OSError as exc:
-        raise DependencyUnavailableError(
-            code="master_key_unavailable",
-            detail="External master encryption key file could not be read.",
-        ) from exc
-
-    if len(raw_bytes) == 32:
-        return MasterKeyRing(active_version=1, keys={1: raw_bytes})
-
-    try:
-        text_content = raw_bytes.decode("utf-8").strip()
-        if text_content.startswith("{"):
-            parsed = json.loads(text_content)
-            active_ver = int(parsed["active_version"])
-            raw_keys = parsed["keys"]
-            if not isinstance(raw_keys, Mapping) or not raw_keys:
-                raise ValueError("Empty keys mapping")
-            keys_map = {
-                int(ver_str): _decode_32byte_key_material(str(mat))
-                for ver_str, mat in raw_keys.items()
-            }
-            return MasterKeyRing(active_version=active_ver, keys=keys_map)
-        single_key = _decode_32byte_key_material(text_content)
-        return MasterKeyRing(active_version=1, keys={1: single_key})
-    except Exception as exc:
-        raise DependencyUnavailableError(
-            code="master_key_unavailable",
-            detail="External master encryption key file has invalid format or key length.",
-        ) from exc
 
 
 def _build_aad_context(
@@ -700,6 +613,41 @@ class SecretBroker:
             row.version += 1
             await session.flush()
         return _row_to_metadata(row)
+
+
+class SecretBrokerOidcAdapter(OidcSecretStore):
+    """Expose only the `oidc_client` capability required by IAM federation."""
+
+    def __init__(self, broker: SecretBroker) -> None:
+        self._broker = broker
+
+    async def store_client_secret(
+        self,
+        session: AsyncSession,
+        *,
+        plaintext: bytes,
+        secret_ref: str,
+        now: datetime,
+    ) -> SecretMetadata:
+        return await self._broker.store_secret(
+            session,
+            plaintext=plaintext,
+            purpose="oidc_client",
+            secret_ref=secret_ref,
+            now=now,
+        )
+
+    async def revoke_client_secret(
+        self, session: AsyncSession, *, secret_ref: str, now: datetime
+    ) -> None:
+        await self._broker.revoke_secret(session, secret_ref=secret_ref, now=now)
+
+    async def resolve_client_secret(self, session: AsyncSession, *, secret_ref: str) -> bytes:
+        return await self._broker.resolve_secret_bytes(
+            session,
+            secret_ref=secret_ref,
+            capability=IAM_SECRET_CAPABILITY,
+        )
 
 
 class SecretBrokerTotpVault:

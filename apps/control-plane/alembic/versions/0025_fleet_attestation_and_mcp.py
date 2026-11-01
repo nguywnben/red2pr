@@ -206,6 +206,11 @@ def downgrade() -> None:
     op.drop_table("worker_trust_domains")
     op.drop_table("worker_attestations")
     _replace_auth_rate_action_check(includes_mcp=True)
+    # MCP counters are transient rate-limit buckets. Remove values introduced by this
+    # revision before restoring the narrower parent check constraint.
+    op.execute(
+        sa.text("DELETE FROM public.auth_rate_limits WHERE action IN ('mcp_read', 'mcp_intent')")
+    )
     op.create_check_constraint(
         op.f("ck_auth_rate_limits_ck_auth_rate_limits_auth_rate_action_valid"),
         "auth_rate_limits",
