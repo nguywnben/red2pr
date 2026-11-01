@@ -280,6 +280,7 @@ from red2pr_control.core.logging import (
     get_structured_logger,
 )
 from red2pr_control.core.telemetry import configure_telemetry, extract_trace_context
+from red2pr_control.extensions.mcp_adapter import build_mcp_router
 from red2pr_control.extensions.router import build_extensions_router
 from red2pr_control.extensions.webhook_relay import CustomerWebhookRelayRunner
 from red2pr_control.iam.api_tokens import build_api_tokens_router
@@ -978,6 +979,9 @@ def create_app(
     if meta_inference_service is not None and setup_step_registry is not None:
         meta_inference_service.register_setup_probe(setup_step_registry)
     app.state.iam_service = iam_service
+    app.state.mcp_extension_enabled = (
+        os.environ.get("RED2PR_MCP_ENABLED", "false").strip().lower() == "true"
+    )
     app.state.setup_wizard_service = setup_wizard_service
     app.state.setup_step_registry = setup_step_registry
     app.state.task_queue_service = task_queue_service
@@ -1051,6 +1055,7 @@ def create_app(
 
     app.include_router(system_router)
     app.include_router(build_extensions_router())
+    app.include_router(build_mcp_router())
     app.include_router(build_iam_router())
     app.include_router(build_oidc_router())
     app.include_router(build_api_tokens_router())

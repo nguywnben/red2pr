@@ -774,6 +774,8 @@ ApiTokenScope = Literal[
     "integrations:read",
     "integrations:write",
     "events:read",
+    "mcp:read",
+    "mcp:intent:create",
 ]
 
 

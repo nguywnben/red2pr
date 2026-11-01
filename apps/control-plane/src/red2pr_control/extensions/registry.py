@@ -38,6 +38,7 @@ def list_capabilities(
     *,
     oidc_status: CapabilityStatus | None = None,
     oidc_reason: str | None = None,
+    mcp_enabled: bool = False,
 ) -> tuple[ExtensionCapability, ...]:
     """Return a stable capability list; OIDC is enabled only when an active provider exists."""
     resolved_status = oidc_status or ("enabled" if configured_oidc_providers else "not_configured")
@@ -46,5 +47,12 @@ def list_capabilities(
     )
     return (
         ExtensionCapability("iam-03-oidc", resolved_status, resolved_reason),
-        *_DEFAULT_CAPABILITIES[1:],
+        _DEFAULT_CAPABILITIES[1],
+        _DEFAULT_CAPABILITIES[2],
+        _DEFAULT_CAPABILITIES[3],
+        ExtensionCapability(
+            "ext-02-mcp",
+            "enabled" if mcp_enabled else "disabled",
+            "enabled_by_instance_config" if mcp_enabled else "feature_disabled",
+        ),
     )

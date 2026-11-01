@@ -24,7 +24,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, cast
 
 from pydantic import TypeAdapter, ValidationError
-from sqlalchemy import Select, and_, func, or_, select, text
+from sqlalchemy import Select, and_, func, literal, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -438,6 +438,8 @@ class DurableTaskQueueService:
         now: datetime,
         lease_ttl: timedelta | None = None,
         allowed_kinds: Collection[str] | None = None,
+        worker_trust_domain: str | None = None,
+        worker_multi_tenant_hardened: bool | None = None,
     ) -> LeasedTaskJob | None:
         """Select and lease the next eligible job using deficit watermark fairness (`NFR-05`)."""
         ref_now = now.astimezone(UTC)
@@ -509,6 +511,8 @@ class DurableTaskQueueService:
                 ref_now=ref_now,
                 lease_ttl=eff_ttl,
                 kind_filter=kind_list,
+                worker_trust_domain=worker_trust_domain,
+                worker_multi_tenant_hardened=worker_multi_tenant_hardened,
             )
             if leased is not None:
                 return leased
@@ -523,6 +527,8 @@ class DurableTaskQueueService:
         ref_now: datetime,
         lease_ttl: timedelta,
         kind_filter: list[str],
+        worker_trust_domain: str | None,
+        worker_multi_tenant_hardened: bool | None,
     ) -> LeasedTaskJob | None:
         async with workspace_rls_session(self._session_factory, workspace_id=workspace_id) as db:
             await db.execute(
@@ -566,6 +572,21 @@ class DurableTaskQueueService:
                     job_stmt = job_stmt.where(TaskJobModel.is_repair_job.is_(False))
                 if kind_filter:
                     job_stmt = job_stmt.where(TaskJobModel.kind.in_(kind_filter))
+                if worker_trust_domain is not None:
+                    requires_hardened = func.coalesce(
+                        TaskJobModel.payload_json["requires_vm_isolation"].as_boolean(),
+                        False,
+                    )
+                    required_domain = TaskJobModel.payload_json["required_trust_domain"].as_string()
+                    eligible_domain = or_(
+                        requires_hardened.is_(False),
+                        and_(
+                            requires_hardened.is_(True),
+                            required_domain == worker_trust_domain,
+                            literal(worker_multi_tenant_hardened is True),
+                        ),
+                    )
+                    job_stmt = job_stmt.where(eligible_domain)
 
                 job_stmt = (
                     job_stmt.order_by(

@@ -793,6 +793,7 @@ class AuthRateLimitModel(Base):
             "action IN ("
             "'login', 'step_up', 'recovery', 'bootstrap_claim', 'mfa_verify', "
             "'invite_create', 'invite_accept'"
+            ", 'mcp_read', 'mcp_intent'"
             ")",
             name="auth_rate_action_valid",
         ),
@@ -823,6 +824,109 @@ class ExtensionCapabilityModel(Base):
     reason: Mapped[str] = mapped_column(String(120), nullable=False)
     probed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class McpApprovalIntentModel(Base):
+    """One-use, short-lived web approval intents created by scoped MCP tools."""
+
+    __tablename__ = "mcp_approval_intents"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_mcp_approval_intents_workspace_id_id"),
+        UniqueConstraint("token_hash", name="uq_mcp_approval_intents_token_hash"),
+        UniqueConstraint(
+            "workspace_id",
+            "principal_id",
+            "idempotency_key",
+            name="uq_mcp_approval_intents_idempotency",
+        ),
+        CheckConstraint("kind = 'request_recheck'", name="mcp_intent_kind_valid"),
+        CheckConstraint(
+            "state IN ('pending','approved','consumed','expired','cancelled')",
+            name="mcp_intent_state_valid",
+        ),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["principal_id"], ["users.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["workspace_id", "repository_id"],
+            ["repositories.workspace_id", "repositories.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "repair_id"],
+            ["repair_sessions.workspace_id", "repair_sessions.id"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_mcp_intents_pending", "workspace_id", "state", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repository_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    repair_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    principal_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    kind: Mapped[str] = mapped_column(String(48), nullable=False, default="request_recheck")
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    state: Mapped[str] = mapped_column(String(24), nullable=False, default="pending")
+    token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    result_repair_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class WorkerAttestationModel(Base):
+    """Latest verified runtime self-test report bound to an enrolled worker."""
+
+    __tablename__ = "worker_attestations"
+    __table_args__ = (
+        CheckConstraint(
+            "backend IN ('oci_rootless','gvisor_runsc','ephemeral_vm')",
+            name="worker_attestation_backend_valid",
+        ),
+        CheckConstraint(
+            "self_test_digest ~ '^[0-9a-f]{64}$'", name="worker_attestation_digest_valid"
+        ),
+        ForeignKeyConstraint(["worker_id"], ["workers.id"], ondelete="CASCADE"),
+    )
+
+    worker_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    backend: Mapped[str] = mapped_column(String(32), nullable=False)
+    kernel_version: Mapped[str] = mapped_column(String(120), nullable=False)
+    runtime_version: Mapped[str] = mapped_column(String(120), nullable=False)
+    checks_json: Mapped[dict[str, bool]] = mapped_column(JSONB, nullable=False, default=dict)
+    self_test_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    multi_tenant_hardened: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class WorkerTrustDomainModel(Base):
+    """Workspace-approved trust-domain membership for enrolled fleet workers."""
+
+    __tablename__ = "worker_trust_domains"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "worker_id", name="uq_worker_trust_domains_ws_worker"),
+        UniqueConstraint(
+            "workspace_id", "trust_domain", "worker_id", name="uq_worker_trust_domains_scope"
+        ),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["worker_id"], ["workers.id"], ondelete="CASCADE"),
+        Index("ix_worker_trust_domains_domain", "workspace_id", "trust_domain"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    worker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    trust_domain: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
 
@@ -5278,7 +5382,7 @@ class ModelFallbackPolicyModel(Base):
         ),
         CheckConstraint(
             "jsonb_typeof(trigger_conditions_json) = 'array' AND "
-            "trigger_conditions_json <@ '[\"429\",\"503\",\"capability_unavailable\"]'::jsonb",
+            'trigger_conditions_json <@ \'["429","503","capability_unavailable"]\'::jsonb',
             name="model_fallback_triggers_valid",
         ),
         CheckConstraint(

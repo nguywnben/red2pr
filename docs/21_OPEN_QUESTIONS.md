@@ -7,7 +7,7 @@
 | OQ-03 | GitLab signing token, project/group-level API version differences? | verify per supported GitLab version | supported GitLab test matrix and API doc |
 | OQ-04 | Docker Desktop licensing/WSL2/reboot requirement? | installer warns and guides | OS/enterprise policy evaluation and tests |
 | OQ-05 | Final Linux/macOS/Windows versions and RAM footprint? | do not advertise broad matrix | performance benchmark, QA hardware |
-| OQ-06 | Default isolation for remote multi-tenant customer repos? | separate worker VM mandatory | independent security review and threat testing |
+| OQ-06 | Default isolation for remote multi-tenant customer repos? | **DESIGN RESOLVED by ADR-039/ADR-034:** untrusted jobs require an eligible isolated worker and exact trust-domain match; U33 still owns host certification and support claims | deterministic scheduler/attestation tests in U30; independent runtime certification in U33 |
 | OQ-07 | Required GDPR/privacy region and Meta inference retention? | explicit owner consent per repo | provider terms, privacy counsel if selling B2B |
 | OQ-08 | Telegram bot per instance vs shared SaaS bot? | per-instance operator-managed bot | licensing/support/secure identity design |
 | OQ-09 | Public relay availability/business model? | **RESOLVED by ADR-049:** optional customer-operated relay only; disabled by default; no Red2PR-operated multi-tenant relay in v1.0.0 | Accepted by Owner on 2026-11-01 under CR-007 |
@@ -23,6 +23,7 @@
 | OQ-19 | Astryx Beta compatibility, React 19 peer deps and TS imports? | pin tested Astryx release and wrapper API | run official Vite example + a11y/browser suites; record version |
 | OQ-20 | Does Astryx CLI init alter root AGENTS.md? | never permit overwrite without merge-review | test in disposable working tree, preserve operating contract |
 | OQ-21 | Candidate production v1.0.0 scope and support tiers after product audit? | P0 release required, P1 implemented only if verified; explicit gating | owner signs revised catalog and release matrix |
+| OQ-22 | Exact public U30 MCP transport, tool schemas, scopes, and migration revision after the planned `0016` collision? | **RESOLVED by ADR-050 (`CR-008`):** MCP `2025-11-25`, five named scoped tools, disabled-by-default W-10, and Alembic `0025` after `0024` | Owner approved 2026-11-01; enablement remains explicit W-10 configuration |
 
 ## Risk register (initial priority)
 | Severity | Risk | Mitigation design | Status |

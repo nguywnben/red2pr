@@ -75,6 +75,8 @@ _ROLE_SCOPES: dict[str, frozenset[str]] = {
             "integrations:read",
             "integrations:write",
             "events:read",
+            "mcp:read",
+            "mcp:intent:create",
         }
     ),
     "maintainer": frozenset(
@@ -85,14 +87,18 @@ _ROLE_SCOPES: dict[str, frozenset[str]] = {
             "repairs:write",
             "integrations:read",
             "events:read",
+            "mcp:read",
+            "mcp:intent:create",
         }
     ),
     "reviewer": frozenset(
-        {"notifications:read", "repairs:read", "integrations:read", "events:read"}
+        {"notifications:read", "repairs:read", "integrations:read", "events:read", "mcp:read"}
     ),
-    "viewer": frozenset({"notifications:read", "repairs:read", "integrations:read", "events:read"}),
+    "viewer": frozenset(
+        {"notifications:read", "repairs:read", "integrations:read", "events:read", "mcp:read"}
+    ),
     "auditor": frozenset(
-        {"notifications:read", "repairs:read", "integrations:read", "events:read"}
+        {"notifications:read", "repairs:read", "integrations:read", "events:read", "mcp:read"}
     ),
 }
 

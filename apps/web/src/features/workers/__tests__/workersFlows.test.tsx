@@ -222,6 +222,7 @@ function buildFleetPayload(): Record<string, unknown> {
           seccomp: true,
           no_new_privileges: true,
           rootless: true,
+          multi_tenant_hardened: true,
         },
         heartbeat_at: NOW_ISO,
         status: "online",
@@ -450,6 +451,13 @@ describe("UI-S13 Workers & Sandbox Fleet flows (U14)", () => {
     expect(
       screen.getByText(`spiffe://worker-supervisor/ns/sandbox/worker/${WORKER_VM_ID}`),
     ).toBeInTheDocument();
+    expect(screen.getByText("Hardened runtime attested")).toBeInTheDocument();
+    const fleetPanels = screen.getAllByTestId("fleet-trust-domain-panel");
+    expect(fleetPanels).toHaveLength(2);
+    expect(fleetPanels.every((panel) => panel.textContent?.includes("worker-supervisor"))).toBe(
+      true,
+    );
+    expect(screen.getByText("Hardened runtime not verified")).toBeInTheDocument();
 
     // SEC-040: Bidi override U+202E and ANSI escape \u001b[31m MUST be stripped from rendered DOM!
     expect(container.textContent).not.toContain("\u202E");

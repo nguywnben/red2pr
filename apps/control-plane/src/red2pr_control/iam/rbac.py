@@ -384,6 +384,8 @@ _API_TOKEN_ACTION_SCOPES: dict[str, str] = {
     "integration.read": "integrations:read",
     "integration.mutate": "integrations:write",
     "sse.subscribe": "events:read",
+    "mcp.read": "mcp:read",
+    "mcp.intent.create": "mcp:intent:create",
 }
 
 

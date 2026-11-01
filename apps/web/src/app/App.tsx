@@ -39,6 +39,7 @@ const RepairDetailPage = lazy(() => import("../features/repairs").then((module) 
 const RepairsListPage = lazy(() => import("../features/repairs").then((module) => ({ default: module.RepairsListPage })));
 const ApprovalsInboxPage = lazy(() => import("../features/approvals").then((module) => ({ default: module.ApprovalsInboxPage })));
 const TelegramIntentConfirmPage = lazy(() => import("../features/approvals/TelegramIntentConfirmPage").then((module) => ({ default: module.TelegramIntentConfirmPage })));
+const McpIntentConfirmPage = lazy(() => import("../features/approvals/McpIntentConfirmPage").then((module) => ({ default: module.McpIntentConfirmPage })));
 const PullRequestsPage = lazy(() => import("../features/prs").then((module) => ({ default: module.PullRequestsPage })));
 const NotificationsPage = lazy(() => import("../features/notifications").then((module) => ({ default: module.NotificationsPage })));
 const AnalyticsPage = lazy(() => import("../features/analytics/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
@@ -616,6 +617,7 @@ export function AppRoutes(): React.JSX.Element {
         <Route path="/integrations/github/callback" element={<GitHubCallbackRedirectRoute />} />
         <Route path="/account" element={<AccountRouteShell />} />
         <Route path="/telegram/confirm" element={<TelegramIntentConfirmPage />} />
+        <Route path="/mcp/approval" element={<McpIntentConfirmPage />} />
         <Route path="/system" element={<SystemPage />} />
         <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
         <Route path="/admin/*" element={<AdminRouteShell />} />

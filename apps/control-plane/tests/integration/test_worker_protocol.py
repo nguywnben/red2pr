@@ -88,6 +88,7 @@ from py_contracts.worker import (
     WorkerIsolationMode,
     WorkerJobHeartbeatRequest,
     WorkerPollRequest,
+    runtime_attestation_digest,
 )
 from red2pr_control.analytics_audit.audit_chain import (
     ExternalCheckpointStore,
@@ -402,6 +403,15 @@ def _build_mtls_worker_client(
 
 
 def _vm_attestation(host_id: str = "vm-worker-01.internal") -> WorkerIsolationAttestation:
+    checks = {
+        "runtime_present": True,
+        "guest_network_none": True,
+        "seccomp_verified": True,
+        "no_new_privileges": True,
+        "host_control_plane_unreachable": True,
+    }
+    kernel_version = "6.8.0-test"
+    runtime_version = "firecracker-test"
     return WorkerIsolationAttestation(
         isolation_mode="vm_isolated",
         runtime_name="firecracker",
@@ -414,6 +424,16 @@ def _vm_attestation(host_id: str = "vm-worker-01.internal") -> WorkerIsolationAt
         memory_limit_bytes=8_589_934_592,
         disk_limit_bytes=21_474_836_480,
         pids_limit=512,
+        kernel_version=kernel_version,
+        runtime_version=runtime_version,
+        runtime_backend="ephemeral_vm",
+        isolation_self_test_digest=runtime_attestation_digest(
+            backend="ephemeral_vm",
+            kernel_version=kernel_version,
+            runtime_version=runtime_version,
+            checks=checks,
+        ),
+        runtime_checks=checks,
     )
 
 
@@ -1179,7 +1199,7 @@ async def test_end_to_end_mtls_worker_supervisor_cycle_redaction_and_idempotency
             "/api/v1/system/workers/enrollments",
             headers=_csrf_headers(owner_csrf),
             json={
-                "trust_domain": "worker-supervisor",
+                "trust_domain": ws_id,
                 "profile_ids": ["python-3.12-node-22"],
                 "isolation_mode": "vm_isolated",
                 "ttl_minutes": 30,
@@ -1202,7 +1222,11 @@ async def test_end_to_end_mtls_worker_supervisor_cycle_redaction_and_idempotency
                 cert_reqs=ssl.CERT_REQUIRED,
             ) as strict_mtls_url,
         ):
-            signer = ExternalResultSigner.generate(key_id="ed25519-e2e-01", not_before=clock())
+            signer = ExternalResultSigner.generate(
+                key_id="ed25519-e2e-01",
+                trust_domain=ws_id,
+                not_before=clock(),
+            )
             signer.save_to_directory(tmp_path / "worker_keys")
             async with _build_bootstrap_tls_client(ca_cert_pem, base_url=bootstrap_url) as boot_cli:
                 creds = await WorkerEnroller().enroll(
@@ -1211,6 +1235,7 @@ async def test_end_to_end_mtls_worker_supervisor_cycle_redaction_and_idempotency
                     supported_profiles=["python-3.12-node-22"],
                     signer=signer,
                     attestation=_vm_attestation("vm-e2e-01.internal"),
+                    trust_domain=ws_id,
                     now=clock(),
                 )
             creds.save_to_directory(tmp_path / "worker_state")

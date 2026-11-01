@@ -103,6 +103,7 @@ from py_contracts.worker import (
     WorkerStatus,
     WorkspaceSandboxLeaseSummary,
     WorkspaceWorkerReadinessResponse,
+    runtime_attestation_digest,
 )
 from red2pr_control.analytics_audit.audit_chain import append_audit_entry
 from red2pr_control.core.errors import (
@@ -123,6 +124,7 @@ from red2pr_control.db.base import (
     SecretEntryModel,
     SigningKeyModel,
     TaskJobModel,
+    WorkerAttestationModel,
     WorkerEnrollmentModel,
     WorkerModel,
     WorkspaceModel,
@@ -1452,6 +1454,49 @@ class WorkerBrokerService:
                 code="worker_rootless_or_vm_required",
                 detail=f"Mode {expected_mode!r} requires verified rootless/VM execution.",
             )
+        if att.runtime_backend in {"gvisor_runsc", "ephemeral_vm"}:
+            if (
+                not att.kernel_version
+                or not att.runtime_version
+                or not att.isolation_self_test_digest
+            ):
+                raise UnprocessableEntityError(
+                    code="runtime_attestation_incomplete",
+                    detail="Hardened runtime enrollment requires versioned self-test attestation.",
+                )
+            required_checks = {
+                "runtime_present",
+                "guest_network_none",
+                "seccomp_verified",
+                "no_new_privileges",
+                "host_control_plane_unreachable",
+            }
+            if not required_checks.issubset(att.runtime_checks):
+                raise UnprocessableEntityError(
+                    code="runtime_attestation_incomplete",
+                    detail="Hardened runtime attestation is missing mandatory isolation checks.",
+                )
+            expected_digest = runtime_attestation_digest(
+                backend=att.runtime_backend,
+                kernel_version=att.kernel_version,
+                runtime_version=att.runtime_version,
+                checks=dict(att.runtime_checks),
+            )
+            if not hmac.compare_digest(expected_digest, att.isolation_self_test_digest):
+                raise UnprocessableEntityError(
+                    code="runtime_attestation_digest_invalid",
+                    detail="Hardened runtime self-test digest does not match its report.",
+                )
+            if not all(att.runtime_checks[name] for name in required_checks):
+                raise UnprocessableEntityError(
+                    code="runtime_attestation_failed",
+                    detail="Hardened runtime self-test failed a required isolation check.",
+                )
+            if att.runtime_backend == "ephemeral_vm" and expected_mode != "vm_isolated":
+                raise UnprocessableEntityError(
+                    code="runtime_backend_mode_mismatch",
+                    detail="Ephemeral VM attestation requires vm_isolated enrollment mode.",
+                )
 
     async def enroll_worker(
         self,
@@ -1568,6 +1613,11 @@ class WorkerBrokerService:
                 "no_new_privileges": att.no_new_privileges_verified,
                 "network_none": att.network_none_supported,
                 "external_ed25519_signer": True,
+                "multi_tenant_hardened": bool(
+                    att.runtime_backend in {"gvisor_runsc", "ephemeral_vm"}
+                    and att.isolation_self_test_digest
+                    and all(att.runtime_checks.values())
+                ),
             }
 
             worker_row = WorkerModel(
@@ -1601,6 +1651,35 @@ class WorkerBrokerService:
             )
             db.add(worker_row)
             await db.flush()
+
+            if att.runtime_backend is not None and att.isolation_self_test_digest:
+                required_checks = {
+                    "runtime_present",
+                    "guest_network_none",
+                    "seccomp_verified",
+                    "no_new_privileges",
+                    "host_control_plane_unreachable",
+                }
+                checks_pass = required_checks.issubset(att.runtime_checks) and all(
+                    att.runtime_checks.get(name) is True for name in required_checks
+                )
+                is_hardened_backend = att.runtime_backend in {
+                    "gvisor_runsc",
+                    "ephemeral_vm",
+                }
+                db.add(
+                    WorkerAttestationModel(
+                        worker_id=worker_id,
+                        backend=att.runtime_backend,
+                        kernel_version=att.kernel_version or "unknown",
+                        runtime_version=att.runtime_version or att.runtime_name.strip(),
+                        checks_json=dict(att.runtime_checks),
+                        self_test_digest=att.isolation_self_test_digest,
+                        verified=checks_pass,
+                        multi_tenant_hardened=checks_pass and is_hardened_backend,
+                        observed_at=ref_now,
+                    )
+                )
 
             signer_row = SigningKeyModel(
                 id=new_uuid7(now=ref_now),
@@ -1674,6 +1753,7 @@ class WorkerBrokerService:
         resource_limits: SandboxResourceLimits | None = None,
         allowed_output_slots: Sequence[str] = ("stdout", "stderr", "junit_xml"),
         requires_vm_isolation: bool = False,
+        required_trust_domain: str | None = None,
         dedup_key: str | None = None,
         logical_effect_key: str | None = None,
         budget_key: str | None = None,
@@ -1703,6 +1783,9 @@ class WorkerBrokerService:
             "resource_limits": eff_limits.model_dump(mode="json"),
             "allowed_output_slots": list(allowed_output_slots),
             "requires_vm_isolation": requires_vm_isolation,
+            "required_trust_domain": (
+                required_trust_domain or (workspace_id if requires_vm_isolation else None)
+            ),
         }
         task_dto = await self._queue.enqueue_job(
             workspace_id=workspace_id,
@@ -1759,6 +1842,13 @@ class WorkerBrokerService:
             isolation_mode = cast(WorkerIsolationMode, w_row.isolation_mode)
             risk_acked = w_row.host_escape_risk_acknowledged
             trust_domain = w_row.trust_domain
+            attestation = await db.get(WorkerAttestationModel, mtls_worker.id)
+            multi_tenant_hardened = bool(
+                attestation is not None
+                and attestation.verified
+                and attestation.multi_tenant_hardened
+                and w_row.capabilities_json.get("multi_tenant_hardened") is True
+            )
 
             active_ws_count = int(
                 (
@@ -1785,6 +1875,8 @@ class WorkerBrokerService:
             worker_id=mtls_worker.id,
             now=ref_now,
             allowed_kinds={SANDBOX_TASK_KIND},
+            worker_trust_domain=trust_domain,
+            worker_multi_tenant_hardened=multi_tenant_hardened,
         )
         if leased is None:
             return WorkerPollResponse(worker_status=current_status, sandbox_job=None)
@@ -1794,7 +1886,9 @@ class WorkerBrokerService:
         profile_id = str(spec.get("profile_id") or "python-3.12-node-22")
         requires_vm = bool(spec.get("requires_vm_isolation", False))
 
-        if profile_id not in worker_profiles or (requires_vm and isolation_mode != "vm_isolated"):
+        if profile_id not in worker_profiles or (
+            requires_vm and (not multi_tenant_hardened or not trust_domain)
+        ):
             await self._queue.fail_lease(
                 job_id=task_job.id,
                 worker_id=mtls_worker.id,

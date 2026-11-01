@@ -534,7 +534,7 @@ async def test_u26_consistent_backup_and_dry_run_use_encrypted_database(
             )
         preflight_request = UpgradePreflightRequest(
             target_version="1.0.0",
-            target_schema_revision="0022_backups_migrations_ops",
+            target_schema_revision="0025_fleet_attestation_and_mcp",
             target_worker_protocols=("worker.v1",),
         )
         preflight = await run_upgrade_preflight(factory, preflight_request, current_version="1.0.0")

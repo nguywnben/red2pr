@@ -8,6 +8,8 @@ Enforces:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import pathlib
 import re
 from typing import Annotated, Literal, Self
@@ -435,6 +437,29 @@ class WorkerIsolationAttestation(StrictContractModel):
     memory_limit_bytes: Annotated[StrictInt, Field(ge=1)]
     disk_limit_bytes: Annotated[StrictInt, Field(ge=1)]
     pids_limit: Annotated[StrictInt, Field(ge=1, le=65536)]
+    kernel_version: BoundedName | None = None
+    runtime_version: BoundedName | None = None
+    runtime_backend: Literal["oci_rootless", "gvisor_runsc", "ephemeral_vm"] | None = None
+    isolation_self_test_digest: Sha256Digest | None = None
+    runtime_checks: dict[BoundedName, StrictBool] = Field(default_factory=dict)
+
+
+def runtime_attestation_digest(
+    *, backend: str, kernel_version: str, runtime_version: str, checks: dict[str, bool]
+) -> str:
+    """Canonical SHA-256 binding a worker runtime identity to its self-test results."""
+    payload = json.dumps(
+        {
+            "backend": backend,
+            "checks": dict(sorted(checks.items())),
+            "kernel_version": kernel_version,
+            "runtime_version": runtime_version,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("ascii")
+    return hashlib.sha256(payload).hexdigest()
 
 
 class WorkerEnrollHandshakeRequest(StrictContractModel):

@@ -32,6 +32,7 @@ import {
   type AuthProblemSummary,
 } from "../auth";
 import { generateClientUuidV7 } from "../queues";
+import { FleetTrustDomainPanel } from "./FleetTrustDomainPanel";
 
 export interface WorkersPageProps {
   readonly workspace: Workspace;
@@ -121,6 +122,8 @@ interface WorkerRow extends Record<string, unknown> {
   readonly status: WorkerStatus;
   readonly isolation_mode: WorkerIsolationMode;
   readonly runtime_name: string;
+  readonly trust_domain: string;
+  readonly hardened_attestation_verified: boolean;
   readonly profiles: string;
   readonly signer_key_id: string;
   readonly heartbeat_at: string;
@@ -153,6 +156,8 @@ function toWorkerRow(w: Worker): WorkerRow {
     status: w.status,
     isolation_mode: mode,
     runtime_name: w.runtime_name ? sanitizeUntrustedText(w.runtime_name).text : "—",
+    trust_domain: sanitizeUntrustedText(w.trust_domain).text,
+    hardened_attestation_verified: w.capabilities?.multi_tenant_hardened === true,
     profiles: (w.profile_ids ?? []).map((p) => sanitizeUntrustedText(p).text).join(", ") || "—",
     signer_key_id: w.signer_key_id ? sanitizeUntrustedText(w.signer_key_id).text : "—",
     heartbeat_at: w.heartbeat_at,
@@ -436,6 +441,17 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
               Runtime: {row.runtime_name} · Signer: <code>{row.signer_key_id}</code>
             </div>
           </div>
+        ),
+      },
+      {
+        key: "trust_domain",
+        header: "Fleet Trust & Attestation",
+        renderCell: (row) => (
+          <FleetTrustDomainPanel
+            trustDomain={row.trust_domain}
+            runtimeName={row.runtime_name}
+            hardenedAttestationVerified={row.hardened_attestation_verified}
+          />
         ),
       },
       {

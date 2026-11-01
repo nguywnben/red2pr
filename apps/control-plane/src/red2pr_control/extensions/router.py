@@ -110,6 +110,8 @@ def _relay_response(row: RelaySubscriptionModel) -> RelaySubscriptionResponse:
         last_received_at=row.last_received_at,
         status_detail=row.status_detail,
     )
+
+
 class ExtensionCapabilityResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -134,6 +136,8 @@ def build_extensions_router() -> APIRouter:
         provider_ids: tuple[str, ...] = ()
         oidc_status: CapabilityStatus | None = None
         oidc_reason: str | None = None
+        mcp_enabled = False
+        mcp_enabled = getattr(request.app.state, "mcp_extension_enabled", False) is True
         if iam is not None:
             async with instance_rls_session(iam.session_factory, mode="instance_admin") as db:
                 provider_ids = tuple(
@@ -152,6 +156,7 @@ def build_extensions_router() -> APIRouter:
                     provider_ids,
                     oidc_status=oidc_status,
                     oidc_reason=oidc_reason,
+                    mcp_enabled=mcp_enabled,
                 )
             ),
             oidc_providers=provider_ids,

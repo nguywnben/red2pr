@@ -14,7 +14,18 @@ from red2pr_control.db.base import (
 from red2pr_control.db.rls import instance_rls_session
 
 _SUPPORTED_SCHEMA_REVISIONS = frozenset(
-    {"0021_retention_jobs_and_exceptions", "0022_backups_migrations_ops"}
+    {
+        "0021_retention_jobs_and_exceptions",
+        "0022_backups_migrations_ops",
+        "0024_relay_and_model_fallback",
+        "0025_fleet_attestation_and_mcp",
+    }
+)
+_ADJACENT_SCHEMA_COMPATIBILITY_PAIRS = frozenset(
+    {
+        frozenset({"0021_retention_jobs_and_exceptions", "0022_backups_migrations_ops"}),
+        frozenset({"0024_relay_and_model_fallback", "0025_fleet_attestation_and_mcp"}),
+    }
 )
 
 
@@ -22,7 +33,7 @@ def schema_revision_compatible(current_revision: str, target_revision: str) -> b
     """Permit the current schema or its adjacent U26 N/N-1 revision only."""
     return (
         current_revision == target_revision and current_revision in _SUPPORTED_SCHEMA_REVISIONS
-    ) or {current_revision, target_revision} == _SUPPORTED_SCHEMA_REVISIONS
+    ) or frozenset({current_revision, target_revision}) in _ADJACENT_SCHEMA_COMPATIBILITY_PAIRS
 
 
 def worker_protocol_compatible(protocol_versions: object, target_protocols: frozenset[str]) -> bool:
