@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useId, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { useRed2PrApi } from "../../shared/api";
+import { useRed2PrApi, useRed2PrTransportConfig } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 import { useRed2PrTheme, type ThemeMode } from "../../shared/theme";
 import { Button, StatusGlyph } from "../../shared/ui";
@@ -17,6 +17,7 @@ export function LoginPage(): React.JSX.Element {
   const { t } = useI18n();
   const { mode, setMode } = useRed2PrTheme();
   const api = useRed2PrApi();
+  const transport = useRed2PrTransportConfig();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,6 +61,27 @@ export function LoginPage(): React.JSX.Element {
     queryKey: ["auth", "csrf"],
     queryFn: () => api.getAuthCsrf(),
     retry: false,
+  });
+
+  const oidcProvidersQuery = useQuery({
+    queryKey: ["system", "capabilities", "oidc"],
+    queryFn: async (): Promise<string[]> => {
+      const fetchImpl = transport.fetchImpl ?? fetch;
+      const baseUrl = transport.baseUrl.replace(/\/$/, "");
+      const response = await fetchImpl(`${baseUrl}/api/v1/system/capabilities`, {
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) return [];
+      const data: unknown = await response.json();
+      if (typeof data !== "object" || data === null || !("oidc_providers" in data)) return [];
+      const providers: unknown = data.oidc_providers;
+      return Array.isArray(providers)
+        ? providers.filter((provider): provider is string => typeof provider === "string")
+        : [];
+    },
+    retry: false,
+    staleTime: 60_000,
   });
 
   const bootstrapClaimRequired = csrfQuery.data?.data.bootstrap_claim_required === true;
@@ -337,6 +359,20 @@ export function LoginPage(): React.JSX.Element {
                   isDisabled={identifier.trim().length === 0 || password.length === 0 || isBusy}
                 />
               </div>
+              {oidcProvidersQuery.data?.map((providerId) => (
+                <div className="red2pr-button-row" key={providerId}>
+                  <Button
+                    label={t("auth.oidcSignIn", { provider: providerId })}
+                    variant="secondary"
+                    type="button"
+                    onClick={() => {
+                      window.location.assign(
+                        `${transport.baseUrl.replace(/\/$/, "")}/api/v1/auth/oidc/${encodeURIComponent(providerId)}/authorize`,
+                      );
+                    }}
+                  />
+                </div>
+              ))}
             </form>
           ) : null}
 

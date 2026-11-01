@@ -41,6 +41,8 @@ export type WorkspaceUpdateRequest = SchemaOf<"WorkspaceUpdateRequest">;
 export type WorkspaceDeleteRequest = SchemaOf<"WorkspaceDeleteRequest">;
 export type WorkspaceRole = Membership["role"];
 export type Membership = SchemaOf<"Membership">;
+export type OidcGroupMappingRequest = SchemaOf<"OidcGroupMappingRequest">;
+export type OidcGroupMappingSummary = SchemaOf<"OidcGroupMappingSummary">;
 export type MembershipPage = SchemaOf<"Page_Membership_">;
 export type MemberUpdateRequest = SchemaOf<"MemberUpdateRequest">;
 export type Invite = SchemaOf<"Invite">;
@@ -550,6 +552,15 @@ export interface Red2PrClient {
     query?: ListWorkspaceMembersQuery,
     options?: RequestCallOptions,
   ): Promise<ApiEnvelope<MembershipPage>>;
+  listWorkspaceOidcMappings(
+    ws: string,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<OidcGroupMappingSummary[]>>;
+  configureWorkspaceOidcMapping(
+    ws: string,
+    body: OidcGroupMappingRequest,
+    options?: RequestCallOptions,
+  ): Promise<ApiEnvelope<OidcGroupMappingSummary>>;
   updateWorkspaceMember(
     ws: string,
     memberId: string,
@@ -1166,6 +1177,10 @@ export function createRed2PrClient(options: Red2PrClientOptions = {}): Red2PrCli
       }),
     listWorkspaceMembers: (ws, query, options) =>
       callJson("GET", "/api/v1/workspaces/{ws}/members", { path: { ws }, query, options }),
+    listWorkspaceOidcMappings: (ws, options) =>
+      callJson("GET", "/api/v1/workspaces/{ws}/oidc-mappings", { path: { ws }, options }),
+    configureWorkspaceOidcMapping: (ws, body, options) =>
+      callJson("POST", "/api/v1/workspaces/{ws}/oidc-mappings", { path: { ws }, body, options }),
     updateWorkspaceMember: (ws, memberId, body, options) =>
       callJson("PATCH", "/api/v1/workspaces/{ws}/members/{member_id}", {
         path: { ws, member_id: memberId },

@@ -28,6 +28,7 @@ import {
   type AuthProblemSummary,
 } from "../auth";
 import { AcceptInviteDialog } from "./AcceptInviteDialog";
+import { OidcMappingPanel } from "./OidcMappingPanel";
 
 const ROLE_OPTIONS: readonly WorkspaceRole[] = [
   "admin",
@@ -662,6 +663,8 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
           ) : null}
         </div>
       ) : null}
+
+      {isAdmin ? <OidcMappingPanel workspaceSlug={wsSlug} /> : null}
 
       <section
         className="red2pr-surface red2pr-card-section"

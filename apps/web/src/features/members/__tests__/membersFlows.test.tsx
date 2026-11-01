@@ -518,6 +518,9 @@ describe("U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & L
         if (url.pathname === "/api/v1/me" && req.method === "GET") {
           return jsonResponse(buildMePayload());
         }
+        if (url.pathname === "/api/v1/system/capabilities" && req.method === "GET") {
+          return jsonResponse({ oidc_providers: [] });
+        }
         if (url.pathname === "/api/v1/workspaces/acme" && req.method === "GET") {
           return jsonResponse({
             id: WS_ACME_ID,

@@ -55,6 +55,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/oidc/{provider_id}/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Authorize */
+        get: operations["authorize_api_v1_auth_oidc__provider_id__authorize_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oidc/{provider_id}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Callback */
+        post: operations["callback_api_v1_auth_oidc__provider_id__callback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/recovery": {
         parameters: {
             query?: never;
@@ -381,6 +415,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/setup/bootstrap-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue a one-use installer bootstrap token through the local operator channel */
+        post: operations["issueInstallerBootstrapToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/setup/claim": {
         parameters: {
             query?: never;
@@ -502,6 +553,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get System Capabilities */
+        get: operations["getSystemCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/doctor": {
         parameters: {
             query?: never;
@@ -547,6 +615,74 @@ export interface paths {
         put?: never;
         /** Set Maintenance */
         post: operations["setSystemMaintenance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/oidc/providers/{provider_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Configure Provider */
+        put: operations["configure_provider_api_v1_system_oidc_providers__provider_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/oidc/providers/{provider_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable Provider */
+        post: operations["disable_provider_api_v1_system_oidc_providers__provider_id__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/oidc/providers/{provider_id}/identities/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bind Identity */
+        post: operations["bind_identity_api_v1_system_oidc_providers__provider_id__identities__user_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/oidc/providers/{provider_id}/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Probe Provider */
+        post: operations["probe_provider_api_v1_system_oidc_providers__provider_id__probe_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1466,6 +1602,24 @@ export interface paths {
         head?: never;
         /** Update Notification Read State */
         patch: operations["update_notification_read_state_api_v1_workspaces__ws__notifications__notification_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{ws}/oidc-mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Group Mappings */
+        get: operations["list_group_mappings_api_v1_workspaces__ws__oidc_mappings_get"];
+        put?: never;
+        /** Configure Group Mapping */
+        post: operations["configure_group_mapping_api_v1_workspaces__ws__oidc_mappings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/workspaces/{ws}/publications": {
@@ -2561,6 +2715,16 @@ export interface components {
             state: "creating" | "succeeded" | "failed" | "expired";
         };
         /**
+         * BootstrapIssueResponse
+         * @description One-time installer handoff; token is returned only in a no-store body.
+         */
+        BootstrapIssueResponse: {
+            /** Bootstrap Token */
+            bootstrap_token: string;
+            /** Expires At */
+            expires_at: string;
+        };
+        /**
          * BranchPolicyEvaluation
          * @description Per-branch dry-run policy decision (`deny` always overrides `allow`).
          */
@@ -2963,6 +3127,16 @@ export interface components {
         BulkRepositoryUpdateResponse: {
             /** Updated Repositories */
             updated_repositories?: components["schemas"]["Repository"][];
+        };
+        /** CapabilityInventoryResponse */
+        CapabilityInventoryResponse: {
+            /** Capabilities */
+            capabilities: components["schemas"]["ExtensionCapabilityResponse"][];
+            /**
+             * Oidc Providers
+             * @default []
+             */
+            oidc_providers: string[];
         };
         /**
          * CapabilitySnapshot
@@ -4114,6 +4288,15 @@ export interface components {
             /** Workspace Id */
             workspace_id: string;
         };
+        /** ExtensionCapabilityResponse */
+        ExtensionCapabilityResponse: {
+            /** Id */
+            id: string;
+            /** Reason */
+            reason: string;
+            /** Status */
+            status: string;
+        };
         /**
          * FailureFingerprintObservation
          * @description Single historical run-attempt outcome recorded against a failure fingerprint (`TRI-03`).
@@ -5077,6 +5260,69 @@ export interface components {
         NotificationTestRequest: {
             /** Confirmed */
             confirmed: boolean;
+        };
+        /** OidcGroupMappingRequest */
+        OidcGroupMappingRequest: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Group Name */
+            group_name: string;
+            /** Provider Id */
+            provider_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "maintainer" | "reviewer" | "viewer" | "auditor";
+        };
+        /** OidcGroupMappingSummary */
+        OidcGroupMappingSummary: {
+            /** Enabled */
+            enabled: boolean;
+            /** Group Name */
+            group_name: string;
+            /** Id */
+            id: string;
+            /** Provider Id */
+            provider_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "maintainer" | "reviewer" | "viewer" | "auditor";
+        };
+        /** OidcIdentityBindingRequest */
+        OidcIdentityBindingRequest: {
+            /** Subject */
+            subject: string;
+        };
+        /** OidcProviderConfigRequest */
+        OidcProviderConfigRequest: {
+            /** Client Id */
+            client_id: string;
+            /**
+             * Client Secret
+             * Format: password
+             */
+            client_secret: string;
+            /** Issuer */
+            issuer: string;
+        };
+        /** OidcProviderSummary */
+        OidcProviderSummary: {
+            /** Client Id */
+            client_id: string;
+            /** Id */
+            id: string;
+            /** Issuer */
+            issuer: string;
+            /** Probed At */
+            probed_at: string | null;
+            /** Status */
+            status: string;
         };
         /** OperationCancelRequest */
         OperationCancelRequest: {
@@ -7264,7 +7510,7 @@ export interface components {
              * Auth Strength
              * @enum {string}
              */
-            auth_strength: "password" | "mfa";
+            auth_strength: "password" | "mfa" | "oidc";
             /** Created At */
             created_at: string;
             /** Expires At */
@@ -7291,7 +7537,7 @@ export interface components {
              * Auth Strength
              * @enum {string}
              */
-            auth_strength: "password" | "mfa";
+            auth_strength: "password" | "mfa" | "oidc";
             /** Client Ip */
             client_ip?: string | null;
             /** Created At */
@@ -9157,6 +9403,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    authorize_api_v1_auth_oidc__provider_id__authorize_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    callback_api_v1_auth_oidc__provider_id__callback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -11167,6 +11475,128 @@ export interface operations {
             };
         };
     };
+    issueInstallerBootstrapToken: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Red2PR-Bootstrap-Issuer"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BootstrapIssueResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     claimInstanceOwner: {
         parameters: {
             query?: never;
@@ -12163,6 +12593,26 @@ export interface operations {
             };
         };
     };
+    getSystemCapabilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityInventoryResponse"];
+                };
+            };
+        };
+    };
     getSystemDoctor: {
         parameters: {
             query?: never;
@@ -12343,6 +12793,137 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    configure_provider_api_v1_system_oidc_providers__provider_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcProviderConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcProviderSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_provider_api_v1_system_oidc_providers__provider_id__disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcProviderSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bind_identity_api_v1_system_oidc_providers__provider_id__identities__user_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcIdentityBindingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    probe_provider_api_v1_system_oidc_providers__provider_id__probe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcProviderSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -18462,6 +19043,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationInboxItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_group_mappings_api_v1_workspaces__ws__oidc_mappings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcGroupMappingSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    configure_group_mapping_api_v1_workspaces__ws__oidc_mappings_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ws: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcGroupMappingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcGroupMappingSummary"];
                 };
             };
             /** @description Validation Error */

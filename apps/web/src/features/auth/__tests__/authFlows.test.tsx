@@ -129,6 +129,39 @@ describe("U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (
     expect(resolveSafePostLoginPath("?next=%2Flogin")).toBe("/account");
   });
 
+  it("shows the SSO option only for a provider reported enabled by W-10", async () => {
+    const enabledFetch = vi.fn<typeof fetch>(async (input, init) => {
+      const req = input instanceof Request ? input : new Request(input, init);
+      const url = new URL(req.url);
+      if (url.pathname === "/api/v1/auth/csrf") {
+        return jsonResponse({ csrf_token: "csrf-test", bootstrap_claim_required: false });
+      }
+      if (url.pathname === "/api/v1/system/capabilities") {
+        return jsonResponse({ oidc_providers: ["corp"] });
+      }
+      throw new Error(`Unhandled request: ${req.method} ${url.pathname}`);
+    });
+    const enabledView = renderAuthRouter({ initialEntry: "/login", fetchImpl: enabledFetch });
+    expect(await screen.findByRole("button", { name: "Continue with corp" })).toBeInTheDocument();
+    assertZeroWebStorageSecrets();
+    enabledView.unmount();
+
+    const disabledFetch = vi.fn<typeof fetch>(async (input, init) => {
+      const req = input instanceof Request ? input : new Request(input, init);
+      const url = new URL(req.url);
+      if (url.pathname === "/api/v1/auth/csrf") {
+        return jsonResponse({ csrf_token: "csrf-test", bootstrap_claim_required: false });
+      }
+      if (url.pathname === "/api/v1/system/capabilities") {
+        return jsonResponse({ oidc_providers: [] });
+      }
+      throw new Error(`Unhandled request: ${req.method} ${url.pathname}`);
+    });
+    renderAuthRouter({ initialEntry: "/login", fetchImpl: disabledFetch });
+    await waitFor(() => expect(disabledFetch).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: /continue with/i })).not.toBeInTheDocument();
+  });
+
   it("completes initial bootstrap owner claim with X-CSRF-Token and zero Web Storage token persistence", async () => {
     const user = userEvent.setup();
     const seenCsrfHeaders: (string | null)[] = [];

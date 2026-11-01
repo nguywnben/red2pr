@@ -579,7 +579,7 @@ class SessionModel(Base):
             ondelete="RESTRICT",
         ),
         CheckConstraint(
-            "auth_strength IN ('password', 'mfa')",
+            "auth_strength IN ('password', 'mfa', 'oidc')",
             name="session_auth_strength_valid",
         ),
         CheckConstraint("grant_epoch >= 1", name="session_grant_epoch_pos"),
@@ -805,6 +805,154 @@ class AuthRateLimitModel(Base):
     bucket_key: Mapped[str] = mapped_column(String(256), nullable=False)
     attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ExtensionCapabilityModel(Base):
+    """W-10 negotiated extension state, including its last successful probe."""
+
+    __tablename__ = "extension_capabilities"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('enabled','disabled','not_configured','unsupported')",
+            name="extension_capability_status_valid",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    reason: Mapped[str] = mapped_column(String(120), nullable=False)
+    probed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class OidcProviderModel(Base):
+    """Instance-configured, probed OIDC provider; credentials are held only by Z2 SecretBroker."""
+
+    __tablename__ = "oidc_providers"
+    __table_args__ = (
+        UniqueConstraint("issuer", name="uq_oidc_providers_issuer"),
+        CheckConstraint(
+            "status IN ('not_configured','enabled','disabled','unavailable')",
+            name="oidc_provider_status_valid",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    issuer: Mapped[str] = mapped_column(Text, nullable=False)
+    client_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    client_secret_ref: Mapped[str] = mapped_column(String(120), nullable=False)
+    authorization_endpoint: Mapped[str] = mapped_column(Text, nullable=False)
+    token_endpoint: Mapped[str] = mapped_column(Text, nullable=False)
+    jwks_uri: Mapped[str] = mapped_column(Text, nullable=False)
+    scopes_json: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=lambda: ["openid", "email", "profile"]
+    )
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="not_configured")
+    probed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class OidcAuthTransactionModel(Base):
+    """Short-lived single-use OIDC state; PKCE verifier is AES-GCM encrypted at rest."""
+
+    __tablename__ = "oidc_auth_transactions"
+    __table_args__ = (
+        ForeignKeyConstraint(["provider_id"], ["oidc_providers.id"], ondelete="CASCADE"),
+        Index("ix_oidc_auth_transactions_expiry", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    provider_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    state_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    nonce: Mapped[str] = mapped_column(String(128), nullable=False)
+    verifier_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+    browser_binding_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class OidcIdentityModel(Base):
+    """Immutable issuer/subject binding to a local user; email is never an identity key."""
+
+    __tablename__ = "oidc_identities"
+    __table_args__ = (
+        UniqueConstraint("provider_id", "subject", name="uq_oidc_identity_subject"),
+        UniqueConstraint("provider_id", "user_id", name="uq_oidc_identity_user"),
+        ForeignKeyConstraint(["provider_id"], ["oidc_providers.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="RESTRICT"),
+        Index("ix_oidc_identities_user", "user_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    provider_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    subject: Mapped[str] = mapped_column(String(512), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class OidcGroupMappingModel(Base):
+    """Explicit IdP group to workspace role mapping; no email-domain authorization."""
+
+    __tablename__ = "oidc_group_mappings"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "provider_id", "group_name", name="uq_oidc_group_mapping"),
+        ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["provider_id"], ["oidc_providers.id"], ondelete="CASCADE"),
+        CheckConstraint(
+            "role IN ('admin','maintainer','reviewer','viewer','auditor')",
+            name="oidc_group_role_valid",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    group_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class OidcMembershipGrantModel(Base):
+    """Tracks memberships created exclusively from an explicit IdP group mapping."""
+
+    __tablename__ = "oidc_membership_grants"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "user_id", name="uq_oidc_membership_user_workspace"),
+        ForeignKeyConstraint(["provider_id"], ["oidc_providers.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["workspace_id", "membership_id"],
+            ["memberships.workspace_id", "memberships.id"],
+            ondelete="CASCADE",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    provider_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    membership_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    group_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    granted_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    membership_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
 
 
 class MembershipModel(Base):

@@ -165,6 +165,7 @@ export const EN_MESSAGES = {
   "auth.passwordLabel": "Password",
   "auth.passwordPolicyHint": "Minimum 12 characters; hashed with Argon2id.",
   "auth.signInSubmit": "Sign in",
+  "auth.oidcSignIn": "Continue with {provider}",
   "auth.mfaTitle": "Verify two-factor authenticator code",
   "auth.mfaSubtitle":
     "No authenticated session is issued until you verify a valid 6-digit TOTP code.",
@@ -289,6 +290,21 @@ export const EN_MESSAGES = {
   "members.redeemInviteAction": "Redeem invitation token",
   "members.readOnlyNotice":
     "Read-only view: only workspace admins can invite members, change roles, modify repository grants, or remove members.",
+  "members.oidcMappingsTitle": "Identity provider group mappings",
+  "members.oidcMappingsDescription":
+    "Only explicitly mapped provider groups grant workspace roles. Disabling a mapping removes its OIDC-managed membership and revokes the affected sessions.",
+  "members.oidcProviderLabel": "Identity provider",
+  "members.oidcGroupLabel": "Provider group",
+  "members.oidcRoleLabel": "Workspace role",
+  "members.oidcEnabledLabel": "Mapping enabled",
+  "members.oidcAddAction": "Add group mapping",
+  "members.oidcUpdateAction": "Save mapping",
+  "members.oidcCancelEdit": "Cancel edit",
+  "members.oidcEditAction": "Edit",
+  "members.oidcEnabled": "Enabled",
+  "members.oidcDisabled": "Disabled",
+  "members.oidcSaveFailed": "The identity provider group mapping could not be saved.",
+  "members.oidcMappingsLoadFailed": "Identity provider group mappings could not be loaded.",
   "members.membersSectionTitle": "Workspace Members",
   "members.membersSectionSubtitle":
     "Non-admin roles follow deny-by-default repository visibility and only access explicitly granted repository IDs.",

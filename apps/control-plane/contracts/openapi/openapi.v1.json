@@ -1909,6 +1909,28 @@
         "title": "BackupRecord",
         "type": "object"
       },
+      "BootstrapIssueResponse": {
+        "additionalProperties": false,
+        "description": "One-time installer handoff; token is returned only in a no-store body.",
+        "properties": {
+          "bootstrap_token": {
+            "maxLength": 256,
+            "minLength": 16,
+            "title": "Bootstrap Token",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bootstrap_token",
+          "expires_at"
+        ],
+        "title": "BootstrapIssueResponse",
+        "type": "object"
+      },
       "BranchPolicyEvaluation": {
         "additionalProperties": false,
         "description": "Per-branch dry-run policy decision (`deny` always overrides `allow`).",
@@ -2917,6 +2939,31 @@
           }
         },
         "title": "BulkRepositoryUpdateResponse",
+        "type": "object"
+      },
+      "CapabilityInventoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/ExtensionCapabilityResponse"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "oidc_providers": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Oidc Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "capabilities"
+        ],
+        "title": "CapabilityInventoryResponse",
         "type": "object"
       },
       "CapabilitySnapshot": {
@@ -6118,6 +6165,30 @@
         "title": "EvidenceManifestV1",
         "type": "object"
       },
+      "ExtensionCapabilityResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "reason"
+        ],
+        "title": "ExtensionCapabilityResponse",
+        "type": "object"
+      },
       "FailureFingerprintObservation": {
         "additionalProperties": false,
         "description": "Single historical run-attempt outcome recorded against a failure fingerprint (`TRI-03`).",
@@ -9008,6 +9079,177 @@
           "confirmed"
         ],
         "title": "NotificationTestRequest",
+        "type": "object"
+      },
+      "OidcGroupMappingRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "group_name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Group Name",
+            "type": "string"
+          },
+          "provider_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "maintainer",
+              "reviewer",
+              "viewer",
+              "auditor"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "group_name",
+          "role"
+        ],
+        "title": "OidcGroupMappingRequest",
+        "type": "object"
+      },
+      "OidcGroupMappingSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "group_name": {
+            "title": "Group Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "maintainer",
+              "reviewer",
+              "viewer",
+              "auditor"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "provider_id",
+          "group_name",
+          "role",
+          "enabled"
+        ],
+        "title": "OidcGroupMappingSummary",
+        "type": "object"
+      },
+      "OidcIdentityBindingRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "subject": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject"
+        ],
+        "title": "OidcIdentityBindingRequest",
+        "type": "object"
+      },
+      "OidcProviderConfigRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "client_id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Client Id",
+            "type": "string"
+          },
+          "client_secret": {
+            "format": "password",
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Client Secret",
+            "type": "string",
+            "writeOnly": true
+          },
+          "issuer": {
+            "maxLength": 1024,
+            "minLength": 8,
+            "title": "Issuer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issuer",
+          "client_id",
+          "client_secret"
+        ],
+        "title": "OidcProviderConfigRequest",
+        "type": "object"
+      },
+      "OidcProviderSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "client_id": {
+            "title": "Client Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "issuer": {
+            "title": "Issuer",
+            "type": "string"
+          },
+          "probed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probed At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "issuer",
+          "client_id",
+          "status",
+          "probed_at"
+        ],
+        "title": "OidcProviderSummary",
         "type": "object"
       },
       "OperationCancelRequest": {
@@ -14976,7 +15218,8 @@
           "auth_strength": {
             "enum": [
               "password",
-              "mfa"
+              "mfa",
+              "oidc"
             ],
             "title": "Auth Strength",
             "type": "string"
@@ -15043,7 +15286,8 @@
           "auth_strength": {
             "enum": [
               "password",
-              "mfa"
+              "mfa",
+              "oidc"
             ],
             "title": "Auth Strength",
             "type": "string"
@@ -18065,6 +18309,16 @@
             "title": "Profile Ids",
             "type": "array"
           },
+          "protocol_versions": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Protocol Versions",
+            "type": "array"
+          },
           "quarantine_reason": {
             "anyOf": [
               {
@@ -19912,6 +20166,88 @@
         "summary": "Revoke active session and clear authentication cookies (A-02)",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/oidc/{provider_id}/authorize": {
+      "get": {
+        "operationId": "authorize_api_v1_auth_oidc__provider_id__authorize_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Authorize",
+        "tags": [
+          "auth",
+          "system"
+        ]
+      }
+    },
+    "/api/v1/auth/oidc/{provider_id}/callback": {
+      "post": {
+        "operationId": "callback_api_v1_auth_oidc__provider_id__callback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Callback",
+        "tags": [
+          "auth",
+          "system"
         ]
       }
     },
@@ -22308,6 +22644,155 @@
         ]
       }
     },
+    "/api/v1/setup/bootstrap-token": {
+      "post": {
+        "operationId": "issueInstallerBootstrapToken",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Red2PR-Bootstrap-Issuer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Red2Pr-Bootstrap-Issuer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapIssueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Issue a one-use installer bootstrap token through the local operator channel",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
     "/api/v1/setup/claim": {
       "post": {
         "operationId": "claimInstanceOwner",
@@ -23530,6 +24015,27 @@
         ]
       }
     },
+    "/api/v1/system/capabilities": {
+      "get": {
+        "operationId": "getSystemCapabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityInventoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get System Capabilities",
+        "tags": [
+          "system"
+        ]
+      }
+    },
     "/api/v1/system/doctor": {
       "get": {
         "operationId": "getSystemDoctor",
@@ -23731,6 +24237,200 @@
         },
         "summary": "Set Maintenance",
         "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/oidc/providers/{provider_id}": {
+      "put": {
+        "operationId": "configure_provider_api_v1_system_oidc_providers__provider_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OidcProviderConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcProviderSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Provider",
+        "tags": [
+          "auth",
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/oidc/providers/{provider_id}/disable": {
+      "post": {
+        "operationId": "disable_provider_api_v1_system_oidc_providers__provider_id__disable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcProviderSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disable Provider",
+        "tags": [
+          "auth",
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/oidc/providers/{provider_id}/identities/{user_id}": {
+      "post": {
+        "operationId": "bind_identity_api_v1_system_oidc_providers__provider_id__identities__user_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OidcIdentityBindingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bind Identity",
+        "tags": [
+          "auth",
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/oidc/providers/{provider_id}/probe": {
+      "post": {
+        "operationId": "probe_provider_api_v1_system_oidc_providers__provider_id__probe_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcProviderSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Probe Provider",
+        "tags": [
+          "auth",
           "system"
         ]
       }
@@ -32408,6 +33108,104 @@
         "summary": "Update Notification Read State",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/oidc-mappings": {
+      "get": {
+        "operationId": "list_group_mappings_api_v1_workspaces__ws__oidc_mappings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OidcGroupMappingSummary"
+                  },
+                  "title": "Response List Group Mappings Api V1 Workspaces  Ws  Oidc Mappings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Group Mappings",
+        "tags": [
+          "auth",
+          "system"
+        ]
+      },
+      "post": {
+        "operationId": "configure_group_mapping_api_v1_workspaces__ws__oidc_mappings_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OidcGroupMappingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcGroupMappingSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Group Mapping",
+        "tags": [
+          "auth",
+          "system"
         ]
       }
     },

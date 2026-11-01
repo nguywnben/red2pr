@@ -44,7 +44,7 @@ Original table is historical question inventory. Status below resolves it; unkno
 
 | Item | Current disposition | Resolution owner / evidence |
 |---|---|---|
-| OQ-13 tenancy | **RESOLVED:** multi-workspace1.0.0, ADR-030 | explicit owner answer; OIDC/SSO scope still PROPOSED/P1 |
+| OQ-13 tenancy/SSO | **RESOLVED:** multi-workspace1.0.0, ADR-030; OIDC Authorization Code + PKCE (`S256`) as `IAM-03` `[P1]`, ADR-046 | explicit owner approval on 2026-10-31; local authentication and invitations remain `P0` |
 | Baseline publication | **RESOLVED:** no publication if no confirmed baseline, ADR-031 | explicit owner answer; no policy/human override |
 | Security severity | **RESOLVED:** Critical closed, High exception time-bound+mitigation, ADR-032 | explicit owner answer; proposed maximum30days not yet accepted |
 | OQ-01/02/03/19/20 | **VERIFIABLE, PARTIAL:** official public sources read; Astryx pinned props inspected | exact account/version/runtime/export/CLI effect requires later authorized tests; [22](22_OFFICIAL_REFERENCES.md) |

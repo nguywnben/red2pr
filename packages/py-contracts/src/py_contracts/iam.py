@@ -61,7 +61,7 @@ LoginPasswordStr = Annotated[StrictStr, Field(min_length=1, max_length=256)]
 RecoveryCodeStr = Annotated[StrictStr, Field(min_length=8, max_length=128)]
 
 UserStatus = Literal["active", "disabled"]
-AuthStrength = Literal["password", "mfa"]
+AuthStrength = Literal["password", "mfa", "oidc"]
 WorkspaceStatus = Literal["active", "suspended", "deleting"]
 WorkspaceRole = Literal["admin", "maintainer", "reviewer", "viewer", "auditor"]
 InviteStatus = Literal["pending", "accepted", "expired", "revoked"]

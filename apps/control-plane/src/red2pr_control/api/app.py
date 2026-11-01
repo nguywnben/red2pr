@@ -272,7 +272,9 @@ from red2pr_control.core.logging import (
     get_structured_logger,
 )
 from red2pr_control.core.telemetry import configure_telemetry, extract_trace_context
+from red2pr_control.extensions.router import build_extensions_router
 from red2pr_control.iam.api_tokens import build_api_tokens_router
+from red2pr_control.iam.oidc import build_oidc_router
 from red2pr_control.iam.router import build_iam_router
 from red2pr_control.iam.sessions import IamService
 from red2pr_control.inference import (
@@ -814,6 +816,7 @@ def create_app(
     notification_dispatcher: NotificationDispatcher | None = None,
     telegram_bot_service: TelegramBotService | None = None,
     notification_secret_broker: SecretBroker | None = None,
+    oidc_secret_broker: SecretBroker | None = None,
     audit_checkpoint_store: ExternalCheckpointStore | None = None,
     audit_checkpoint_keyring: KeyRing | None = None,
     telemetry_span_exporter: SpanExporter | None = None,
@@ -982,6 +985,7 @@ def create_app(
         else None
     )
     app.state.notification_secret_broker = notification_secret_broker
+    app.state.oidc_secret_broker = oidc_secret_broker
     app.state.telegram_bot_service = telegram_bot_service
     app.state.audit_checkpoint_store = audit_checkpoint_store
     app.state.audit_checkpoint_keyring = audit_checkpoint_keyring
@@ -1002,7 +1006,9 @@ def create_app(
         return SystemHealthResponse(status="ok", timestamp=datetime.now(tz=UTC))
 
     app.include_router(system_router)
+    app.include_router(build_extensions_router())
     app.include_router(build_iam_router())
+    app.include_router(build_oidc_router())
     app.include_router(build_api_tokens_router())
     app.include_router(build_setup_router())
     app.include_router(build_orchestrator_router())

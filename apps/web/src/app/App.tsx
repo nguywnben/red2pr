@@ -22,6 +22,7 @@ import {
 import { StepUpDialog, extractAuthProblemSummary, isStepUpValid, type AuthProblemSummary } from "../features/auth";
 const AccountPage = lazy(() => import("../features/auth").then((module) => ({ default: module.AccountPage })));
 const LoginPage = lazy(() => import("../features/auth").then((module) => ({ default: module.LoginPage })));
+const OidcCallbackPage = lazy(() => import("../features/auth").then((module) => ({ default: module.OidcCallbackPage })));
 const IntegrationsPage = lazy(() => import("../features/integrations").then((module) => ({ default: module.IntegrationsPage })));
 const GitHubCallbackRedirectRoute = lazy(() => import("../features/integrations").then((module) => ({ default: module.GitHubCallbackRedirectRoute })));
 const AcceptInviteDialog = lazy(() => import("../features/members").then((module) => ({ default: module.AcceptInviteDialog })));
@@ -609,6 +610,7 @@ export function AppRoutes(): React.JSX.Element {
     <Suspense fallback={<StateView state="loading" />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/oidc/callback" element={<OidcCallbackPage />} />
         <Route path="/setup" element={<SetupWizardPage />} />
         <Route path="/setup/*" element={<SetupWizardPage />} />
         <Route path="/integrations/github/callback" element={<GitHubCallbackRedirectRoute />} />
