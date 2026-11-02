@@ -1,3 +1,4 @@
+import { InputControl } from "../../shared/ui";
 import { Red2PrApiError, type MfaEnrollResponse, type SessionListItem } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useId, useMemo, useRef, useState } from "react";
@@ -300,7 +301,7 @@ export function AccountPage(): React.JSX.Element {
     <div className="red2pr-page-stack">
       <div className="red2pr-card-header">
         <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: "1.5rem" }}>{t("account.pageTitle")}</h1>
+          <h1 >{t("account.pageTitle")}</h1>
           <p className="red2pr-field-hint">{t("account.pageSubtitle")}</p>
         </div>
         <div className="red2pr-button-row">
@@ -350,7 +351,7 @@ export function AccountPage(): React.JSX.Element {
         aria-labelledby="account-profile-heading"
       >
         <div className="red2pr-card-header">
-          <h2 id="account-profile-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
+          <h2 id="account-profile-heading" >
             {t("account.profileTitle")}
           </h2>
           <span
@@ -397,7 +398,7 @@ export function AccountPage(): React.JSX.Element {
         </dl>
 
         <div>
-          <h3 style={{ margin: "0 0 6px", fontSize: "0.9375rem" }}>
+          <h3 >
             {t("account.grantsHeading")}
           </h3>
           {(me.memberships ?? []).length === 0 ? (
@@ -419,7 +420,7 @@ export function AccountPage(): React.JSX.Element {
         aria-labelledby="account-mfa-heading"
       >
         <div className="red2pr-card-header">
-          <h2 id="account-mfa-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
+          <h2 id="account-mfa-heading" >
             {t("account.mfaTitle")}
           </h2>
           <span
@@ -515,7 +516,7 @@ export function AccountPage(): React.JSX.Element {
               <label htmlFor={mfaConfirmOtpId} className="red2pr-field-label">
                 {t("account.mfaConfirmOtpLabel")}
               </label>
-              <input
+              <InputControl
                 id={mfaConfirmOtpId}
                 className="red2pr-control-input"
                 type="text"
@@ -580,7 +581,7 @@ export function AccountPage(): React.JSX.Element {
             noValidate
           >
             <div>
-              <h3 style={{ margin: "0 0 4px", fontSize: "0.9375rem" }}>
+              <h3 >
                 {t("account.mfaDisableHeading")}
               </h3>
               <p className="red2pr-field-hint">{t("account.mfaDisableDesc")}</p>
@@ -590,7 +591,7 @@ export function AccountPage(): React.JSX.Element {
               <label htmlFor={mfaDisableCodeId} className="red2pr-field-label">
                 {t("account.mfaDisableCodeLabel")}
               </label>
-              <input
+              <InputControl
                 id={mfaDisableCodeId}
                 className="red2pr-control-input"
                 type="text"
@@ -626,7 +627,7 @@ export function AccountPage(): React.JSX.Element {
         aria-labelledby="account-sessions-heading"
       >
         <div>
-          <h2 id="account-sessions-heading" style={{ margin: "0 0 4px", fontSize: "1.125rem" }}>
+          <h2 id="account-sessions-heading" >
             {t("account.sessionsTitle")}
           </h2>
           <p className="red2pr-field-hint">{t("account.sessionsSubtitle")}</p>

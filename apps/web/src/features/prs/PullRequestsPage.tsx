@@ -1,3 +1,4 @@
+import { InputControl } from "../../shared/ui";
 import { Red2PrApiError, type MeResponse, type Publication, type Workspace } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
@@ -90,7 +91,7 @@ export function PullRequestsPage({ workspace, me }: PullRequestsPageProps): Reac
         <h3>Observed checks</h3>
         {requiredCheckResults.length ? <ul aria-label="Required remote checks">{requiredCheckResults.map((check) => <li key={check.name}><strong>{check.name}</strong>: {check.status}</li>)}</ul> : <p role="note">No required remote checks are configured; V-08 remains unknown.</p>}
         {detail.data.data.remote_check?.observations?.length ? <ul>{detail.data.data.remote_check.observations.map((check) => <li key={`${check.external_id}-${check.check_name}`}><strong>{check.check_name}</strong>: {check.status}{check.conclusion ? ` · ${check.conclusion}` : ""}</li>)}</ul> : <p>No remote check observations are available.</p>}
-        {canReconcile ? <div className="red2pr-button-row"><label>Refresh reason <input value={reason} maxLength={1000} onChange={(event) => setReason(event.target.value)} /></label><Button label="Reconcile remote CI" isLoading={reconcile.isPending} isDisabled={reason.trim().length === 0 || detail.data.data.publication.status !== "published"} onClick={() => reconcile.mutate()} /></div> : <p role="note">Your current workspace role cannot request a provider refresh.</p>}
+        {canReconcile ? <div className="red2pr-button-row"><div className="red2pr-field"><span className="red2pr-field-label">Refresh reason</span><InputControl aria-label="Refresh reason" value={reason} maxLength={1000} onChange={(event) => setReason(event.target.value)} /></div><Button label="Reconcile remote CI" isLoading={reconcile.isPending} isDisabled={reason.trim().length === 0 || detail.data.data.publication.status !== "published"} onClick={() => reconcile.mutate()} /></div> : <p role="note">Your current workspace role cannot request a provider refresh.</p>}
         {reconcile.error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{String(reconcile.error)}</div> : null}
       </>}
     </section> : null}

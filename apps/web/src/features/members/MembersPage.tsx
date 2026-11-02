@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type BreakGlassGrant,
@@ -593,7 +595,7 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
     <div className="red2pr-page-stack" data-testid="members-page">
       <div className="red2pr-card-header">
         <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: "1.5rem" }}>{t("members.pageTitle")}</h1>
+          <h1>{t("members.pageTitle")}</h1>
           <p className="red2pr-field-hint">{t("members.pageSubtitle")}</p>
         </div>
         <div className="red2pr-button-row" style={{ alignItems: "center" }}>
@@ -672,7 +674,7 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
       >
         <div className="red2pr-card-header">
           <div>
-            <h2 id="workspace-members-heading" style={{ margin: "0 0 4px", fontSize: "1.125rem" }}>
+            <h2 id="workspace-members-heading">
               {t("members.membersSectionTitle")}
             </h2>
             <p className="red2pr-field-hint">{t("members.membersSectionSubtitle")}</p>
@@ -712,9 +714,7 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
           <div className="red2pr-card-header">
             <div>
               <h2
-                id="workspace-invitations-heading"
-                style={{ margin: "0 0 4px", fontSize: "1.125rem" }}
-              >
+                id="workspace-invitations-heading">
                 {t("members.invitationsSectionTitle")}
               </h2>
               <p className="red2pr-field-hint">{t("members.invitationsSectionSubtitle")}</p>
@@ -737,9 +737,7 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
           <div className="red2pr-card-header">
             <div>
               <h2
-                id="workspace-break-glass-heading"
-                style={{ margin: "0 0 4px", fontSize: "1.125rem" }}
-              >
+                id="workspace-break-glass-heading">
                 {t("members.breakGlassSectionTitle")}
               </h2>
               <p className="red2pr-field-hint">{t("members.breakGlassSectionSubtitle")}</p>
@@ -840,7 +838,7 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
               <label htmlFor={inviteEmailId} className="red2pr-field-label">
                 {t("members.inviteEmailLabel")}
               </label>
-              <input
+              <InputControl
                 id={inviteEmailId}
                 className="red2pr-control-input"
                 type="email"
@@ -855,7 +853,7 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
               <label htmlFor={inviteRoleId} className="red2pr-field-label">
                 {t("members.inviteRoleLabel")}
               </label>
-              <select
+              <SelectorControl
                 id={inviteRoleId}
                 className="red2pr-control-select"
                 value={inviteRole}
@@ -866,7 +864,7 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
                     {opt}
                   </option>
                 ))}
-              </select>
+              </SelectorControl>
             </div>
 
             <div className="red2pr-field">
@@ -951,7 +949,7 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
             <label htmlFor={editRoleId} className="red2pr-field-label">
               {t("members.roleFieldLabel")}
             </label>
-            <select
+            <SelectorControl
               id={editRoleId}
               className="red2pr-control-select"
               value={editRole}
@@ -962,7 +960,7 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
                   {opt}
                 </option>
               ))}
-            </select>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field">

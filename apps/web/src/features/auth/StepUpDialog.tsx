@@ -1,3 +1,4 @@
+import { InputControl } from "../../shared/ui";
 import type { StepUpResponse } from "@red2pr/ts-client";
 import { useMutation } from "@tanstack/react-query";
 import React, { useCallback, useId, useState } from "react";
@@ -125,7 +126,7 @@ export function StepUpDialog({
           <label htmlFor={passwordInputId} className="red2pr-field-label">
             {t("stepUp.passwordLabel")}
           </label>
-          <input
+          <InputControl
             id={passwordInputId}
             className="red2pr-control-input"
             type="password"
@@ -141,7 +142,7 @@ export function StepUpDialog({
             <label htmlFor={otpInputId} className="red2pr-field-label">
               {t("stepUp.otpLabel")}
             </label>
-            <input
+            <InputControl
               id={otpInputId}
               className="red2pr-control-input"
               type="text"

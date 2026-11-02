@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type MeResponse,
@@ -210,7 +212,7 @@ function LabeledField({
       <label htmlFor={inputId} className="red2pr-field-label">
         {label}
       </label>
-      <input
+      <InputControl
         id={inputId}
         className="red2pr-control-input"
         type={type}
@@ -718,7 +720,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
     <div className="red2pr-page-stack" data-testid="models-page">
       <div className="red2pr-card-header">
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.5rem" }}>
+          <h1 >
             Meta Muse Models, Consents &amp; Budgets
           </h1>
           <p className="red2pr-field-hint">
@@ -831,7 +833,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
 
       <section className="red2pr-surface red2pr-card-section" aria-label="Meta API Credential">
         <div className="red2pr-card-header">
-          <h2 style={{ margin: 0, fontSize: "1.125rem" }}>
+          <h2 >
             Z2 Meta Model API Credential &amp; Endpoint
           </h2>
           <span
@@ -903,7 +905,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
         aria-label="Outbound Inference Consent"
       >
         <div className="red2pr-card-header">
-          <h2 style={{ margin: 0, fontSize: "1.125rem" }}>
+          <h2 >
             Outbound Inference Consent (SEC-018)
           </h2>
           <span
@@ -923,7 +925,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
           <label htmlFor={consentSelectId} className="red2pr-field-label">
             Active inference consent record ({modelsState.endpoint_base_url})
           </label>
-          <select
+          <SelectorControl
             id={consentSelectId}
             className="red2pr-control-select"
             disabled={!isAdmin || availableConsents.length === 0 || actionMutation.isPending}
@@ -947,7 +949,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
                 {consent.id} · {consent.destination} ({consent.data_classes.join(", ")})
               </option>
             ))}
-          </select>
+          </SelectorControl>
         </div>
 
         <div className="red2pr-button-row">
@@ -980,7 +982,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
       </section>
 
       <section className="red2pr-surface red2pr-card-section" aria-label="Meta Muse Model Registry">
-        <h2 style={{ margin: 0, fontSize: "1.125rem" }}>
+        <h2 >
           Allowlisted Meta Muse Registry &amp; Capability Probes
         </h2>
         <Table
@@ -1001,7 +1003,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
         className="red2pr-surface red2pr-card-section"
         aria-label="Pricing, Atomic Budgets and Escalation Policy"
       >
-        <h2 style={{ margin: 0, fontSize: "1.125rem" }}>
+        <h2 >
           Upper-Bound Token Pricing, NFR-06 Atomic Budgets &amp; Escalation
         </h2>
 
@@ -1080,7 +1082,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
       </section>
 
       <section className="red2pr-surface red2pr-card-section" aria-label="Model Usage Ledger">
-        <h2 style={{ margin: 0, fontSize: "1.125rem" }}>Recent Model Usage Ledger (S-17)</h2>
+        <h2 >Recent Model Usage Ledger (S-17)</h2>
         {usageRows.length === 0 ? (
           <StateView
             state="empty"
@@ -1137,7 +1139,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
             <label htmlFor={probeConsentId} className="red2pr-field-label">
               Active inference consent_id
             </label>
-            <select
+            <SelectorControl
               id={probeConsentId}
               className="red2pr-control-select"
               required
@@ -1149,7 +1151,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
                   {consent.id} ({consent.destination})
                 </option>
               ))}
-            </select>
+            </SelectorControl>
           </div>
         </form>
       </Dialog>

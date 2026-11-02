@@ -1,3 +1,4 @@
+import { InputControl } from "./InputControl";
 import { Pagination } from "@astryxdesign/core/Pagination";
 import { observeElementRect, useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -143,7 +144,7 @@ export function SafeLogViewer({
           <label htmlFor={searchInputId} style={{ fontSize: "0.75rem", fontWeight: 500 }}>
             {t("logs.searchLabel")}
           </label>
-          <input
+          <InputControl
             id={searchInputId}
             type="search"
             className="red2pr-control-input"

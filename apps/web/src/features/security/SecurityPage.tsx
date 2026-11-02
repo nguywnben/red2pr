@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import type { ApiTokenCreateRequest, Workspace } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useId, useRef, useState } from "react";
@@ -144,7 +146,7 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
   };
 
   return (
-    <main className="red2pr-page-stack" data-testid="security-page">
+    <section className="red2pr-page-stack" data-testid="security-page">
       <header>
         <h1>Security and audit</h1>
         <p>Review verified workspace audit events, scoped API tokens, and retention policy.</p>
@@ -179,8 +181,8 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
         <h2 id="security-audit-title">Verified audit search</h2>
         <p>Audit results are shown only after the signed external checkpoint and hash chain verify.</p>
         <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); void audit.refetch(); }}>
-          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={actionId}>Action</label><input id={actionId} className="red2pr-control-input" value={action} maxLength={120} onChange={(event) => setAction(event.target.value)} /></div>
-          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={correlationId}>Correlation ID</label><input id={correlationId} className="red2pr-control-input" value={auditCorrelation} maxLength={120} onChange={(event) => setAuditCorrelation(event.target.value)} /></div>
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={actionId}>Action</label><InputControl id={actionId} className="red2pr-control-input" value={action} maxLength={120} onChange={(event) => setAction(event.target.value)} /></div>
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={correlationId}>Correlation ID</label><InputControl id={correlationId} className="red2pr-control-input" value={auditCorrelation} maxLength={120} onChange={(event) => setAuditCorrelation(event.target.value)} /></div>
           <Button label="Search audit" variant="secondary" type="submit" isDisabled={audit.isFetching} />
         </form>
         {audit.isPending ? <StateView state="loading" title="Verifying audit chain" /> : null}
@@ -210,9 +212,9 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
         </article>)}
         <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); createToken.mutate(); }}>
           <h3>Issue a 90-day token</h3>
-          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={nameId}>Token name</label><input id={nameId} className="red2pr-control-input" required minLength={1} maxLength={64} value={name} onChange={(event) => setName(event.target.value)} /></div>
-          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={scopeId}>Scopes</label><select id={scopeId} className="red2pr-control-input" multiple value={scopes} onChange={(event) => setScopes(Array.from(event.target.selectedOptions, (option) => option.value as ApiTokenCreateRequest["scopes"][number]))}>{TOKEN_SCOPES.map((scope) => <option key={scope} value={scope}>{scope}</option>)}</select></div>
-          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={repositoriesId}>Repository access</label><select id={repositoriesId} className="red2pr-control-input" multiple value={repositoryIds} onChange={(event) => setRepositoryIds(Array.from(event.target.selectedOptions, (option) => option.value))}>{(repositories.data?.data.items ?? []).map((repository) => <option key={repository.id} value={repository.id}>{sanitizeUntrustedText(repository.name).text}</option>)}</select></div>
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={nameId}>Token name</label><InputControl id={nameId} className="red2pr-control-input" required minLength={1} maxLength={64} value={name} onChange={(event) => setName(event.target.value)} /></div>
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={scopeId}>Scopes</label><SelectorControl id={scopeId} className="red2pr-control-input" multiple value={scopes} onChange={(event) => setScopes(Array.from(event.target.selectedOptions, (option) => option.value as ApiTokenCreateRequest["scopes"][number]))}>{TOKEN_SCOPES.map((scope) => <option key={scope} value={scope}>{scope}</option>)}</SelectorControl></div>
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={repositoriesId}>Repository access</label><SelectorControl id={repositoriesId} className="red2pr-control-input" multiple value={repositoryIds} onChange={(event) => setRepositoryIds(Array.from(event.target.selectedOptions, (option) => option.value))}>{(repositories.data?.data.items ?? []).map((repository) => <option key={repository.id} value={repository.id}>{sanitizeUntrustedText(repository.name).text}</option>)}</SelectorControl></div>
           {repositories.isError ? <p role="alert">Repository grants could not be loaded, so token issuance is disabled.</p> : null}
           <Button label="Issue scoped token" variant="primary" type="submit" isDisabled={createToken.isPending || !name.trim() || scopes.length === 0 || repositoryIds.length === 0 || repositories.isError} isLoading={createToken.isPending} />
           {createToken.isError ? <p role="alert">Token issuance failed. Check your role and selected scopes.</p> : null}
@@ -241,9 +243,9 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
         </article>)}
         <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); createException.mutate(); }}>
           <h3>Record a High finding exception</h3>
-          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={`${nameId}-finding`}>Finding reference</label><input id={`${nameId}-finding`} className="red2pr-control-input" required maxLength={128} value={findingRef} onChange={(event) => setFindingRef(event.target.value)} /></div>
-          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={`${nameId}-digest`}>Artifact SHA-256 digest</label><input id={`${nameId}-digest`} className="red2pr-control-input" required minLength={64} maxLength={64} pattern="[0-9a-f]{64}" value={artifactDigest} onChange={(event) => setArtifactDigest(event.target.value)} /></div>
-          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={`${nameId}-reviewer`}>Independent security reviewer</label><select id={`${nameId}-reviewer`} className="red2pr-control-input" required value={reviewerUserId} onChange={(event) => setReviewerUserId(event.target.value)}><option value="">Select an admin</option>{(members.data?.data.items ?? []).filter((member) => member.role === "admin").map((member) => <option key={member.user_id} value={member.user_id}>{member.user_id}</option>)}</select></div>
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={`${nameId}-finding`}>Finding reference</label><InputControl id={`${nameId}-finding`} className="red2pr-control-input" required maxLength={128} value={findingRef} onChange={(event) => setFindingRef(event.target.value)} /></div>
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={`${nameId}-digest`}>Artifact SHA-256 digest</label><InputControl id={`${nameId}-digest`} className="red2pr-control-input" required minLength={64} maxLength={64} pattern="[0-9a-f]{64}" value={artifactDigest} onChange={(event) => setArtifactDigest(event.target.value)} /></div>
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={`${nameId}-reviewer`}>Independent security reviewer</label><SelectorControl id={`${nameId}-reviewer`} className="red2pr-control-input" required value={reviewerUserId} onChange={(event) => setReviewerUserId(event.target.value)}><option value="">Select an admin</option>{(members.data?.data.items ?? []).filter((member) => member.role === "admin").map((member) => <option key={member.user_id} value={member.user_id}>{member.user_id}</option>)}</SelectorControl></div>
           <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={`${nameId}-mitigation`}>Mitigation</label><textarea id={`${nameId}-mitigation`} className="red2pr-control-input" required minLength={20} maxLength={2000} value={mitigation} onChange={(event) => setMitigation(event.target.value)} /></div>
           {members.isError ? <p role="alert">Admin reviewer list could not be loaded, so exception creation is disabled.</p> : null}
           <Button label="Record 14-day High exception" variant="primary" type="submit" isDisabled={createException.isPending || members.isError || !findingRef.trim() || !/^[0-9a-f]{64}$/.test(artifactDigest) || !reviewerUserId || mitigation.trim().length < 20} isLoading={createException.isPending} />
@@ -300,6 +302,6 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
           retry?.();
         }}
       />
-    </main>
+    </section>
   );
 }

@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type ApiEnvelope,
@@ -439,7 +441,7 @@ function PolicyEditorForm({
       <section className="red2pr-surface red2pr-card-section" aria-label={t("policyEditor.title")}>
         <div className="red2pr-card-header">
           <div>
-            <h2 style={{ margin: 0, fontSize: "1.15rem" }}>{t("policyEditor.title")}</h2>
+            <h2 >{t("policyEditor.title")}</h2>
             <p className="red2pr-field-hint" style={{ marginTop: 4 }}>
               {t("policyEditor.subtitle")}
             </p>
@@ -598,7 +600,7 @@ function PolicyEditorForm({
               <label className="red2pr-field-label" htmlFor={modeSelectId}>
                 Operating Mode ({layerLabel(fieldSources["mode"])})
               </label>
-              <select
+              <SelectorControl
                 id={modeSelectId}
                 className="red2pr-control-select"
                 value={mode}
@@ -610,7 +612,7 @@ function PolicyEditorForm({
                 <option value="auto_repair">
                   Auto-Repair (verified draft PR within safe allowlist)
                 </option>
-              </select>
+              </SelectorControl>
             </div>
 
             <div className="red2pr-field">
@@ -639,7 +641,7 @@ function PolicyEditorForm({
               <label className="red2pr-field-label" htmlFor={runtimeProfileIdInput}>
                 Certified Runtime Profile ({layerLabel(fieldSources["runtime_profile_id"])})
               </label>
-              <input
+              <InputControl
                 id={runtimeProfileIdInput}
                 type="text"
                 className="red2pr-control-input"
@@ -812,7 +814,7 @@ function PolicyEditorForm({
               <label className="red2pr-field-label" htmlFor={maxAttemptsId}>
                 Max Attempts ({layerLabel(fieldSources["max_attempts"])})
               </label>
-              <input
+              <InputControl
                 id={maxAttemptsId}
                 type="number"
                 min={1}
@@ -828,7 +830,7 @@ function PolicyEditorForm({
               <label className="red2pr-field-label" htmlFor={maxDiffLinesId}>
                 Max Diff Lines ({layerLabel(fieldSources["max_diff_lines"])})
               </label>
-              <input
+              <InputControl
                 id={maxDiffLinesId}
                 type="number"
                 min={1}
@@ -844,7 +846,7 @@ function PolicyEditorForm({
               <label className="red2pr-field-label" htmlFor={maxCallsId}>
                 Max Calls / Session
               </label>
-              <input
+              <InputControl
                 id={maxCallsId}
                 type="number"
                 min={1}
@@ -861,7 +863,7 @@ function PolicyEditorForm({
               <label className="red2pr-field-label" htmlFor={maxTokensId}>
                 Max Tokens / Session
               </label>
-              <input
+              <InputControl
                 id={maxTokensId}
                 type="number"
                 min={1}
@@ -878,7 +880,7 @@ function PolicyEditorForm({
               <label className="red2pr-field-label" htmlFor={maxWallId}>
                 Max Wall Seconds
               </label>
-              <input
+              <InputControl
                 id={maxWallId}
                 type="number"
                 min={60}
@@ -895,7 +897,7 @@ function PolicyEditorForm({
               <label className="red2pr-field-label" htmlFor={maxCostAmountId}>
                 Max Session Cost
               </label>
-              <input
+              <InputControl
                 id={maxCostAmountId}
                 type="text"
                 className="red2pr-control-input"
@@ -910,7 +912,7 @@ function PolicyEditorForm({
               <label className="red2pr-field-label" htmlFor={maxCostCurrencyId}>
                 Currency
               </label>
-              <input
+              <InputControl
                 id={maxCostCurrencyId}
                 type="text"
                 maxLength={3}
@@ -926,7 +928,7 @@ function PolicyEditorForm({
             <label className="red2pr-field-label" htmlFor={reasonInputId}>
               Audit Change Reason
             </label>
-            <input
+            <InputControl
               id={reasonInputId}
               type="text"
               className="red2pr-control-input"
@@ -962,7 +964,7 @@ function PolicyEditorForm({
       >
         <div className="red2pr-card-header">
           <div>
-            <h3 style={{ margin: 0, fontSize: "1.05rem" }}>
+            <h3 >
               Dry-Run Policy Simulator (Zero DB Mutations)
             </h3>
             <p className="red2pr-field-hint" style={{ marginTop: 4 }}>
@@ -1015,7 +1017,7 @@ function PolicyEditorForm({
             <label className="red2pr-field-label" htmlFor={sampleDiffLinesId}>
               Sample Patch Diff Line Count
             </label>
-            <input
+            <InputControl
               id={sampleDiffLinesId}
               type="number"
               min={0}
@@ -1173,7 +1175,7 @@ function PolicyEditorForm({
         className="red2pr-surface red2pr-card-section"
         aria-label="Immutable Policy Revision History"
       >
-        <h3 style={{ margin: 0, fontSize: "1.05rem" }}>Immutable Policy Revisions</h3>
+        <h3 >Immutable Policy Revisions</h3>
         {(state.revisions ?? []).length === 0 ? (
           <p className="red2pr-field-hint">No policy revisions recorded.</p>
         ) : (

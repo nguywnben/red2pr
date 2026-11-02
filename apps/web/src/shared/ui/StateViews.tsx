@@ -1,9 +1,9 @@
-import { Banner, type BannerStatus } from "@astryxdesign/core/Banner";
 import { Card } from "@astryxdesign/core/Card";
 import { EmptyState as AstryxEmptyState } from "@astryxdesign/core/EmptyState";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import React from "react";
 import { useI18n, type MessageKey } from "../i18n";
+import { HStack, Text, VStack } from "./AstryxComponents";
 import { Button, type Red2PrButtonProps } from "./Button";
 
 export const ALL_UX_STATE_KINDS = [
@@ -47,7 +47,6 @@ type ToneClass =
   | "red2pr-tone-neutral";
 
 interface StateVisualMeta {
-  readonly bannerStatus: BannerStatus;
   readonly toneClass: ToneClass;
   readonly iconKind: "check" | "warn" | "error" | "info" | "clock" | "lock" | "offline";
   readonly badgeKey: MessageKey;
@@ -57,7 +56,6 @@ interface StateVisualMeta {
 
 const STATE_META: Record<UxStateKind, StateVisualMeta> = {
   loading: {
-    bannerStatus: "info",
     toneClass: "red2pr-tone-info",
     iconKind: "clock",
     badgeKey: "state.loading.badge",
@@ -65,7 +63,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.loading.description",
   },
   empty: {
-    bannerStatus: "info",
     toneClass: "red2pr-tone-neutral",
     iconKind: "info",
     badgeKey: "state.empty.badge",
@@ -73,7 +70,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.empty.description",
   },
   ready: {
-    bannerStatus: "success",
     toneClass: "red2pr-tone-success",
     iconKind: "check",
     badgeKey: "state.ready.badge",
@@ -81,7 +77,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.ready.description",
   },
   partial_evidence: {
-    bannerStatus: "warning",
     toneClass: "red2pr-tone-warning",
     iconKind: "clock",
     badgeKey: "state.partial_evidence.badge",
@@ -89,7 +84,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.partial_evidence.description",
   },
   stale: {
-    bannerStatus: "warning",
     toneClass: "red2pr-tone-warning",
     iconKind: "clock",
     badgeKey: "state.stale.badge",
@@ -97,7 +91,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.stale.description",
   },
   degraded: {
-    bannerStatus: "warning",
     toneClass: "red2pr-tone-warning",
     iconKind: "warn",
     badgeKey: "state.degraded.badge",
@@ -105,7 +98,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.degraded.description",
   },
   offline: {
-    bannerStatus: "error",
     toneClass: "red2pr-tone-danger",
     iconKind: "offline",
     badgeKey: "state.offline.badge",
@@ -113,7 +105,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.offline.description",
   },
   unauthorized: {
-    bannerStatus: "warning",
     toneClass: "red2pr-tone-warning",
     iconKind: "lock",
     badgeKey: "state.unauthorized.badge",
@@ -121,7 +112,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.unauthorized.description",
   },
   forbidden: {
-    bannerStatus: "error",
     toneClass: "red2pr-tone-danger",
     iconKind: "lock",
     badgeKey: "state.forbidden.badge",
@@ -129,7 +119,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.forbidden.description",
   },
   rate_limited: {
-    bannerStatus: "warning",
     toneClass: "red2pr-tone-warning",
     iconKind: "clock",
     badgeKey: "state.rate_limited.badge",
@@ -137,7 +126,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.rate_limited.description",
   },
   approval_required: {
-    bannerStatus: "info",
     toneClass: "red2pr-tone-info",
     iconKind: "lock",
     badgeKey: "state.approval_required.badge",
@@ -145,7 +133,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.approval_required.description",
   },
   unsupported_runtime: {
-    bannerStatus: "info",
     toneClass: "red2pr-tone-neutral",
     iconKind: "info",
     badgeKey: "state.unsupported_runtime.badge",
@@ -153,7 +140,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.unsupported_runtime.description",
   },
   reconciling: {
-    bannerStatus: "info",
     toneClass: "red2pr-tone-info",
     iconKind: "clock",
     badgeKey: "state.reconciling.badge",
@@ -161,7 +147,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.reconciling.description",
   },
   interrupted: {
-    bannerStatus: "warning",
     toneClass: "red2pr-tone-warning",
     iconKind: "warn",
     badgeKey: "state.interrupted.badge",
@@ -169,7 +154,6 @@ const STATE_META: Record<UxStateKind, StateVisualMeta> = {
     descriptionKey: "state.interrupted.description",
   },
   error: {
-    bannerStatus: "error",
     toneClass: "red2pr-tone-danger",
     iconKind: "error",
     badgeKey: "state.error.badge",
@@ -288,7 +272,7 @@ export function StateView({
 
   const actionGroup =
     primaryAction || secondaryAction ? (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+      <HStack gap={2} wrap="wrap">
         {primaryAction ? (
           <Button
             label={primaryAction.label}
@@ -309,88 +293,63 @@ export function StateView({
             isLoading={secondaryAction.isLoading}
           />
         ) : null}
-      </div>
+      </HStack>
     ) : null;
 
   const correlationBadge = correlationId ? (
-    <div style={{ marginTop: 8 }}>
-      <span className="red2pr-badge-pill red2pr-tone-neutral">
-        <code>{t("state.correlationId", { correlationId })}</code>
-      </span>
-    </div>
+    <Text type="code" color="secondary">
+      {t("state.correlationId", { correlationId })}
+    </Text>
   ) : null;
 
-  if (normalized === "empty") {
-    return (
-      <Card>
-        <div data-ux-state="empty" style={{ padding: 12 }}>
-          <div style={{ marginBottom: 8 }}>
-            <span className={`red2pr-badge-pill ${meta.toneClass}`}>
-              <StatusGlyph kind={meta.iconKind} />
-              <span>{resolvedBadge}</span>
-            </span>
-          </div>
-          <AstryxEmptyState
-            title={resolvedTitle}
-            description={resolvedDescription}
-            actions={actionGroup ?? undefined}
-          />
-          {correlationBadge}
-          {children}
-        </div>
-      </Card>
-    );
-  }
-
-  if (normalized === "loading") {
-    return (
-      <Card>
-        <div
-          data-ux-state="loading"
-          role="status"
-          aria-busy="true"
-          style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}
-        >
-          <div>
-            <span className={`red2pr-badge-pill ${meta.toneClass}`}>
-              <StatusGlyph kind="clock" />
-              <span>{resolvedBadge}</span>
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Spinner size="md" aria-label={resolvedTitle} />
-            <strong>{resolvedTitle}</strong>
-          </div>
-          <p style={{ margin: 0 }}>{resolvedDescription}</p>
-          {correlationBadge}
-          {actionGroup}
-          {children}
-        </div>
-      </Card>
-    );
-  }
-
+  const isAlert = normalized === "error" || normalized === "offline" || normalized === "forbidden";
   return (
-    <div data-ux-state={normalized}>
-      <Banner
-        status={meta.bannerStatus}
-        title={resolvedTitle}
-        description={resolvedDescription}
-        collapsible={false}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div>
-            <span className={`red2pr-badge-pill ${meta.toneClass}`}>
-              <StatusGlyph kind={meta.iconKind} />
-              <span>{resolvedBadge}</span>
-            </span>
-          </div>
+    <Card
+      className="red2pr-state-view"
+      data-ux-state={normalized}
+      role={isAlert ? "alert" : "status"}
+      aria-live={isAlert ? "assertive" : "polite"}
+      aria-busy={normalized === "loading" ? true : undefined}
+      variant="transparent"
+      padding={4}
+    >
+      <HStack gap={3} vAlign="start">
+        <HStack className="red2pr-state-icon" gap={0}>
+          {normalized === "loading" ? (
+            <Spinner size="md" aria-label={resolvedTitle} />
+          ) : (
+            <StatusGlyph kind={meta.iconKind} />
+          )}
+        </HStack>
+        <VStack gap={2} width="100%">
+          <VStack gap={1}>
+            <Text type="supporting" weight="semibold">
+              {resolvedBadge}
+            </Text>
+            {normalized === "empty" ? (
+              <AstryxEmptyState
+                headingLevel={3}
+                isCompact
+                title={resolvedTitle}
+                description={resolvedDescription}
+              />
+            ) : (
+              <>
+                <Text as="h2" type="label" weight="semibold">
+                  {resolvedTitle}
+                </Text>
+                <Text as="p" color="secondary">
+                  {resolvedDescription}
+                </Text>
+              </>
+            )}
+          </VStack>
           {correlationBadge}
           {actionGroup}
           {children}
-        </div>
-      </Banner>
-    </div>
+        </VStack>
+      </HStack>
+    </Card>
   );
 }
 

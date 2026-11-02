@@ -1,3 +1,4 @@
+import { SelectorControl } from "./SelectorControl";
 import { Pagination } from "@astryxdesign/core/Pagination";
 import { observeElementRect, useVirtualizer } from "@tanstack/react-virtual";
 import React, { useId, useMemo, useRef, useState } from "react";
@@ -297,7 +298,7 @@ export function SafeDiffViewer({
               <label htmlFor={fileSelectId} style={{ fontSize: "0.75rem", fontWeight: 500 }}>
                 {t("diff.fileFilterLabel")}
               </label>
-              <select
+              <SelectorControl
                 id={fileSelectId}
                 className="red2pr-control-select"
                 value={selectedFile}
@@ -312,7 +313,7 @@ export function SafeDiffViewer({
                     {filePath}
                   </option>
                 ))}
-              </select>
+              </SelectorControl>
             </>
           ) : null}
           <Button

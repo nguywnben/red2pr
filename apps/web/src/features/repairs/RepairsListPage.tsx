@@ -1,9 +1,10 @@
+import { InputControl } from "../../shared/ui";
 import type { CiRun, Repair, MeResponse, Workspace } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useRed2PrApi } from "../../shared/api";
-import { Button, StateView, StatusGlyph, Table, type TableColumn } from "../../shared/ui";
+import { Button, Selector, StateView, StatusGlyph, Table, type TableColumn } from "../../shared/ui";
 import { formatUtcTimestamp } from "../auth";
 import { generateClientUuidV7 } from "../queues";
 
@@ -76,21 +77,15 @@ export function RepairsListPage({ workspace, me }: RepairsListPageProps): React.
   return <div className="red2pr-page-stack" data-testid="repairs-list-page">
     <header className="red2pr-page-header"><div><h1>Repairs</h1><p>Repair sessions, evidence quality, and remote outcomes.</p></div></header>
     <div className="red2pr-toolbar" aria-label="Repair filters">
-      <label>Phase <select value={stateFilter} onChange={(event) => { setCursor(null); setCursorHistory([]); setStateFilter(event.target.value); }}>
-        <option value="all">All phases</option>{["received", "collecting", "triaging", "repro_unconfirmed", "verifying", "policy_gate", "awaiting_approval", "needs_human", "blocked", "cancelled", "remote_verified", "remote_failed"].map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}
-      </select></label>
-      <label>Proof <select value={proofFilter} onChange={(event) => { setCursor(null); setCursorHistory([]); setProofFilter(event.target.value); }}>
-        <option value="all">All proof grades</option>{["none", "baseline_confirmed", "locally_verified", "remotely_verified"].map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}
-      </select></label>
-      <label>Remote status <select value={remoteFilter} onChange={(event) => { setCursor(null); setCursorHistory([]); setRemoteFilter(event.target.value); }}>
-        <option value="all">All remote states</option>{["not_published", "pending", "passed", "failed", "unknown"].map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}
-      </select></label>
+      <Selector label="Phase" isLabelHidden value={stateFilter} onChange={(value) => { setCursor(null); setCursorHistory([]); setStateFilter(value); }} options={[{ value: "all", label: "All phases" }, ...["received", "collecting", "triaging", "repro_unconfirmed", "verifying", "policy_gate", "awaiting_approval", "needs_human", "blocked", "cancelled", "remote_verified", "remote_failed"].map((item) => ({ value: item, label: item.replaceAll("_", " ") }))]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+      <Selector label="Proof" isLabelHidden value={proofFilter} onChange={(value) => { setCursor(null); setCursorHistory([]); setProofFilter(value); }} options={[{ value: "all", label: "All proof grades" }, ...["none", "baseline_confirmed", "locally_verified", "remotely_verified"].map((item) => ({ value: item, label: item.replaceAll("_", " ") }))]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+      <Selector label="Remote status" isLabelHidden value={remoteFilter} onChange={(value) => { setCursor(null); setCursorHistory([]); setRemoteFilter(value); }} options={[{ value: "all", label: "All remote states" }, ...["not_published", "pending", "passed", "failed", "unknown"].map((item) => ({ value: item, label: item.replaceAll("_", " ") }))]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
     </div>
     {canManage ? <section className="red2pr-surface red2pr-card-section" aria-labelledby="start-repair-title"><h2 id="start-repair-title">Start a repair</h2>
       {runsQuery.isError ? <StateView state="error" title="Failed runs unavailable" description="Refresh pipelines and retry after run ingestion completes." primaryAction={{ label: "Retry", onClick: () => void runsQuery.refetch() }} /> : <>
-        <label>Failed CI run <select value={selectedRunId} onChange={(event) => setSelectedRunId(event.target.value)}><option value="">Select a failed run</option>{failedRuns.map((run) => <option key={run.id} value={run.id}>Run {run.id.slice(0, 8)} · {run.head_sha.slice(0, 12)} · {run.conclusion}</option>)}</select></label>
-        <label>Repair mode <select value={mode} onChange={(event) => setMode(event.target.value as "approval" | "auto_repair")}><option value="approval">Approval required</option><option value="auto_repair">Automatic repair</option></select></label>
-        <label>Reason <input value={reason} maxLength={1000} onChange={(event) => setReason(event.target.value)} /></label>
+        <div className="red2pr-field"><span className="red2pr-field-label">Failed CI run</span><Selector label="Failed CI run" isLabelHidden value={selectedRunId} onChange={setSelectedRunId} options={[{ value: "", label: "Select a failed run" }, ...failedRuns.map((run) => ({ value: run.id, label: `Run ${run.id.slice(0, 8)} · ${run.head_sha.slice(0, 12)} · ${run.conclusion}` }))]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" /></div>
+        <div className="red2pr-field"><span className="red2pr-field-label">Repair mode</span><Selector label="Repair mode" isLabelHidden value={mode} onChange={(value) => setMode(value as "approval" | "auto_repair")} options={[{ value: "approval", label: "Approval required" }, { value: "auto_repair", label: "Automatic repair" }]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" /></div>
+        <div className="red2pr-field"><span className="red2pr-field-label">Reason</span><InputControl aria-label="Reason" value={reason} maxLength={1000} onChange={(event) => setReason(event.target.value)} /></div>
         {createMutation.error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{String(createMutation.error)}</div> : null}
         <Button label="Start repair" isLoading={createMutation.isPending} isDisabled={!selectedRunId || reason.trim().length === 0} onClick={() => createMutation.mutate()} />
       </>}</section> : null}

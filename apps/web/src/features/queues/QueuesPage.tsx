@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import {
   type ActionReceipt,
   type MeResponse,
@@ -550,18 +552,10 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
   const inspectedDetail = jobDetailQuery.data?.data ?? null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 12,
-        }}
-      >
+    <div className="red2pr-page-stack" data-testid="queues-page">
+      <header className="red2pr-page-header">
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.5rem" }}>{t("queues.pageTitle")}</h1>
+          <h1 >{t("queues.pageTitle")}</h1>
           <p className="red2pr-field-hint" style={{ marginTop: 4, marginBottom: 0 }}>
             {t("queues.pageSubtitle")}
           </p>
@@ -585,7 +579,7 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
             }}
           />
         </div>
-      </div>
+      </header>
 
       {/* Degraded Redis / Paused / Backpressure Operational Banners */}
       {fairness?.transport_status === "degraded" ? (
@@ -801,7 +795,7 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
           <label htmlFor={stateFilterId} style={{ fontSize: "0.8125rem", fontWeight: 600 }}>
             {t("queues.filterStateLabel")}
           </label>
-          <select
+          <SelectorControl
             id={stateFilterId}
             className="red2pr-select"
             value={stateFilter}
@@ -812,14 +806,14 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
                 {st === "all" ? "All states" : st}
               </option>
             ))}
-          </select>
+          </SelectorControl>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 220 }}>
           <label htmlFor={kindFilterId} style={{ fontSize: "0.8125rem", fontWeight: 600 }}>
             {t("queues.filterKindLabel")}
           </label>
-          <input
+          <InputControl
             id={kindFilterId}
             type="text"
             className="red2pr-input"
@@ -991,7 +985,7 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
             ) : null}
 
             <div>
-              <h3 style={{ margin: "0 0 8px 0", fontSize: "0.95rem" }}>
+              <h3 >
                 Fenced Lease Attempt History ({String((inspectedDetail.attempts_history ?? []).length)})
               </h3>
               {(inspectedDetail.attempts_history ?? []).length === 0 ? (
@@ -1134,7 +1128,7 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
                 <label htmlFor={reconcileOutcomeId} style={{ fontWeight: 600 }}>
                   Verified upstream outcome
                 </label>
-                <select
+                <SelectorControl
                   id={reconcileOutcomeId}
                   className="red2pr-select"
                   value={reconcileOutcome}
@@ -1149,7 +1143,7 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
                     confirmed_applied — Side effect already applied upstream (marks succeeded &
                     seals tombstone)
                   </option>
-                </select>
+                </SelectorControl>
               </div>
             ) : null}
 

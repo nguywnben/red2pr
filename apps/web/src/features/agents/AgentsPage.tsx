@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type AgentProfile,
@@ -153,7 +155,7 @@ function AgentProfileCard({
     >
       <div className="red2pr-card-header">
         <div>
-          <h2 id={headingId} style={{ margin: 0, fontSize: "1.125rem" }}>
+          <h2 id={headingId} >
             {displayName}
           </h2>
           <p className="red2pr-field-hint">{description}</p>
@@ -201,7 +203,7 @@ function AgentProfileCard({
             <label className="red2pr-field-label" htmlFor={modelId}>
               Primary Meta Muse model ({profile.role_key})
             </label>
-            <select
+            <SelectorControl
               id={modelId}
               className="red2pr-control-select"
               value={draft.modelId}
@@ -215,14 +217,14 @@ function AgentProfileCard({
             >
               <option value="muse-spark-1.3">muse-spark-1.3 (Primary)</option>
               <option value="muse-wonder-1.0">muse-wonder-1.0 (Probed Escalation)</option>
-            </select>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field-group">
             <label className="red2pr-field-label" htmlFor={escalationId}>
               Escalation model ({profile.role_key})
             </label>
-            <select
+            <SelectorControl
               id={escalationId}
               className="red2pr-control-select"
               value={draft.escalationModelId}
@@ -236,14 +238,14 @@ function AgentProfileCard({
             >
               <option value="">None (stay on primary model)</option>
               <option value="muse-wonder-1.0">muse-wonder-1.0 (requires verified probe)</option>
-            </select>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field-group">
             <label className="red2pr-field-label" htmlFor={reasoningId}>
               Reasoning effort ({profile.role_key})
             </label>
-            <select
+            <SelectorControl
               id={reasoningId}
               className="red2pr-control-select"
               value={draft.reasoningEffort}
@@ -258,14 +260,14 @@ function AgentProfileCard({
               <option value="low">low</option>
               <option value="medium">medium</option>
               <option value="high">high</option>
-            </select>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field-group">
             <label className="red2pr-field-label" htmlFor={maxStepsId}>
               Max steps ({profile.role_key}, 1-16)
             </label>
-            <input
+            <InputControl
               id={maxStepsId}
               className="red2pr-control-input"
               type="number"
@@ -284,7 +286,7 @@ function AgentProfileCard({
             <label className="red2pr-field-label" htmlFor={maxToolCallsId}>
               Max tool calls / step ({profile.role_key}, 1-8)
             </label>
-            <input
+            <InputControl
               id={maxToolCallsId}
               className="red2pr-control-input"
               type="number"
@@ -303,7 +305,7 @@ function AgentProfileCard({
             <label className="red2pr-field-label" htmlFor={maxRetriesId}>
               Max schema repair retries ({profile.role_key}, 0-2)
             </label>
-            <input
+            <InputControl
               id={maxRetriesId}
               className="red2pr-control-input"
               type="number"
@@ -680,7 +682,7 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
     <div className="red2pr-page-stack" data-testid="agents-page">
       <div className="red2pr-card-header">
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.5rem" }}>Agents &amp; Tool Governance</h1>
+          <h1 >Agents &amp; Tool Governance</h1>
           <p className="red2pr-field-hint">
             Bounded Triage/Diagnosis and Patch agent profiles within immutable S-20 tool ceilings
             and server-locked prompt fences.
@@ -810,7 +812,7 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
         className="red2pr-surface red2pr-card-section"
         aria-label="Immutable S-20 Tool and Prohibited Capability Matrix"
       >
-        <h2 style={{ margin: 0, fontSize: "1.125rem" }}>
+        <h2 >
           Immutable S-20 Tool Broker &amp; Prohibited Capability Matrix
         </h2>
         <Table
@@ -824,7 +826,7 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
         className="red2pr-surface red2pr-card-section"
         aria-label="Recent Agent Steps and Policy Denials"
       >
-        <h2 style={{ margin: 0, fontSize: "1.125rem" }}>
+        <h2 >
           Recent Agent Steps &amp; Broker Policy Denials
         </h2>
         {stepRows.length === 0 ? (

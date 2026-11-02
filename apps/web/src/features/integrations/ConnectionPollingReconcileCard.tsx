@@ -245,7 +245,7 @@ export function ConnectionPollingReconcileCard({
     >
       <div className="red2pr-card-header">
         <div>
-          <h3 id={headingId} style={{ margin: 0, fontSize: "1.05rem" }}>
+          <h3 id={headingId} >
             {t("integrations.pollingSectionTitle")}
           </h3>
           <p className="red2pr-field-hint" style={{ marginTop: 4 }}>

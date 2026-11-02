@@ -1,3 +1,4 @@
+import { InputControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type CapabilityAvailability,
@@ -756,7 +757,7 @@ export function GitHubIntegrationPanel({
       >
         <div className="red2pr-card-header">
           <div>
-            <h2 id="gh-connections-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
+            <h2 id="gh-connections-heading" >
               GitHub App Connections
             </h2>
             <p className="red2pr-field-hint" style={{ marginTop: 4 }}>
@@ -788,7 +789,7 @@ export function GitHubIntegrationPanel({
                 <label htmlFor={createNameId} className="red2pr-field-label">
                   Connection display name
                 </label>
-                <input
+                <InputControl
                   id={createNameId}
                   className="red2pr-control-input"
                   type="text"
@@ -803,7 +804,7 @@ export function GitHubIntegrationPanel({
                 <label htmlFor={createAppIdField} className="red2pr-field-label">
                   GitHub App ID (required)
                 </label>
-                <input
+                <InputControl
                   id={createAppIdField}
                   className="red2pr-control-input"
                   type="text"
@@ -819,7 +820,7 @@ export function GitHubIntegrationPanel({
                 <label htmlFor={createClientIdField} className="red2pr-field-label">
                   Client ID (optional)
                 </label>
-                <input
+                <InputControl
                   id={createClientIdField}
                   className="red2pr-control-input"
                   type="text"
@@ -834,7 +835,7 @@ export function GitHubIntegrationPanel({
                 <label htmlFor={createBaseUrlField} className="red2pr-field-label">
                   GitHub REST API base URL
                 </label>
-                <input
+                <InputControl
                   id={createBaseUrlField}
                   className="red2pr-control-input"
                   type="url"
@@ -870,7 +871,7 @@ export function GitHubIntegrationPanel({
               <label htmlFor={createWebhookField} className="red2pr-field-label">
                 Webhook HMAC secret (optional · write-only)
               </label>
-              <input
+              <InputControl
                 id={createWebhookField}
                 className="red2pr-control-input"
                 type="password"
@@ -952,7 +953,7 @@ export function GitHubIntegrationPanel({
           <div className="red2pr-card-header">
             <div>
               <div className="red2pr-button-row" style={{ gap: 8 }}>
-                <h2 id="gh-selected-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
+                <h2 id="gh-selected-heading" >
                   {
                     sanitizeUntrustedText(
                       selectedConnection.display_name ?? `GitHub App ${selectedConnection.app_id ?? ""}`,
@@ -1089,7 +1090,7 @@ export function GitHubIntegrationPanel({
 
           {/* Capability & Permission Diff Matrix */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <h3 style={{ margin: 0, fontSize: "0.95rem" }}>
+            <h3 >
               Observed Capabilities & Permission Diff
             </h3>
             <div className="red2pr-button-row">
@@ -1140,7 +1141,7 @@ export function GitHubIntegrationPanel({
             >
               <div className="red2pr-card-header">
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "0.95rem" }}>
+                  <h3 >
                     GitHub App Installation Binding (A-23 Single-Use State)
                   </h3>
                   <p className="red2pr-field-hint" style={{ marginTop: 4 }}>
@@ -1195,7 +1196,7 @@ export function GitHubIntegrationPanel({
                     <label htmlFor={confirmInstallIdField} className="red2pr-field-label">
                       GitHub Installation ID
                     </label>
-                    <input
+                    <InputControl
                       id={confirmInstallIdField}
                       className="red2pr-control-input"
                       type="text"
@@ -1210,7 +1211,7 @@ export function GitHubIntegrationPanel({
                     <label htmlFor={confirmStateField} className="red2pr-field-label">
                       Single-use callback state nonce
                     </label>
-                    <input
+                    <InputControl
                       id={confirmStateField}
                       className="red2pr-control-input"
                       type="text"
@@ -1243,7 +1244,7 @@ export function GitHubIntegrationPanel({
 
           {/* Discovered Repositories & Workflow Hazard Scanner Table */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <h3 style={{ margin: 0, fontSize: "0.95rem" }}>
+            <h3 >
               Discovered Repositories ({discoveredRepos.length})
             </h3>
             {detailQuery.isPending ? (
@@ -1324,7 +1325,7 @@ export function GitHubIntegrationPanel({
               <label htmlFor={rotateNameField} className="red2pr-field-label">
                 Display name
               </label>
-              <input
+              <InputControl
                 id={rotateNameField}
                 className="red2pr-control-input"
                 type="text"
@@ -1337,7 +1338,7 @@ export function GitHubIntegrationPanel({
               <label htmlFor={rotateBaseUrlField} className="red2pr-field-label">
                 GitHub REST API base URL
               </label>
-              <input
+              <InputControl
                 id={rotateBaseUrlField}
                 className="red2pr-control-input"
                 type="url"
@@ -1364,7 +1365,7 @@ export function GitHubIntegrationPanel({
               <label htmlFor={rotateWebhookField} className="red2pr-field-label">
                 Replacement webhook secret (optional · write-only)
               </label>
-              <input
+              <InputControl
                 id={rotateWebhookField}
                 className="red2pr-control-input"
                 type="password"
@@ -1420,7 +1421,7 @@ export function GitHubIntegrationPanel({
                 </code>{" "}
                 to confirm revocation
               </label>
-              <input
+              <InputControl
                 id={revokeConfirmField}
                 className="red2pr-control-input"
                 type="text"

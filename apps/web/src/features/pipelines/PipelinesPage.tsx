@@ -1,3 +1,4 @@
+import { InputControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type Artifact,
@@ -18,6 +19,7 @@ import { useI18n } from "../../shared/i18n";
 import {
   Button,
   SafeLogViewer,
+  Selector,
   StateView,
   StatusGlyph,
   Table,
@@ -420,10 +422,10 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
   const activeHasMore = extraNextOffset !== null ? extraHasMore : (baseChunk?.has_more ?? false);
 
   return (
-    <section aria-labelledby="pipelines-heading" style={{ display: "grid", gap: 20 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+    <section className="red2pr-page-stack" data-testid="pipelines-page" aria-labelledby="pipelines-heading">
+      <header className="red2pr-page-header">
         <div>
-          <h1 id="pipelines-heading" style={{ margin: 0, fontSize: "1.4rem" }}>
+          <h1 id="pipelines-heading" >
             {t("pipelines.title")}
           </h1>
           <p style={{ margin: "4px 0 0", opacity: 0.85 }}>{t("pipelines.subtitle")}</p>
@@ -465,22 +467,20 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
           <label htmlFor={repoSelectId} style={{ display: "block", fontSize: "0.75rem", fontWeight: 600 }}>
             {t("pipelines.filterRepoLabel")}
           </label>
-          <select
+          <Selector
             id={repoSelectId}
-            className="red2pr-control-input"
+            label={t("pipelines.filterRepoLabel")}
+            isLabelHidden
+            options={[{ value: "all", label: "All authorized repositories" }, ...(reposQuery.data?.data.items ?? []).map((repo) => ({ value: repo.id, label: sanitizeUntrustedText(repo.name).text }))]}
             value={repoFilter}
-            onChange={(e) => {
-              setRepoFilter(e.target.value);
-              setCursor(null);
-            }}
-          >
-            <option value="all">All authorized repositories</option>
-            {(reposQuery.data?.data.items ?? []).map((repo) => (
-              <option key={repo.id} value={repo.id}>
-                {sanitizeUntrustedText(repo.name).text}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => { setRepoFilter(value); setCursor(null); }}
+            hasClear={false}
+            hasSearch={false}
+            placeholder="Select..."
+            size="md"
+            variant="input"
+            presentation="popover"
+          />
         </div>
 
         <div>
@@ -490,49 +490,21 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
           >
             {t("pipelines.filterConclusionLabel")}
           </label>
-          <select
-            id={conclusionSelectId}
-            className="red2pr-control-input"
-            value={conclusionFilter}
-            onChange={(e) => {
-              setConclusionFilter(e.target.value as "all" | CiConclusion);
-              setCursor(null);
-            }}
-          >
-            {CONCLUSION_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+          <Selector id={conclusionSelectId} label={t("pipelines.filterConclusionLabel")} isLabelHidden options={CONCLUSION_OPTIONS.map((opt) => ({ value: opt, label: opt }))} value={conclusionFilter} onChange={(value) => { setConclusionFilter(value as "all" | CiConclusion); setCursor(null); }} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
         </div>
 
         <div>
           <label htmlFor={flakySelectId} style={{ display: "block", fontSize: "0.75rem", fontWeight: 600 }}>
             {t("pipelines.filterFlakyLabel")}
           </label>
-          <select
-            id={flakySelectId}
-            className="red2pr-control-input"
-            value={flakyFilter}
-            onChange={(e) => {
-              setFlakyFilter(e.target.value as "all" | FlakyClassification);
-              setCursor(null);
-            }}
-          >
-            {FLAKY_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+          <Selector id={flakySelectId} label={t("pipelines.filterFlakyLabel")} isLabelHidden options={FLAKY_OPTIONS.map((opt) => ({ value: opt, label: opt }))} value={flakyFilter} onChange={(value) => { setFlakyFilter(value as "all" | FlakyClassification); setCursor(null); }} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
         </div>
 
         <div>
           <label htmlFor={shaInputId} style={{ display: "block", fontSize: "0.75rem", fontWeight: 600 }}>
             {t("pipelines.filterShaLabel")}
           </label>
-          <input
+          <InputControl
             id={shaInputId}
             type="search"
             className="red2pr-control-input"
@@ -606,7 +578,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
         >
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: "1.1rem" }}>
+              <h2 >
                 Run #{sanitizeUntrustedText(runDetail.run.external_id).text} ·{" "}
                 <code>{sanitizeUntrustedText(runDetail.run.attempt_key ?? "attempt:1").text}</code>
               </h2>
@@ -701,7 +673,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
             }}
           >
             <div aria-label="Matrix and retry CI jobs" style={{ display: "grid", gap: 8 }}>
-              <h3 style={{ margin: 0, fontSize: "0.95rem" }}>
+              <h3 >
                 Jobs ({String(runJobs.length)})
               </h3>
               {runJobs.map((job) => {
@@ -821,7 +793,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
             }}
           >
             <section aria-label="Encrypted CI artifacts" style={{ display: "grid", gap: 8 }}>
-              <h3 style={{ margin: 0, fontSize: "0.95rem" }}>
+              <h3 >
                 Verified Encrypted Artifacts ({String(runArtifacts.length)})
               </h3>
               {downloadBanner !== null ? (
@@ -887,7 +859,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
             </section>
 
             <section aria-label="Historical failure fingerprints" style={{ display: "grid", gap: 8 }}>
-              <h3 style={{ margin: 0, fontSize: "0.95rem" }}>
+              <h3 >
                 Historical Failure Fingerprints ({String(runFingerprints.length)})
               </h3>
               {runFingerprints.length === 0 ? (

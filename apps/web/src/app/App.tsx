@@ -1,3 +1,4 @@
+import { InputControl } from "../shared/ui";
 import { Red2PrApiError, type Workspace } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, {
@@ -22,6 +23,7 @@ import {
 import { StepUpDialog, extractAuthProblemSummary, isStepUpValid, type AuthProblemSummary } from "../features/auth";
 const AccountPage = lazy(() => import("../features/auth").then((module) => ({ default: module.AccountPage })));
 const LoginPage = lazy(() => import("../features/auth").then((module) => ({ default: module.LoginPage })));
+const AccountRecoveryPage = lazy(() => import("../features/auth").then((module) => ({ default: module.AccountRecoveryPage })));
 const OidcCallbackPage = lazy(() => import("../features/auth").then((module) => ({ default: module.OidcCallbackPage })));
 const IntegrationsPage = lazy(() => import("../features/integrations").then((module) => ({ default: module.IntegrationsPage })));
 const GitHubCallbackRedirectRoute = lazy(() => import("../features/integrations").then((module) => ({ default: module.GitHubCallbackRedirectRoute })));
@@ -120,9 +122,13 @@ function WorkspaceSectionOutlet({
         path="*"
         element={
           <StateView
-            state="ready"
-            title={t("shell.readyTitle")}
-            description={t("shell.readyDescription")}
+            state="error"
+            title={t("shell.notFoundTitle")}
+            description={t("shell.notFoundDescription")}
+            primaryAction={{
+              label: t("shell.backToOverview"),
+              href: `/w/${encodeURIComponent(workspace.slug ?? workspace.id)}/overview`,
+            }}
           />
         }
       />
@@ -275,6 +281,7 @@ export function WorkspaceRouteShell(): React.JSX.Element {
         activeWorkspaceSlug={wsParam}
         workspaces={navOptions}
         onSelectWorkspace={handleSelectWorkspace}
+        isInstanceOwner={me.is_instance_owner}
         sseState="forbidden"
       >
         <div className="red2pr-page-stack" data-testid="workspace-revoked-guard">
@@ -315,6 +322,7 @@ export function WorkspaceRouteShell(): React.JSX.Element {
         activeWorkspaceSlug={wsParam}
         workspaces={navOptions}
         onSelectWorkspace={handleSelectWorkspace}
+        isInstanceOwner={me.is_instance_owner}
         sseState="connecting"
       >
         <StateView state="loading" />
@@ -342,6 +350,7 @@ export function WorkspaceRouteShell(): React.JSX.Element {
         activeWorkspaceSlug={wsParam}
         workspaces={navOptions}
         onSelectWorkspace={handleSelectWorkspace}
+        isInstanceOwner={me.is_instance_owner}
         sseState={isAccessDeniedOrMissing ? "forbidden" : "offline"}
       >
         <div className="red2pr-page-stack" data-testid="workspace-access-guard">
@@ -416,7 +425,7 @@ export function WorkspaceRouteShell(): React.JSX.Element {
                   <label htmlFor={bgReasonId} className="red2pr-field-label">
                     {t("workspaceGuard.breakGlassReasonLabel")}
                   </label>
-                  <input
+                  <InputControl
                     id={bgReasonId}
                     className="red2pr-control-input"
                     type="text"
@@ -432,7 +441,7 @@ export function WorkspaceRouteShell(): React.JSX.Element {
                   <label htmlFor={bgDurationId} className="red2pr-field-label">
                     {t("workspaceGuard.breakGlassDurationLabel")}
                   </label>
-                  <input
+                  <InputControl
                     id={bgDurationId}
                     className="red2pr-control-input"
                     type="number"
@@ -497,6 +506,7 @@ export function WorkspaceRouteShell(): React.JSX.Element {
       activeWorkspaceSlug={canonicalSlug}
       workspaces={navOptions}
       onSelectWorkspace={handleSelectWorkspace}
+      isInstanceOwner={me.is_instance_owner}
       sseState={sse.state}
     >
       <WorkspaceSectionOutlet workspace={resolvedWorkspace} meData={me} />
@@ -528,9 +538,74 @@ export function AccountRouteShell(): React.JSX.Element {
       activeWorkspaceSlug={defaultSlug}
       workspaces={navOptions}
       onSelectWorkspace={(nextSlug) => navigate(`/w/${encodeURIComponent(nextSlug)}/members`)}
+      isInstanceOwner={meQuery.data?.data.is_instance_owner ?? false}
       sseState="offline"
     >
       <AccountPage />
+    </AppShell>
+  );
+}
+
+export function SystemRouteShell(): React.JSX.Element {
+  const { t } = useI18n();
+  const api = useRed2PrApi();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const meQuery = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: () => api.getMe(),
+    retry: false,
+  });
+
+  if (meQuery.isError && meQuery.error instanceof Red2PrApiError && meQuery.error.status === 401) {
+    return <Navigate to={buildLoginRedirectHref(location.pathname, location.search)} replace />;
+  }
+
+  const me = meQuery.data?.data ?? null;
+  const navOptions = toWorkspaceNavOptions(me?.workspaces);
+  const defaultSlug = navOptions[0]?.slug ?? "default";
+  const shellProps = {
+    activePath: location.pathname,
+    activeWorkspaceSlug: defaultSlug,
+    workspaces: navOptions,
+    onSelectWorkspace: (nextSlug: string) => navigate(`/w/${encodeURIComponent(nextSlug)}/members`),
+    isInstanceOwner: me?.is_instance_owner ?? false,
+    sseState: "offline" as const,
+  };
+
+  if (meQuery.isPending) {
+    return (
+      <AppShell {...shellProps}>
+        <StateView state="loading" />
+      </AppShell>
+    );
+  }
+
+  if (me === null) {
+    const errSummary = extractAuthProblemSummary(meQuery.error, t("state.error.description"));
+    return (
+      <AppShell {...shellProps}>
+        <StateView
+          state={errSummary.status === null ? "offline" : "error"}
+          description={errSummary.detail}
+          correlationId={errSummary.correlationId ?? undefined}
+          primaryAction={{ label: "Retry", onClick: () => void meQuery.refetch() }}
+        />
+      </AppShell>
+    );
+  }
+
+  if (!me.is_instance_owner) {
+    return (
+      <AppShell {...shellProps}>
+        <StateView state="forbidden" />
+      </AppShell>
+    );
+  }
+
+  return (
+    <AppShell {...shellProps}>
+      <SystemPage />
     </AppShell>
   );
 }
@@ -589,21 +664,7 @@ export function AdminRouteShell(): React.JSX.Element {
     );
   }
 
-  return (
-    <AppShell
-      activePath={location.pathname}
-      activeWorkspaceSlug={defaultSlug}
-      workspaces={navOptions}
-      onSelectWorkspace={(nextSlug) => navigate(`/w/${encodeURIComponent(nextSlug)}/members`)}
-      sseState="offline"
-    >
-      <StateView
-        state="ready"
-        title={t("shell.readyTitle")}
-        description={t("shell.readyDescription")}
-      />
-    </AppShell>
-  );
+  return <Navigate to="/system" replace />;
 }
 
 export function AppRoutes(): React.JSX.Element {
@@ -611,6 +672,7 @@ export function AppRoutes(): React.JSX.Element {
     <Suspense fallback={<StateView state="loading" />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/login/recovery" element={<AccountRecoveryPage />} />
         <Route path="/auth/oidc/callback" element={<OidcCallbackPage />} />
         <Route path="/setup" element={<SetupWizardPage />} />
         <Route path="/setup/*" element={<SetupWizardPage />} />
@@ -618,7 +680,7 @@ export function AppRoutes(): React.JSX.Element {
         <Route path="/account" element={<AccountRouteShell />} />
         <Route path="/telegram/confirm" element={<TelegramIntentConfirmPage />} />
         <Route path="/mcp/approval" element={<McpIntentConfirmPage />} />
-        <Route path="/system" element={<SystemPage />} />
+        <Route path="/system" element={<SystemRouteShell />} />
         <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
         <Route path="/admin/*" element={<AdminRouteShell />} />
         <Route path="*" element={<Navigate to="/w/default/overview" replace />} />

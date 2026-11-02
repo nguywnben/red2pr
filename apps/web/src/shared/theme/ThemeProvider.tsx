@@ -1,8 +1,8 @@
 import { LinkProvider } from "@astryxdesign/core/Link";
 import { Theme, type ThemeMode } from "@astryxdesign/core/theme";
-import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Link as RouterLink } from "react-router";
+import { defaultThemeSlug, themes } from "../../astryx-themes";
 import "./tokens.css";
 
 export type { ThemeMode };
@@ -195,7 +195,7 @@ export function ThemeProvider({
 
   return (
     <Red2PrThemeContext.Provider value={contextValue}>
-      <Theme theme={neutralTheme} mode={resolvedTheme}>
+      <Theme theme={themes[defaultThemeSlug]} mode={resolvedTheme}>
         <LinkProvider component={SafeAstryxLink}>{children}</LinkProvider>
       </Theme>
     </Red2PrThemeContext.Provider>

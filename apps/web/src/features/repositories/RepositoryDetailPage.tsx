@@ -1,3 +1,4 @@
+import { InputControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type AffectedInFlightItem,
@@ -419,7 +420,7 @@ export function RepositoryDetailPage({
       >
         <div className="red2pr-card-header">
           <div>
-            <h1 style={{ margin: 0, fontSize: "1.45rem" }}>
+            <h1 >
               {sanitizeUntrustedText(repo.name).text}
             </h1>
             <p className="red2pr-field-hint" style={{ marginTop: 6 }}>
@@ -560,7 +561,7 @@ export function RepositoryDetailPage({
                     Repository Catalog Tags (comma-separated)
                   </label>
                   <div className="red2pr-button-row">
-                    <input
+                    <InputControl
                       id={tagsInputId}
                       type="text"
                       className="red2pr-control-input"
@@ -593,7 +594,7 @@ export function RepositoryDetailPage({
                 className="red2pr-surface red2pr-card-section"
                 aria-label="SEC-031 Workflow Hazards"
               >
-                <h2 style={{ margin: 0, fontSize: "1.1rem" }}>
+                <h2 >
                   Flagged CI Workflow Hazards (SEC-031 — Blocks Auto-Repair)
                 </h2>
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
@@ -612,7 +613,7 @@ export function RepositoryDetailPage({
 
         {activeTab === "runs" ? (
           <section className="red2pr-surface red2pr-card-section" aria-label="Normalized CI runs">
-            <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Normalized Failing CI Run Triggers</h2>
+            <h2 >Normalized Failing CI Run Triggers</h2>
             <Table<RunRow>
               aria-label="Normalized failing CI run triggers"
               data={(detail.recent_runs ?? []) as RunRow[]}
@@ -629,7 +630,7 @@ export function RepositoryDetailPage({
               className="red2pr-surface red2pr-card-section"
               aria-label="Pinned active task jobs"
             >
-              <h2 style={{ margin: 0, fontSize: "1.1rem" }}>
+              <h2 >
                 In-Flight Task Jobs & Policy Revision Isolation
               </h2>
               <Table<ActiveJobRow>
@@ -660,7 +661,7 @@ export function RepositoryDetailPage({
 
         {activeTab === "branches" ? (
           <section className="red2pr-surface red2pr-card-section" aria-label="Branch governance">
-            <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Branch Allow/Deny Governance</h2>
+            <h2 >Branch Allow/Deny Governance</h2>
             <dl className="red2pr-kv-grid">
               <div className="red2pr-kv-item">
                 <dt className="red2pr-kv-term">Default Branch</dt>
@@ -686,7 +687,7 @@ export function RepositoryDetailPage({
               </div>
             </dl>
             <div>
-              <h3 style={{ margin: "0 0 8px", fontSize: "0.95rem" }}>Observed Branches</h3>
+              <h3 >Observed Branches</h3>
               <ul className="red2pr-code-grid">
                 {observedBranches.map((br) => (
                   <li key={br} className="red2pr-code-chip">
@@ -701,7 +702,7 @@ export function RepositoryDetailPage({
 
         {activeTab === "access" ? (
           <section className="red2pr-surface red2pr-card-section" aria-label="Repository access">
-            <h2 style={{ margin: 0, fontSize: "1.1rem" }}>
+            <h2 >
               Authorized Principals (Deny-by-Default repo_grants)
             </h2>
             <Table<GrantRow>
@@ -717,7 +718,7 @@ export function RepositoryDetailPage({
             className="red2pr-surface red2pr-card-section"
             aria-label="Repository audit history"
           >
-            <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Tamper-Evident Repository Audit Log</h2>
+            <h2 >Tamper-Evident Repository Audit Log</h2>
             <Table<HistoryRow>
               aria-label="Repository audit history"
               data={(detail.recent_history ?? []) as HistoryRow[]}

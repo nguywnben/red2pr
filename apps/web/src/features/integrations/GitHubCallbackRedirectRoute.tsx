@@ -53,7 +53,7 @@ export function GitHubCallbackRedirectRoute(): React.JSX.Element {
     return (
       <AppShell activePath={location.pathname} activeWorkspaceSlug="default" sseState="offline">
         <div className="red2pr-page-stack" data-testid="github-callback-route-error">
-          <h1 style={{ margin: 0, fontSize: "1.5rem" }}>GitHub Callback Verification Failed</h1>
+          <h1 >GitHub Callback Verification Failed</h1>
           <StateView
             state={errSummary.status === 403 ? "forbidden" : "error"}
             description={errSummary.detail}

@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type MeResponse,
@@ -571,7 +573,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
         }}
       >
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.5rem" }}>{t("workers.title")}</h1>
+          <h1 >{t("workers.title")}</h1>
           <p style={{ margin: "4px 0 0", opacity: 0.85 }}>{t("workers.subtitle")}</p>
         </div>
         {isInstanceOwner ? (
@@ -648,7 +650,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
       </section>
 
       <section aria-label={t("workers.leasesTableLabel")}>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>{t("workers.leasesTableLabel")}</h2>
+        <h2 >{t("workers.leasesTableLabel")}</h2>
         {leaseRows.length === 0 ? (
           <StateView
             state="empty"
@@ -684,7 +686,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
             }}
           >
             <div>
-              <h2 style={{ fontSize: "1.15rem", margin: 0 }}>{t("workers.fleetTableLabel")}</h2>
+              <h2 >{t("workers.fleetTableLabel")}</h2>
               {fleetSummary !== null ? (
                 <div style={{ fontSize: "0.84rem", opacity: 0.85, marginTop: 4 }}>
                   Total: {String(fleetSummary.total_count)} · Online:{" "}
@@ -703,7 +705,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
                 style={{ display: "grid", gap: 4, fontSize: "0.85rem" }}
               >
                 <span>Status</span>
-                <select
+                <SelectorControl
                   id={statusSelectId}
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as "all" | WorkerStatus)}
@@ -713,14 +715,14 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
                       {opt}
                     </option>
                   ))}
-                </select>
+                </SelectorControl>
               </label>
               <label
                 htmlFor={isolationSelectId}
                 style={{ display: "grid", gap: 4, fontSize: "0.85rem" }}
               >
                 <span>Isolation Mode</span>
-                <select
+                <SelectorControl
                   id={isolationSelectId}
                   value={isolationFilter}
                   onChange={(e) =>
@@ -732,7 +734,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
                       {opt}
                     </option>
                   ))}
-                </select>
+                </SelectorControl>
               </label>
             </div>
           </div>
@@ -838,7 +840,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
             <>
               <label htmlFor={trustDomainInputId} className="red2pr-field">
                 <span>SPIFFE Trust Domain</span>
-                <input
+                <InputControl
                   id={trustDomainInputId}
                   type="text"
                   value={trustDomain}
@@ -847,7 +849,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
               </label>
               <label htmlFor={profilesInputId} className="red2pr-field">
                 <span>Reviewed Runtime Profiles (comma-separated)</span>
-                <input
+                <InputControl
                   id={profilesInputId}
                   type="text"
                   value={profileCsv}
@@ -856,7 +858,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
               </label>
               <label htmlFor={enrollModeSelectId} className="red2pr-field">
                 <span>Sandbox Isolation Backend</span>
-                <select
+                <SelectorControl
                   id={enrollModeSelectId}
                   value={enrollMode}
                   onChange={(e) => {
@@ -872,11 +874,11 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
                   <option value="oci_trusted_local">
                     oci_trusted_local (Single-host Trusted Local Docker — ADR-016)
                   </option>
-                </select>
+                </SelectorControl>
               </label>
               <label htmlFor={ttlInputId} className="red2pr-field">
                 <span>Token TTL (minutes, 5–120)</span>
-                <input
+                <InputControl
                   id={ttlInputId}
                   type="number"
                   min={5}
@@ -978,7 +980,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
           ) : null}
           <label htmlFor={actionReasonInputId} className="red2pr-field">
             <span>Audit Reason</span>
-            <input
+            <InputControl
               id={actionReasonInputId}
               type="text"
               placeholder="Explain why this worker state change is required..."

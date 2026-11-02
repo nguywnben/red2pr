@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type CapabilityAvailability,
@@ -697,7 +699,7 @@ export function GitLabIntegrationPanel({
       >
         <div className="red2pr-card-header">
           <div>
-            <h2 id="gl-connections-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
+            <h2 id="gl-connections-heading" >
               {t("integrations.gitlabSectionTitle")}
             </h2>
             <p className="red2pr-field-hint" style={{ marginTop: 4 }}>
@@ -799,7 +801,7 @@ export function GitLabIntegrationPanel({
             <div className="red2pr-card-header">
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <h2 id="gl-detail-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
+                  <h2 id="gl-detail-heading" >
                     {sanitizeUntrustedText(activeConnection.display_name ?? "GitLab Connection").text}
                   </h2>
                   {(() => {
@@ -964,7 +966,7 @@ export function GitLabIntegrationPanel({
 
             {/* Capability & Permission Matrix */}
             <div style={{ marginTop: 16 }}>
-              <h3 style={{ margin: "0 0 8px 0", fontSize: "0.95rem" }}>
+              <h3 >
                 Observed GitLab Capabilities &amp; Negotiated Scopes
               </h3>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -1032,7 +1034,7 @@ export function GitLabIntegrationPanel({
           >
             <div className="red2pr-card-header">
               <div>
-                <h2 id="gl-projects-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
+                <h2 id="gl-projects-heading" >
                   Discovered GitLab Projects ({projectRows.length})
                 </h2>
                 <p className="red2pr-field-hint" style={{ marginTop: 4 }}>
@@ -1135,7 +1137,7 @@ export function GitLabIntegrationPanel({
             <label htmlFor={createNameId} className="red2pr-field-label">
               Connection display name
             </label>
-            <input
+            <InputControl
               id={createNameId}
               type="text"
               className="red2pr-control-input"
@@ -1150,7 +1152,7 @@ export function GitLabIntegrationPanel({
             <label htmlFor={createBaseUrlField} className="red2pr-field-label">
               GitLab Base URL
             </label>
-            <input
+            <InputControl
               id={createBaseUrlField}
               type="url"
               className="red2pr-control-input"
@@ -1169,7 +1171,7 @@ export function GitLabIntegrationPanel({
             <label htmlFor={createAuthModeField} className="red2pr-field-label">
               Pinned Webhook Authentication Mode (Immutable — SEC-027)
             </label>
-            <select
+            <SelectorControl
               id={createAuthModeField}
               className="red2pr-control-input"
               value={createAuthMode}
@@ -1181,7 +1183,7 @@ export function GitLabIntegrationPanel({
               <option value="gitlab_legacy_token">
                 GitLab &lt; 19.0 Legacy Secret Token (X-Gitlab-Token over HTTPS/TLS)
               </option>
-            </select>
+            </SelectorControl>
             <span className="red2pr-field-hint">
               Webhook authentication mode is pinned permanently on creation and never silently
               downgrades from signed HMAC to legacy <code>X-Gitlab-Token</code>.
@@ -1192,7 +1194,7 @@ export function GitLabIntegrationPanel({
             <label htmlFor={createTokenField} className="red2pr-field-label">
               Project or Group Access Token (Write-Only)
             </label>
-            <input
+            <InputControl
               id={createTokenField}
               type="password"
               className="red2pr-control-input"
@@ -1216,7 +1218,7 @@ export function GitLabIntegrationPanel({
                 ? "Webhook Signing Key (Write-Only, whsec_... or >=16-byte secret)"
                 : "Legacy Webhook Secret Token (Write-Only, >=16 chars)"}
             </label>
-            <input
+            <InputControl
               id={createWebhookField}
               type="password"
               className="red2pr-control-input"
@@ -1263,7 +1265,7 @@ export function GitLabIntegrationPanel({
               <label htmlFor={rotateNameField} className="red2pr-field-label">
                 Connection display name
               </label>
-              <input
+              <InputControl
                 id={rotateNameField}
                 type="text"
                 className="red2pr-control-input"
@@ -1277,7 +1279,7 @@ export function GitLabIntegrationPanel({
               <label htmlFor={rotateBaseUrlField} className="red2pr-field-label">
                 GitLab Base URL
               </label>
-              <input
+              <InputControl
                 id={rotateBaseUrlField}
                 type="url"
                 className="red2pr-control-input"
@@ -1290,7 +1292,7 @@ export function GitLabIntegrationPanel({
               <label htmlFor={rotateTokenField} className="red2pr-field-label">
                 New Project/Group Access Token (Write-Only — optional rotation)
               </label>
-              <input
+              <InputControl
                 id={rotateTokenField}
                 type="password"
                 className="red2pr-control-input"
@@ -1305,7 +1307,7 @@ export function GitLabIntegrationPanel({
               <label htmlFor={rotateWebhookField} className="red2pr-field-label">
                 New Webhook Signing / Secret Key (Write-Only — retains previous key for overlap)
               </label>
-              <input
+              <InputControl
                 id={rotateWebhookField}
                 type="password"
                 className="red2pr-control-input"
@@ -1363,7 +1365,7 @@ export function GitLabIntegrationPanel({
               <label htmlFor={revokeConfirmField} className="red2pr-field-label">
                 Confirm connection name
               </label>
-              <input
+              <InputControl
                 id={revokeConfirmField}
                 type="text"
                 className="red2pr-control-input"

@@ -227,6 +227,10 @@ describe("U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-U
       for (const kind of ALL_UX_STATE_KINDS) {
         const node = container.querySelector(`[data-ux-state="${kind}"]`);
         expect(node).not.toBeNull();
+        expect(node?.classList.contains("red2pr-state-view")).toBe(true);
+        expect(node?.getAttribute("role")).toBe(
+          kind === "error" || kind === "offline" || kind === "forbidden" ? "alert" : "status",
+        );
         expect(node?.querySelector("svg")).not.toBeNull();
         expect(node?.textContent).toContain(`corr-${kind}`);
       }
@@ -338,8 +342,8 @@ describe("U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-U
       expect(skipLink).not.toBeNull();
       expect(container.querySelector("#astryx-app-shell-main")).not.toBeNull();
 
-      // SSE status uses text + icon
-      expect(screen.getByText("Live stream connected")).toBeInTheDocument();
+      // The workspace shell has no header navigation or stream-status row.
+      expect(screen.queryByText("Live stream connected")).not.toBeInTheDocument();
 
       // Rapid announcements coalesce via throttle rather than spamming every intermediate update
       const liveRegion = screen.getByTestId("red2pr-live-announcer");

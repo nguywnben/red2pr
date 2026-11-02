@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import type { OidcGroupMappingSummary, WorkspaceRole } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useId, useState } from "react";
@@ -90,7 +92,7 @@ export function OidcMappingPanel({ workspaceSlug }: OidcMappingPanelProps): Reac
     <section className="red2pr-surface red2pr-card-section" aria-labelledby="oidc-mappings-title">
       <div className="red2pr-card-header">
         <div>
-          <h2 id="oidc-mappings-title" style={{ margin: "0 0 4px", fontSize: "1.125rem" }}>
+          <h2 id="oidc-mappings-title" >
             {t("members.oidcMappingsTitle")}
           </h2>
           <p className="red2pr-field-hint">{t("members.oidcMappingsDescription")}</p>
@@ -109,7 +111,7 @@ export function OidcMappingPanel({ workspaceSlug }: OidcMappingPanelProps): Reac
           <label className="red2pr-field-label" htmlFor={`${groupId}-provider`}>
             {t("members.oidcProviderLabel")}
           </label>
-          <select
+          <SelectorControl
             id={`${groupId}-provider`}
             className="red2pr-control-select"
             value={providerId || providers[0]}
@@ -117,11 +119,11 @@ export function OidcMappingPanel({ workspaceSlug }: OidcMappingPanelProps): Reac
             disabled={saveMapping.isPending}
           >
             {providers.map((provider) => <option value={provider} key={provider}>{provider}</option>)}
-          </select>
+          </SelectorControl>
         </div>
         <div className="red2pr-field">
           <label className="red2pr-field-label" htmlFor={groupId}>{t("members.oidcGroupLabel")}</label>
-          <input
+          <InputControl
             id={groupId}
             className="red2pr-control-input"
             required
@@ -133,7 +135,7 @@ export function OidcMappingPanel({ workspaceSlug }: OidcMappingPanelProps): Reac
         </div>
         <div className="red2pr-field">
           <label className="red2pr-field-label" htmlFor={roleId}>{t("members.oidcRoleLabel")}</label>
-          <select
+          <SelectorControl
             id={roleId}
             className="red2pr-control-select"
             value={role}
@@ -143,7 +145,7 @@ export function OidcMappingPanel({ workspaceSlug }: OidcMappingPanelProps): Reac
             {MAPPING_ROLES.map((mappingRole) => (
               <option key={mappingRole} value={mappingRole}>{mappingRole}</option>
             ))}
-          </select>
+          </SelectorControl>
         </div>
         <label className="red2pr-field-hint">
           <input

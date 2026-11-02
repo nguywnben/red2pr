@@ -2,7 +2,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import React from "react";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
+import { SystemRouteShell } from "../../../app/App";
 import { ApiClientProvider, createWorkspaceQueryClient } from "../../../shared/api";
 import { I18nProvider } from "../../../shared/i18n";
 import { ThemeProvider } from "../../../shared/theme";
@@ -12,13 +14,29 @@ function renderSystem(fetchImpl: typeof fetch) {
   return render(<I18nProvider><ThemeProvider defaultMode="light"><ApiClientProvider queryClient={createWorkspaceQueryClient()} clientOptions={{ baseUrl: "http://127.0.0.1:4280", fetch: fetchImpl, getCsrfToken: () => "csrf-test" }}><SystemPage /></ApiClientProvider></ThemeProvider></I18nProvider>);
 }
 
-function systemFetch(options: { maintenanceEnabled?: boolean; maintenanceReason?: string | null; restoreCompatible?: boolean } = {}): { fetch: typeof fetch; calls: Request[] } {
+function renderSystemRoute(fetchImpl: typeof fetch) {
+  return render(
+    <I18nProvider>
+      <ThemeProvider defaultMode="light">
+        <ApiClientProvider queryClient={createWorkspaceQueryClient()} clientOptions={{ baseUrl: "http://127.0.0.1:4280", fetch: fetchImpl, getCsrfToken: () => "csrf-test" }}>
+          <MemoryRouter initialEntries={["/system"]}>
+            <Routes>
+              <Route path="/system" element={<SystemRouteShell />} />
+            </Routes>
+          </MemoryRouter>
+        </ApiClientProvider>
+      </ThemeProvider>
+    </I18nProvider>,
+  );
+}
+
+function systemFetch(options: { maintenanceEnabled?: boolean; maintenanceReason?: string | null; restoreCompatible?: boolean; isInstanceOwner?: boolean } = {}): { fetch: typeof fetch; calls: Request[] } {
   const calls: Request[] = [];
   const fetchImpl: typeof fetch = async (input) => {
     const request = input instanceof Request ? input : new Request(input);
     calls.push(request);
     const url = new URL(request.url);
-    if (url.pathname === "/api/v1/me") return Response.json({ is_instance_owner: true, mfa_enabled: true, step_up_valid_until: null });
+    if (url.pathname === "/api/v1/me") return Response.json({ is_instance_owner: options.isInstanceOwner ?? true, mfa_enabled: true, step_up_valid_until: null, workspaces: [{ id: "0196ef00-0000-7000-8000-000000000301", name: "Core workspace", slug: "core" }] });
     if (url.pathname === "/api/v1/system/status") return Response.json({ state: options.maintenanceEnabled ? "maintenance" : "ready", generated_at: "2026-10-31T00:00:00Z", application_version: "0.1.0", schema_revision: "0022_backups_migrations_ops", database_version: "16.4", recovery_epoch: 1, maintenance_enabled: options.maintenanceEnabled ?? false, maintenance_reason: options.maintenanceReason ?? null, worker_protocols: [], checks: [{ check_id: "database", state: "ok", summary: "PostgreSQL is reachable." }] });
     if (url.pathname === "/api/v1/system/doctor") return Response.json({ generated_at: "2026-10-31T00:00:00Z", overall_state: "healthy", checks: [{ check_id: "database", state: "ok", summary: "Database is reachable." }] });
     if (url.pathname === "/api/v1/system/support-bundles/preview") return Response.json({ manifest_digest: "a".repeat(64), file_ids: ["health_summary", "doctor_report"], redacted_file_count: 2, excluded_secrets: true, excluded_repository_source: true, expires_at: "2026-10-31T00:10:00Z" });
@@ -33,6 +51,22 @@ function systemFetch(options: { maintenanceEnabled?: boolean; maintenanceReason?
 }
 
 describe("U26 system operations screen", () => {
+  it("keeps system operations inside the shared shell and denies non-owners before system reads", async () => {
+    const owner = systemFetch();
+    const ownerView = renderSystemRoute(owner.fetch);
+    expect(await screen.findByTestId("system-page")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "System operations" })).toBeTruthy();
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(await axe.run(ownerView.container)).toMatchObject({ violations: [] });
+
+    ownerView.unmount();
+    const nonOwner = systemFetch({ isInstanceOwner: false });
+    renderSystemRoute(nonOwner.fetch);
+    expect(await screen.findByText(/Access denied/i)).toBeTruthy();
+    expect(nonOwner.calls.map((request) => new URL(request.url).pathname)).toEqual(["/api/v1/me"]);
+    expect(screen.queryByRole("link", { name: "System operations" })).toBeNull();
+  });
+
   it("renders actual status and allowlisted doctor results without exposing secret values", async () => {
     const { fetch } = systemFetch();
     const view = renderSystem(fetch);

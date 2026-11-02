@@ -18,7 +18,7 @@ export function IntegrationsPage({ workspace, me }: IntegrationsPageProps): Reac
   return (
     <div className="red2pr-page-stack" data-testid="integrations-page">
       <div>
-        <h1 style={{ margin: 0, fontSize: "1.5rem" }}>{t("integrations.pageTitle")}</h1>
+        <h1 >{t("integrations.pageTitle")}</h1>
         <p className="red2pr-field-hint" style={{ marginTop: 6 }}>
           {t("integrations.pageSubtitle")}
         </p>

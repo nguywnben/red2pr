@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import {
   Red2PrApiError,
   type ConsentDataClass,
@@ -464,7 +466,7 @@ export function SetupWizardPage(): React.JSX.Element {
 
   if (setupQuery.isPending) {
     return (
-      <main id="red2pr-main-content" className="red2pr-page-stack" style={{ padding: 24 }}>
+      <main id="red2pr-main-content" className="red2pr-page-stack red2pr-standalone-state">
         <StateView state="loading" />
       </main>
     );
@@ -484,7 +486,7 @@ export function SetupWizardPage(): React.JSX.Element {
     }
     const summary = extractAuthProblemSummary(setupQuery.error, t("state.error.description"));
     return (
-      <main id="red2pr-main-content" className="red2pr-page-stack" style={{ padding: 24 }}>
+      <main id="red2pr-main-content" className="red2pr-page-stack red2pr-standalone-state">
         <StateView
           state="error"
           description={summary.detail}
@@ -669,7 +671,7 @@ export function SetupWizardPage(): React.JSX.Element {
         style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16 }}
       >
         <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: "1.5rem" }}>{t("setup.pageTitle")}</h1>
+          <h1>{t("setup.pageTitle")}</h1>
           <p className="red2pr-field-hint" style={{ margin: 0 }}>
             {t("setup.pageSubtitle")}
           </p>
@@ -837,7 +839,7 @@ export function SetupWizardPage(): React.JSX.Element {
           aria-labelledby={`${idPrefix}-claim-heading`}
           data-testid="setup-phase-owner_claim"
         >
-          <h2 id={`${idPrefix}-claim-heading`} style={{ margin: "0 0 6px", fontSize: "1.2rem" }}>
+          <h2 id={`${idPrefix}-claim-heading`}>
             {PHASE_LABELS.owner_claim}
           </h2>
           <p className="red2pr-field-hint">{t("auth.bootstrapSubtitle")}</p>
@@ -855,7 +857,7 @@ export function SetupWizardPage(): React.JSX.Element {
               <label htmlFor={`${idPrefix}-boot-token`} className="red2pr-field-label">
                 {t("auth.bootstrapTokenLabel")}
               </label>
-              <input
+              <InputControl
                 id={`${idPrefix}-boot-token`}
                 className="red2pr-control-input"
                 type="password"
@@ -870,7 +872,7 @@ export function SetupWizardPage(): React.JSX.Element {
               <label htmlFor={`${idPrefix}-owner-name`} className="red2pr-field-label">
                 {t("auth.displayNameLabel")}
               </label>
-              <input
+              <InputControl
                 id={`${idPrefix}-owner-name`}
                 className="red2pr-control-input"
                 type="text"
@@ -884,7 +886,7 @@ export function SetupWizardPage(): React.JSX.Element {
               <label htmlFor={`${idPrefix}-owner-email`} className="red2pr-field-label">
                 {t("auth.emailOptionalLabel")}
               </label>
-              <input
+              <InputControl
                 id={`${idPrefix}-owner-email`}
                 className="red2pr-control-input"
                 type="email"
@@ -897,7 +899,7 @@ export function SetupWizardPage(): React.JSX.Element {
               <label htmlFor={`${idPrefix}-owner-pw`} className="red2pr-field-label">
                 {t("auth.newOwnerPasswordLabel")}
               </label>
-              <input
+              <InputControl
                 id={`${idPrefix}-owner-pw`}
                 className="red2pr-control-input"
                 type="password"
@@ -932,9 +934,7 @@ export function SetupWizardPage(): React.JSX.Element {
           data-testid={`setup-phase-${activePhase}`}
         >
           <h2
-            id={`${idPrefix}-active-phase-heading`}
-            style={{ margin: "0 0 8px", fontSize: "1.2rem" }}
-          >
+            id={`${idPrefix}-active-phase-heading`}>
             {PHASE_LABELS[activePhase]}
           </h2>
 
@@ -958,7 +958,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-dep-mode`} className="red2pr-field-label">
                     Deployment mode
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-dep-mode`}
                     className="red2pr-control-input"
                     value={deploymentMode}
@@ -969,14 +969,14 @@ export function SetupWizardPage(): React.JSX.Element {
                     <option value="local">Local workstation (loopback HTTP or HTTPS)</option>
                     <option value="server">Single-host server (HTTPS required)</option>
                     <option value="distributed">Distributed cluster (HTTPS required)</option>
-                  </select>
+                  </SelectorControl>
                 </div>
 
                 <div className="red2pr-field">
                   <label htmlFor={`${idPrefix}-base-url`} className="red2pr-field-label">
                     Public base URL
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-base-url`}
                     className="red2pr-control-input"
                     type="url"
@@ -990,7 +990,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-tls-mode`} className="red2pr-field-label">
                     TLS termination mode
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-tls-mode`}
                     className="red2pr-control-input"
                     value={tlsMode}
@@ -1006,7 +1006,7 @@ export function SetupWizardPage(): React.JSX.Element {
                     <option value="loopback_http">Loopback HTTP (127.0.0.1 / localhost only)</option>
                     <option value="reverse_proxy_https">Reverse proxy HTTPS</option>
                     <option value="custom_ca_https">Enterprise custom CA HTTPS</option>
-                  </select>
+                  </SelectorControl>
                 </div>
               </>
             ) : null}
@@ -1017,7 +1017,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-storage-backend`} className="red2pr-field-label">
                     Artifact storage backend
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-storage-backend`}
                     className="red2pr-control-input"
                     value={storageBackend}
@@ -1027,14 +1027,14 @@ export function SetupWizardPage(): React.JSX.Element {
                   >
                     <option value="local">Local encrypted filesystem</option>
                     <option value="s3_compatible">S3-compatible object storage</option>
-                  </select>
+                  </SelectorControl>
                 </div>
 
                 <div className="red2pr-field">
                   <label htmlFor={`${idPrefix}-backup-days`} className="red2pr-field-label">
                     Backup & evidence retention (days)
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-backup-days`}
                     className="red2pr-control-input"
                     type="number"
@@ -1071,7 +1071,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-ws-name`} className="red2pr-field-label">
                     Initial workspace name
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-ws-name`}
                     className="red2pr-control-input"
                     type="text"
@@ -1085,7 +1085,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-ws-slug`} className="red2pr-field-label">
                     Workspace URL slug
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-ws-slug`}
                     className="red2pr-control-input"
                     type="text"
@@ -1102,7 +1102,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-prov-kind`} className="red2pr-field-label">
                     Git / CI provider
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-prov-kind`}
                     className="red2pr-control-input"
                     value={providerKind}
@@ -1110,14 +1110,14 @@ export function SetupWizardPage(): React.JSX.Element {
                   >
                     <option value="github">GitHub / GitHub Enterprise</option>
                     <option value="gitlab">GitLab / Self-Managed GitLab</option>
-                  </select>
+                  </SelectorControl>
                 </div>
 
                 <div className="red2pr-field">
                   <label htmlFor={`${idPrefix}-prov-url`} className="red2pr-field-label">
                     Provider API base URL
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-prov-url`}
                     className="red2pr-control-input"
                     type="url"
@@ -1130,7 +1130,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-prov-auth`} className="red2pr-field-label">
                     Authentication mode
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-prov-auth`}
                     className="red2pr-control-input"
                     value={providerAuthMode}
@@ -1143,14 +1143,14 @@ export function SetupWizardPage(): React.JSX.Element {
                     <option value="github_app">GitHub App installation</option>
                     <option value="signed_webhook">HMAC-signed webhook</option>
                     <option value="secret_token">Scoped token via Z2 SecretBroker</option>
-                  </select>
+                  </SelectorControl>
                 </div>
 
                 <div className="red2pr-field">
                   <label htmlFor={`${idPrefix}-prov-ep`} className="red2pr-field-label">
                     Private endpoint registration (optional, for self-hosted Git)
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-prov-ep`}
                     className="red2pr-control-input"
                     value={providerEndpointId}
@@ -1164,14 +1164,14 @@ export function SetupWizardPage(): React.JSX.Element {
                           {`${ep.scheme}://${ep.host}:${String(ep.port)}`}
                         </option>
                       ))}
-                  </select>
+                  </SelectorControl>
                 </div>
 
                 <div className="red2pr-field">
                   <label htmlFor={`${idPrefix}-prov-secref`} className="red2pr-field-label">
                     Opaque Z2 secret reference (optional, e.g. sec_provider_01)
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-prov-secref`}
                     className="red2pr-control-input"
                     type="text"
@@ -1189,7 +1189,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-model-primary`} className="red2pr-field-label">
                     Primary Meta model identifier
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-model-primary`}
                     className="red2pr-control-input"
                     type="text"
@@ -1203,7 +1203,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-model-esc`} className="red2pr-field-label">
                     Escalation model identifier (optional)
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-model-esc`}
                     className="red2pr-control-input"
                     type="text"
@@ -1216,7 +1216,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-model-cost`} className="red2pr-field-label">
                     Max cost per repair session (USD)
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-model-cost`}
                     className="red2pr-control-input"
                     type="text"
@@ -1229,7 +1229,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-model-tokens`} className="red2pr-field-label">
                     Max tokens per repair session
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-model-tokens`}
                     className="red2pr-control-input"
                     type="number"
@@ -1244,7 +1244,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-model-calls`} className="red2pr-field-label">
                     Max model calls per repair session
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-model-calls`}
                     className="red2pr-control-input"
                     type="number"
@@ -1259,7 +1259,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-inf-consent`} className="red2pr-field-label">
                     Active outbound inference consent record
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-inf-consent`}
                     className="red2pr-control-input"
                     value={selectedInferenceConsentId || inferenceConsents[0]?.id || ""}
@@ -1271,7 +1271,7 @@ export function SetupWizardPage(): React.JSX.Element {
                         {`${c.destination} (${c.data_classes.join(", ")})`}
                       </option>
                     ))}
-                  </select>
+                  </SelectorControl>
                 </div>
               </>
             ) : null}
@@ -1282,7 +1282,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-sandbox-kind`} className="red2pr-field-label">
                     Isolated Z3 sandbox backend
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-sandbox-kind`}
                     className="red2pr-control-input"
                     value={sandboxBackend}
@@ -1300,14 +1300,14 @@ export function SetupWizardPage(): React.JSX.Element {
                     </option>
                     <option value="podman_rootless">Rootless Podman container</option>
                     <option value="remote_vm_worker">Dedicated remote VM worker</option>
-                  </select>
+                  </SelectorControl>
                 </div>
 
                 <div className="red2pr-field">
                   <label htmlFor={`${idPrefix}-runtime-prof`} className="red2pr-field-label">
                     Certified runtime profile ID
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-runtime-prof`}
                     className="red2pr-control-input"
                     type="text"
@@ -1358,7 +1358,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-repo-mode`} className="red2pr-field-label">
                     Default repository operating mode
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-repo-mode`}
                     className="red2pr-control-input"
                     value={defaultRepoMode}
@@ -1371,14 +1371,14 @@ export function SetupWizardPage(): React.JSX.Element {
                     <option value="auto_repair">
                       Auto-open draft PR/MR after deterministic proof (requires Repair Ready)
                     </option>
-                  </select>
+                  </SelectorControl>
                 </div>
 
                 <div className="red2pr-field">
                   <label htmlFor={`${idPrefix}-max-attempts`} className="red2pr-field-label">
                     Max repair attempts per CI failure (1-5)
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-max-attempts`}
                     className="red2pr-control-input"
                     type="number"
@@ -1395,7 +1395,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-max-diff`} className="red2pr-field-label">
                     Max patch diff lines (1-2000)
                   </label>
-                  <input
+                  <InputControl
                     id={`${idPrefix}-max-diff`}
                     className="red2pr-control-input"
                     type="number"
@@ -1422,7 +1422,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-notif-chan`} className="red2pr-field-label">
                     Primary operator notification channel
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-notif-chan`}
                     className="red2pr-control-input"
                     value={notifChannel}
@@ -1444,14 +1444,14 @@ export function SetupWizardPage(): React.JSX.Element {
                     <option value="discord">Discord webhook</option>
                     <option value="telegram">Telegram bot</option>
                     <option value="email">SMTP email</option>
-                  </select>
+                  </SelectorControl>
                 </div>
 
                 <div className="red2pr-field">
                   <label htmlFor={`${idPrefix}-telem-mode`} className="red2pr-field-label">
                     Telemetry export policy
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-telem-mode`}
                     className="red2pr-control-input"
                     value={telemetryMode}
@@ -1463,7 +1463,7 @@ export function SetupWizardPage(): React.JSX.Element {
                     <option value="consented_export">
                       Consented OpenTelemetry export (requires active telemetry consent)
                     </option>
-                  </select>
+                  </SelectorControl>
                 </div>
               </>
             ) : null}
@@ -1471,7 +1471,7 @@ export function SetupWizardPage(): React.JSX.Element {
             {activePhase === "readiness_review" ? (
               <>
                 <div data-testid="setup-prerequisites-checklist" style={{ marginBottom: 12 }}>
-                  <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>
+                  <h3>
                     Verified Readiness Gates
                   </h3>
                   <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
@@ -1501,7 +1501,7 @@ export function SetupWizardPage(): React.JSX.Element {
                   <label htmlFor={`${idPrefix}-target-readiness`} className="red2pr-field-label">
                     Target readiness certification
                   </label>
-                  <select
+                  <SelectorControl
                     id={`${idPrefix}-target-readiness`}
                     className="red2pr-control-input"
                     value={targetReadiness}
@@ -1510,7 +1510,7 @@ export function SetupWizardPage(): React.JSX.Element {
                     <option value="not_ready">Save onboarding state (Not Ready)</option>
                     <option value="ready_monitor">Certify Monitor Ready</option>
                     <option value="ready_repair">Certify Repair Ready</option>
-                  </select>
+                  </SelectorControl>
                 </div>
 
                 <div className="red2pr-field">
@@ -1603,7 +1603,7 @@ export function SetupWizardPage(): React.JSX.Element {
             aria-labelledby={`${idPrefix}-consents-heading`}
             data-testid="setup-consents-panel"
           >
-            <h2 id={`${idPrefix}-consents-heading`} style={{ margin: "0 0 6px", fontSize: "1.15rem" }}>
+            <h2 id={`${idPrefix}-consents-heading`}>
               {t("setup.consentsTitle")}
             </h2>
             <p className="red2pr-field-hint">{t("setup.consentsSubtitle")}</p>
@@ -1630,7 +1630,7 @@ export function SetupWizardPage(): React.JSX.Element {
                 <label htmlFor={`${idPrefix}-consent-purpose`} className="red2pr-field-label">
                   Consent purpose
                 </label>
-                <select
+                <SelectorControl
                   id={`${idPrefix}-consent-purpose`}
                   className="red2pr-control-input"
                   value={consentPurpose}
@@ -1640,14 +1640,14 @@ export function SetupWizardPage(): React.JSX.Element {
                   <option value="notification">notification (outbound alert summaries)</option>
                   <option value="telemetry">telemetry (outbound OpenTelemetry metrics/traces)</option>
                   <option value="provider">provider (outbound Git/CI API calls)</option>
-                </select>
+                </SelectorControl>
               </div>
 
               <div className="red2pr-field">
                 <label htmlFor={`${idPrefix}-consent-dest`} className="red2pr-field-label">
                   Authorized destination URL
                 </label>
-                <input
+                <InputControl
                   id={`${idPrefix}-consent-dest`}
                   className="red2pr-control-input"
                   type="url"
@@ -1760,9 +1760,7 @@ export function SetupWizardPage(): React.JSX.Element {
             data-testid="setup-endpoints-panel"
           >
             <h2
-              id={`${idPrefix}-endpoints-heading`}
-              style={{ margin: "0 0 6px", fontSize: "1.15rem" }}
-            >
+              id={`${idPrefix}-endpoints-heading`}>
               {t("setup.endpointsTitle")}
             </h2>
             <p className="red2pr-field-hint">{t("setup.endpointsSubtitle")}</p>
@@ -1794,7 +1792,7 @@ export function SetupWizardPage(): React.JSX.Element {
                 <label htmlFor={`${idPrefix}-ep-adapter`} className="red2pr-field-label">
                   Bound outbound adapter
                 </label>
-                <select
+                <SelectorControl
                   id={`${idPrefix}-ep-adapter`}
                   className="red2pr-control-input"
                   value={epAdapter}
@@ -1810,14 +1808,14 @@ export function SetupWizardPage(): React.JSX.Element {
                   <option value="discord">discord</option>
                   <option value="telegram">telegram</option>
                   <option value="smtp">smtp</option>
-                </select>
+                </SelectorControl>
               </div>
 
               <div className="red2pr-field">
                 <label htmlFor={`${idPrefix}-ep-scheme`} className="red2pr-field-label">
                   Scheme
                 </label>
-                <select
+                <SelectorControl
                   id={`${idPrefix}-ep-scheme`}
                   className="red2pr-control-input"
                   value={epScheme}
@@ -1825,14 +1823,14 @@ export function SetupWizardPage(): React.JSX.Element {
                 >
                   <option value="https">https</option>
                   <option value="http">http (private enterprise network only)</option>
-                </select>
+                </SelectorControl>
               </div>
 
               <div className="red2pr-field">
                 <label htmlFor={`${idPrefix}-ep-host`} className="red2pr-field-label">
                   Hostname (no scheme or port)
                 </label>
-                <input
+                <InputControl
                   id={`${idPrefix}-ep-host`}
                   className="red2pr-control-input"
                   type="text"
@@ -1846,7 +1844,7 @@ export function SetupWizardPage(): React.JSX.Element {
                 <label htmlFor={`${idPrefix}-ep-port`} className="red2pr-field-label">
                   Port
                 </label>
-                <input
+                <InputControl
                   id={`${idPrefix}-ep-port`}
                   className="red2pr-control-input"
                   type="number"
@@ -1864,7 +1862,7 @@ export function SetupWizardPage(): React.JSX.Element {
                 <label htmlFor={`${idPrefix}-ep-cidrs`} className="red2pr-field-label">
                   Allowed private CIDRs (comma-separated, e.g. 10.24.0.0/16)
                 </label>
-                <input
+                <InputControl
                   id={`${idPrefix}-ep-cidrs`}
                   className="red2pr-control-input"
                   type="text"
@@ -1878,7 +1876,7 @@ export function SetupWizardPage(): React.JSX.Element {
                 <label htmlFor={`${idPrefix}-ep-caref`} className="red2pr-field-label">
                   Custom CA bundle reference (optional, e.g. ref:corp-root-ca)
                 </label>
-                <input
+                <InputControl
                   id={`${idPrefix}-ep-caref`}
                   className="red2pr-control-input"
                   type="text"
@@ -1891,7 +1889,7 @@ export function SetupWizardPage(): React.JSX.Element {
                 <label htmlFor={`${idPrefix}-ep-desc`} className="red2pr-field-label">
                   Description (optional)
                 </label>
-                <input
+                <InputControl
                   id={`${idPrefix}-ep-desc`}
                   className="red2pr-control-input"
                   type="text"
@@ -1999,6 +1997,7 @@ export function SetupWizardPage(): React.JSX.Element {
       activeWorkspaceSlug={defaultSlug}
       workspaces={navOptions}
       onSelectWorkspace={(nextSlug) => navigate(`/w/${encodeURIComponent(nextSlug)}/members`)}
+      isInstanceOwner={me?.is_instance_owner ?? false}
       sseState="offline"
     >
       {wizardBody}

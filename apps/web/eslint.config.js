@@ -50,6 +50,7 @@ export default tseslint.config(
       "src/shared/ui/**/*.{ts,tsx}",
       "src/shared/theme/**/*.{ts,tsx}",
       "src/shared/i18n/**/*.{ts,tsx}",
+      "src/astryx-themes.ts",
     ],
     rules: {
       "no-restricted-imports": [
@@ -59,7 +60,7 @@ export default tseslint.config(
             {
               group: ["@astryxdesign/*"],
               message:
-                "FE-05: Direct @astryxdesign/* imports are isolated behind src/shared/ui/, src/shared/theme/, and src/shared/i18n/ wrappers.",
+                "FE-05: Direct @astryxdesign/* imports are isolated behind shared adapters; only the CLI-generated src/astryx-themes.ts registry is exempt.",
             },
           ],
         },

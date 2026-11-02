@@ -1,0 +1,3200 @@
+[
+  {
+    "theme": "light",
+    "states": [
+      {
+        "label": "light: idle",
+        "theme": "light",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(212, 212, 212)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(27, 27, 27)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(27, 27, 27)",
+          "outlineOffset": "0px",
+          "color": "rgb(27, 27, 27)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: pointer focused input 1",
+        "theme": "light",
+        "activeElement": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "text": ""
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": true,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(27, 27, 27)",
+          "borderRadius": "10px",
+          "boxShadow": "rgb(241, 241, 241) 0px 0px 0px 2px inset",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(27, 27, 27)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(27, 27, 27)",
+          "outlineOffset": "0px",
+          "color": "rgb(27, 27, 27)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: pointer focused input 2",
+        "theme": "light",
+        "activeElement": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "text": ""
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": true,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(27, 27, 27)",
+          "borderRadius": "10px",
+          "boxShadow": "rgb(241, 241, 241) 0px 0px 0px 2px inset",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(27, 27, 27)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(27, 27, 27)",
+          "outlineOffset": "0px",
+          "color": "rgb(27, 27, 27)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: input blurred by pointer",
+        "theme": "light",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(212, 212, 212)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(27, 27, 27)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(27, 27, 27)",
+          "outlineOffset": "0px",
+          "color": "rgb(27, 27, 27)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: hovered recovery link",
+        "theme": "light",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(212, 212, 212)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid color(srgb 0.09 0.09 0.09)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none color(srgb 0.09 0.09 0.09)",
+          "outlineOffset": "0px",
+          "color": "color(srgb 0.09 0.09 0.09)",
+          "textDecoration": "underline",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: recovery text selected",
+        "theme": "light",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(212, 212, 212)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid color(srgb 0.09 0.09 0.09)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none color(srgb 0.09 0.09 0.09)",
+          "outlineOffset": "0px",
+          "color": "color(srgb 0.09 0.09 0.09)",
+          "textDecoration": "underline",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "Can't sign in? Use a recovery code",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: active recovery link",
+        "theme": "light",
+        "activeElement": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "text": "Can't sign in? Use a recovery code"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(212, 212, 212)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid color(srgb 0.09 0.09 0.09)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none color(srgb 0.09 0.09 0.09)",
+          "outlineOffset": "0px",
+          "color": "color(srgb 0.09 0.09 0.09)",
+          "textDecoration": "underline",
+          "focused": true,
+          "focusVisible": false,
+          "hovered": true,
+          "active": true
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: pointer focused recovery link",
+        "theme": "light",
+        "activeElement": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "text": "Can't sign in? Use a recovery code"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(212, 212, 212)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid color(srgb 0.09 0.09 0.09)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none color(srgb 0.09 0.09 0.09)",
+          "outlineOffset": "0px",
+          "color": "color(srgb 0.09 0.09 0.09)",
+          "textDecoration": "underline",
+          "focused": true,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: recovery link blurred by pointer",
+        "theme": "light",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(212, 212, 212)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(27, 27, 27)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(27, 27, 27)",
+          "outlineOffset": "0px",
+          "color": "rgb(27, 27, 27)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: keyboard focused input",
+        "theme": "light",
+        "activeElement": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "text": ""
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(27, 27, 27)",
+          "borderRadius": "10px",
+          "boxShadow": "rgb(241, 241, 241) 0px 0px 0px 2px inset",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(27, 27, 27)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(27, 27, 27)",
+          "outlineOffset": "0px",
+          "color": "rgb(27, 27, 27)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: keyboard focused input",
+        "theme": "light",
+        "activeElement": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "text": ""
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(27, 27, 27)",
+          "borderRadius": "10px",
+          "boxShadow": "rgb(241, 241, 241) 0px 0px 0px 2px inset",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(27, 27, 27)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(27, 27, 27)",
+          "outlineOffset": "0px",
+          "color": "rgb(27, 27, 27)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "light: keyboard focused recovery link",
+        "theme": "light",
+        "activeElement": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "text": "Can't sign in? Use a recovery code"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(0, 0, 0)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(212, 212, 212)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(0, 0, 0)",
+          "outlineOffset": "0px",
+          "color": "rgb(0, 0, 0)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(27, 27, 27)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "2px solid rgb(27, 27, 27)",
+          "outlineOffset": "3px",
+          "color": "rgb(27, 27, 27)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      }
+    ],
+    "tabTrace": [
+      {
+        "tag": "input",
+        "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+        "text": "",
+        "focusVisible": true
+      },
+      {
+        "tag": "input",
+        "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+        "text": "",
+        "focusVisible": true
+      },
+      {
+        "tag": "a",
+        "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+        "text": "Can't sign in? Use a recovery code",
+        "focusVisible": true
+      }
+    ],
+    "finalActive": {
+      "label": "light: first keyboard stop",
+      "theme": "light",
+      "activeElement": {
+        "tag": "body",
+        "className": "",
+        "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+      },
+      "inputAncestorChain": [
+        {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+        },
+        {
+          "tag": "div",
+          "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+        },
+        {
+          "tag": "form",
+          "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+        }
+      ],
+      "input": {
+        "tag": "input",
+        "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+        "width": 398,
+        "height": 20,
+        "display": "block",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "border": "0px none rgb(0, 0, 0)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "outline": "3px none rgb(0, 0, 0)",
+        "outlineOffset": "0px",
+        "color": "rgb(0, 0, 0)",
+        "textDecoration": "none",
+        "focused": false,
+        "focusVisible": false,
+        "hovered": false,
+        "active": false
+      },
+      "inputWrapper": {
+        "tag": "div",
+        "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+        "width": 416,
+        "height": 32,
+        "display": "flex",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "backgroundImage": "none",
+        "border": "1px solid rgb(212, 212, 212)",
+        "borderRadius": "10px",
+        "boxShadow": "none",
+        "outline": "3px none rgb(0, 0, 0)",
+        "outlineOffset": "0px",
+        "color": "rgb(0, 0, 0)",
+        "textDecoration": "none",
+        "focused": false,
+        "focusVisible": false,
+        "hovered": false,
+        "active": false
+      },
+      "link": {
+        "tag": "a",
+        "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+        "width": 215.3,
+        "height": 20,
+        "display": "flex",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "border": "0px solid rgb(27, 27, 27)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "outline": "0px none rgb(27, 27, 27)",
+        "outlineOffset": "0px",
+        "color": "rgb(27, 27, 27)",
+        "textDecoration": "none",
+        "focused": false,
+        "focusVisible": false,
+        "hovered": false,
+        "active": false
+      },
+      "linkAncestorChain": [
+        {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+        }
+      ],
+      "selectionText": "",
+      "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+      "themeTokens": {
+        "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+        "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+        "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+        "legacyFocusColor": ""
+      }
+    },
+    "consoleErrors": []
+  },
+  {
+    "theme": "dark",
+    "states": [
+      {
+        "label": "dark: idle",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(82, 82, 82)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(241, 241, 241)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(241, 241, 241)",
+          "outlineOffset": "0px",
+          "color": "rgb(241, 241, 241)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: pointer focused input 1",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "text": ""
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": true,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(241, 241, 241)",
+          "borderRadius": "10px",
+          "boxShadow": "rgb(38, 38, 38) 0px 0px 0px 2px inset",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(241, 241, 241)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(241, 241, 241)",
+          "outlineOffset": "0px",
+          "color": "rgb(241, 241, 241)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: pointer focused input 2",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "text": ""
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": true,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(241, 241, 241)",
+          "borderRadius": "10px",
+          "boxShadow": "rgb(38, 38, 38) 0px 0px 0px 2px inset",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(241, 241, 241)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(241, 241, 241)",
+          "outlineOffset": "0px",
+          "color": "rgb(241, 241, 241)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: input blurred by pointer",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(82, 82, 82)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(241, 241, 241)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(241, 241, 241)",
+          "outlineOffset": "0px",
+          "color": "rgb(241, 241, 241)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: hovered recovery link",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(82, 82, 82)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid color(srgb 0.953333 0.953333 0.953333)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none color(srgb 0.953333 0.953333 0.953333)",
+          "outlineOffset": "0px",
+          "color": "color(srgb 0.953333 0.953333 0.953333)",
+          "textDecoration": "underline",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: recovery text selected",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(82, 82, 82)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid color(srgb 0.953333 0.953333 0.953333)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none color(srgb 0.953333 0.953333 0.953333)",
+          "outlineOffset": "0px",
+          "color": "color(srgb 0.953333 0.953333 0.953333)",
+          "textDecoration": "underline",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "Can't sign in? Use a recovery code",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: active recovery link",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "text": "Can't sign in? Use a recovery code"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(82, 82, 82)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid color(srgb 0.953333 0.953333 0.953333)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none color(srgb 0.953333 0.953333 0.953333)",
+          "outlineOffset": "0px",
+          "color": "color(srgb 0.953333 0.953333 0.953333)",
+          "textDecoration": "underline",
+          "focused": true,
+          "focusVisible": false,
+          "hovered": true,
+          "active": true
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: pointer focused recovery link",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "text": "Can't sign in? Use a recovery code"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(82, 82, 82)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid color(srgb 0.953333 0.953333 0.953333)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none color(srgb 0.953333 0.953333 0.953333)",
+          "outlineOffset": "0px",
+          "color": "color(srgb 0.953333 0.953333 0.953333)",
+          "textDecoration": "underline",
+          "focused": true,
+          "focusVisible": false,
+          "hovered": true,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: recovery link blurred by pointer",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "body",
+          "className": "",
+          "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(82, 82, 82)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(241, 241, 241)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(241, 241, 241)",
+          "outlineOffset": "0px",
+          "color": "rgb(241, 241, 241)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: keyboard focused input",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "text": ""
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(241, 241, 241)",
+          "borderRadius": "10px",
+          "boxShadow": "rgb(38, 38, 38) 0px 0px 0px 2px inset",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(241, 241, 241)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(241, 241, 241)",
+          "outlineOffset": "0px",
+          "color": "rgb(241, 241, 241)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: keyboard focused input",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "text": ""
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(241, 241, 241)",
+          "borderRadius": "10px",
+          "boxShadow": "rgb(38, 38, 38) 0px 0px 0px 2px inset",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(241, 241, 241)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "0px none rgb(241, 241, 241)",
+          "outlineOffset": "0px",
+          "color": "rgb(241, 241, 241)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      },
+      {
+        "label": "dark: keyboard focused recovery link",
+        "theme": "dark",
+        "activeElement": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "text": "Can't sign in? Use a recovery code"
+        },
+        "inputAncestorChain": [
+          {
+            "tag": "input",
+            "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+          },
+          {
+            "tag": "div",
+            "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+          },
+          {
+            "tag": "form",
+            "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+          }
+        ],
+        "input": {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+          "width": 398,
+          "height": 20,
+          "display": "block",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px none rgb(255, 255, 255)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "inputWrapper": {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+          "width": 416,
+          "height": 32,
+          "display": "flex",
+          "backgroundColor": "rgb(38, 38, 38)",
+          "backgroundImage": "none",
+          "border": "1px solid rgb(82, 82, 82)",
+          "borderRadius": "10px",
+          "boxShadow": "none",
+          "outline": "3px none rgb(255, 255, 255)",
+          "outlineOffset": "0px",
+          "color": "rgb(255, 255, 255)",
+          "textDecoration": "none",
+          "focused": false,
+          "focusVisible": false,
+          "hovered": false,
+          "active": false
+        },
+        "link": {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+          "width": 215.3,
+          "height": 20,
+          "display": "flex",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "border": "0px solid rgb(241, 241, 241)",
+          "borderRadius": "0px",
+          "boxShadow": "none",
+          "outline": "2px solid rgb(241, 241, 241)",
+          "outlineOffset": "3px",
+          "color": "rgb(241, 241, 241)",
+          "textDecoration": "none",
+          "focused": true,
+          "focusVisible": true,
+          "hovered": false,
+          "active": false
+        },
+        "linkAncestorChain": [
+          {
+            "tag": "a",
+            "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+          },
+          {
+            "tag": "div",
+            "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+          }
+        ],
+        "selectionText": "",
+        "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+        "themeTokens": {
+          "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+          "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+          "legacyFocusColor": ""
+        }
+      }
+    ],
+    "tabTrace": [
+      {
+        "tag": "input",
+        "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+        "text": "",
+        "focusVisible": true
+      },
+      {
+        "tag": "input",
+        "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+        "text": "",
+        "focusVisible": true
+      },
+      {
+        "tag": "a",
+        "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+        "text": "Can't sign in? Use a recovery code",
+        "focusVisible": true
+      }
+    ],
+    "finalActive": {
+      "label": "dark: first keyboard stop",
+      "theme": "dark",
+      "activeElement": {
+        "tag": "body",
+        "className": "",
+        "text": "Sign in to Red2PREmail or display name ∙ RequiredEnter the email addre"
+      },
+      "inputAncestorChain": [
+        {
+          "tag": "input",
+          "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155"
+        },
+        {
+          "tag": "div",
+          "className": "x78zum5 xdt5ytf xc8icb0 x19nvjgn xlumz0n x1qs65gq"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-field x78zum5 xdt5ytf xc8icb0 xeuugli xzye2dw"
+        },
+        {
+          "tag": "form",
+          "className": "astryx-stack x78zum5 xdt5ytf xewh9hi x4olc9o"
+        }
+      ],
+      "input": {
+        "tag": "input",
+        "className": "x1lliihq x98rzlu xeuugli xc342km xng3xce x1717udv x9ynric xjm74w1 xf9zqsd xw6l6zx x1tgivj0 xjbqb8w x1a2a7pz xeyghm5",
+        "width": 398,
+        "height": 20,
+        "display": "block",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "border": "0px none rgb(255, 255, 255)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "outline": "3px none rgb(255, 255, 255)",
+        "outlineOffset": "0px",
+        "color": "rgb(255, 255, 255)",
+        "textDecoration": "none",
+        "focused": false,
+        "focusVisible": false,
+        "hovered": false,
+        "active": false
+      },
+      "inputWrapper": {
+        "tag": "div",
+        "className": "astryx-text-input x9f619 x1n2onr6 x1vjfegm x78zum5 x6s0dn4 x1txdalj xu0wf1k xf314gf x1litavf x1y0btm7 xvy26l8 x6q1khz x1832zxr xvdfih8 x10xzikg x12zzom9 xuedmi6 x12w9bfk xlr8y92 x1gnnqk1 x1xqjsvb xuihb5h x1a2a7pz x1ueg155",
+        "width": 416,
+        "height": 32,
+        "display": "flex",
+        "backgroundColor": "rgb(38, 38, 38)",
+        "backgroundImage": "none",
+        "border": "1px solid rgb(82, 82, 82)",
+        "borderRadius": "10px",
+        "boxShadow": "none",
+        "outline": "3px none rgb(255, 255, 255)",
+        "outlineOffset": "0px",
+        "color": "rgb(255, 255, 255)",
+        "textDecoration": "none",
+        "focused": false,
+        "focusVisible": false,
+        "hovered": false,
+        "active": false
+      },
+      "link": {
+        "tag": "a",
+        "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd",
+        "width": 215.3,
+        "height": 20,
+        "display": "flex",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "border": "0px solid rgb(241, 241, 241)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "outline": "0px none rgb(241, 241, 241)",
+        "outlineOffset": "0px",
+        "color": "rgb(241, 241, 241)",
+        "textDecoration": "none",
+        "focused": false,
+        "focusVisible": false,
+        "hovered": false,
+        "active": false
+      },
+      "linkAncestorChain": [
+        {
+          "tag": "a",
+          "className": "astryx-link x1k57tk5 x1vidyx5 x1t137rt x1jhp3zv xx47ajj x1wfwxd8 x1vwwbsn x3nfvp2 x6s0dn4 x1lsbc85 xjb2p0i x1qlqyl8 x15bjb6t x1pd3egz x1hl2dhg x13nosk6 x1ypdohk x16khyan x1mpt4pi xuedmi6 xlr8y92 xjse4m1 x1rfoswn x11z29ks xli5ek3 x14e4jsf x8s9nux xwkbtvz xziyay6 xz2mauf x1l7afqf x1anq1lc x1s5nr2v x13ugjdw xl8sb5e x7ngsy6 xubczrd"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-stack x78zum5 x1q0g3np x1o57wo1 x6yxi7o"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-card x2kkz0m x153u1i6 xeuugli x7giv3 x1p8z4y0 x1de1mus xw28qpl x5lhr3w xf68679 x9f619 x1vii845 xojybgt xjmlhfd x1ihxwbr x1rqz8me x1omyuck x14rzhog xjej9fs x4poyjn x1u1kw4e x1litavf x1y0btm7 x14i3s5s xs19ii7 x12frdag x1nex4ik xbv1mwh"
+        },
+        {
+          "tag": "div",
+          "className": "astryx-stack x78zum5 xdt5ytf xty4p9g xtx9w7w"
+        }
+      ],
+      "selectionText": "",
+      "linkSelectionBackground": "rgba(0, 0, 0, 0)",
+      "themeTokens": {
+        "focusColor": "light-dark(#1b1b1b, #f1f1f1)",
+        "accentColor": "light-dark(#1b1b1b, #f1f1f1)",
+        "pressedOverlay": "light-dark(#0000001A, #ffffff1A)",
+        "legacyFocusColor": ""
+      }
+    },
+    "consoleErrors": []
+  }
+]

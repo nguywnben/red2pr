@@ -8,7 +8,7 @@ import { ApiClientProvider, createWorkspaceQueryClient } from "../../../shared/a
 import { I18nProvider } from "../../../shared/i18n";
 import { THEME_STORAGE_KEY, ThemeProvider } from "../../../shared/theme";
 import { AppShell } from "../../../shared/ui";
-import { AccountPage, LoginPage, resolveSafePostLoginPath } from "../index";
+import { AccountPage, AccountRecoveryPage, LoginPage, resolveSafePostLoginPath } from "../index";
 
 const USER_ID = "0196ed00-0000-7000-8000-000000000001";
 const SESSION_CURRENT_ID = "0196ed00-0000-7000-8000-000000000011";
@@ -89,6 +89,7 @@ function renderAuthRouter(opts: {
             <LocationProbe />
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/login/recovery" element={<AccountRecoveryPage />} />
               <Route
                 path="/account"
                 element={
@@ -162,116 +163,26 @@ describe("U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (
     expect(screen.queryByRole("button", { name: /continue with/i })).not.toBeInTheDocument();
   });
 
-  it("completes initial bootstrap owner claim with X-CSRF-Token and zero Web Storage token persistence", async () => {
-    const user = userEvent.setup();
-    const seenCsrfHeaders: (string | null)[] = [];
-
+  it("keeps first-owner claim on the separate setup route", async () => {
     const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
       const req = input instanceof Request ? input : new Request(input, init);
       const url = new URL(req.url);
-
-      if (url.pathname === "/api/v1/auth/csrf" && req.method === "GET") {
-        return jsonResponse({
-          csrf_token: "anon.csrf.token.0000000001",
-          bootstrap_claim_required: true,
-        });
+      if (url.pathname === "/api/v1/auth/csrf") {
+        return jsonResponse({ csrf_token: "anon.csrf.setup01", bootstrap_claim_required: true });
       }
-      if (url.pathname === "/api/v1/setup/claim" && req.method === "POST") {
-        seenCsrfHeaders.push(req.headers.get("X-CSRF-Token"));
-        return jsonResponse(
-          {
-            user: {
-              id: USER_ID,
-              version: 1,
-              created_at: NOW_ISO,
-              updated_at: NOW_ISO,
-              display_name: "Alice Owner",
-              email: "alice@example.org",
-              status: "active",
-            },
-            session: {
-              id: SESSION_CURRENT_ID,
-              version: 1,
-              created_at: NOW_ISO,
-              updated_at: NOW_ISO,
-              user_id: USER_ID,
-              expires_at: EXPIRES_ISO,
-              auth_strength: "password",
-              step_up_at: NOW_ISO,
-              grant_epoch: 1,
-            },
-            csrf_token: "sess.csrf.token.0000000002",
-            is_instance_owner: true,
-          },
-          { status: 201 },
-        );
-      }
-      if (url.pathname === "/api/v1/me" && req.method === "GET") {
-        return jsonResponse({
-          user: {
-            id: USER_ID,
-            version: 1,
-            created_at: NOW_ISO,
-            updated_at: NOW_ISO,
-            display_name: "Alice Owner",
-            email: "alice@example.org",
-            status: "active",
-          },
-          session: {
-            id: SESSION_CURRENT_ID,
-            version: 1,
-            created_at: NOW_ISO,
-            updated_at: NOW_ISO,
-            user_id: USER_ID,
-            expires_at: EXPIRES_ISO,
-            auth_strength: "password",
-            step_up_at: NOW_ISO,
-            grant_epoch: 1,
-          },
-          is_instance_owner: true,
-          mfa_enabled: false,
-          mfa_required_for_privileged: true,
-          step_up_valid_until: "2099-01-01T00:05:00Z",
-          csrf_token: "sess.csrf.token.0000000002",
-          memberships: [],
-          telegram_link: { status: "not_configured" },
-        });
-      }
-      if (url.pathname === "/api/v1/me/sessions" && req.method === "GET") {
-        return jsonResponse({ items: [], next_cursor: null, snapshot_at: NOW_ISO });
+      if (url.pathname === "/api/v1/system/capabilities") {
+        return jsonResponse({ oidc_providers: [] });
       }
       throw new Error(`Unhandled request: ${req.method} ${url.pathname}`);
     });
 
-    const { container } = renderAuthRouter({
-      initialEntry: "/login",
-      fetchImpl: fetchMock,
-      themeMode: "light",
-    });
+    renderAuthRouter({ initialEntry: "/login", fetchImpl: fetchMock, themeMode: "light" });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("bootstrap-claim-form")).toBeInTheDocument();
-    });
-
-    await user.type(
-      screen.getByLabelText(/One-time bootstrap token/i),
-      "r2pr_boot_secret_token_value_123456",
-    );
-    await user.type(screen.getByLabelText(/Display name/i), "Alice Owner");
-    await user.type(screen.getByLabelText(/Email address/i), "alice@example.org");
-    await user.type(screen.getByLabelText(/Owner password/i), "CorrectHorseBatteryStaple!99");
-
-    const axeLogin = await axe.run(container);
-    expect(axeLogin.violations).toEqual([]);
-
-    await user.click(screen.getByRole("button", { name: /Claim owner & sign in/i }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("router-location")).toHaveTextContent("/account");
-    });
-    expect(await screen.findByText("Alice Owner")).toBeInTheDocument();
-    expect(seenCsrfHeaders).toEqual(["anon.csrf.token.0000000001"]);
-    assertZeroWebStorageSecrets();
+    expect(await screen.findByRole("heading", { name: /Sign in to Red2PR/i })).toBeInTheDocument();
+    expect(screen.queryByTestId("bootstrap-claim-form")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/One-time bootstrap token/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Set up this instance/i })).toHaveAttribute("href", "/setup");
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
 
   it("handles two-step password -> cookie-free MFA challenge -> TOTP login, generic errors, 429 cooldown, and recovery reset", async () => {
@@ -388,10 +299,14 @@ describe("U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (
     });
 
     const identInput = await screen.findByLabelText(/Email or display name/i);
-    const pwInput = screen.getByLabelText(/^Password$/i);
+    const pwInput = screen.getByLabelText(/^Password/i);
 
     await user.type(identInput, "alice@example.org");
     await user.type(pwInput, "WrongPassword!123");
+    expect(identInput).toHaveValue("alice@example.org");
+    expect(pwInput).toHaveValue("WrongPassword!123");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Sign in$/i })).toBeEnabled());
     await user.click(screen.getByRole("button", { name: /^Sign in$/i }));
 
     // 1. Generic anti-enumeration error + correlation ID
@@ -696,7 +611,7 @@ describe("U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (
     expect(await screen.findByRole("heading", { name: /Sign in to Red2PR/i })).toBeInTheDocument();
   });
 
-  it("supports single-use recovery code reset on /login and routes to /account for MFA re-enrollment", async () => {
+  it("supports single-use recovery code reset on its own route and routes to /account for MFA re-enrollment", async () => {
     const user = userEvent.setup();
 
     const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
@@ -775,14 +690,13 @@ describe("U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (
     });
 
     const { container } = renderAuthRouter({
-      initialEntry: "/login?next=%2Fw%2Facme%2Frepairs",
+      initialEntry: "/login/recovery?next=%2Fw%2Facme%2Frepairs",
       fetchImpl: fetchMock,
       themeMode: "light",
     });
 
-    await user.click(await screen.findByRole("button", { name: /Recovery code reset/i }));
+    expect(await screen.findByRole("heading", { name: /Recover your account/i })).toBeInTheDocument();
     const recForm = await screen.findByTestId("recovery-reset-form");
-
     const axeRecovery = await axe.run(container);
     expect(axeRecovery.violations).toEqual([]);
 
@@ -790,7 +704,8 @@ describe("U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (
       within(recForm).getByLabelText(/Single-use recovery code/i),
       "R2PR-9999-8888-7777",
     );
-    await user.type(within(recForm).getByLabelText(/^New password$/i), "RotatedOwnerPassphrase!2026");
+    await user.type(within(recForm).getByLabelText(/^New password/i), "RotatedOwnerPassphrase!2026");
+    await waitFor(() => expect(within(recForm).getByRole("button", { name: /Reset password & sign in/i })).toBeEnabled());
     await user.click(within(recForm).getByRole("button", { name: /Reset password & sign in/i }));
 
     await waitFor(() => {

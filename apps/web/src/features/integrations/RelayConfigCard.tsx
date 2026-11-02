@@ -1,3 +1,5 @@
+import { InputControl } from "../../shared/ui";
+import { SelectorControl } from "../../shared/ui";
 import { Red2PrApiError, type Connection, type MeResponse, type Workspace } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useId, useMemo, useState } from "react";
@@ -133,7 +135,7 @@ export function RelayConfigCard({ workspace, me }: RelayConfigCardProps): React.
 
   return (
     <section className="red2pr-surface red2pr-card-section" aria-label="Customer-operated webhook relay">
-      <h2 style={{ margin: 0, fontSize: "1.125rem" }}>Customer-operated webhook relay</h2>
+      <h2 >Customer-operated webhook relay</h2>
       <p className="red2pr-field-hint">
         Optional outbound WSS/mTLS relay. Register the endpoint and grant provider consent first.
         Relay credentials are write-only and Red2PR does not host relay infrastructure.
@@ -146,7 +148,7 @@ export function RelayConfigCard({ workspace, me }: RelayConfigCardProps): React.
         <div className="red2pr-form-stack">
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={`${endpointId}-connection`}>Provider connection</label>
-            <select
+            <SelectorControl
               id={`${endpointId}-connection`}
               className="red2pr-control-select"
               value={selectedConnectionId}
@@ -167,7 +169,7 @@ export function RelayConfigCard({ workspace, me }: RelayConfigCardProps): React.
                   {connection.provider} · {connection.display_name}
                 </option>
               ))}
-            </select>
+            </SelectorControl>
           </div>
           {current ? (
             <dl className="red2pr-kv-grid" data-testid="relay-status">
@@ -177,15 +179,15 @@ export function RelayConfigCard({ workspace, me }: RelayConfigCardProps): React.
           ) : null}
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={endpointId}>Registered endpoint ID</label>
-            <input id={endpointId} className="red2pr-control-input" value={endpointRegistrationId || current?.endpoint_registration_id || ""} onChange={(event) => setEndpointRegistrationId(event.target.value)} autoComplete="off" />
+            <InputControl id={endpointId} className="red2pr-control-input" value={endpointRegistrationId || current?.endpoint_registration_id || ""} onChange={(event) => setEndpointRegistrationId(event.target.value)} autoComplete="off" />
           </div>
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={consentId}>Provider consent ID</label>
-            <input id={consentId} className="red2pr-control-input" value={consentRecordId || current?.consent_id || ""} onChange={(event) => setConsentRecordId(event.target.value)} autoComplete="off" />
+            <InputControl id={consentId} className="red2pr-control-input" value={consentRecordId || current?.consent_id || ""} onChange={(event) => setConsentRecordId(event.target.value)} autoComplete="off" />
           </div>
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={secretId}>Relay frame HMAC secret</label>
-            <input id={secretId} className="red2pr-control-input" type="password" value={relaySecret} onChange={(event) => setRelaySecret(event.target.value)} autoComplete="new-password" />
+            <InputControl id={secretId} className="red2pr-control-input" type="password" value={relaySecret} onChange={(event) => setRelaySecret(event.target.value)} autoComplete="new-password" />
           </div>
           {current ? (
             <p className="red2pr-field-hint">

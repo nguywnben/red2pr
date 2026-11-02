@@ -41,7 +41,7 @@ export function TelegramLinkCard({
   return (
     <section className="red2pr-surface red2pr-card-section" aria-labelledby="account-telegram-heading">
       <div className="red2pr-card-header">
-        <h2 id="account-telegram-heading" style={{ margin: 0, fontSize: "1.125rem" }}>
+        <h2 id="account-telegram-heading" >
           Personal Telegram pairing
         </h2>
         <span className="red2pr-badge-pill red2pr-tone-neutral" data-testid="telegram-link-status">

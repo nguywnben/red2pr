@@ -1,3 +1,4 @@
+import { InputControl } from "../../shared/ui";
 import type { Membership } from "@red2pr/ts-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useId, useState } from "react";
@@ -119,7 +120,7 @@ export function AcceptInviteDialog({
           <label htmlFor={tokenInputId} className="red2pr-field-label">
             {t("members.acceptTokenLabel")}
           </label>
-          <input
+          <InputControl
             id={tokenInputId}
             className="red2pr-control-input"
             type="password"

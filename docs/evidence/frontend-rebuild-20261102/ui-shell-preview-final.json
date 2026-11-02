@@ -1,0 +1,436 @@
+[
+  {
+    "pathName": "/w/core/overview",
+    "colorScheme": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "width": 1440,
+    "documentWidth": 1440,
+    "theme": "light",
+    "navigationGeometry": [],
+    "tableGeometry": [
+      {
+        "label": "Table",
+        "clientWidth": 1078,
+        "scrollWidth": 1078,
+        "tableWidth": 1078
+      },
+      {
+        "label": "Table",
+        "clientWidth": 1078,
+        "scrollWidth": 1078,
+        "tableWidth": 1078
+      }
+    ],
+    "axeViolations": 0,
+    "apiPaths": [
+      "GET /api/v1/me",
+      "GET /api/v1/workspaces/core",
+      "GET /api/v1/workspaces/core/analytics"
+    ],
+    "errors": []
+  },
+  {
+    "pathName": "/w/core/overview",
+    "colorScheme": "dark",
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "width": 1440,
+    "documentWidth": 1440,
+    "theme": "dark",
+    "navigationGeometry": [],
+    "tableGeometry": [
+      {
+        "label": "Table",
+        "clientWidth": 1078,
+        "scrollWidth": 1078,
+        "tableWidth": 1078
+      },
+      {
+        "label": "Table",
+        "clientWidth": 1078,
+        "scrollWidth": 1078,
+        "tableWidth": 1078
+      }
+    ],
+    "axeViolations": 0,
+    "apiPaths": [
+      "GET /api/v1/me",
+      "GET /api/v1/workspaces/core",
+      "GET /api/v1/workspaces/core/analytics"
+    ],
+    "errors": []
+  },
+  {
+    "pathName": "/w/core/overview",
+    "colorScheme": "light",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "width": 390,
+    "documentWidth": 390,
+    "theme": "light",
+    "navigationGeometry": [
+      {
+        "label": "Workspace header navigation",
+        "className": "astryx-top-nav x78zum5 x6s0dn4 xh8yej3 xlsj2fj x9f619 red2pr-topnav",
+        "width": 390,
+        "height": 48,
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "display": "flex",
+        "children": [
+          {
+            "text": "Red2PR",
+            "className": "x78zum5 x6s0dn4 xkz0k9k xeuugli",
+            "x": 8,
+            "y": 8,
+            "width": 100.890625,
+            "height": 32,
+            "scrollWidth": 101
+          },
+          {
+            "text": "Live stream connectedCore workspaceTheme modeSystemLightDark",
+            "className": "x78zum5 x6s0dn4 xzye2dw x2lah0s xvc5jky",
+            "x": 116.890625,
+            "y": 8,
+            "width": 265.109375,
+            "height": 32,
+            "scrollWidth": 265
+          }
+        ],
+        "controls": [
+          {
+            "name": "Red2PR",
+            "x": 8,
+            "y": 8,
+            "right": 52,
+            "bottom": 40,
+            "width": 44,
+            "height": 32,
+            "visible": true
+          },
+          {
+            "name": "System",
+            "x": 146.890625,
+            "y": 14,
+            "right": 192.15625,
+            "bottom": 34,
+            "width": 45.265625,
+            "height": 20,
+            "visible": true
+          },
+          {
+            "name": "Account",
+            "x": 232.15625,
+            "y": 14,
+            "right": 282.921875,
+            "bottom": 34,
+            "width": 50.765625,
+            "height": 20,
+            "visible": true
+          },
+          {
+            "name": "Open navigation",
+            "x": 286.921875,
+            "y": 8,
+            "right": 318.921875,
+            "bottom": 40,
+            "width": 32,
+            "height": 32,
+            "visible": true
+          }
+        ]
+      }
+    ],
+    "tableGeometry": [
+      {
+        "label": "Table",
+        "clientWidth": 356,
+        "scrollWidth": 560,
+        "tableWidth": 560
+      },
+      {
+        "label": "Table",
+        "clientWidth": 356,
+        "scrollWidth": 800,
+        "tableWidth": 800
+      }
+    ],
+    "axeViolations": 0,
+    "apiPaths": [
+      "GET /api/v1/me",
+      "GET /api/v1/workspaces/core",
+      "GET /api/v1/workspaces/core/analytics"
+    ],
+    "errors": []
+  },
+  {
+    "pathName": "/w/core/overview",
+    "colorScheme": "light",
+    "viewport": {
+      "width": 320,
+      "height": 800
+    },
+    "width": 320,
+    "documentWidth": 320,
+    "theme": "light",
+    "navigationGeometry": [
+      {
+        "label": "Workspace header navigation",
+        "className": "astryx-top-nav x78zum5 x6s0dn4 xh8yej3 xlsj2fj x9f619 red2pr-topnav",
+        "width": 320,
+        "height": 48,
+        "scrollWidth": 320,
+        "clientWidth": 320,
+        "display": "flex",
+        "children": [
+          {
+            "text": "Red2PR",
+            "className": "x78zum5 x6s0dn4 xkz0k9k xeuugli",
+            "x": 8,
+            "y": 8,
+            "width": 44,
+            "height": 32,
+            "scrollWidth": 44
+          },
+          {
+            "text": "Live stream connectedCore workspaceTheme modeSystemLightDark",
+            "className": "x78zum5 x6s0dn4 xzye2dw x2lah0s xvc5jky",
+            "x": 60,
+            "y": 8,
+            "width": 252,
+            "height": 32,
+            "scrollWidth": 252
+          }
+        ],
+        "controls": [
+          {
+            "name": "Red2PR",
+            "x": 8,
+            "y": 8,
+            "right": 52,
+            "bottom": 40,
+            "width": 44,
+            "height": 32,
+            "visible": true
+          },
+          {
+            "name": "System",
+            "x": 90,
+            "y": 14,
+            "right": 135.265625,
+            "bottom": 34,
+            "width": 45.265625,
+            "height": 20,
+            "visible": true
+          },
+          {
+            "name": "Account",
+            "x": 175.265625,
+            "y": 14,
+            "right": 226.03125,
+            "bottom": 34,
+            "width": 50.765625,
+            "height": 20,
+            "visible": true
+          },
+          {
+            "name": "Open navigation",
+            "x": 230.03125,
+            "y": 8,
+            "right": 262.03125,
+            "bottom": 40,
+            "width": 32,
+            "height": 32,
+            "visible": true
+          }
+        ]
+      }
+    ],
+    "tableGeometry": [
+      {
+        "label": "Table",
+        "clientWidth": 286,
+        "scrollWidth": 560,
+        "tableWidth": 560
+      },
+      {
+        "label": "Table",
+        "clientWidth": 286,
+        "scrollWidth": 800,
+        "tableWidth": 800
+      }
+    ],
+    "axeViolations": 0,
+    "apiPaths": [
+      "GET /api/v1/me",
+      "GET /api/v1/workspaces/core",
+      "GET /api/v1/workspaces/core/analytics"
+    ],
+    "errors": []
+  },
+  {
+    "pathName": "/w/core/analytics",
+    "colorScheme": "light",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "width": 1280,
+    "documentWidth": 1280,
+    "theme": "light",
+    "navigationGeometry": [],
+    "tableGeometry": [
+      {
+        "label": "Table",
+        "clientWidth": 977,
+        "scrollWidth": 977,
+        "tableWidth": 977
+      },
+      {
+        "label": "Table",
+        "clientWidth": 977,
+        "scrollWidth": 977,
+        "tableWidth": 977
+      }
+    ],
+    "axeViolations": 0,
+    "apiPaths": [
+      "GET /api/v1/me",
+      "GET /api/v1/workspaces/core",
+      "GET /api/v1/workspaces/core/analytics"
+    ],
+    "errors": []
+  },
+  {
+    "pathName": "/w/core/analytics",
+    "colorScheme": "light",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "width": 390,
+    "documentWidth": 390,
+    "theme": "light",
+    "navigationGeometry": [
+      {
+        "label": "Workspace header navigation",
+        "className": "astryx-top-nav x78zum5 x6s0dn4 xh8yej3 xlsj2fj x9f619 red2pr-topnav",
+        "width": 390,
+        "height": 48,
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "display": "flex",
+        "children": [
+          {
+            "text": "Red2PR",
+            "className": "x78zum5 x6s0dn4 xkz0k9k xeuugli",
+            "x": 8,
+            "y": 8,
+            "width": 100.890625,
+            "height": 32,
+            "scrollWidth": 101
+          },
+          {
+            "text": "Live stream connectedCore workspaceTheme modeSystemLightDark",
+            "className": "x78zum5 x6s0dn4 xzye2dw x2lah0s xvc5jky",
+            "x": 116.890625,
+            "y": 8,
+            "width": 265.109375,
+            "height": 32,
+            "scrollWidth": 265
+          }
+        ],
+        "controls": [
+          {
+            "name": "Red2PR",
+            "x": 8,
+            "y": 8,
+            "right": 52,
+            "bottom": 40,
+            "width": 44,
+            "height": 32,
+            "visible": true
+          },
+          {
+            "name": "System",
+            "x": 146.890625,
+            "y": 14,
+            "right": 192.15625,
+            "bottom": 34,
+            "width": 45.265625,
+            "height": 20,
+            "visible": true
+          },
+          {
+            "name": "Account",
+            "x": 232.15625,
+            "y": 14,
+            "right": 282.921875,
+            "bottom": 34,
+            "width": 50.765625,
+            "height": 20,
+            "visible": true
+          },
+          {
+            "name": "Open navigation",
+            "x": 286.921875,
+            "y": 8,
+            "right": 318.921875,
+            "bottom": 40,
+            "width": 32,
+            "height": 32,
+            "visible": true
+          }
+        ]
+      }
+    ],
+    "tableGeometry": [
+      {
+        "label": "Table",
+        "clientWidth": 356,
+        "scrollWidth": 560,
+        "tableWidth": 560
+      },
+      {
+        "label": "Table",
+        "clientWidth": 356,
+        "scrollWidth": 800,
+        "tableWidth": 800
+      }
+    ],
+    "axeViolations": 0,
+    "apiPaths": [
+      "GET /api/v1/me",
+      "GET /api/v1/workspaces/core",
+      "GET /api/v1/workspaces/core/analytics"
+    ],
+    "errors": []
+  },
+  {
+    "pathName": "/system",
+    "colorScheme": "light",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "width": 1280,
+    "documentWidth": 1280,
+    "theme": "light",
+    "navigationGeometry": [],
+    "tableGeometry": [],
+    "axeViolations": 0,
+    "apiPaths": [
+      "GET /api/v1/me",
+      "GET /api/v1/system/status",
+      "GET /api/v1/system/doctor"
+    ],
+    "errors": []
+  }
+]

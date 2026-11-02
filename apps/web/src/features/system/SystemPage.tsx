@@ -1,3 +1,4 @@
+import { InputControl } from "../../shared/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
 import { useRed2PrApi } from "../../shared/api";
@@ -57,12 +58,12 @@ export function SystemPage(): React.JSX.Element {
     setStepUpOpen(true);
   };
 
-  if (status.isPending || me.isPending) return <main className="red2pr-page-stack"><StateView state="loading" title="Loading system status" /></main>;
-  if (status.isError || me.isError) return <main className="red2pr-page-stack"><StateView state="error" title="System status unavailable" description="Sign in as an instance owner and retry." primaryAction={{ label: "Retry", onClick: () => { void status.refetch(); void me.refetch(); } }} /></main>;
+  if (status.isPending || me.isPending) return <section className="red2pr-page-stack"><StateView state="loading" title="Loading system status" /></section>;
+  if (status.isError || me.isError) return <section className="red2pr-page-stack"><StateView state="error" title="System status unavailable" description="Sign in as an instance owner and retry." primaryAction={{ label: "Retry", onClick: () => { void status.refetch(); void me.refetch(); } }} /></section>;
 
   const current = status.data.data;
   return (
-    <main className="red2pr-page-stack" data-testid="system-page">
+    <section className="red2pr-page-stack" data-testid="system-page">
       <header><h1>System operations</h1><p>Inspect this Red2PR instance, maintenance state, upgrade compatibility, and redacted support diagnostics.</p></header>
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="system-status-title">
         <h2 id="system-status-title">Instance status</h2>
@@ -79,8 +80,10 @@ export function SystemPage(): React.JSX.Element {
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="system-maintenance-title">
         <h2 id="system-maintenance-title">Maintenance mode</h2>
         {current.maintenance_enabled && current.maintenance_reason ? <p role="status">Current maintenance reason: {current.maintenance_reason}</p> : null}
-        <label htmlFor="system-maintenance-reason">Reason for enabling maintenance</label>
-        <input id="system-maintenance-reason" minLength={8} maxLength={500} value={maintenanceReason} onChange={(event) => setMaintenanceReason(event.target.value)} />
+        <div className="red2pr-field">
+          <label className="red2pr-field-label" htmlFor="system-maintenance-reason">Reason for enabling maintenance</label>
+          <InputControl className="red2pr-control-input" id="system-maintenance-reason" minLength={8} maxLength={500} value={maintenanceReason} onChange={(event) => setMaintenanceReason(event.target.value)} />
+        </div>
         {current.maintenance_enabled && current.maintenance_reason?.startsWith("Restore completed;") ? <label><input type="checkbox" checked={reconciliationConfirmed} onChange={(event) => setReconciliationConfirmed(event.target.checked)} /> I have reconciled ambiguous task, publication, and notification effects before resuming writes.</label> : null}
         <Button label={current.maintenance_enabled ? "Disable maintenance" : "Enable maintenance"} isDisabled={maintenance.isPending || (!current.maintenance_enabled && maintenanceReason.trim().length < 8) || (current.maintenance_enabled && current.maintenance_reason?.startsWith("Restore completed;") && !reconciliationConfirmed)} onClick={() => runAfterStepUp(() => maintenance.mutate(!current.maintenance_enabled))} />
         {maintenance.isError ? <p role="alert">Maintenance change failed; current server state was not assumed to change.</p> : null}
@@ -91,8 +94,10 @@ export function SystemPage(): React.JSX.Element {
         <Button label="Create signed backup" isDisabled={backup.isPending} onClick={() => runAfterStepUp(() => backup.mutate())} />
         {backup.isError ? <p role="alert">Backup could not be created. Check database dump, artifact store, signer, trust and backup-directory configuration.</p> : null}
         {backup.data ? <p role="status">Backup {backup.data.data.id} verified and stored; manifest digest {backup.data.data.manifest_digest}; {backup.data.data.object_count} encrypted objects.</p> : null}
-        <label htmlFor="restore-backup-id">Backup ID for restore preflight</label>
-        <input id="restore-backup-id" value={restoreBackupId} onChange={(event) => setRestoreBackupId(event.target.value)} autoComplete="off" />
+        <div className="red2pr-field">
+          <label className="red2pr-field-label" htmlFor="restore-backup-id">Backup ID for restore preflight</label>
+          <InputControl className="red2pr-control-input" id="restore-backup-id" value={restoreBackupId} onChange={(event) => setRestoreBackupId(event.target.value)} autoComplete="off" />
+        </div>
         <Button label="Verify restore preflight" isDisabled={restoreDryRun.isPending || restoreBackupId.trim().length === 0} onClick={() => restoreDryRun.mutate()} />
         {restoreDryRun.data ? <div role="status"><p>Preflight {restoreDryRun.data.data.compatible ? "passed" : "blocked"}; target schema {restoreDryRun.data.data.target_schema_revision}; plan digest <code>{restoreDryRun.data.data.plan_digest}</code>.</p>
           {restoreDryRun.data.data.blockers.length ? <ul aria-label="Restore blockers">{restoreDryRun.data.data.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul> : null}
@@ -120,7 +125,7 @@ export function SystemPage(): React.JSX.Element {
         {exportBundle.data ? <p role="status">Bundle ready until {new Date(exportBundle.data.data.expires_at).toLocaleString()}. <a href={exportBundle.data.data.download_url}>Download bundle</a></p> : null}
       </section>
       <StepUpDialog isOpen={stepUpOpen} mfaEnabled={Boolean(me.data.data.mfa_enabled)} onOpenChange={(open) => { setStepUpOpen(open); if (!open) pendingAction.current = null; }} onVerified={() => { const action = pendingAction.current; pendingAction.current = null; action?.(); }} />
-    </main>
+    </section>
   );
 }
 
