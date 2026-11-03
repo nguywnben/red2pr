@@ -702,6 +702,7 @@ def _build_u17_harness(
         worker_broker_service=worker_broker,
         artifact_store=artifact_store,
         meta_inference_service=meta_service,
+        pricing_catalog_refresh_enabled=False,
         agent_profile_service=agent_profiles,
     )
     return U17Harness(

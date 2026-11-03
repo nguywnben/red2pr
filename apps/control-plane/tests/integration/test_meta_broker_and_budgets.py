@@ -593,6 +593,7 @@ def _build_u16_harness(
         iam_service=iam,
         setup_step_registry=setup_registry,
         meta_inference_service=meta_service,
+        pricing_catalog_refresh_enabled=False,
     )
     transport = httpx.ASGITransport(app=app)
     return U16Harness(

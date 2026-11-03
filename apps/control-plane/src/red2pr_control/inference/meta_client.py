@@ -106,6 +106,7 @@ from red2pr_control.core.errors import (
     UnprocessableEntityError,
     problem_from_exception,
 )
+from red2pr_control.core.pricing_catalog import LiteLlmPricingCatalog
 from red2pr_control.core.redaction import DEFAULT_REDACTOR, Redactor
 from red2pr_control.db.base import (
     ConsentModel,
@@ -436,6 +437,7 @@ class MetaMuseInferenceService:
         network_backend: httpcore.AsyncNetworkBackend | None = None,
         timeout_seconds: float = 15.0,
         redactor: Redactor | None = None,
+        pricing_catalog: LiteLlmPricingCatalog | None = None,
     ) -> None:
         self._iam = iam_service
         self._session_factory = iam_service.session_factory
@@ -460,10 +462,19 @@ class MetaMuseInferenceService:
         self._ca_bundle_resolver = ca_bundle_resolver
         self._network_backend = network_backend
         self._timeout_seconds = timeout_seconds
+        self._pricing_catalog = pricing_catalog or LiteLlmPricingCatalog(
+            egress_policy=self._egress_policy,
+            network_backend=network_backend,
+            timeout_seconds=min(timeout_seconds, 10.0),
+        )
 
     @property
     def budget_ledger(self) -> AtomicBudgetLedger:
         return self._budgets
+
+    async def refresh_pricing_catalog_forever(self) -> None:
+        """Refresh the external price catalog into process memory while the API is running."""
+        await self._pricing_catalog.run_forever()
 
     async def _ensure_workspace_config_in_tx(
         self,
@@ -527,6 +538,10 @@ class MetaMuseInferenceService:
             if raw_model_id in ALLOWED_META_MODEL_IDS and isinstance(raw_entry, Mapping):
                 model_key = validate_supported_meta_model_id(raw_model_id)
                 parsed[model_key] = ModelPricingRate.model_validate(raw_entry)
+        # The owner-selected LiteLLM feed is authoritative when its bounded cache is fresh.
+        # Workspace rates remain a fallback for models absent from the feed or during the
+        # initial fetch / bounded stale window.
+        parsed.update(self._pricing_catalog.current_rates())
         return parsed
 
     def _effective_budget_policy(self, raw_json: Mapping[str, Any]) -> BudgetPolicyDefaults:
@@ -2845,8 +2860,11 @@ class MetaMuseInferenceService:
                 )
             except Red2PrError as exc:
                 trigger: FallbackReason | None = (
-                    "429" if exc.code == "meta_rate_limited_429" else
-                    "503" if exc.code == "meta_upstream_503" else None
+                    "429"
+                    if exc.code == "meta_rate_limited_429"
+                    else "503"
+                    if exc.code == "meta_upstream_503"
+                    else None
                 )
                 decision = use_fallback(trigger) if trigger is not None else None
                 if decision is None:
@@ -3191,9 +3209,7 @@ class MetaMuseInferenceService:
             if http_resp.status_code == 429:
                 raise RateLimitedError(
                     code=(
-                        "meta_rate_limited_429"
-                        if allow_transient_fallback
-                        else "model_unavailable"
+                        "meta_rate_limited_429" if allow_transient_fallback else "model_unavailable"
                     ),
                     detail=(
                         "Meta Model API rate limit reached; approved fallback may be attempted."

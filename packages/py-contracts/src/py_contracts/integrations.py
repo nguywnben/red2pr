@@ -839,6 +839,7 @@ EgressAdapterKind = Literal[
     "github",
     "gitlab",
     "meta_inference",
+    "pricing_catalog",
     "oidc",
     "s3_artifacts",
     "telegram",

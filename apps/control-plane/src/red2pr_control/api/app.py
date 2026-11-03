@@ -825,6 +825,7 @@ def create_app(
     repository_catalog_service: RepositoryCatalogService | None = None,
     triage_evidence_service: TriageEvidenceService | None = None,
     meta_inference_service: MetaMuseInferenceService | None = None,
+    pricing_catalog_refresh_enabled: bool = True,
     agent_profile_service: AgentProfileService | None = None,
     artifact_store: ArtifactStoreProtocol | None = None,
     publisher_saga: PublisherSaga | None = None,
@@ -899,6 +900,7 @@ def create_app(
         retention_task = None
         alarms_task = None
         relay_task = None
+        pricing_catalog_task = None
         admin_database_url = os.environ.get("RED2PR_ADMIN_DATABASE_URL", "").strip()
         backup_directory = os.environ.get("RED2PR_BACKUP_DIRECTORY", "").strip()
         if admin_database_url and backup_directory:
@@ -928,6 +930,11 @@ def create_app(
             relay_task = asyncio.create_task(
                 relay_runner.run_forever(), name="customer-webhook-relay-worker"
             )
+        if meta_inference_service is not None and pricing_catalog_refresh_enabled:
+            pricing_catalog_task = asyncio.create_task(
+                meta_inference_service.refresh_pricing_catalog_forever(),
+                name="litellm-pricing-catalog-refresh",
+            )
         try:
             yield
         finally:
@@ -949,6 +956,10 @@ def create_app(
                 relay_task.cancel()
                 with suppress(asyncio.CancelledError):
                     await relay_task
+            if pricing_catalog_task is not None:
+                pricing_catalog_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await pricing_catalog_task
             if telegram_worker is not None:
                 telegram_worker.cancel()
                 with suppress(asyncio.CancelledError):

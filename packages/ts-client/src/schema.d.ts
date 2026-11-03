@@ -4137,7 +4137,7 @@ export interface components {
              * Adapter
              * @enum {string}
              */
-            adapter: "github" | "gitlab" | "meta_inference" | "oidc" | "s3_artifacts" | "telegram" | "slack" | "discord" | "webhook" | "smtp";
+            adapter: "github" | "gitlab" | "meta_inference" | "pricing_catalog" | "oidc" | "s3_artifacts" | "telegram" | "slack" | "discord" | "webhook" | "smtp";
             /** Ca Ref */
             ca_ref?: string | null;
             /** Cidrs */
@@ -4180,7 +4180,7 @@ export interface components {
              * Adapter
              * @enum {string}
              */
-            adapter: "github" | "gitlab" | "meta_inference" | "oidc" | "s3_artifacts" | "telegram" | "slack" | "discord" | "webhook" | "smtp";
+            adapter: "github" | "gitlab" | "meta_inference" | "pricing_catalog" | "oidc" | "s3_artifacts" | "telegram" | "slack" | "discord" | "webhook" | "smtp";
             /** Ca Ref */
             ca_ref?: string | null;
             /** Cidrs */
@@ -12401,7 +12401,7 @@ export interface operations {
     listEndpointRegistrations: {
         parameters: {
             query?: {
-                adapter?: ("github" | "gitlab" | "meta_inference" | "oidc" | "s3_artifacts" | "telegram" | "slack" | "discord" | "webhook" | "smtp") | null;
+                adapter?: ("github" | "gitlab" | "meta_inference" | "pricing_catalog" | "oidc" | "s3_artifacts" | "telegram" | "slack" | "discord" | "webhook" | "smtp") | null;
                 include_revoked?: boolean;
             };
             header?: never;
