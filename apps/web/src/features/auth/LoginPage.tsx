@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 import { useRed2PrApi, useRed2PrTransportConfig } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
-import { Button, Card, Center, Heading, HStack, Link, StateView, Text, TextInput, VStack } from "../../shared/ui";
-import { extractAuthProblemSummary, resolveSafePostLoginPath, type AuthProblemSummary } from "./authHelpers";
+import { Button, Card, Center, Heading, HStack, Link, Text, TextInput, VStack } from "../../shared/ui";
+import { extractAuthProblemSummary, type AuthProblemSummary } from "./authHelpers";
 
 async function readOidcProviderIds(fetchImpl: typeof fetch, baseUrl: string): Promise<string[]> {
   try {
@@ -30,7 +30,6 @@ export function LoginPage(): React.JSX.Element {
   const transport = useRed2PrTransportConfig();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const location = useLocation();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
@@ -77,7 +76,15 @@ export function LoginPage(): React.JSX.Element {
         setMfaChallengeId(response.data.mfa_challenge_id);
         return;
       }
-      await completeSignIn(resolveSafePostLoginPath(location.search, "/account"));
+      try {
+        const setup = await api.getSetupState();
+        const destination = setup.data.completed_at === null
+          ? "/setup"
+          : `/w/${encodeURIComponent(setup.data.default_workspace_slug ?? "default")}/overview`;
+        await completeSignIn(destination);
+      } catch (cause) {
+        setError(extractAuthProblemSummary(cause, t("auth.genericAuthErrorTitle")));
+      }
     },
     onError: (cause) => {
       setError(extractAuthProblemSummary(cause, t("auth.genericAuthErrorTitle")));
@@ -94,18 +101,6 @@ export function LoginPage(): React.JSX.Element {
   const formError = visibleError !== null && otpError === null ? visibleError : null;
   const submitting = signInMutation.isPending || csrfQuery.isPending;
   const ownerClaimed = setupQuery.data?.data.owner_claimed;
-
-  if (setupQuery.isPending) {
-    return (
-      <main id="red2pr-main-content">
-        <StateView
-          state="loading"
-          title="Loading setup"
-          description="Checking whether this instance needs initial setup."
-        />
-      </main>
-    );
-  }
 
   if (ownerClaimed === false) {
     return <Navigate to="/setup" replace />;

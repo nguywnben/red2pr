@@ -153,14 +153,14 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
 
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="security-grants-title">
         <h2 id="security-grants-title">Workspace grants and consent</h2>
-        {members.isPending ? <StateView state="loading" title="Loading workspace grants" /> : null}
+        {members.isPending ? <StateView state="loading" skeletonVariant="list" /> : null}
         {members.isError ? <StateView state="error" title="Workspace grants unavailable" description="Your current role cannot read workspace membership and repository grants." primaryAction={{ label: "Retry", onClick: () => { void members.refetch(); } }} /> : null}
         {members.data ? <ul aria-label="Workspace member grants">
           {members.data.data.items.map((member) => <li key={member.id}>
             {sanitizeUntrustedText(member.user?.display_name ?? member.user_id).text}: {member.role}; {member.repository_grants?.length ?? 0} repository grants.
           </li>)}
         </ul> : null}
-        {modelSecurity.isPending ? <StateView state="loading" title="Loading inference consent" /> : null}
+        {modelSecurity.isPending ? <StateView state="loading" skeletonVariant="list" /> : null}
         {modelSecurity.isError ? <p role="status">Inference consent status is unavailable to this role.</p> : null}
         {modelSecurity.data ? <p role="status">
           Outbound inference consent: {modelSecurity.data.data.inference_consent_active ? "active" : "not active"}
@@ -184,7 +184,7 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
           <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={correlationId}>Correlation ID</label><InputControl id={correlationId} className="red2pr-control-input" value={auditCorrelation} maxLength={120} onChange={(event) => setAuditCorrelation(event.target.value)} /></div>
           <Button label="Search audit" variant="secondary" type="submit" isDisabled={audit.isFetching} />
         </form>
-        {audit.isPending ? <StateView state="loading" title="Verifying audit chain" /> : null}
+        {audit.isPending ? <StateView state="loading" skeletonVariant="list" /> : null}
         {audit.isError ? <StateView state="error" title="Verified audit unavailable" description="The audit chain or signed checkpoint could not be verified with current access." primaryAction={{ label: "Retry", onClick: () => { void audit.refetch(); } }} /> : null}
         {audit.data?.data.items.length === 0 ? <p role="status">No matching audit events.</p> : null}
         {audit.data?.data.items.length ? <ul aria-label="Verified audit events">
@@ -200,7 +200,7 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="security-token-title">
         <h2 id="security-token-title">Scoped API tokens</h2>
         <p>Tokens are limited to selected repositories and scopes. Newly issued token material is shown once.</p>
-        {tokens.isPending ? <StateView state="loading" title="Loading token metadata" /> : null}
+        {tokens.isPending ? <StateView state="loading" skeletonVariant="list" /> : null}
         {tokens.isError ? <StateView state="error" title="Token metadata unavailable" description="Your current role cannot read this token list." primaryAction={{ label: "Retry", onClick: () => { void tokens.refetch(); } }} /> : null}
         {revokeToken.isError ? <p role="alert">Token revocation failed. Confirm your role and retry; the token remains active until revocation succeeds.</p> : null}
         {tokens.data?.data.items.length === 0 ? <p role="status">No API tokens are visible in this workspace.</p> : null}
@@ -225,7 +225,7 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="security-exceptions-title">
         <h2 id="security-exceptions-title">High finding exceptions</h2>
         <p>Each exception is bound to one artifact digest, requires two different workspace admins, and expires within 30 days.</p>
-        {exceptions.isPending ? <StateView state="loading" title="Loading release exceptions" /> : null}
+        {exceptions.isPending ? <StateView state="loading" skeletonVariant="list" /> : null}
         {exceptions.isError ? <StateView state="error" title="Release exceptions unavailable" description="Your current role cannot read the exception ledger." primaryAction={{ label: "Retry", onClick: () => { void exceptions.refetch(); } }} /> : null}
         {exceptions.data?.data.items.length === 0 ? <p role="status">No release exceptions are recorded.</p> : null}
         {exceptions.data?.data.items.map((exception) => <article key={exception.id}>
@@ -259,7 +259,7 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
         </ul>
         <p>Secret values are never displayed here. Key material remains in the configured external key ring; token revocation takes effect immediately.</p>
         <h3>Secret key metadata</h3>
-        {secretMetadata.isPending ? <StateView state="loading" title="Loading key metadata" /> : null}
+        {secretMetadata.isPending ? <StateView state="loading" skeletonVariant="list" /> : null}
         {secretMetadata.isError ? <StateView state="error" title="Key metadata unavailable" description="Secret metadata requires workspace admin or auditor access." primaryAction={{ label: "Retry", onClick: () => { void secretMetadata.refetch(); } }} /> : null}
         {secretMetadata.data ? <>
           <p>Active master key version: {secretMetadata.data.data.active_kek_version}. Secret values and references are never returned.</p>

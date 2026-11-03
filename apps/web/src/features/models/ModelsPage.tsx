@@ -684,11 +684,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
     [],
   );
 
-  if (modelsQuery.isPending) {
-    return <StateView state="loading" />;
-  }
-
-  if (modelsQuery.isError || modelsState === null || policyDraft === null) {
+  if (modelsQuery.isError) {
     const summary = extractAuthProblemSummary(modelsQuery.error, t("state.error.description"));
     return (
       <StateView
@@ -705,17 +701,19 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
     );
   }
 
-  const availableConsents = modelsState.available_inference_consents ?? [];
+  const availableConsents = modelsState?.available_inference_consents ?? [];
   const wonderVerified =
-    modelsState.models.find((m) => m.model_id === "muse-wonder-1.0")?.status === "available";
-  const wb = modelsState.workspace_budget;
-  const budgetSummaryItems: readonly [string, string][] = [
-    ["Daily Workspace Cap", formatMoney(wb.cost_cap.amount, wb.currency)],
-    ["Settled Today", formatMoney(wb.settled_cost.amount, wb.currency)],
-    ["Active Reservations", formatMoney(wb.reserved_cost.amount, wb.currency)],
-    ["Unconfirmed Timeout Holds", formatMoney(wb.unknown_cost.amount, wb.currency)],
-    ["Remaining Daily Headroom", formatMoney(wb.remaining_cost.amount, wb.currency)],
-  ];
+    modelsState?.models.find((m) => m.model_id === "muse-wonder-1.0")?.status === "available";
+  const wb = modelsState?.workspace_budget;
+  const budgetSummaryItems: readonly [string, string][] = wb
+    ? [
+        ["Daily Workspace Cap", formatMoney(wb.cost_cap.amount, wb.currency)],
+        ["Settled Today", formatMoney(wb.settled_cost.amount, wb.currency)],
+        ["Active Reservations", formatMoney(wb.reserved_cost.amount, wb.currency)],
+        ["Unconfirmed Timeout Holds", formatMoney(wb.unknown_cost.amount, wb.currency)],
+        ["Remaining Daily Headroom", formatMoney(wb.remaining_cost.amount, wb.currency)],
+      ]
+    : [];
 
   return (
     <div className="red2pr-page-stack" data-testid="models-page">
@@ -731,13 +729,13 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
         </div>
         <span
           className={`red2pr-badge-pill ${
-            modelsState.ready_for_repair_inference ? "red2pr-tone-success" : "red2pr-tone-warning"
+            modelsState?.ready_for_repair_inference ? "red2pr-tone-success" : "red2pr-tone-warning"
           }`}
           data-testid="models-readiness-badge"
         >
-          <StatusGlyph kind={modelsState.ready_for_repair_inference ? "check" : "warn"} />
+          <StatusGlyph kind={modelsState?.ready_for_repair_inference ? "check" : "warn"} />
           <span>
-            {modelsState.ready_for_repair_inference
+            {modelsState?.ready_for_repair_inference
               ? "Repair Inference Ready"
               : "Repair Inference Blocked"}
           </span>
@@ -759,6 +757,10 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
         </div>
       ) : null}
 
+      {modelsState === null || policyDraft === null ? (
+        <StateView state="loading" skeletonVariant="form" />
+      ) : (
+        <>
       {modelsState.suspension_reason != null ? (
         <div
           role="alert"
@@ -1180,6 +1182,8 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
           }
         }}
       />
+        </>
+      )}
     </div>
   );
 }

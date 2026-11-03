@@ -65,8 +65,23 @@ export function TelegramIntentConfirmPage(): React.JSX.Element {
       </main>
     );
   }
-  if (meQuery.isPending || (token !== null && intentQuery.isPending)) return <StateView state="loading" />;
-  if (meQuery.isError) return <StateView state="error" title="Sign-in status unavailable" description="Sign in to review this Telegram action." />;
+  if (meQuery.isPending || (token !== null && intentQuery.isPending)) {
+    return (
+      <main className="red2pr-page-stack" data-testid="telegram-intent-confirm-page">
+        <header className="red2pr-page-header">
+          <div><h1>Confirm Telegram action</h1><p>Review the requested change in your authenticated Red2PR session.</p></div>
+        </header>
+        <StateView state="loading" skeletonVariant="detail" />
+      </main>
+    );
+  }
+  if (meQuery.isError) {
+    return (
+      <main className="red2pr-page-stack">
+        <StateView state="error" title="Sign-in status unavailable" description="Sign in to review this Telegram action." />
+      </main>
+    );
+  }
 
   const intent = intentQuery.data?.data;
   const confirmed = confirmMutation.isSuccess;

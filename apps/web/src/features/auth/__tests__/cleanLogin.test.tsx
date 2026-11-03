@@ -96,7 +96,7 @@ describe("clean sign-in entry", () => {
     expect(screen.queryByRole("heading", { name: /sign in to red2pr/i })).not.toBeInTheDocument();
   });
 
-  it("does not flash the sign-in form while checking whether initial setup is required", async () => {
+  it("renders the sign-in form directly without a loading card and redirects when setup is required", async () => {
     let resolveSetup!: (response: Response) => void;
     const fetchImpl = vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
       const rawUrl = input instanceof Request ? input.url : input.toString();
@@ -119,8 +119,8 @@ describe("clean sign-in entry", () => {
 
     renderLogin(fetchImpl);
 
-    expect(screen.getByRole("heading", { name: "Loading setup" })).toBeVisible();
-    expect(screen.queryByRole("heading", { name: /sign in to red2pr/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Loading setup" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /sign in to red2pr/i })).toBeVisible();
 
     await waitFor(() => expect(resolveSetup).toBeTypeOf("function"));
     await act(async () => {

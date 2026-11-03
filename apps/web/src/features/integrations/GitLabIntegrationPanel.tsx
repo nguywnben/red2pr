@@ -590,10 +590,6 @@ export function GitLabIntegrationPanel({
     updateMutation,
   ]);
 
-  if (connectionsQuery.isPending) {
-    return <StateView state="loading" />;
-  }
-
   if (connectionsQuery.isError) {
     const summary = extractAuthProblemSummary(
       connectionsQuery.error,
@@ -716,7 +712,9 @@ export function GitLabIntegrationPanel({
           ) : null}
         </div>
 
-        {connections.length === 0 ? (
+        {connectionsQuery.isPending ? (
+          <StateView state="loading" skeletonVariant="list" />
+        ) : connections.length === 0 ? (
           <StateView
             state="empty"
             title="No GitLab connection configured"

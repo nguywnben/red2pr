@@ -541,10 +541,6 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
     return cols;
   }, [effectiveRole, isAdmin, revokeBreakGlassMutation, t]);
 
-  if (membersQuery.isPending) {
-    return <StateView state="loading" />;
-  }
-
   if (membersQuery.isError) {
     if (membersQuery.error instanceof Red2PrApiError && membersQuery.error.status === 410) {
       return (
@@ -597,8 +593,8 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
     );
   }
 
-  const memberRows = membersQuery.data.data.items.map(toMemberRow);
-  const nextMemberCursor = membersQuery.data.data.next_cursor ?? null;
+  const memberRows = (membersQuery.data?.data.items ?? []).map(toMemberRow);
+  const nextMemberCursor = membersQuery.data?.data.next_cursor ?? null;
   const inviteRows = (invitationsQuery.data?.data.items ?? []).map(toInviteRow);
   const breakGlassRows = (breakGlassQuery.data?.data.items ?? []).map(toBreakGlassRow);
 
@@ -710,11 +706,15 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
           </div>
         </div>
 
-        <Table<MemberTableRow>
-          aria-label={t("members.membersTableLabel")}
-          data={memberRows}
-          columns={memberColumns}
-        />
+        {membersQuery.isPending ? (
+          <StateView state="loading" skeletonVariant="table" />
+        ) : (
+          <Table<MemberTableRow>
+            aria-label={t("members.membersTableLabel")}
+            data={memberRows}
+            columns={memberColumns}
+          />
+        )}
       </section>
 
       {canInspectAuditTables ? (

@@ -89,8 +89,26 @@ export function McpIntentConfirmPage(): React.JSX.Element {
       </main>
     );
   }
-  if (meQuery.isPending) return <StateView state="loading" />;
-  if (meQuery.isError) return <StateView state="error" title="Sign-in status unavailable" description="Sign in to review this action." />;
+  if (meQuery.isPending) {
+    return (
+      <main className="red2pr-page-stack" data-testid="mcp-intent-confirm-page">
+        <header className="red2pr-page-header">
+          <div>
+            <h1>Confirm repair recheck</h1>
+            <p>Confirming creates a new repair session. Red2PR rechecks your access and policy before it starts.</p>
+          </div>
+        </header>
+        <StateView state="loading" skeletonVariant="detail" />
+      </main>
+    );
+  }
+  if (meQuery.isError) {
+    return (
+      <main className="red2pr-page-stack">
+        <StateView state="error" title="Sign-in status unavailable" description="Sign in to review this action." />
+      </main>
+    );
+  }
 
   return (
     <main className="red2pr-page-stack" data-testid="mcp-intent-confirm-page">
@@ -111,9 +129,9 @@ export function McpIntentConfirmPage(): React.JSX.Element {
         <section className="red2pr-surface red2pr-card-section">
           {previewQuery.isPending ? (
             <VStack gap={2} width="100%" role="status" aria-label="Loading the requested action" aria-busy="true">
-              <Skeleton width="48%" height={14} index={0} />
-              <Skeleton width="76%" height={14} index={1} />
-              <Skeleton width="62%" height={14} index={2} />
+              <Skeleton width="48%" height={14} radius={1} index={0} />
+              <Skeleton width="76%" height={14} radius={1} index={1} />
+              <Skeleton width="62%" height={14} radius={1} index={2} />
             </VStack>
           ) : null}
           {previewQuery.isError ? <p role="alert">This approval link is invalid, expired, or outside your current access.</p> : null}

@@ -141,7 +141,7 @@ export function RelayConfigCard({ workspace, me }: RelayConfigCardProps): React.
         Relay credentials are write-only and Red2PR does not host relay infrastructure.
       </p>
       {connectionsQuery.isLoading ? (
-        <StateView state="loading" title="Loading provider connections" description="Checking ready GitHub and GitLab connections." />
+        <StateView state="loading" skeletonVariant="form" />
       ) : connections.length === 0 ? (
         <StateView state="empty" title="No ready provider connection" description="Connect GitHub or GitLab before configuring a relay." />
       ) : (

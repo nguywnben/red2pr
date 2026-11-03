@@ -302,6 +302,20 @@ h3:not(.astryx-heading) {
 
 .red2pr-setup-page {
   max-width: 680px;
+  margin-block: var(--spacing-8);
+}
+
+.red2pr-setup-page:not(.red2pr-setup-management) > [data-testid="setup-consents-panel"],
+.red2pr-setup-page:not(.red2pr-setup-management) > [data-testid="setup-endpoints-panel"] {
+  display: none;
+}
+
+.red2pr-setup-management {
+  max-width: 1080px;
+}
+
+.red2pr-setup-management > :not(.red2pr-setup-management-header):not([data-testid="setup-consents-panel"]):not([data-testid="setup-endpoints-panel"]) {
+  display: none;
 }
 
 .red2pr-setup-block {

@@ -1,7 +1,7 @@
 import { LinkProvider } from "@astryxdesign/core/Link";
 import { Theme, type ThemeMode } from "@astryxdesign/core/theme";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Link as RouterLink } from "react-router";
+import { Link as RouterLink, useInRouterContext } from "react-router";
 import { defaultThemeSlug, themes } from "../../astryx-themes";
 import "./tokens.css";
 
@@ -94,6 +94,7 @@ interface SafeAnchorProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> 
 }
 
 function SafeAstryxLink({ href, children, ref, ...rest }: SafeAnchorProps): React.JSX.Element {
+  const inRouter = useInRouterContext();
   const safeHref = isSafeLinkHref(href);
   if (safeHref === null) {
     return (
@@ -102,7 +103,7 @@ function SafeAstryxLink({ href, children, ref, ...rest }: SafeAnchorProps): Reac
       </span>
     );
   }
-  if (safeHref.startsWith("/")) {
+  if (safeHref.startsWith("/") && inRouter) {
     return (
       <RouterLink ref={ref} to={safeHref} {...rest}>
         {children}

@@ -9,6 +9,7 @@ import {
   AlertDialog,
   Button,
   ConfirmActionButton,
+  Skeleton,
   StateView,
   StatusGlyph,
   Table,
@@ -282,10 +283,6 @@ export function AccountPage(): React.JSX.Element {
     [revokeSessionMutation, t],
   );
 
-  if (meQuery.isPending) {
-    return <StateView state="loading" />;
-  }
-
   if (meQuery.isError) {
     if (meQuery.error instanceof Red2PrApiError && meQuery.error.status === 401) {
       return <Navigate to="/login?next=%2Faccount" replace />;
@@ -306,8 +303,8 @@ export function AccountPage(): React.JSX.Element {
     );
   }
 
-  const me = meQuery.data.data;
-  const stepUpActive = isStepUpValid(me.step_up_valid_until);
+  const me = meQuery.data?.data ?? null;
+  const stepUpActive = isStepUpValid(me?.step_up_valid_until ?? null);
 
   return (
     <div className="red2pr-page-stack">
@@ -372,31 +369,39 @@ export function AccountPage(): React.JSX.Element {
           <div className="red2pr-kv-item">
             <dt className="red2pr-kv-term">{t("account.fieldDisplayName")}</dt>
             <dd className="red2pr-kv-detail">
-              {sanitizeUntrustedText(me.user.display_name).text}
+              {me ? sanitizeUntrustedText(me.user.display_name).text : <Skeleton width={132} height={16} radius={1} index={0} />}
             </dd>
           </div>
           <div className="red2pr-kv-item">
             <dt className="red2pr-kv-term">{t("account.fieldEmail")}</dt>
             <dd className="red2pr-kv-detail">
-              {me.user.email
-                ? sanitizeUntrustedText(me.user.email).text
-                : t("account.fieldEmailUnset")}
+              {me
+                ? me.user.email
+                  ? sanitizeUntrustedText(me.user.email).text
+                  : t("account.fieldEmailUnset")
+                : <Skeleton width={160} height={16} radius={1} index={1} />}
             </dd>
           </div>
           <div className="red2pr-kv-item">
             <dt className="red2pr-kv-term">{t("account.fieldStatus")}</dt>
-            <dd className="red2pr-kv-detail">{me.user.status}</dd>
+            <dd className="red2pr-kv-detail">
+              {me ? me.user.status : <Skeleton width={80} height={16} radius={1} index={2} />}
+            </dd>
           </div>
           <div className="red2pr-kv-item">
             <dt className="red2pr-kv-term">{t("account.fieldAuthStrength")}</dt>
-            <dd className="red2pr-kv-detail">{me.session.auth_strength.toUpperCase()}</dd>
+            <dd className="red2pr-kv-detail">
+              {me ? me.session.auth_strength.toUpperCase() : <Skeleton width={96} height={16} radius={1} index={3} />}
+            </dd>
           </div>
           <div className="red2pr-kv-item">
             <dt className="red2pr-kv-term">{t("account.fieldStepUp")}</dt>
             <dd className="red2pr-kv-detail">
-              {stepUpActive && me.step_up_valid_until
-                ? t("account.stepUpActive", { until: formatUtcTimestamp(me.step_up_valid_until) })
-                : t("account.stepUpInactive")}
+              {me
+                ? stepUpActive && me.step_up_valid_until
+                  ? t("account.stepUpActive", { until: formatUtcTimestamp(me.step_up_valid_until) })
+                  : t("account.stepUpInactive")
+                : <Skeleton width={140} height={16} radius={1} index={4} />}
             </dd>
           </div>
         </dl>
@@ -405,7 +410,9 @@ export function AccountPage(): React.JSX.Element {
           <h3 >
             {t("account.grantsHeading")}
           </h3>
-          {(me.memberships ?? []).length === 0 ? (
+          {me === null ? (
+            <Skeleton width="60%" height={16} radius={1} index={5} />
+          ) : (me.memberships ?? []).length === 0 ? (
             <p className="red2pr-field-hint">{t("account.grantsEmpty")}</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: 20 }}>
@@ -429,7 +436,7 @@ export function AccountPage(): React.JSX.Element {
           </h2>
         </div>
 
-        {me.mfa_required_for_privileged ? (
+        {me?.mfa_required_for_privileged ? (
           <div className="red2pr-inline-alert red2pr-tone-info">
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <StatusGlyph kind="lock" />
@@ -544,12 +551,13 @@ export function AccountPage(): React.JSX.Element {
         ) : (
           <div className="red2pr-button-row">
             <Button
-              label={me.mfa_enabled ? t("account.mfaRotateEnroll") : t("account.mfaStartEnroll")}
+              label={me?.mfa_enabled ? t("account.mfaRotateEnroll") : t("account.mfaStartEnroll")}
               variant="primary"
               isLoading={startEnrollMutation.isPending}
+              isDisabled={me === null}
               onClick={() => {
                 setActionError(null);
-                requireStepUpThen(me.step_up_valid_until, () => {
+                requireStepUpThen(me?.step_up_valid_until ?? null, () => {
                   startEnrollMutation.mutate();
                 });
               }}
@@ -557,7 +565,7 @@ export function AccountPage(): React.JSX.Element {
           </div>
         )}
 
-        {me.mfa_enabled && pendingEnrollment === null ? (
+        {me?.mfa_enabled && pendingEnrollment === null ? (
           <form
             className="red2pr-form-stack"
             style={{
@@ -614,7 +622,7 @@ export function AccountPage(): React.JSX.Element {
           isActionLoading={disableMfaMutation.isPending}
           onAction={async () => {
             setActionError(null);
-            if (!isStepUpValid(me.step_up_valid_until)) {
+            if (!isStepUpValid(me?.step_up_valid_until ?? null)) {
               setDisableMfaConfirmOpen(false);
               pendingStepUpActionRef.current = () => disableMfaMutation.mutate();
               setStepUpDialogOpen(true);
@@ -631,8 +639,8 @@ export function AccountPage(): React.JSX.Element {
       </section>
 
       <TelegramLinkCard
-        link={me.telegram_link ?? { status: "not_configured" }}
-        requireStepUpThen={(action) => requireStepUpThen(me.step_up_valid_until, action)}
+        link={me?.telegram_link ?? { status: "not_configured" }}
+        requireStepUpThen={(action) => requireStepUpThen(me?.step_up_valid_until ?? null, action)}
       />
 
       <section
@@ -657,7 +665,7 @@ export function AccountPage(): React.JSX.Element {
 
       <StepUpDialog
         isOpen={stepUpDialogOpen}
-        mfaEnabled={me.mfa_enabled}
+        mfaEnabled={me?.mfa_enabled ?? false}
         onOpenChange={(nextOpen) => {
           setStepUpDialogOpen(nextOpen);
           if (!nextOpen) {

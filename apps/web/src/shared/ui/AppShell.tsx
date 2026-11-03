@@ -245,10 +245,12 @@ export function AppShell({
             : null
     : null;
   const [expandedNavGroup, setExpandedNavGroup] = useState(activeExpandableGroup);
+  const [prevActiveGroup, setPrevActiveGroup] = useState(activeExpandableGroup);
 
-  useEffect(() => {
+  if (prevActiveGroup !== activeExpandableGroup) {
+    setPrevActiveGroup(activeExpandableGroup);
     setExpandedNavGroup(activeExpandableGroup);
-  }, [activeExpandableGroup]);
+  }
 
   const workspaceOptions = workspaces.map((workspace) => ({
     value: workspace.slug,
@@ -274,7 +276,7 @@ export function AppShell({
                   <img
                     className="red2pr-sidebar-logo"
                     src={resolvedTheme === "dark" ? "/brand/red2pr-logo-dark.svg" : "/brand/red2pr-logo.svg"}
-                    alt=""
+                    alt={t("app.brand")}
                   />
                 }
                 headingHref="/"

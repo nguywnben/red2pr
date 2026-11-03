@@ -242,6 +242,15 @@ export interface StateViewAction {
   readonly isLoading?: boolean;
 }
 
+export type SkeletonVariant =
+  | "card"
+  | "table"
+  | "metrics"
+  | "form"
+  | "list"
+  | "code"
+  | "detail";
+
 export interface StateViewProps {
   readonly state: UxStateInput;
   readonly title?: string;
@@ -249,7 +258,135 @@ export interface StateViewProps {
   readonly correlationId?: string | null;
   readonly primaryAction?: StateViewAction;
   readonly secondaryAction?: StateViewAction;
+  readonly skeletonVariant?: SkeletonVariant;
   readonly children?: React.ReactNode;
+}
+
+function renderLoadingSkeleton(variant: SkeletonVariant): React.JSX.Element {
+  switch (variant) {
+    case "table":
+      return (
+        <VStack gap={2} width="100%">
+          <HStack gap={2} vAlign="center" width="100%">
+            <Skeleton width="18%" height={12} radius={1} index={0} />
+            <Skeleton width="34%" height={12} radius={1} index={1} />
+            <Skeleton width="22%" height={12} radius={1} index={2} />
+            <Skeleton width="14%" height={12} radius={1} index={3} />
+          </HStack>
+          {[0, 1, 2, 3].map((row) => (
+            <HStack key={row} gap={2} vAlign="center" width="100%">
+              <Skeleton width="18%" height={16} radius={1} index={row * 4 + 4} />
+              <Skeleton width="34%" height={16} radius={1} index={row * 4 + 5} />
+              <Skeleton width="22%" height={16} radius={1} index={row * 4 + 6} />
+              <Skeleton width="14%" height={20} radius="rounded" index={row * 4 + 7} />
+            </HStack>
+          ))}
+        </VStack>
+      );
+    case "metrics":
+      return (
+        <VStack gap={3} width="100%">
+          <div className="red2pr-kpi-grid">
+            {[0, 1, 2, 3].map((idx) => (
+              <VStack key={idx} gap={1.5} width="100%">
+                <Skeleton width="55%" height={12} radius={1} index={idx * 2} />
+                <Skeleton width="42%" height={26} radius={2} index={idx * 2 + 1} />
+              </VStack>
+            ))}
+          </div>
+          <VStack gap={2} width="100%">
+            {[0, 1, 2].map((bar) => (
+              <HStack key={bar} gap={2} vAlign="center" width="100%">
+                <Skeleton width="24%" height={14} radius={1} index={8 + bar * 2} />
+                <Skeleton
+                  width={bar === 0 ? "68%" : bar === 1 ? "52%" : "36%"}
+                  height={16}
+                  radius={1}
+                  index={9 + bar * 2}
+                />
+              </HStack>
+            ))}
+          </VStack>
+        </VStack>
+      );
+    case "form":
+      return (
+        <VStack gap={2} width="100%">
+          {[0, 1, 2].map((field) => (
+            <VStack key={field} gap={1} width="100%">
+              <Skeleton width="28%" height={12} radius={1} index={field * 2} />
+              <Skeleton width="100%" height={36} radius={2} index={field * 2 + 1} />
+            </VStack>
+          ))}
+          <HStack gap={2} vAlign="center">
+            <Skeleton width={116} height={32} radius={2} index={6} />
+            <Skeleton width={88} height={32} radius={2} index={7} />
+          </HStack>
+        </VStack>
+      );
+    case "list":
+      return (
+        <VStack gap={2} width="100%">
+          {[0, 1, 2].map((row) => (
+            <HStack key={row} gap={2} vAlign="center" hAlign="between" width="100%">
+              <VStack gap={1} width="72%">
+                <Skeleton width="64%" height={14} radius={1} index={row * 3} />
+                <Skeleton width="42%" height={12} radius={1} index={row * 3 + 1} />
+              </VStack>
+              <Skeleton width={76} height={22} radius="rounded" index={row * 3 + 2} />
+            </HStack>
+          ))}
+        </VStack>
+      );
+    case "code":
+      return (
+        <VStack gap={1.5} width="100%">
+          <Skeleton width="58%" height={12} radius={1} index={0} />
+          <Skeleton width="84%" height={12} radius={1} index={1} />
+          <Skeleton width="66%" height={12} radius={1} index={2} />
+          <Skeleton width="91%" height={12} radius={1} index={3} />
+          <Skeleton width="47%" height={12} radius={1} index={4} />
+        </VStack>
+      );
+    case "detail":
+      return (
+        <VStack gap={3} width="100%">
+          <HStack gap={2} vAlign="center" hAlign="between" width="100%">
+            <Skeleton width="38%" height={18} radius={1} index={0} />
+            <Skeleton width={92} height={22} radius="rounded" index={1} />
+          </HStack>
+          <div className="red2pr-kpi-grid">
+            {[0, 1, 2].map((cell) => (
+              <VStack key={cell} gap={1} width="100%">
+                <Skeleton width="48%" height={12} radius={1} index={2 + cell * 2} />
+                <Skeleton width="76%" height={16} radius={1} index={3 + cell * 2} />
+              </VStack>
+            ))}
+          </div>
+          <VStack gap={1.5} width="100%">
+            <Skeleton width="88%" height={14} radius={1} index={8} />
+            <Skeleton width="72%" height={14} radius={1} index={9} />
+            <Skeleton width="54%" height={14} radius={1} index={10} />
+          </VStack>
+        </VStack>
+      );
+    case "card":
+    default:
+      return (
+        <VStack gap={2} width="100%">
+          <HStack gap={2} vAlign="center" hAlign="between" width="100%">
+            <Skeleton width="42%" height={16} radius={1} index={0} />
+            <Skeleton width={76} height={20} radius="rounded" index={1} />
+          </HStack>
+          <Skeleton width="82%" height={13} radius={1} index={2} />
+          <Skeleton width="64%" height={13} radius={1} index={3} />
+          <HStack gap={2} vAlign="center" width="100%">
+            <Skeleton width="28%" height={13} radius={1} index={4} />
+            <Skeleton width="22%" height={13} radius={1} index={5} />
+          </HStack>
+        </VStack>
+      );
+  }
 }
 
 export function StateView({
@@ -259,6 +396,7 @@ export function StateView({
   correlationId,
   primaryAction,
   secondaryAction,
+  skeletonVariant = "card",
   children,
 }: StateViewProps): React.JSX.Element {
   const { t } = useI18n();
@@ -313,25 +451,32 @@ export function StateView({
         aria-busy="true"
         padding={4}
       >
-        <VStack gap={3} width="100%" data-testid="red2pr-loading-skeleton">
-          <HStack gap={3} vAlign="center">
-            <Skeleton width={40} height={40} radius="rounded" index={0} />
+        <VStack gap={3} width="100%">
+          {title || description ? (
             <VStack gap={1} width="100%">
-              <Skeleton width={160} height={16} index={1} />
-              <Skeleton width="48%" height={12} index={2} />
+              {title ? (
+                <Text as="h2" type="label" weight="semibold">
+                  {title}
+                </Text>
+              ) : null}
+              {description ? (
+                <Text as="p" color="secondary">
+                  {description}
+                </Text>
+              ) : null}
             </VStack>
-          </HStack>
-          <Skeleton width="72%" height={14} index={3} />
-          <VStack gap={2} width="100%">
-            {[0, 1, 2, 3].map((row) => (
-              <HStack key={row} gap={2} vAlign="center">
-                <Skeleton width="12%" height={14} index={row * 4 + 4} />
-                <Skeleton width="42%" height={14} index={row * 4 + 5} />
-                <Skeleton width="20%" height={14} index={row * 4 + 6} />
-                <Skeleton width="14%" height={14} index={row * 4 + 7} />
-              </HStack>
-            ))}
+          ) : null}
+          <VStack
+            gap={2}
+            width="100%"
+            data-testid="red2pr-loading-skeleton"
+            data-skeleton-variant={skeletonVariant}
+          >
+            {renderLoadingSkeleton(skeletonVariant)}
           </VStack>
+          {correlationBadge}
+          {children}
+          {actionGroup}
         </VStack>
       </Card>
     );

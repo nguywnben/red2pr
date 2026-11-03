@@ -352,7 +352,16 @@ export function RepositoryDetailPage({
   );
 
   if (detailQuery.isLoading) {
-    return <StateView state="loading" />;
+    return (
+      <div className="red2pr-page-stack" data-testid="repository-detail-page">
+        <div>
+          <Link to={`/w/${encodeURIComponent(workspaceSlug)}/repositories`}>
+            ← {t("repoDetail.backToCatalog")}
+          </Link>
+        </div>
+        <StateView state="loading" skeletonVariant="detail" />
+      </div>
+    );
   }
 
   if (detailQuery.isError || !detailQuery.data) {

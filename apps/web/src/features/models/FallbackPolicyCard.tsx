@@ -146,7 +146,7 @@ export function FallbackPolicyCard({
         tool schema, redaction policy, and repair session budget account.
       </p>
       {repositoriesQuery.isLoading || profilesQuery.isLoading ? (
-        <StateView state="loading" title="Loading model profiles" description="Preparing repository-specific fallback policies." />
+        <StateView state="loading" skeletonVariant="form" />
       ) : profilesQuery.isError ? (
         <StateView state="error" title="Model profiles unavailable" description="Fallback policies require the current workspace profile list." />
       ) : repositories.length === 0 ? (

@@ -19,5 +19,9 @@ export function OidcCallbackPage(): React.JSX.Element {
     if (session.isError) void navigate("/login", { replace: true });
   }, [navigate, session.isError, session.isSuccess]);
 
-  return <StateView state="loading" />;
+  return (
+    <main id="red2pr-main-content" className="red2pr-page-stack red2pr-standalone-state">
+      <StateView state="loading" skeletonVariant="form" />
+    </main>
+  );
 }

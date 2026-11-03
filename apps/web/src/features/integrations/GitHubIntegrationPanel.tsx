@@ -609,10 +609,6 @@ export function GitHubIntegrationPanel({
     [],
   );
 
-  if (connectionsQuery.isPending) {
-    return <StateView state="loading" />;
-  }
-
   if (connectionsQuery.isError) {
     const errSummary = extractAuthProblemSummary(
       connectionsQuery.error,
@@ -898,7 +894,9 @@ export function GitHubIntegrationPanel({
           </form>
         ) : null}
 
-        {connections.length === 0 ? (
+        {connectionsQuery.isPending ? (
+          <StateView state="loading" skeletonVariant="list" />
+        ) : connections.length === 0 ? (
           <StateView
             state="empty"
             title="No GitHub App connections configured"
@@ -1248,7 +1246,7 @@ export function GitHubIntegrationPanel({
               Discovered Repositories ({discoveredRepos.length})
             </h3>
             {detailQuery.isPending ? (
-              <StateView state="loading" />
+              <StateView state="loading" skeletonVariant="table" />
             ) : (
               <Table
                 aria-label={t("integrations.reposTableLabel")}

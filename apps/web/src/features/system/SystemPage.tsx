@@ -2,7 +2,7 @@ import { InputControl } from "../../shared/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
 import { useRed2PrApi } from "../../shared/api";
-import { Button, ConfirmActionButton, StateView } from "../../shared/ui";
+import { Button, ConfirmActionButton, Skeleton, StateView, VStack } from "../../shared/ui";
 import { StepUpDialog } from "../auth/StepUpDialog";
 
 const SUPPORT_FILES = ["health_summary", "doctor_report", "migration_status", "worker_status", "telemetry_snapshot", "recent_redacted_logs"] as const;
@@ -58,34 +58,47 @@ export function SystemPage(): React.JSX.Element {
     setStepUpOpen(true);
   };
 
-  if (status.isPending || me.isPending) return <section className="red2pr-page-stack"><StateView state="loading" title="Loading system status" /></section>;
   if (status.isError || me.isError) return <section className="red2pr-page-stack"><StateView state="error" title="System status unavailable" description="Sign in as an instance owner and retry." primaryAction={{ label: "Retry", onClick: () => { void status.refetch(); void me.refetch(); } }} /></section>;
 
-  const current = status.data.data;
+  const current = status.data?.data ?? null;
   return (
     <section className="red2pr-page-stack" data-testid="system-page">
-      <header><h1>System operations</h1><p>Inspect this Red2PR instance, maintenance state, upgrade compatibility, and redacted support diagnostics.</p></header>
+      <header><h1>System operations</h1><p>Inspect this Red2PR instance, maintenance state, upgrade compatibility, and redacted support diagnostics.</p><Button label="Manage outbound data access" variant="secondary" href="/system/data-sharing" /></header>
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="system-status-title">
         <h2 id="system-status-title">Instance status</h2>
-        <p role="status">State: {current.state}; schema: {current.schema_revision}; recovery epoch: {current.recovery_epoch}; PostgreSQL: {current.database_version ?? "unknown"}.</p>
-        <ul aria-label="System health checks">{current.checks.map((check) => <li key={check.check_id}>{check.check_id}: {check.state} — {check.summary}</li>)}</ul>
+        {current ? (
+          <>
+            <p role="status">State: {current.state}; schema: {current.schema_revision}; recovery epoch: {current.recovery_epoch}; PostgreSQL: {current.database_version ?? "unknown"}.</p>
+            <ul aria-label="System health checks">{current.checks.map((check) => <li key={check.check_id}>{check.check_id}: {check.state} — {check.summary}</li>)}</ul>
+          </>
+        ) : (
+          <VStack gap={2} width="100%">
+            <Skeleton width="68%" height={16} radius={1} index={0} />
+            <Skeleton width="52%" height={14} radius={1} index={1} />
+          </VStack>
+        )}
         <Button label="Refresh diagnostics" onClick={() => { void status.refetch(); void doctor.refetch(); }} />
       </section>
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="system-doctor-title">
         <h2 id="system-doctor-title">Doctor diagnostics</h2>
-        {doctor.isPending ? <StateView state="loading" title="Running diagnostics" /> : null}
+        {doctor.isPending ? (
+          <VStack gap={1.5} width="100%">
+            <Skeleton width="58%" height={14} radius={1} index={2} />
+            <Skeleton width="44%" height={14} radius={1} index={3} />
+          </VStack>
+        ) : null}
         {doctor.isError ? <p role="status">Doctor diagnostics could not be loaded.</p> : null}
         {doctor.data ? <ul>{doctor.data.data.checks.map((check) => <li key={check.check_id}>{check.check_id}: {check.state} — {check.summary}</li>)}</ul> : null}
       </section>
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="system-maintenance-title">
         <h2 id="system-maintenance-title">Maintenance mode</h2>
-        {current.maintenance_enabled && current.maintenance_reason ? <p role="status">Current maintenance reason: {current.maintenance_reason}</p> : null}
+        {current?.maintenance_enabled && current.maintenance_reason ? <p role="status">Current maintenance reason: {current.maintenance_reason}</p> : null}
         <div className="red2pr-field">
           <label className="red2pr-field-label" htmlFor="system-maintenance-reason">Reason for enabling maintenance</label>
           <InputControl className="red2pr-control-input" id="system-maintenance-reason" minLength={8} maxLength={500} value={maintenanceReason} onChange={(event) => setMaintenanceReason(event.target.value)} />
         </div>
-        {current.maintenance_enabled && current.maintenance_reason?.startsWith("Restore completed;") ? <label><input type="checkbox" checked={reconciliationConfirmed} onChange={(event) => setReconciliationConfirmed(event.target.checked)} /> I have reconciled ambiguous task, publication, and notification effects before resuming writes.</label> : null}
-        <ConfirmActionButton label={current.maintenance_enabled ? "Disable maintenance" : "Enable maintenance"} isDisabled={maintenance.isPending || (!current.maintenance_enabled && maintenanceReason.trim().length < 8) || (current.maintenance_enabled && current.maintenance_reason?.startsWith("Restore completed;") && !reconciliationConfirmed)} confirmationTitle={current.maintenance_enabled ? "Disable maintenance mode?" : "Enable maintenance mode?"} confirmationDescription={current.maintenance_enabled ? "This reopens instance writes. Only continue after reconciling any required external effects." : `This pauses instance writes. Reason: ${maintenanceReason.trim()}`} confirmationActionLabel={current.maintenance_enabled ? "Disable maintenance" : "Enable maintenance"} confirmationActionVariant="primary" onConfirm={() => runAfterStepUp(() => maintenance.mutate(!current.maintenance_enabled))} />
+        {current?.maintenance_enabled && current.maintenance_reason?.startsWith("Restore completed;") ? <label><input type="checkbox" checked={reconciliationConfirmed} onChange={(event) => setReconciliationConfirmed(event.target.checked)} /> I have reconciled ambiguous task, publication, and notification effects before resuming writes.</label> : null}
+        <ConfirmActionButton label={current?.maintenance_enabled ? "Disable maintenance" : "Enable maintenance"} isDisabled={current === null || maintenance.isPending || (!current.maintenance_enabled && maintenanceReason.trim().length < 8) || (current.maintenance_enabled && current.maintenance_reason?.startsWith("Restore completed;") && !reconciliationConfirmed)} confirmationTitle={current?.maintenance_enabled ? "Disable maintenance mode?" : "Enable maintenance mode?"} confirmationDescription={current?.maintenance_enabled ? "This reopens instance writes. Only continue after reconciling any required external effects." : `This pauses instance writes. Reason: ${maintenanceReason.trim()}`} confirmationActionLabel={current?.maintenance_enabled ? "Disable maintenance" : "Enable maintenance"} confirmationActionVariant="primary" onConfirm={() => runAfterStepUp(() => maintenance.mutate(!current?.maintenance_enabled))} />
         {maintenance.isError ? <p role="alert">Maintenance change failed; current server state was not assumed to change.</p> : null}
       </section>
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="system-backup-title">
@@ -102,7 +115,7 @@ export function SystemPage(): React.JSX.Element {
         {restoreDryRun.data ? <div role="status"><p>Preflight {restoreDryRun.data.data.compatible ? "passed" : "blocked"}; target schema {restoreDryRun.data.data.target_schema_revision}; plan digest <code>{restoreDryRun.data.data.plan_digest}</code>.</p>
           {restoreDryRun.data.data.blockers.length ? <ul aria-label="Restore blockers">{restoreDryRun.data.data.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul> : null}
           <p>Maintenance mode, recovery epoch rotation, tombstone reapplication and remote reconciliation are required for a restore.</p>
-          <ConfirmActionButton label="Restore verified backup" isDisabled={!restoreDryRun.data.data.compatible || !current.maintenance_enabled || restore.isPending} confirmationTitle="Restore this backup?" confirmationDescription="This will replace current instance data with the verified backup and advance the recovery epoch. Keep maintenance enabled and confirm only after reviewing the preflight plan and digest." confirmationActionLabel="Restore backup" onConfirm={() => runAfterStepUp(() => restore.mutate())} />
+          <ConfirmActionButton label="Restore verified backup" isDisabled={!restoreDryRun.data.data.compatible || !current?.maintenance_enabled || restore.isPending} confirmationTitle="Restore this backup?" confirmationDescription="This will replace current instance data with the verified backup and advance the recovery epoch. Keep maintenance enabled and confirm only after reviewing the preflight plan and digest." confirmationActionLabel="Restore backup" onConfirm={() => runAfterStepUp(() => restore.mutate())} />
         </div> : null}
         {restoreDryRun.isError ? <p role="alert">Restore preflight failed integrity, key availability, or schema compatibility checks.</p> : null}
         {restore.isError ? <p role="alert">Restore did not complete. Keep maintenance enabled and inspect System Doctor before retrying.</p> : null}
@@ -124,7 +137,7 @@ export function SystemPage(): React.JSX.Element {
         {preview.isError || exportBundle.isError ? <p role="alert">Support bundle operation failed. Review the current diagnostics and retry.</p> : null}
         {exportBundle.data ? <p role="status">Bundle ready until {new Date(exportBundle.data.data.expires_at).toLocaleString()}. <a href={exportBundle.data.data.download_url}>Download bundle</a></p> : null}
       </section>
-      <StepUpDialog isOpen={stepUpOpen} mfaEnabled={Boolean(me.data.data.mfa_enabled)} onOpenChange={(open) => { setStepUpOpen(open); if (!open) pendingAction.current = null; }} onVerified={() => { const action = pendingAction.current; pendingAction.current = null; action?.(); }} />
+      <StepUpDialog isOpen={stepUpOpen} mfaEnabled={Boolean(me.data?.data.mfa_enabled)} onOpenChange={(open) => { setStepUpOpen(open); if (!open) pendingAction.current = null; }} onVerified={() => { const action = pendingAction.current; pendingAction.current = null; action?.(); }} />
     </section>
   );
 }

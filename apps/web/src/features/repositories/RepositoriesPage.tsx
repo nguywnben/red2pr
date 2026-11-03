@@ -527,7 +527,7 @@ export function RepositoriesPage({ workspace, me }: RepositoriesPageProps): Reac
         </div>
       </section>
 
-      {catalogQuery.isLoading ? <StateView state="loading" /> : null}
+      {catalogQuery.isLoading ? <StateView state="loading" skeletonVariant="table" /> : null}
 
       {catalogQuery.isError ? (
         <StateView

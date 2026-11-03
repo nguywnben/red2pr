@@ -537,7 +537,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
       </div>
 
       {runsQuery.isLoading ? (
-        <StateView state="loading" />
+        <StateView state="loading" skeletonVariant="table" />
       ) : runsQuery.isError ? (
         <StateView
           state="error"
@@ -737,7 +737,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
                   description={t("pipelines.expiredLogDesc")}
                 />
               ) : jobLogQuery.isLoading ? (
-                <StateView state="loading" />
+                <StateView state="loading" skeletonVariant="code" />
               ) : jobLogQuery.isError ? (
                 <StateView
                   state="error"

@@ -282,6 +282,35 @@ describe("U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-U
     }
   });
 
+  it("renders all layout-matched SkeletonVariant modes without spinners and preserves heading/description", async () => {
+    const variants = ["card", "table", "metrics", "form", "list", "code", "detail"] as const;
+    const { container, unmount } = render(
+      <TestHarness>
+        <div>
+          {variants.map((variant) => (
+            <StateView
+              key={variant}
+              state="loading"
+              title={`Loading ${variant}`}
+              description={`Preparing ${variant} layout`}
+              skeletonVariant={variant}
+            />
+          ))}
+        </div>
+      </TestHarness>,
+    );
+
+    for (const variant of variants) {
+      expect(screen.getByRole("heading", { name: `Loading ${variant}` })).toBeInTheDocument();
+      const skeletonRoot = container.querySelector(`[data-skeleton-variant="${variant}"]`);
+      expect(skeletonRoot).not.toBeNull();
+      expect(skeletonRoot?.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThanOrEqual(4);
+    }
+    expect(container.querySelectorAll("svg")).toHaveLength(0);
+    await expectZeroAxeViolations(container);
+    unmount();
+  });
+
   it("enforces UX-03 proof distinction: locally verified + remote CI failed never shows green/fixed", () => {
     render(
       <TestHarness>

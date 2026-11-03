@@ -42,7 +42,7 @@ export function AnalyticsPage({ workspace }: AnalyticsPageProps): React.JSX.Elem
         <Button label="Apply range (maximum 366 days)" variant="secondary" type="submit" isDisabled={rangeEnd < rangeStart} />
       </form>
       {rangeEnd < rangeStart ? <p role="alert">The end date must be on or after the start date.</p> : null}
-      {query.isPending ? <StateView state="loading" title="Loading analytics" /> : null}
+      {query.isPending ? <StateView state="loading" skeletonVariant="metrics" /> : null}
       {query.isError ? <StateView state="error" title="Analytics unavailable" description="The scoped analytics request failed." primaryAction={{ label: "Retry", onClick: () => { void query.refetch(); } }} /> : null}
       {query.data && !hasValidAnalytics ? <StateView state="error" title="Analytics data unavailable" description="The analytics response was incomplete, so it could not be displayed safely." primaryAction={{ label: "Reload data", onClick: () => { void query.refetch(); } }} /> : null}
       {hasValidAnalytics ? <><AnalyticsFunnel data={analytics} /><AnalyticsSummary data={analytics} /></> : null}

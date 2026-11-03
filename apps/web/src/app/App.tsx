@@ -323,7 +323,7 @@ export function WorkspaceRouteShell(): React.JSX.Element {
         isInstanceOwner={me.is_instance_owner}
         sseState="connecting"
       >
-        <StateView state="loading" />
+        <div className="red2pr-page-stack" />
       </AppShell>
     );
   }
@@ -527,10 +527,6 @@ export function AccountRouteShell(): React.JSX.Element {
     return <Navigate to={buildLoginRedirectHref(location.pathname, location.search)} replace />;
   }
 
-  if (meQuery.isPending) {
-    return <StateView state="loading" title="Loading account" />;
-  }
-
   const navOptions = toWorkspaceNavOptions(meQuery.data?.data.workspaces);
   const defaultSlug = navOptions[0]?.slug ?? "default";
 
@@ -578,7 +574,9 @@ export function SystemRouteShell(): React.JSX.Element {
   if (meQuery.isPending) {
     return (
       <AppShell {...shellProps}>
-        <StateView state="loading" />
+        {location.pathname === "/system/data-sharing"
+          ? <SetupWizardPage managementOnly />
+          : <SystemPage />}
       </AppShell>
     );
   }
@@ -607,7 +605,9 @@ export function SystemRouteShell(): React.JSX.Element {
 
   return (
     <AppShell {...shellProps}>
-      <SystemPage />
+      {location.pathname === "/system/data-sharing"
+        ? <SetupWizardPage managementOnly />
+        : <SystemPage />}
     </AppShell>
   );
 }
@@ -627,7 +627,7 @@ export function AdminRouteShell(): React.JSX.Element {
   if (meQuery.isPending) {
     return (
       <AppShell activePath={location.pathname} activeWorkspaceSlug="default" sseState="offline">
-        <StateView state="loading" />
+        <div className="red2pr-page-stack" />
       </AppShell>
     );
   }
@@ -670,6 +670,49 @@ export function AdminRouteShell(): React.JSX.Element {
 }
 
 export function AppRoutes(): React.JSX.Element {
+  const api = useRed2PrApi();
+  const location = useLocation();
+  const meQuery = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: () => api.getMe(),
+    retry: false,
+  });
+  const me = meQuery.data?.data ?? null;
+  const isUnauthorized = meQuery.isError && meQuery.error instanceof Red2PrApiError && meQuery.error.status === 401;
+  const shouldReadSetup = isUnauthorized || me?.is_instance_owner === true;
+  const setupQuery = useQuery({
+    queryKey: ["setup", "lifecycle", meQuery.isSuccess ? "authenticated" : "anonymous"],
+    queryFn: () => api.getSetupState(),
+    enabled: !meQuery.isPending && shouldReadSetup,
+    retry: false,
+  });
+  const path = location.pathname;
+  const isLoginFlow = path === "/login" || path === "/login/recovery" || path === "/auth/oidc/callback";
+  const isSetupPath = path === "/setup" || path.startsWith("/setup/");
+
+  if (isUnauthorized) {
+    if (setupQuery.isSuccess && !setupQuery.data.data.owner_claimed) {
+      if (!isSetupPath) return <Navigate to="/setup" replace />;
+    } else if (setupQuery.error instanceof Red2PrApiError && setupQuery.error.status === 401) {
+      if (!isLoginFlow) return <Navigate to={buildLoginRedirectHref(path, location.search)} replace />;
+    }
+  }
+
+  if (me?.is_instance_owner && setupQuery.isSuccess) {
+    const setup = setupQuery.data.data;
+    if (setup.completed_at === null) {
+      if (!isSetupPath) return <Navigate to="/setup" replace />;
+    } else if (isSetupPath || path === "/login" || path === "/login/recovery") {
+      const workspaceSlug = setup.default_workspace_slug ?? me.workspaces?.[0]?.slug ?? "default";
+      return <Navigate to={`/w/${encodeURIComponent(workspaceSlug)}/overview`} replace />;
+    }
+  }
+
+  if (me !== null && !me.is_instance_owner && (path === "/login" || isSetupPath)) {
+    const workspaceSlug = me.workspaces?.[0]?.slug ?? "default";
+    return <Navigate to={`/w/${encodeURIComponent(workspaceSlug)}/overview`} replace />;
+  }
+
   return (
     <Suspense fallback={null}>
       <Routes>
@@ -682,6 +725,7 @@ export function AppRoutes(): React.JSX.Element {
         <Route path="/account" element={<AccountRouteShell />} />
         <Route path="/telegram/confirm" element={<TelegramIntentConfirmPage />} />
         <Route path="/mcp/approval" element={<McpIntentConfirmPage />} />
+        <Route path="/system/data-sharing" element={<SystemRouteShell />} />
         <Route path="/system" element={<SystemRouteShell />} />
         <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
         <Route path="/admin/*" element={<AdminRouteShell />} />

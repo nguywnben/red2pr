@@ -655,11 +655,7 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
     [],
   );
 
-  if (profilesQuery.isPending) {
-    return <StateView state="loading" />;
-  }
-
-  if (profilesQuery.isError || profilesState === null) {
+  if (profilesQuery.isError) {
     const summary = extractAuthProblemSummary(profilesQuery.error, t("state.error.description"));
     return (
       <StateView
@@ -692,16 +688,16 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
         <div className="red2pr-button-row">
           <span
             className={`red2pr-badge-pill ${
-              profilesState.ready_for_repair_inference
+              profilesState?.ready_for_repair_inference
                 ? "red2pr-tone-success"
                 : "red2pr-tone-warning"
             }`}
           >
-            <StatusGlyph kind={profilesState.ready_for_repair_inference ? "check" : "warn"} />
+            <StatusGlyph kind={profilesState?.ready_for_repair_inference ? "check" : "warn"} />
             <span>
-              {profilesState.ready_for_repair_inference
+              {profilesState?.ready_for_repair_inference
                 ? "Ready for Repair Inference"
-                : profilesState.suspension_reason
+                : profilesState?.suspension_reason
                   ? `Paused (${sanitizeUntrustedText(profilesState.suspension_reason).text})`
                   : "Inference Prerequisites Needed"}
             </span>
@@ -724,7 +720,7 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
             Server-Locked Prompt Boundary (<code>arbitrary_prompt_override_allowed: false</code>):
           </strong>{" "}
           system instructions, untrusted repository data fences, and ADR-031 baseline gates cannot
-          be overridden. Prohibited capabilities ({profilesState.prohibited_capabilities.join(", ")})
+          be overridden. Prohibited capabilities ({(profilesState?.prohibited_capabilities ?? []).join(", ")})
           are denied in code and audited.
         </span>
       </div>
@@ -788,25 +784,29 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
         </div>
       ) : null}
 
-      {profilesState.profiles.map((profile) => {
-        const override = draftOverrides[profile.id];
-        const draft =
-          override !== undefined && override.version === profile.version
-            ? override.draft
-            : buildProfileDraft(profile);
-        return (
-          <AgentProfileCard
-            key={profile.id}
-            profile={profile}
-            draft={draft}
-            isAdmin={isAdmin}
-            isSaving={updateMutation.isPending}
-            onChangeDraft={handleDraftChange}
-            onResetDraft={handleResetDraft}
-            onSaveProfile={handleSaveProfile}
-          />
-        );
-      })}
+      {profilesQuery.isPending || profilesState === null ? (
+        <StateView state="loading" skeletonVariant="form" />
+      ) : (
+        profilesState.profiles.map((profile) => {
+          const override = draftOverrides[profile.id];
+          const draft =
+            override !== undefined && override.version === profile.version
+              ? override.draft
+              : buildProfileDraft(profile);
+          return (
+            <AgentProfileCard
+              key={profile.id}
+              profile={profile}
+              draft={draft}
+              isAdmin={isAdmin}
+              isSaving={updateMutation.isPending}
+              onChangeDraft={handleDraftChange}
+              onResetDraft={handleResetDraft}
+              onSaveProfile={handleSaveProfile}
+            />
+          );
+        })
+      )}
 
       <section
         className="red2pr-surface red2pr-card-section"
@@ -815,11 +815,15 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
         <h2 >
           Immutable S-20 Tool Broker &amp; Prohibited Capability Matrix
         </h2>
-        <Table
-          aria-label="Immutable S-20 tool and prohibited capability matrix"
-          columns={matrixColumns}
-          data={matrixRows}
-        />
+        {profilesQuery.isPending ? (
+          <StateView state="loading" skeletonVariant="table" />
+        ) : (
+          <Table
+            aria-label="Immutable S-20 tool and prohibited capability matrix"
+            columns={matrixColumns}
+            data={matrixRows}
+          />
+        )}
       </section>
 
       <section
@@ -829,7 +833,9 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
         <h2 >
           Recent Agent Steps &amp; Broker Policy Denials
         </h2>
-        {stepRows.length === 0 ? (
+        {profilesQuery.isPending ? (
+          <StateView state="loading" skeletonVariant="table" />
+        ) : stepRows.length === 0 ? (
           <p style={{ margin: "0.35rem 0 0", opacity: 0.85 }}>
             No agent steps or tool broker decisions recorded for this workspace yet.
           </p>

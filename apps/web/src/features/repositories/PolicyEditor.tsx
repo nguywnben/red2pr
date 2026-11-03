@@ -103,7 +103,7 @@ export function PolicyEditor({
   });
 
   if (policyQuery.isLoading) {
-    return <StateView state="loading" />;
+    return <StateView state="loading" skeletonVariant="form" />;
   }
 
   if (policyQuery.isError || !policyQuery.data) {

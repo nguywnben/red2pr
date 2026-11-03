@@ -526,10 +526,6 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
     [openActionModal, openSelfTestModal],
   );
 
-  if (readinessQuery.isPending || (isInstanceOwner && fleetQuery.isPending)) {
-    return <StateView state="loading" />;
-  }
-
   if (readinessQuery.isError) {
     const summary = extractAuthProblemSummary(readinessQuery.error, t("state.error.description"));
     return (
@@ -547,7 +543,15 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
     );
   }
 
-  const readiness = readinessQuery.data.data;
+  const readiness = readinessQuery.data?.data ?? {
+    ready: false,
+    degraded_reason: null,
+    eligible_online_workers: 0,
+    vm_isolation_available: false,
+    available_profiles: [],
+    active_workspace_leases: [],
+    trusted_local_warning: false,
+  };
   const leaseRows = (readiness.active_workspace_leases ?? []).map(toLeaseRow);
   const fleetSummary = fleetQuery.data?.data.summary ?? null;
   const workerRows = (fleetQuery.data?.data.items ?? []).map(toWorkerRow);
@@ -651,7 +655,9 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
 
       <section aria-label={t("workers.leasesTableLabel")}>
         <h2 >{t("workers.leasesTableLabel")}</h2>
-        {leaseRows.length === 0 ? (
+        {readinessQuery.isPending ? (
+          <StateView state="loading" skeletonVariant="table" />
+        ) : leaseRows.length === 0 ? (
           <StateView
             state="empty"
             title={t("workers.leasesEmptyTitle")}
@@ -739,7 +745,9 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
             </div>
           </div>
 
-          {fleetQuery.isError ? (
+          {fleetQuery.isPending ? (
+            <StateView state="loading" skeletonVariant="table" />
+          ) : fleetQuery.isError ? (
             <StateView
               state="error"
               description={

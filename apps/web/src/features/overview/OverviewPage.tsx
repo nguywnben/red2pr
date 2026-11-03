@@ -30,7 +30,7 @@ export function OverviewPage({ workspace }: OverviewPageProps): React.JSX.Elemen
   return (
     <section className="red2pr-page-stack" data-testid="overview-page">
       <header><h1>Workspace overview</h1><p>Repair outcomes and spend across repositories currently visible to you.</p><Link to={`/w/${encodeURIComponent(ws)}/analytics`}>Open analytics and exports</Link></header>
-      {query.isPending ? <StateView state="loading" title="Loading overview" /> : null}
+      {query.isPending ? <StateView state="loading" skeletonVariant="metrics" /> : null}
       {query.isError ? <StateView state="error" title="Overview unavailable" description="Analytics could not be loaded. Your workspace data remains protected." primaryAction={{ label: "Retry", onClick: () => { void query.refetch(); } }} /> : null}
       {query.data && !hasValidAnalytics ? <StateView state="error" title="Overview data unavailable" description="The analytics response was incomplete, so it could not be displayed safely." primaryAction={{ label: "Reload data", onClick: () => { void query.refetch(); } }} /> : null}
       {hasValidAnalytics ? <>

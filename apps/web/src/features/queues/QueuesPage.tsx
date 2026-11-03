@@ -521,10 +521,6 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
     ];
   }, [canOperateQueue, openActionModal, t]);
 
-  if (jobsQuery.isPending) {
-    return <StateView state="loading" />;
-  }
-
   if (jobsQuery.isError) {
     const errSummary = extractAuthProblemSummary(jobsQuery.error, t("state.error.description"));
     return (
@@ -553,7 +549,7 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
 
   return (
     <div className="red2pr-page-stack" data-testid="queues-page">
-      <header className="red2pr-page-header">
+      <div className="red2pr-page-header">
         <div>
           <h1 >{t("queues.pageTitle")}</h1>
           <p className="red2pr-field-hint" style={{ marginTop: 4, marginBottom: 0 }}>
@@ -579,7 +575,7 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
             }}
           />
         </div>
-      </header>
+      </div>
 
       {/* Degraded Redis / Paused / Backpressure Operational Banners */}
       {fairness?.transport_status === "degraded" ? (
@@ -840,13 +836,17 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
 
       {/* Authoritative Queue Table */}
       <section aria-label={t("queues.tableLabel")}>
-        <Table
-          aria-label={t("queues.tableLabel")}
-          data={tableRows}
-          columns={columns}
-          emptyTitle="No task jobs in this view"
-          emptyDescription="Adjust queue filters or wait for new CI failure triage and repair jobs."
-        />
+        {jobsQuery.isPending ? (
+          <StateView state="loading" skeletonVariant="table" />
+        ) : (
+          <Table
+            aria-label={t("queues.tableLabel")}
+            data={tableRows}
+            columns={columns}
+            emptyTitle="No task jobs in this view"
+            emptyDescription="Adjust queue filters or wait for new CI failure triage and repair jobs."
+          />
+        )}
 
         {/* Signed S-04 Cursor Pagination Controls */}
         <div

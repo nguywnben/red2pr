@@ -13,8 +13,7 @@ import {
   type SetupWizardPhase,
 } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Step, Stepper } from "@astryxdesign/core/Stepper";
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import {
@@ -25,15 +24,17 @@ import {
 import { useRed2PrApi } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 import {
-  AppShell,
   Banner,
   Button,
   ConfirmActionButton,
+  HStack,
+  Skeleton,
   StateView,
   StatusGlyph,
-  sanitizeUntrustedText,
+  Step,
+  Stepper,
+  VStack,
   useLiveAnnouncer,
-  type WorkspaceNavOption,
 } from "../../shared/ui";
 
 type GlyphKind = "check" | "warn" | "error" | "info" | "clock" | "lock" | "offline";
@@ -71,21 +72,6 @@ const STEP_STATUS_LABELS: Record<SetupStepStatus, string> = {
   degraded: "Degraded",
   blocked: "Blocked",
 };
-
-function stepStatusGlyph(status: SetupStepStatus): GlyphKind {
-  switch (status) {
-    case "completed":
-      return "check";
-    case "not_configured":
-      return "info";
-    case "degraded":
-      return "warn";
-    case "blocked":
-      return "error";
-    case "pending":
-      return "clock";
-  }
-}
 
 function prereqGlyph(status: string): GlyphKind {
   if (status === "passed") {
@@ -139,7 +125,7 @@ type SetupOperationNotice = {
   readonly action?: "reload-checkpoint";
 };
 
-export function SetupWizardPage(): React.JSX.Element {
+export function SetupWizardPage({ managementOnly = false }: { readonly managementOnly?: boolean }): React.JSX.Element {
   const { t } = useI18n();
   const api = useRed2PrApi();
   const queryClient = useQueryClient();
@@ -491,35 +477,18 @@ export function SetupWizardPage(): React.JSX.Element {
     },
   });
 
-  const navOptions: WorkspaceNavOption[] = useMemo(() => {
-    return (meQuery.data?.data.workspaces ?? []).map((ws) => ({
-      slug: ws.slug ?? ws.id,
-      name: sanitizeUntrustedText(ws.name).text,
-    }));
-  }, [meQuery.data?.data.workspaces]);
+  const isSetupLoading = setupQuery.isPending || (ownerClaimed && meQuery.isPending);
 
-  if (setupQuery.isPending) {
-    return (
-      <main id="red2pr-main-content">
-        <StateView
-          state="loading"
-          title="Loading setup"
-          description="Fetching the instance setup status from the Red2PR control plane."
-        />
-      </main>
-    );
-  }
-
-  if (setupQuery.isError || !setupData) {
+  if (setupQuery.isError) {
     if (setupQuery.error instanceof Red2PrApiError && setupQuery.error.status === 401) {
       const nextParam = encodeURIComponent(`${location.pathname}${location.search}`);
       return <Navigate to={`/login?next=${nextParam}`} replace />;
     }
     if (setupQuery.error instanceof Red2PrApiError && setupQuery.error.status === 403) {
       return (
-        <AppShell activePath="/setup" activeWorkspaceSlug="default" sseState="offline">
+        <main id="red2pr-main-content" className="red2pr-page-stack red2pr-standalone-state">
           <StateView state="forbidden" />
-        </AppShell>
+        </main>
       );
     }
     const summary = extractAuthProblemSummary(setupQuery.error, t("state.error.description"));
@@ -540,18 +509,6 @@ export function SetupWizardPage(): React.JSX.Element {
     );
   }
 
-  if (ownerClaimed && meQuery.isPending) {
-    return (
-      <main id="red2pr-main-content">
-        <StateView
-          state="loading"
-          title="Loading setup"
-          description="Checking your access to instance setup."
-        />
-      </main>
-    );
-  }
-
   if (ownerClaimed && meQuery.isError) {
     if (meQuery.error instanceof Red2PrApiError && meQuery.error.status === 401) {
       const nextParam = encodeURIComponent(`${location.pathname}${location.search}`);
@@ -559,7 +516,7 @@ export function SetupWizardPage(): React.JSX.Element {
     }
     const summary = extractAuthProblemSummary(meQuery.error, t("state.error.description"));
     return (
-      <main id="red2pr-main-content">
+      <main id="red2pr-main-content" className="red2pr-page-stack red2pr-setup-page">
         <StateView
           state="error"
           title="Setup access could not be verified"
@@ -571,10 +528,27 @@ export function SetupWizardPage(): React.JSX.Element {
     );
   }
 
-  const activePhase = setupData.phase;
+  const resolvedSetup: SetupState = setupData ?? {
+    id: "",
+    owner_claimed: false,
+    phase: "owner_claim",
+    checkpoint: "",
+    readiness: "not_ready",
+    ready_monitor: false,
+    ready_repair: false,
+    completed_at: null,
+    default_workspace_slug: null,
+    steps: [],
+    prerequisites: [],
+    version: 1,
+    created_at: "",
+    updated_at: "",
+  };
+
+  const activePhase = resolvedSetup.phase;
   const activePhaseIdx = ORDERED_PHASES.indexOf(activePhase);
   const currentStepSummary =
-    setupData.steps?.find((s) => s.phase === activePhase) ?? null;
+    resolvedSetup.steps?.find((s) => s.phase === activePhase) ?? null;
   const isOptionalPhase = currentStepSummary?.optional === true;
   const activeConsents = consentsQuery.data?.data.items ?? [];
   const activeEndpoints = endpointsQuery.data?.data.items ?? [];
@@ -584,7 +558,7 @@ export function SetupWizardPage(): React.JSX.Element {
   const me = meQuery.data?.data ?? null;
 
   const submitCurrentPhaseSave = (): void => {
-    const ckpt = setupData.checkpoint;
+    const ckpt = resolvedSetup.checkpoint;
 
     if (activePhase === "topology_tls") {
       stepMutation.mutate({
@@ -733,7 +707,13 @@ export function SetupWizardPage(): React.JSX.Element {
   };
 
   const wizardBody = (
-    <div className="red2pr-page-stack red2pr-setup-page" data-testid="setup-wizard-page">
+    <div className={`red2pr-page-stack ${managementOnly ? "red2pr-setup-management" : "red2pr-setup-page"}`} data-testid="setup-wizard-page">
+      {managementOnly ? (
+        <header className="red2pr-setup-management-header">
+          <h1>Outbound data access</h1>
+          <p className="red2pr-field-hint">Manage explicit data-sharing consent and private egress destinations.</p>
+        </header>
+      ) : null}
       <div
         className="red2pr-setup-header"
         style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16 }}
@@ -753,9 +733,9 @@ export function SetupWizardPage(): React.JSX.Element {
             data-testid="badge-ready-monitor"
             style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600 }}
           >
-            <StatusGlyph kind={setupData.ready_monitor ? "check" : "info"} />
+            <StatusGlyph kind={resolvedSetup.ready_monitor ? "check" : "info"} />
             <span>
-              {setupData.ready_monitor ? t("setup.monitorReady") : t("setup.monitorNotReady")}
+              {resolvedSetup.ready_monitor ? t("setup.monitorReady") : t("setup.monitorNotReady")}
             </span>
           </span>
 
@@ -763,9 +743,9 @@ export function SetupWizardPage(): React.JSX.Element {
             data-testid="badge-ready-repair"
             style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600 }}
           >
-            <StatusGlyph kind={setupData.ready_repair ? "check" : "warn"} />
+            <StatusGlyph kind={resolvedSetup.ready_repair ? "check" : "warn"} />
             <span>
-              {setupData.ready_repair ? t("setup.repairReady") : t("setup.repairNotReady")}
+              {resolvedSetup.ready_repair ? t("setup.repairReady") : t("setup.repairNotReady")}
             </span>
           </span>
         </div>
@@ -805,11 +785,11 @@ export function SetupWizardPage(): React.JSX.Element {
         data-testid="setup-phase-stepper"
         onStepClick={(index) => {
           const phaseKey = ORDERED_PHASES[index];
-          if (!phaseKey) return;
-          const summary = setupData.steps?.find((step) => step.phase === phaseKey);
+          if (!phaseKey || isSetupLoading) return;
+          const summary = resolvedSetup.steps?.find((step) => step.phase === phaseKey);
           const stepStatus = summary?.status ?? "pending";
           const canRevisit =
-            setupData.owner_claimed &&
+            resolvedSetup.owner_claimed &&
             phaseKey !== "owner_claim" &&
             phaseKey !== activePhase &&
             (stepStatus !== "pending" || index < activePhaseIdx);
@@ -817,18 +797,18 @@ export function SetupWizardPage(): React.JSX.Element {
           stepMutation.mutate({
             phase: phaseKey,
             body: {
-              expected_checkpoint: setupData.checkpoint,
+              expected_checkpoint: resolvedSetup.checkpoint,
               action: "back",
             },
           });
         }}
       >
         {ORDERED_PHASES.map((phaseKey, index) => {
-          const summary = setupData.steps?.find((step) => step.phase === phaseKey);
+          const summary = resolvedSetup.steps?.find((step) => step.phase === phaseKey);
           const status: SetupStepStatus = summary?.status ?? "pending";
           const isCurrent = phaseKey === activePhase;
           const canRevisit =
-            setupData.owner_claimed &&
+            resolvedSetup.owner_claimed &&
             phaseKey !== "owner_claim" &&
             !isCurrent &&
             (status !== "pending" || index < activePhaseIdx);
@@ -848,9 +828,11 @@ export function SetupWizardPage(): React.JSX.Element {
               label={PHASE_LABELS[phaseKey]}
               status={astryxStatus}
               isOptional={summary?.optional}
-              isDisabled={(!isCurrent && !canRevisit) || stepMutation.isPending}
+              isDisabled={isSetupLoading || (!isCurrent && !canRevisit) || stepMutation.isPending}
               data-testid={`setup-step-item-${phaseKey}`}
-              endContent={status !== "pending" ? (
+              endContent={isSetupLoading ? (
+                <Skeleton width={76} height={16} radius="rounded" index={index} />
+              ) : status !== "pending" ? (
                 <span className="red2pr-field-hint">
                   {STEP_STATUS_LABELS[status]}
                 </span>
@@ -865,7 +847,26 @@ export function SetupWizardPage(): React.JSX.Element {
       {activePhaseSlot !== null
         ? createPortal(
         <>
-      {!setupData.owner_claimed ? (
+      {isSetupLoading ? (
+        <section
+          className="red2pr-setup-block"
+          aria-label={PHASE_LABELS[activePhase]}
+          aria-busy="true"
+          data-testid="setup-phase-skeleton"
+        >
+          <VStack gap={2} width="100%">
+            {[0, 1, 2, 3].map((field) => (
+              <VStack key={field} gap={1} width="100%">
+                <Skeleton width="30%" height={12} radius={1} index={field * 2} />
+                <Skeleton width="100%" height={36} radius={2} index={field * 2 + 1} />
+              </VStack>
+            ))}
+            <HStack gap={2} vAlign="center">
+              <Skeleton width={140} height={36} radius={2} index={8} />
+            </HStack>
+          </VStack>
+        </section>
+      ) : !resolvedSetup.owner_claimed ? (
         <section
           className="red2pr-setup-block"
           aria-label={PHASE_LABELS.owner_claim}
@@ -1498,7 +1499,7 @@ export function SetupWizardPage(): React.JSX.Element {
                     Verified Readiness Gates
                   </h3>
                   <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
-                    {setupData.prerequisites.map((item) => (
+                    {(resolvedSetup.prerequisites ?? []).map((item) => (
                       <li
                         key={item.id}
                         data-testid={`prereq-${item.id}`}
@@ -1564,7 +1565,7 @@ export function SetupWizardPage(): React.JSX.Element {
                       stepMutation.mutate({
                         phase: prevPhase,
                         body: {
-                          expected_checkpoint: setupData.checkpoint,
+                          expected_checkpoint: resolvedSetup.checkpoint,
                           action: "back",
                         },
                       });
@@ -1595,7 +1596,7 @@ export function SetupWizardPage(): React.JSX.Element {
                     stepMutation.mutate({
                       phase: activePhase,
                       body: {
-                        expected_checkpoint: setupData.checkpoint,
+                        expected_checkpoint: resolvedSetup.checkpoint,
                         action: "skip",
                       },
                     });
@@ -1603,13 +1604,13 @@ export function SetupWizardPage(): React.JSX.Element {
                 />
               ) : null}
 
-              {setupData.completed_at && setupData.default_workspace_slug ? (
+              {resolvedSetup.completed_at && resolvedSetup.default_workspace_slug ? (
                 <Button
                   label={t("setup.openWorkspace")}
                   variant="secondary"
                   type="button"
                   onClick={() => {
-                    const slug = setupData.default_workspace_slug ?? "default";
+                    const slug = resolvedSetup.default_workspace_slug ?? "default";
                     navigate(`/w/${encodeURIComponent(slug)}/members`);
                   }}
                 />
@@ -1623,7 +1624,7 @@ export function SetupWizardPage(): React.JSX.Element {
       )
         : null}
 
-      {setupData.owner_claimed ? (
+      {resolvedSetup.owner_claimed ? (
         <>
           <section
             className="red2pr-setup-block"
@@ -1995,7 +1996,7 @@ export function SetupWizardPage(): React.JSX.Element {
     </div>
   );
 
-  if (!setupData.owner_claimed) {
+  if (!resolvedSetup.owner_claimed) {
     return (
       <main id="red2pr-main-content" style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
         {wizardBody}
@@ -2003,17 +2004,9 @@ export function SetupWizardPage(): React.JSX.Element {
     );
   }
 
-  const defaultSlug = setupData.default_workspace_slug ?? navOptions[0]?.slug ?? "default";
   return (
-    <AppShell
-      activePath="/setup"
-      activeWorkspaceSlug={defaultSlug}
-      workspaces={navOptions}
-      onSelectWorkspace={(nextSlug) => navigate(`/w/${encodeURIComponent(nextSlug)}/members`)}
-      isInstanceOwner={me?.is_instance_owner ?? false}
-      sseState="offline"
-    >
+    <main id="red2pr-main-content" className="red2pr-setup-standalone">
       {wizardBody}
-    </AppShell>
+    </main>
   );
 }
