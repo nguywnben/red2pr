@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+.agents
+node_modules
+website
+dist-artifacts
+.pytest_cache
+.mypy_cache
+.ruff_cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.env
+.env.*
+!.env.example
+docs/assets/screenshots

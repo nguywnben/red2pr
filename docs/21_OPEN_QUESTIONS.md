@@ -12,7 +12,7 @@
 | OQ-08 | Telegram bot per instance vs shared SaaS bot? | per-instance operator-managed bot | licensing/support/secure identity design |
 | OQ-09 | Public relay availability/business model? | **RESOLVED by ADR-049:** optional customer-operated relay only; disabled by default; no Red2PR-operated multi-tenant relay in v1.0.0 | Accepted by Owner on 2026-11-01 under CR-007 |
 | OQ-10 | Formal SLO/support contract? | none until benchmark | production measurement and owner decisions |
-| OQ-11 | Product license, third-party obligations, use of pre-existing code? | new repo, attribution tracking, no unlicensed code reuse | legal/license review |
+| OQ-11 | Product license, third-party obligations, use of pre-existing code? | **LICENSE RESOLVED by ADR-052 (`Apache-2.0`):** root `LICENSE` added; `.agents/agent-skills.LICENSE` MIT attribution preserved | Adopted under explicit owner delegation on 2026-11-04; custom domain/trademark tracked for `v1.0.0` |
 | OQ-12 | Hackathon rules/eligibility/new code requirements? | do not assume prior work allowed or all features required | read current Official Rules, record accepted terms |
 | OQ-13 | Multi-workspace/OIDC/SAML product tiering? | one instance with workspace RBAC model, SSO P1 | customer needs and scope sign-off |
 | OQ-14 | Require public accessibility for judge demo vs video? | prepare safely accessible demo test repo | submission portal and participant guide official text |

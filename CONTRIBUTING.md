@@ -5,7 +5,7 @@ Thank you for your interest in Red2PR. Red2PR is built contract-first with stric
 ## Before You Start
 
 1. Read [README.md](README.md), [docs/00_INDEX.md](docs/00_INDEX.md), [docs/05_SYSTEM_ARCHITECTURE.md](docs/05_SYSTEM_ARCHITECTURE.md), [docs/14_SECURITY_IDENTITY.md](docs/14_SECURITY_IDENTITY.md), and [docs/20_DECISIONS_ADR.md](docs/20_DECISIONS_ADR.md).
-2. **License & Contribution Notice (`ADR-021`):** Final software license selection is currently tracked as `OPEN` under [ADR-021](docs/20_DECISIONS_ADR.md) pending repository owner sign-off. Please coordinate with the repository owner via an issue before submitting substantial external code contributions.
+2. **License (`Apache-2.0`, `ADR-052`):** Red2PR is licensed under the [Apache License, Version 2.0](LICENSE). Under Section 5 of the Apache License 2.0, any contribution intentionally submitted for inclusion is licensed under the same terms without additional conditions.
 3. **Never include secrets:** Do not paste real API keys, GitHub App private keys, GitLab tokens, Telegram tokens, or customer logs into issues, tests, fixtures, or commits.
 
 ## Monorepo Structure

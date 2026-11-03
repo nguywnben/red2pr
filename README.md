@@ -14,7 +14,8 @@
   <a href="#product-tour">Product Tour</a> ·
   <a href="#architecture-overview">Architecture</a> ·
   <a href="docs/QUICKSTART_AND_USER_GUIDE.md">User Guide</a> ·
-  <a href="SECURITY.md">Security</a>
+  <a href="SECURITY.md">Security</a> ·
+  <a href="LICENSE">Apache-2.0 License</a>
 </p>
 
 > **Release Status (`v0.1.0-beta.1` Early-Access Beta):** Core control plane, isolated worker supervisor, deterministic verification engine, React 19 + Meta Astryx web console, CLI, and provider integrations (`U01`–`U30`) are implemented and verified across local unit, contract, database-RLS, and integration suites. Wave 6 host/cloud certification (`U31`–`U36`) and `v1.0.0` production sign-off remain deferred; see [Supported Platforms, Prerequisites, and Limitations](#supported-platforms-prerequisites-and-limitations).
@@ -127,7 +128,7 @@ For containerized `local`, `server` (Caddy TLS), or `worker` topologies, Red2PR 
 ./deploy/install/install.sh --mode local --manifest release-manifest.json --signature release-manifest.sig --dry-run
 ```
 
-> **Note on `v0.1.0-beta.1` artifacts:** Public container registry image publishing and production release-key ceremonies belong to deferred Wave 6 (`U34`/`U36`). For `v0.1.0-beta.1` evaluation and demos, use **Option 1 (Source Quick Start)** above; see [docs/QUICKSTART_AND_USER_GUIDE.md](docs/QUICKSTART_AND_USER_GUIDE.md) for external PostgreSQL and custom Compose wiring.
+> **Pre-built `v0.1.0-beta.1` packages & release assets:** Non-root (`10001:10001`) container images are published to GitHub Container Registry (`ghcr.io/nguywnben/red2pr-control:0.1.0-beta.1` and `ghcr.io/nguywnben/red2pr-worker:0.1.0-beta.1`), alongside Python wheels, SPA bundles, and `SHA256SUMS.txt` on [GitHub Releases](https://github.com/nguywnben/red2pr/releases/tag/v0.1.0-beta.1). Production HSM release-key replacement and multi-OS host certification remain deferred to Wave 6 (`U34`/`U36`); for fastest local evaluation, use **Option 1 (Source Quick Start)** above.
 
 ### Operator CLI Check
 
@@ -283,14 +284,14 @@ See [SECURITY.md](SECURITY.md) and [docs/14_SECURITY_IDENTITY.md](docs/14_SECURI
   - [Meta AI Agent Specification](docs/09_AI_AGENT_META.md) · [Sandbox Reproduction](docs/10_SANDBOX_REPRODUCTION.md) · [Repair Verification](docs/11_REPAIR_VERIFICATION.md)
   - [Frontend UX Flow Blueprint](docs/41_FRONTEND_UX_FLOW_BLUEPRINT.md) · [UI Consistency Audit](docs/42_FRONTEND_UI_CONSISTENCY_AUDIT.md)
 - **Governance & Progress**
-  - [Architecture Decision Records (`ADR-001`–`ADR-051`)](docs/20_DECISIONS_ADR.md)
+  - [Architecture Decision Records (`ADR-001`–`ADR-052`)](docs/20_DECISIONS_ADR.md)
   - [Execution Master Plan (`PLAN-2026-10-27-v1`)](docs/40_EXECUTION_MASTER_PLAN.md)
   - [Implementation & Verification Progress](docs/23_PROGRESS.md) · [Changelog](CHANGELOG.md)
 
 ---
 
-## Versioning, Contributing & License Status
+## Versioning, Contributing & License
 
 - **Versioning:** Workspace packages carry distribution version `0.1.0`, targeting pre-release **`v0.1.0-beta.1`** (`v0.1.0-beta.x` → `v0.1.0` → `v1.0.0` only after Wave 6 and `P5` release gates pass). Canonical REST/schema contracts (`contracts/openapi/openapi.v1.json`) track the `1.0.0` target API specification.
 - **Contributing:** Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening issues or pull requests.
-- **License Status (`ADR-021` Pending Owner Decision):** Final software license selection and public distribution identity are tracked under **[ADR-021](docs/20_DECISIONS_ADR.md)** (`OPEN`). Until the repository owner approves and commits a root `LICENSE` file, all rights are reserved by the repository owner and no open-source license grant is implied.
+- **License:** Licensed under the **[Apache License, Version 2.0](LICENSE)** (`ADR-052`). Third-party agent skill templates under `.agents/skills/` retain their upstream MIT notice in [.agents/agent-skills.LICENSE](.agents/agent-skills.LICENSE).

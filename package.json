@@ -1,6 +1,7 @@
 {
   "name": "red2pr-monorepo",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "private": true,
   "packageManager": "pnpm@9.15.9",
   "description": "Red2PR self-hosted CI repair with proof — frontend & TypeScript client workspace",

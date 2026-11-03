@@ -11,7 +11,7 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/):
 
 ---
 
-## [0.1.0-beta.1] - 2026-11-04 *(Pre-Release Candidate — Pending Owner Tag Approval)*
+## [0.1.0-beta.1] - 2026-11-04 *(Early-Access Beta Pre-Release)*
 
 ### Added
 - **Foundations, Identity & Multi-Tenant Governance (`U01`–`U09`):**
@@ -32,10 +32,10 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/):
   - Complete 21-screen React 19 + TypeScript + Vite + Meta Astryx (`0.7.4`) Neutral-theme web console (`UI-S01`–`UI-S21`) with SSE live updates, responsive layouts, Light/Dark themes, and `axe-core` accessibility verification.
   - Optional Telegram bot notifications with web-confirmed approval links, outbound signed webhooks, and read/intent-scoped MCP `2025-11-25` Streamable HTTP adapter (`ADR-050`).
   - Unified `red2pr` operator CLI (`status`, `doctor`, `setup --bootstrap-link`, `logs`, `worker`, `config`, `repair`, `backup`, `restore`, `update`, `uninstall`), signed release manifest validator (`deploy/security/sign_release.py`), Compose stacks, and one-command local source quickstart (`scripts/quickstart.ps1`, `scripts/quickstart.sh`, `scripts/dev_stack.py`).
+  - Adopted **Apache License, Version 2.0 (`Apache-2.0`)** (`LICENSE`, `ADR-052`), standalone `red2pr-worker` CLI composition root, hardened non-root (`10001:10001`) multi-stage containerfiles (`deploy/docker/`), and automated GitHub Release + GHCR container publishing (`.github/workflows/release.yml`).
 
 ### Fixed
 - Stabilized single-origin SPA + FastAPI runtime serving (`red2pr-control`), Windows `SelectorEventLoop` async PostgreSQL compatibility, `ci_run.triage` durable intake, `policy_gate` → `publishing` / `rejected` / `cancelled` state transitions, dedicated per-session budget isolation on retries, and Setup Wizard Phase 6/7 synchronization.
 
 ### Known Limitations in `0.1.0-beta.1`
-- Wave 6 (`U31`–`U36`: benchmark calibration, Chaos/DR drills, live multi-OS isolation host certification, SBOM/provenance publication, and `P5` independent audit) is deferred to the `v1.0.0` release track.
-- Final public software license selection remains tracked under `ADR-021` (`OPEN`) pending repository owner sign-off.
+- Wave 6 (`U31`–`U36`: benchmark calibration, Chaos/DR drills, live multi-OS isolation host certification, offline HSM signing key replacement, and `P5` independent audit) is deferred to the `v1.0.0` release track.

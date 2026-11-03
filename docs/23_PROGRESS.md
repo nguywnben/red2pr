@@ -1081,3 +1081,18 @@ Validation result: Python check exit0 with 42 documents, 273 valid internal link
   - **`ADR-021` (`OPEN` — Software License):** No `LICENSE` file was invented without Owner sign-off; `README.md`, `CONTRIBUTING.md`, and `docs/releases/v0.1.0-beta.1-draft.md` state this transparently so the Owner can commit their chosen license before tagging if desired.
   - **Platform & certification boundaries:** Windows PowerShell quickstart smoke test ran end-to-end on this host; POSIX Bash installer dry-runs were previously verified in `docs/evidence/ig06-20261101/` and syntax/contract-verified here (local Windows host does not have an initialized WSL2 distribution). Wave 6 (`U31`–`U36`) and `v1.0.0` production certification remain deferred.
 - **Status:** **READY FOR OWNER APPROVAL (`v0.1.0-beta.1` Pre-Release Candidate prepared locally; awaiting Owner commit, `ADR-021` license confirmation, tag, and push).**
+
+## `Apache-2.0` Licensing (`ADR-052`), GHCR Container Packages & `v0.1.0-beta.1` Pre-Release Publication — 2026-11-04
+
+- **Scope and provenance:** Executed under explicit Owner authorization on `2026-11-04` from `e5b850732e15ebc9d5441981d4eb11f11710895c` (`main`) to select and adopt an appropriate open-source license (`Apache-2.0`), build and publish GitHub Container Registry (`GHCR`) packages, and publish GitHub Pre-Release `v0.1.0-beta.1` (`prerelease: true`) while keeping Wave 6 (`U31`–`U36`) and `v1.0.0` production certification deferred.
+- **Diff summary:**
+  - **Software license (`ADR-052`):** Added canonical `Apache License, Version 2.0` (`LICENSE`), added `Apache-2.0` metadata across all Python (`pyproject.toml`) and TypeScript (`package.json`) workspace manifests, recorded `ADR-052` in `docs/20_DECISIONS_ADR.md` (and `OQ-11` in `docs/21_OPEN_QUESTIONS.md`), and aligned `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, and `docs/releases/v0.1.0-beta.1-draft.md`.
+  - **Worker runtime CLI & hardened multi-stage containerfiles:** Added `apps/worker-supervisor/src/red2pr_worker/runtime.py` (`red2pr-worker` CLI composition root with idempotent `--check-wiring`, mTLS credential/env loading, and fail-closed preflight; zero `control-plane`/`sqlalchemy` imports), unit tests `apps/worker-supervisor/tests/test_worker_runtime_cli.py`, `.dockerignore`, `deploy/docker/control-plane.Dockerfile`, and `deploy/docker/worker-supervisor.Dockerfile` (non-root `10001:10001`, `--read-only` compatible).
+  - **Automated GitHub Release & GHCR Packages pipeline:** Added `.github/workflows/release.yml` and `.github/release-notes/v0.1.0-beta.1.md` to build Python wheels/sdists, SPA/TypeScript/schema bundles, smoke-test both hardened containers under `--read-only --cap-drop=ALL --security-opt=no-new-privileges:true`, push `ghcr.io/nguywnben/red2pr-control` and `ghcr.io/nguywnben/red2pr-worker`, emit `container-images.txt` + `SHA256SUMS.txt`, and publish GitHub Pre-Release `v0.1.0-beta.1`.
+- **Local verification before tag & push:**
+  - `.\.venv\Scripts\python.exe -m ruff check . scripts/dev_stack.py` — exit `0`.
+  - `.\.venv\Scripts\python.exe -m mypy apps/worker-supervisor/src apps/cli/src packages/py-contracts/src scripts/dev_stack.py` — exit `0` (`33` source files).
+  - `.\.venv\Scripts\python.exe -m importlinter.cli` — exit `0` (`4` contracts kept, `0` broken).
+  - `.\.venv\Scripts\python.exe -m pytest apps/worker-supervisor/tests/test_worker_runtime_cli.py apps/cli/tests/test_installer_contracts.py -q` — exit `0` (`19 passed`).
+  - `pnpm lint`, `pnpm typecheck`, and `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\quickstart.ps1 -CheckOnly` — exit `0`.
+  - Root `AGENTS.md` SHA-256 verified unchanged (`1fe195214a28f40d3b621a75da55390d8033aadeace35e9aefa4599146b97509`).
