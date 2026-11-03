@@ -7,12 +7,15 @@ export {
   type SseConnectionStatus,
   type WorkspaceNavOption,
 } from "./AppShell";
+export { BrandLogo, type BrandLogoProps } from "./BrandLogo";
 export {
   AlertDialog,
   type AlertDialogProps,
   Banner,
   Card,
   Center,
+  CodeBlock,
+  type CodeBlockProps,
   Heading,
   HStack,
   Link,

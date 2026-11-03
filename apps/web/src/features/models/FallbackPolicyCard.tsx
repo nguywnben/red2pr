@@ -8,7 +8,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useId, useMemo, useState } from "react";
 import { useRed2PrApi } from "../../shared/api";
-import { Button, Selector, StateView } from "../../shared/ui";
+import { Button, SelectorControl, StateView } from "../../shared/ui";
 import { StepUpDialog } from "../auth";
 import { generateClientUuidV7 } from "../queues";
 
@@ -163,27 +163,61 @@ export function FallbackPolicyCard({
           ) : null}
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={repositorySelectId}>Repository</label>
-            <Selector id={repositorySelectId} label="Repository" isLabelHidden variant="input" size="md" presentation="popover"
-              options={repositories.map((repo) => ({ value: repo.id, label: repo.organization ? `${repo.organization}/${repo.name}` : repo.name }))}
-              value={selectedRepositoryId} onChange={setRepositoryId} />
+            <SelectorControl
+              id={repositorySelectId}
+              value={selectedRepositoryId}
+              onChange={(event) => setRepositoryId(event.target.value)}
+            >
+              {repositories.map((repo) => (
+                <option key={repo.id} value={repo.id}>
+                  {repo.organization ? `${repo.organization}/${repo.name}` : repo.name}
+                </option>
+              ))}
+            </SelectorControl>
           </div>
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={primarySelectId}>Primary model profile</label>
-            <Selector id={primarySelectId} label="Primary model profile" isLabelHidden variant="input" size="md" presentation="popover"
-              options={profiles.map((profile) => ({ value: profile.id, label: `${profile.display_name} · ${profile.model_id}` }))}
-              value={primaryProfileId} onChange={setPrimaryProfileOverride} />
+            <SelectorControl
+              id={primarySelectId}
+              value={primaryProfileId}
+              onChange={(event) => setPrimaryProfileOverride(event.target.value)}
+            >
+              {profiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {`${profile.display_name} · ${profile.model_id}`}
+                </option>
+              ))}
+            </SelectorControl>
           </div>
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={secondarySelectId}>Fallback model profile</label>
-            <Selector id={secondarySelectId} label="Fallback model profile" isLabelHidden variant="input" size="md" presentation="popover"
-              options={profiles.map((profile) => ({ value: profile.id, label: `${profile.display_name} · ${profile.model_id}` }))}
-              value={secondaryProfileId} onChange={setSecondaryProfileOverride} />
+            <SelectorControl
+              id={secondarySelectId}
+              value={secondaryProfileId}
+              onChange={(event) => setSecondaryProfileOverride(event.target.value)}
+            >
+              {profiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {`${profile.display_name} · ${profile.model_id}`}
+                </option>
+              ))}
+            </SelectorControl>
           </div>
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={consentSelectId}>Active repository inference consent</label>
-            <Selector id={consentSelectId} label="Active repository inference consent" isLabelHidden isRequired variant="input" size="md" presentation="popover"
-              options={[{ value: "", label: "No eligible consent" }, ...activeConsents.map((item) => ({ value: item.id, label: `${item.id} · ${item.destination}` }))]}
-              value={selectedConsentId} onChange={setConsentId} />
+            <SelectorControl
+              id={consentSelectId}
+              required
+              value={selectedConsentId}
+              onChange={(event) => setConsentId(event.target.value)}
+            >
+              <option value="">No eligible consent</option>
+              {activeConsents.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {`${item.id} · ${item.destination}`}
+                </option>
+              ))}
+            </SelectorControl>
           </div>
           <label className="red2pr-field-label" htmlFor={enabledId}>
             <input id={enabledId} type="checkbox" checked={enabled} onChange={(event) => setEnabledOverride(event.target.checked)} /> Enable fallback (off by default)

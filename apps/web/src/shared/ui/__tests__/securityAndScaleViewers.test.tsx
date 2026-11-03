@@ -110,6 +110,32 @@ describe("U04 SEC-040 Untrusted Log/Diff Sanitization & NFR-12 50k Virtualizatio
     expect(screen.getAllByLabelText("Removed line").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("renders standard diffs and logs through Astryx CodeBlock while preserving SEC-040 sanitization", () => {
+    const diffSample = [
+      "diff --git a/services/billing/ledger.py b/services/billing/ledger.py",
+      "--- a/services/billing/ledger.py",
+      "+++ b/services/billing/ledger.py",
+      "@@ -10,2 +10,3 @@",
+      " def settle(amount: int) -> int:",
+      "-    return amount - \u202e1",
+      "+    return max(0, amount)",
+    ].join("\n");
+
+    const { container } = render(
+      <ViewerHarness>
+        <SafeDiffViewer rawDiff={diffSample} />
+        <SafeLogViewer lines={["\u001b[32mPASS\u001b[0m tests/test_ledger.py::test_settle"]} />
+      </ViewerHarness>,
+    );
+
+    const codeBlocks = container.querySelectorAll("pre.astryx-code-block");
+    expect(codeBlocks.length).toBe(2);
+    expect(codeBlocks[0]?.textContent).toContain("[BIDI-STRIPPED]");
+    expect(codeBlocks[0]?.querySelectorAll('[data-diff="added"]').length).toBe(1);
+    expect(codeBlocks[0]?.querySelectorAll('[data-diff="removed"]').length).toBe(1);
+    expect(screen.getByText("PASS tests/test_ledger.py::test_settle")).toBeInTheDocument();
+  });
+
   it("virtualizes 50,000 log lines in <= 2000ms (NFR-12) with bounded DOM nodes and supports paged keyboard mode", async () => {
     const user = userEvent.setup();
     const lines = Array.from(

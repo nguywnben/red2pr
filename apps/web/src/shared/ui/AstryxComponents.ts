@@ -2,6 +2,7 @@ export { Banner } from "@astryxdesign/core/Banner";
 export { AlertDialog, type AlertDialogProps } from "@astryxdesign/core/AlertDialog";
 export { Card } from "@astryxdesign/core/Card";
 export { Center } from "@astryxdesign/core/Center";
+export { CodeBlock, type CodeBlockProps } from "@astryxdesign/core/CodeBlock";
 export { Heading } from "@astryxdesign/core/Heading";
 export { HStack } from "@astryxdesign/core/HStack";
 export { MultiSelector } from "@astryxdesign/core/MultiSelector";

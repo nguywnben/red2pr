@@ -1,84 +1,51 @@
-import React, { useMemo, useState } from "react";
-import { MultiSelector } from "@astryxdesign/core/MultiSelector";
-import { Selector } from "@astryxdesign/core/Selector";
+import React from "react";
 
-type NativeOption = { value: string; label: string; disabled?: boolean };
-type NativeSelectProps = Omit<React.ComponentPropsWithoutRef<"select">, "onChange"> & {
-  onChange?: React.ChangeEventHandler<HTMLSelectElement>;
+type NativeSelectProps = React.ComponentPropsWithoutRef<"select"> & {
   "data-testid"?: string;
 };
 
-function optionText(node: React.ReactNode): string {
-  if (typeof node === "string" || typeof node === "number") return String(node);
-  if (Array.isArray(node)) return node.map(optionText).join("");
-  if (React.isValidElement<{ children?: React.ReactNode }>(node)) return optionText(node.props.children);
-  return "";
-}
-
-/** Shared native-select adapter: keeps existing form contracts while rendering Astryx selectors. */
+/**
+ * Shared Astryx-Neutral-styled select adapter: renders sleek token-aligned single
+ * and multi-select controls while preserving native `<select>` / `<option>` semantics,
+ * keyboard navigation, `<label htmlFor>`, and mobile OS pickers.
+ */
 export function SelectorControl({
   children,
-  value,
-  defaultValue,
-  onChange,
   multiple = false,
-  disabled,
-  required,
-  id,
-  name,
   className,
   style,
-  "data-testid": testId,
-  "aria-label": ariaLabel,
+  ...rest
 }: NativeSelectProps): React.JSX.Element {
-  const options = useMemo(() => React.Children.toArray(children).flatMap((child) => {
-    if (!React.isValidElement<{ value?: string; disabled?: boolean; children?: React.ReactNode }>(child) || child.type !== "option") return [];
-    const optionValue = child.props.value ?? optionText(child.props.children);
-    return [{ value: optionValue, label: optionText(child.props.children), ...(child.props.disabled ? { disabled: true } : {}) } satisfies NativeOption];
-  }), [children]);
-  const initial: string | string[] = defaultValue === undefined
-    ? (multiple ? [] : options[0]?.value ?? "")
-    : Array.isArray(defaultValue) ? defaultValue.map(String) : String(defaultValue);
-  const [uncontrolledValue, setUncontrolledValue] = useState<string | string[]>(initial);
-  const currentValue = value ?? (multiple || options.some((option) => option.value === uncontrolledValue)
-    ? uncontrolledValue
-    : options[0]?.value ?? "");
-  const label = ariaLabel ?? id?.replace(/[-_]+/g, " ") ?? "Select option";
+  if (multiple) {
+    const multiClass = ["red2pr-native-multiselect", className].filter(Boolean).join(" ");
+    return (
+      <select multiple className={multiClass} style={style} {...rest}>
+        {children}
+      </select>
+    );
+  }
 
-  const notify = (next: string | string[]) => {
-    if (value === undefined) setUncontrolledValue(next);
-    if (!onChange) return;
-    const selected = Array.isArray(next) ? next : [next];
-    const selectedOptions = selected.map((selectedValue) => {
-      const option = options.find((item) => item.value === selectedValue);
-      return { value: selectedValue, text: option?.label ?? selectedValue } as HTMLOptionElement;
-    });
-    const target = { value: Array.isArray(next) ? selected.join(",") : next, selectedOptions } as unknown as HTMLSelectElement;
-    onChange({ target, currentTarget: target } as React.ChangeEvent<HTMLSelectElement>);
-  };
-
-  const common = {
-    label,
-    options,
-    hasClear: false as const,
-    hasSearch: false,
-    placeholder: "Select...",
-    size: "md" as const,
-    variant: "input" as const,
-    isDisabled: disabled,
-    isRequired: required,
-    isLabelHidden: true,
-    presentation: "popover" as const,
-    id,
-    htmlName: name,
-    controlClassName: className,
-    controlStyle: style,
-    ...(typeof testId === "string" ? { "data-testid": testId } : {}),
-  };
-
-  return multiple ? (
-    <MultiSelector {...common} value={Array.isArray(currentValue) ? currentValue : []} onChange={(next) => notify(next)} />
-  ) : (
-    <Selector {...common} value={Array.isArray(currentValue) ? currentValue[0] ?? "" : currentValue} onChange={(next) => notify(next)} />
+  const selectClass = ["red2pr-native-select", className].filter(Boolean).join(" ");
+  return (
+    <span className="red2pr-select-shell" style={style}>
+      <select className={selectClass} {...rest}>
+        {children}
+      </select>
+      <svg
+        className="red2pr-select-chevron"
+        viewBox="0 0 16 16"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path d="M4.5 6.25 8 9.75l3.5-3.5" />
+      </svg>
+    </span>
   );
 }

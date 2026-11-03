@@ -8,6 +8,7 @@ import { useI18n } from "../../shared/i18n";
 import {
   AlertDialog,
   Button,
+  CodeBlock,
   ConfirmActionButton,
   Skeleton,
   StateView,
@@ -33,6 +34,51 @@ interface SessionTableRow extends Record<string, unknown> {
   readonly user_agent_summary: string | null;
   readonly last_seen_at: string;
   readonly expires_at: string;
+}
+
+function formatSessionDevice(
+  rawUserAgent: string | null,
+  fallback: string,
+): { readonly label: string; readonly title?: string } {
+  if (!rawUserAgent) {
+    return { label: fallback };
+  }
+  const safeUa = sanitizeUntrustedText(rawUserAgent).text.trim();
+  if (!safeUa) {
+    return { label: fallback };
+  }
+  if (!safeUa.startsWith("Mozilla/")) {
+    return { label: safeUa };
+  }
+  const browserMatch =
+    safeUa.match(/Edg\/(\d+)/) ??
+    safeUa.match(/Firefox\/(\d+)/) ??
+    safeUa.match(/Chrome\/(\d+)/) ??
+    safeUa.match(/Version\/(\d+).*Safari/);
+  const browserLabel = safeUa.includes("Edg/")
+    ? `Edge ${browserMatch?.[1] ?? ""}`.trim()
+    : safeUa.includes("Firefox/")
+      ? `Firefox ${browserMatch?.[1] ?? ""}`.trim()
+      : safeUa.includes("Chrome/")
+        ? `Chrome ${browserMatch?.[1] ?? ""}`.trim()
+        : safeUa.includes("Safari/")
+          ? `Safari ${browserMatch?.[1] ?? ""}`.trim()
+          : "Browser";
+  const osLabel = safeUa.includes("Windows")
+    ? "Windows"
+    : safeUa.includes("Mac OS X") || safeUa.includes("Macintosh")
+      ? "macOS"
+      : safeUa.includes("Android")
+        ? "Android"
+        : safeUa.includes("iPhone") || safeUa.includes("iPad")
+          ? "iOS"
+          : safeUa.includes("Linux")
+            ? "Linux"
+            : null;
+  return {
+    label: osLabel ? `${browserLabel} · ${osLabel}` : browserLabel,
+    title: safeUa,
+  };
 }
 
 function toSessionRow(item: SessionListItem): SessionTableRow {
@@ -211,12 +257,10 @@ export function AccountPage(): React.JSX.Element {
         key: "user_agent_summary",
         header: t("account.colSessionDevice"),
         renderCell: (row) => {
-          const safeUa = row.user_agent_summary
-            ? sanitizeUntrustedText(row.user_agent_summary).text
-            : t("account.unknownDevice");
+          const device = formatSessionDevice(row.user_agent_summary, t("account.unknownDevice"));
           return (
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-              <span>{safeUa}</span>
+              <span title={device.title}>{device.label}</span>
               {row.is_current ? (
                 <span className="red2pr-badge-pill red2pr-tone-success">
                   <StatusGlyph kind="check" />
@@ -260,24 +304,29 @@ export function AccountPage(): React.JSX.Element {
       {
         key: "id",
         header: t("account.colSessionAction"),
-        renderCell: (row) => (
-          <ConfirmActionButton
-            label={t("account.revokeSessionAction")}
-            variant={row.is_current ? "secondary" : "destructive"}
-            size="sm"
-            isDisabled={revokeSessionMutation.isPending}
-            confirmationTitle="Revoke this session?"
-            confirmationDescription={
-              row.is_current
-                ? "This will end your current session and return you to sign in."
-                : "This session will immediately lose access to the account."
-            }
-            confirmationActionLabel="Revoke session"
-            onConfirm={async () => {
-              await revokeSessionMutation.mutateAsync(row);
-            }}
-          />
-        ),
+        renderCell: (row) =>
+          row.is_current ? (
+            <ConfirmActionButton
+              label={t("account.revokeSessionAction")}
+              variant="secondary"
+              size="sm"
+              isDisabled={revokeSessionMutation.isPending}
+              confirmationTitle="Revoke this session?"
+              confirmationDescription="This will end your current session and return you to sign in."
+              confirmationActionLabel="Revoke session"
+              onConfirm={async () => {
+                await revokeSessionMutation.mutateAsync(row);
+              }}
+            />
+          ) : (
+            <Button
+              label={t("account.revokeSessionAction")}
+              variant="destructive"
+              size="sm"
+              isDisabled={revokeSessionMutation.isPending}
+              onClick={() => revokeSessionMutation.mutate(row)}
+            />
+          ),
       },
     ],
     [revokeSessionMutation, t],
@@ -416,11 +465,22 @@ export function AccountPage(): React.JSX.Element {
             <p className="red2pr-field-hint">{t("account.grantsEmpty")}</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {(me.memberships ?? []).map((membership) => (
-                <li key={membership.id}>
-                  <code>{membership.workspace_id}</code> — {membership.role}
-                </li>
-              ))}
+              {(me.memberships ?? []).map((membership) => {
+                const matchedWs = (me.workspaces ?? []).find((ws) => ws.id === membership.workspace_id);
+                return (
+                  <li key={membership.id}>
+                    {matchedWs ? (
+                      <>
+                        <strong>{sanitizeUntrustedText(matchedWs.name).text}</strong>{" "}
+                        (<code>{matchedWs.slug}</code>)
+                      </>
+                    ) : (
+                      <code>{membership.workspace_id}</code>
+                    )}{" "}
+                    — <span className="red2pr-badge-pill red2pr-tone-neutral">{membership.role}</span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -491,24 +551,30 @@ export function AccountPage(): React.JSX.Element {
 
             <div className="red2pr-field">
               <span className="red2pr-field-label">{t("account.mfaSecretLabel")}</span>
-              <div
+              <CodeBlock
                 data-testid="mfa-secret-once"
-                className="red2pr-code-viewport"
-                style={{ padding: "8px 12px", wordBreak: "break-all" }}
-              >
-                {pendingEnrollment.secret_base32}
-              </div>
+                code={pendingEnrollment.secret_base32 ?? ""}
+                language="plaintext"
+                hasLanguageLabel={false}
+                hasCopyButton
+                isWrapped
+                size="sm"
+                width="100%"
+              />
             </div>
 
             {pendingEnrollment.otpauth_uri ? (
               <div className="red2pr-field">
                 <span className="red2pr-field-label">{t("account.mfaUriLabel")}</span>
-                <div
-                  className="red2pr-code-viewport"
-                  style={{ padding: "8px 12px", wordBreak: "break-all" }}
-                >
-                  {pendingEnrollment.otpauth_uri}
-                </div>
+                <CodeBlock
+                  code={pendingEnrollment.otpauth_uri}
+                  language="plaintext"
+                  hasLanguageLabel={false}
+                  hasCopyButton
+                  isWrapped
+                  size="sm"
+                  width="100%"
+                />
               </div>
             ) : null}
 

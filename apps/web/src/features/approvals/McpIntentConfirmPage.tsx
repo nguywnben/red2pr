@@ -1,9 +1,9 @@
 import { Red2PrApiError } from "@red2pr/ts-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import { useRed2PrApi, useRed2PrTransportConfig } from "../../shared/api";
-import { Button, Skeleton, StateView, VStack } from "../../shared/ui";
+import { BrandLogo, Button, Skeleton, StateView, VStack } from "../../shared/ui";
 import { StepUpDialog, extractAuthProblemSummary } from "../auth";
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{32,64}$/;
@@ -82,67 +82,83 @@ export function McpIntentConfirmPage(): React.JSX.Element {
 
   if (meQuery.isError && meQuery.error instanceof Red2PrApiError && meQuery.error.status === 401) {
     return (
-      <main className="red2pr-page-stack" data-testid="mcp-intent-sign-in-required">
-        <h1>Sign in to review this MCP action</h1>
-        <p>This link has not changed anything. Sign in, then reopen the original approval link.</p>
-        <a href="/login?next=%2Faccount">Sign in to Red2PR</a>
+      <main className="red2pr-auth-shell" data-testid="mcp-intent-sign-in-required">
+        <div className="red2pr-surface red2pr-card-section red2pr-auth-card">
+          <BrandLogo style={{ height: 28, width: "auto" }} decorative />
+          <h1>Sign in to review this MCP action</h1>
+          <p className="red2pr-field-hint">This link has not changed anything. Sign in, then reopen the original approval link.</p>
+          <Link className="red2pr-inline-link" to="/login?next=%2Faccount">Sign in to Red2PR</Link>
+        </div>
       </main>
     );
   }
   if (meQuery.isPending) {
     return (
-      <main className="red2pr-page-stack" data-testid="mcp-intent-confirm-page">
+      <main className="red2pr-auth-shell" data-testid="mcp-intent-confirm-page">
+        <div className="red2pr-page-stack red2pr-auth-card">
+          <BrandLogo style={{ height: 28, width: "auto" }} decorative />
+          <header className="red2pr-page-header">
+            <div>
+              <h1>Confirm repair recheck</h1>
+              <p>Confirming creates a new repair session. Red2PR rechecks your access and policy before it starts.</p>
+            </div>
+          </header>
+          <StateView state="loading" skeletonVariant="detail" />
+        </div>
+      </main>
+    );
+  }
+  if (meQuery.isError) {
+    return (
+      <main className="red2pr-auth-shell">
+        <div className="red2pr-page-stack red2pr-auth-card">
+          <StateView state="error" title="Sign-in status unavailable" description="Sign in to review this action." />
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="red2pr-auth-shell" data-testid="mcp-intent-confirm-page">
+      <div className="red2pr-page-stack red2pr-auth-card">
+        <BrandLogo style={{ height: 28, width: "auto" }} decorative />
         <header className="red2pr-page-header">
           <div>
             <h1>Confirm repair recheck</h1>
             <p>Confirming creates a new repair session. Red2PR rechecks your access and policy before it starts.</p>
           </div>
         </header>
-        <StateView state="loading" skeletonVariant="detail" />
-      </main>
-    );
-  }
-  if (meQuery.isError) {
-    return (
-      <main className="red2pr-page-stack">
-        <StateView state="error" title="Sign-in status unavailable" description="Sign in to review this action." />
-      </main>
-    );
-  }
-
-  return (
-    <main className="red2pr-page-stack" data-testid="mcp-intent-confirm-page">
-      <header className="red2pr-page-header">
-        <div>
-          <h1>Confirm repair recheck</h1>
-          <p>Confirming creates a new repair session. Red2PR rechecks your access and policy before it starts.</p>
-        </div>
-      </header>
-      {error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{error}</div> : null}
-      {(token === null || workspaceId === null) && !error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">This approval link is missing or malformed.</div> : null}
-      {confirmMutation.isSuccess ? (
-        <section className="red2pr-surface red2pr-card-section" role="status">
-          <h2>Recheck requested</h2>
-          <p>A new repair session was created: {confirmMutation.data.repair_id}</p>
-        </section>
-      ) : (
-        <section className="red2pr-surface red2pr-card-section">
-          {previewQuery.isPending ? (
-            <VStack gap={2} width="100%" role="status" aria-label="Loading the requested action" aria-busy="true">
-              <Skeleton width="48%" height={14} radius={1} index={0} />
-              <Skeleton width="76%" height={14} radius={1} index={1} />
-              <Skeleton width="62%" height={14} radius={1} index={2} />
-            </VStack>
-          ) : null}
-          {previewQuery.isError ? <p role="alert">This approval link is invalid, expired, or outside your current access.</p> : null}
-          {previewQuery.data ? <>
-            <p><strong>Repair:</strong> {previewQuery.data.repair_id}</p>
-            <p><strong>Reason:</strong> {previewQuery.data.reason}</p>
-            <p>Expires: <time dateTime={previewQuery.data.expires_at}>{new Date(previewQuery.data.expires_at).toLocaleString()}</time></p>
-          </> : null}
-          <Button label="Approve and create recheck" variant="primary" isLoading={confirmMutation.isPending} isDisabled={token === null || workspaceId === null || previewQuery.isPending || !previewQuery.data || confirmMutation.isPending} onClick={() => confirmMutation.mutate()} />
-        </section>
-      )}
+        {error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{error}</div> : null}
+        {(token === null || workspaceId === null) && !error ? (
+          <section className="red2pr-surface red2pr-card-section" role="alert">
+            <h2>Approval link required</h2>
+            <p className="red2pr-field-hint">This approval link is missing or malformed. Open the one-time approval URL provided by your MCP client, or return to your account.</p>
+            <div className="red2pr-button-row"><Link className="red2pr-inline-link" to="/account">Go to Account →</Link></div>
+          </section>
+        ) : confirmMutation.isSuccess ? (
+          <section className="red2pr-surface red2pr-card-section" role="status">
+            <h2>Recheck requested</h2>
+            <p>A new repair session was created: <code>{confirmMutation.data.repair_id}</code></p>
+          </section>
+        ) : (
+          <section className="red2pr-surface red2pr-card-section">
+            {previewQuery.isPending ? (
+              <VStack gap={2} width="100%" role="status" aria-label="Loading the requested action" aria-busy="true">
+                <Skeleton width="48%" height={14} radius={1} index={0} />
+                <Skeleton width="76%" height={14} radius={1} index={1} />
+                <Skeleton width="62%" height={14} radius={1} index={2} />
+              </VStack>
+            ) : null}
+            {previewQuery.isError ? <p role="alert">This approval link is invalid, expired, or outside your current access.</p> : null}
+            {previewQuery.data ? <>
+              <p><strong>Repair:</strong> <code>{previewQuery.data.repair_id}</code></p>
+              <p><strong>Reason:</strong> {previewQuery.data.reason}</p>
+              <p className="red2pr-field-hint">Expires: <time dateTime={previewQuery.data.expires_at}>{new Date(previewQuery.data.expires_at).toLocaleString()}</time></p>
+            </> : null}
+            <Button label="Approve and create recheck" variant="primary" isLoading={confirmMutation.isPending} isDisabled={token === null || workspaceId === null || previewQuery.isPending || !previewQuery.data || confirmMutation.isPending} onClick={() => confirmMutation.mutate()} />
+          </section>
+        )}
+      </div>
       <StepUpDialog
         isOpen={stepUpOpen}
         mfaEnabled={meQuery.data?.data.mfa_enabled ?? false}

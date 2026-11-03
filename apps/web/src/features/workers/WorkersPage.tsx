@@ -19,10 +19,12 @@ import { invalidateWorkspaceQueries, useRed2PrApi } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 import {
   Button,
+  CodeBlock,
   Dialog,
   StateView,
   StatusGlyph,
   Table,
+  proportional,
   sanitizeUntrustedText,
   useLiveAnnouncer,
   type TableColumn,
@@ -401,9 +403,10 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
       {
         key: "spiffe_id",
         header: "SPIFFE Identity",
+        width: proportional(1.4, { minWidth: 84 }),
         renderCell: (row) => (
           <div>
-            <code style={{ fontSize: "0.8rem" }}>{row.spiffe_id}</code>
+            <code style={{ fontSize: "0.8rem", wordBreak: "break-all" }}>{row.spiffe_id}</code>
             {row.reason_note !== null ? (
               <div style={{ fontSize: "0.78rem", opacity: 0.85, marginTop: 2 }}>
                 Reason: {row.reason_note}
@@ -415,6 +418,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
       {
         key: "status",
         header: "Status",
+        width: proportional(0.95, { minWidth: 57 }),
         renderCell: (row) => {
           const app = workerStatusAppearance(row.status);
           return (
@@ -428,6 +432,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
       {
         key: "isolation_mode",
         header: "Isolation & Signer",
+        width: proportional(1.35, { minWidth: 81 }),
         renderCell: (row) => (
           <div>
             <div>
@@ -448,6 +453,7 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
       {
         key: "trust_domain",
         header: "Fleet Trust & Attestation",
+        width: proportional(2.2, { minWidth: 132 }),
         renderCell: (row) => (
           <FleetTrustDomainPanel
             trustDomain={row.trust_domain}
@@ -459,11 +465,13 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
       {
         key: "profiles",
         header: "Profiles",
+        width: proportional(1.15, { minWidth: 69 }),
         renderCell: (row) => <span>{row.profiles}</span>,
       },
       {
         key: "heartbeat",
         header: "Last Heartbeat / Cert",
+        width: proportional(1.4, { minWidth: 84 }),
         renderCell: (row) => (
           <div style={{ fontSize: "0.8rem" }}>
             <div>HB: {formatUtcTimestamp(row.heartbeat_at)}</div>
@@ -476,11 +484,13 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
       {
         key: "active_leases",
         header: "Leases",
+        width: proportional(0.65, { minWidth: 39 }),
         renderCell: (row) => <span>{String(row.active_leases)}</span>,
       },
       {
         key: "actions",
         header: "Actions",
+        width: proportional(1.4, { minWidth: 84 }),
         renderCell: (row) => (
           <div className="red2pr-button-row" style={{ flexWrap: "wrap", gap: 6 }}>
             <Button
@@ -541,6 +551,10 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
         }}
       />
     );
+  }
+
+  if (readinessQuery.isPending || (isInstanceOwner && fleetQuery.isPending)) {
+    return <StateView state="loading" skeletonVariant="metrics" />;
   }
 
   const readiness = readinessQuery.data?.data ?? {
@@ -664,11 +678,13 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
             description={t("workers.leasesEmptyDesc")}
           />
         ) : (
+          <div className="red2pr-surface red2pr-table-scroll">
           <Table
             aria-label={t("workers.leasesTableLabel")}
             columns={leaseColumns}
             data={leaseRows}
           />
+          </div>
         )}
       </section>
 
@@ -695,12 +711,32 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
               <h2 >{t("workers.fleetTableLabel")}</h2>
               {fleetSummary !== null ? (
                 <div style={{ fontSize: "0.84rem", opacity: 0.85, marginTop: 4 }}>
-                  Total: {String(fleetSummary.total_count)} · Online:{" "}
-                  {String(fleetSummary.online_count)} · Draining:{" "}
-                  {String(fleetSummary.draining_count)} · Quarantined:{" "}
-                  {String(fleetSummary.quarantined_count)} · Offline:{" "}
-                  {String(fleetSummary.offline_count)} · VM:{" "}
-                  {String(fleetSummary.vm_isolated_count)}
+                  Total: {String(fleetSummary.total_count ?? workerRows.length)} · Online:{" "}
+                  {String(
+                    fleetSummary.online_count ??
+                      workerRows.filter((item) => item.status === "online").length,
+                  )}{" "}
+                  · Draining:{" "}
+                  {String(
+                    fleetSummary.draining_count ??
+                      workerRows.filter((item) => item.status === "draining").length,
+                  )}{" "}
+                  · Quarantined:{" "}
+                  {String(
+                    fleetSummary.quarantined_count ??
+                      workerRows.filter((item) => item.status === "quarantined").length,
+                  )}{" "}
+                  · Offline:{" "}
+                  {String(
+                    fleetSummary.offline_count ??
+                      workerRows.filter((item) => item.status === "offline").length,
+                  )}{" "}
+                  · VM:{" "}
+                  {String(
+                    fleetSummary.vm_isolated_count ??
+                      workerRows.filter((item) => item.isolation_mode === "vm_isolated")
+                        .length,
+                  )}
                 </div>
               ) : null}
             </div>
@@ -767,11 +803,13 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
               description={t("workers.fleetEmptyDesc")}
             />
           ) : (
+            <div className="red2pr-surface red2pr-table-scroll">
             <Table
               aria-label={t("workers.fleetTableLabel")}
               columns={workerColumns}
               data={workerRows}
             />
+            </div>
           )}
         </section>
       )}
@@ -833,15 +871,28 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
                 <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>
                   One-time Enrollment Token
                 </div>
-                <pre style={{ overflowX: "auto", padding: 8 }}>
-                  <code>{enrollResult.enrollment_token}</code>
-                </pre>
+                <CodeBlock
+                  code={enrollResult.enrollment_token}
+                  language="plaintext"
+                  hasLanguageLabel={false}
+                  hasCopyButton
+                  isWrapped
+                  size="sm"
+                  width="100%"
+                />
               </div>
               <div>
                 <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>Pinned Worker CA PEM</div>
-                <pre style={{ overflowX: "auto", maxHeight: 140, padding: 8 }}>
-                  <code>{enrollResult.ca_cert_pem}</code>
-                </pre>
+                <CodeBlock
+                  code={enrollResult.ca_cert_pem}
+                  language="plaintext"
+                  hasLanguageLabel={false}
+                  hasCopyButton
+                  isWrapped
+                  maxHeight={140}
+                  size="sm"
+                  width="100%"
+                />
               </div>
             </div>
           ) : (

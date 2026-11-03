@@ -63,7 +63,13 @@ export function SystemPage(): React.JSX.Element {
   const current = status.data?.data ?? null;
   return (
     <section className="red2pr-page-stack" data-testid="system-page">
-      <header><h1>System operations</h1><p>Inspect this Red2PR instance, maintenance state, upgrade compatibility, and redacted support diagnostics.</p><Button label="Manage outbound data access" variant="secondary" href="/system/data-sharing" /></header>
+      <header className="red2pr-page-header">
+        <div>
+          <h1>System operations</h1>
+          <p>Inspect this Red2PR instance, maintenance state, upgrade compatibility, and redacted support diagnostics.</p>
+        </div>
+        <Button label="Manage outbound data access" variant="secondary" href="/system/data-sharing" />
+      </header>
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="system-status-title">
         <h2 id="system-status-title">Instance status</h2>
         {current ? (
@@ -115,7 +121,7 @@ export function SystemPage(): React.JSX.Element {
         {restoreDryRun.data ? <div role="status"><p>Preflight {restoreDryRun.data.data.compatible ? "passed" : "blocked"}; target schema {restoreDryRun.data.data.target_schema_revision}; plan digest <code>{restoreDryRun.data.data.plan_digest}</code>.</p>
           {restoreDryRun.data.data.blockers.length ? <ul aria-label="Restore blockers">{restoreDryRun.data.data.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul> : null}
           <p>Maintenance mode, recovery epoch rotation, tombstone reapplication and remote reconciliation are required for a restore.</p>
-          <ConfirmActionButton label="Restore verified backup" isDisabled={!restoreDryRun.data.data.compatible || !current?.maintenance_enabled || restore.isPending} confirmationTitle="Restore this backup?" confirmationDescription="This will replace current instance data with the verified backup and advance the recovery epoch. Keep maintenance enabled and confirm only after reviewing the preflight plan and digest." confirmationActionLabel="Restore backup" onConfirm={() => runAfterStepUp(() => restore.mutate())} />
+          <Button label="Restore verified backup" isDisabled={!restoreDryRun.data.data.compatible || !current?.maintenance_enabled || restore.isPending} onClick={() => runAfterStepUp(() => restore.mutate())} />
         </div> : null}
         {restoreDryRun.isError ? <p role="alert">Restore preflight failed integrity, key availability, or schema compatibility checks.</p> : null}
         {restore.isError ? <p role="alert">Restore did not complete. Keep maintenance enabled and inspect System Doctor before retrying.</p> : null}
@@ -124,12 +130,20 @@ export function SystemPage(): React.JSX.Element {
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="system-support-title">
         <h2 id="system-support-title">Support bundle</h2>
         <p>Preview the exact allowlisted files. Secrets and repository source are excluded. Export requires fresh owner step-up.</p>
-        <fieldset><legend>Diagnostic files</legend>{SUPPORT_FILES.map((fileId) => <label key={fileId}>
-          <input type="checkbox" checked={selectedFiles.includes(fileId)} onChange={(event) => {
-            setPreviewDigest(null);
-            setSelectedFiles((currentFiles) => event.target.checked ? [...currentFiles, fileId] : currentFiles.filter((item) => item !== fileId));
-          }} /> {fileId.replaceAll("_", " ")}
-        </label>)}</fieldset>
+        <fieldset className="red2pr-fieldset">
+          <legend className="red2pr-field-label">Diagnostic files</legend>
+          <div className="red2pr-checkbox-grid">
+            {SUPPORT_FILES.map((fileId) => (
+              <label key={fileId} className="red2pr-checkbox-label">
+                <input type="checkbox" checked={selectedFiles.includes(fileId)} onChange={(event) => {
+                  setPreviewDigest(null);
+                  setSelectedFiles((currentFiles) => event.target.checked ? [...currentFiles, fileId] : currentFiles.filter((item) => item !== fileId));
+                }} />
+                <span>{fileId.replaceAll("_", " ")}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <Button label="Preview bundle" isDisabled={preview.isPending || selectedFiles.length === 0} onClick={() => preview.mutate()} />
         {preview.data ? <div role="status"><p>Preview digest: <code>{preview.data.data.manifest_digest}</code></p><p>{preview.data.data.redacted_file_count} files; secrets and repository source excluded.</p>
           <Button label="Create support bundle" isDisabled={exportBundle.isPending} onClick={() => runAfterStepUp(() => exportBundle.mutate())} />

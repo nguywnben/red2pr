@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import { useRed2PrApi, useRed2PrTransportConfig } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
-import { Button, Card, Center, Heading, HStack, Link, Text, TextInput, VStack } from "../../shared/ui";
-import { extractAuthProblemSummary, type AuthProblemSummary } from "./authHelpers";
+import { Banner, BrandLogo, Button, Card, Center, Heading, HStack, Link, Text, TextInput, VStack } from "../../shared/ui";
+import { extractAuthProblemSummary, resolveSafePostLoginPath, type AuthProblemSummary } from "./authHelpers";
 
 async function readOidcProviderIds(fetchImpl: typeof fetch, baseUrl: string): Promise<string[]> {
   try {
@@ -30,6 +30,7 @@ export function LoginPage(): React.JSX.Element {
   const transport = useRed2PrTransportConfig();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
@@ -41,9 +42,17 @@ export function LoginPage(): React.JSX.Element {
     queryFn: () => api.getAuthCsrf(),
     retry: false,
   });
+  const bootstrapClaimRequired = csrfQuery.data?.data.bootstrap_claim_required === true;
   const setupQuery = useQuery({
     queryKey: ["setup", "state"],
-    queryFn: () => api.getSetupState(),
+    queryFn: async () => {
+      try {
+        return await api.getSetupState();
+      } catch {
+        return null;
+      }
+    },
+    enabled: bootstrapClaimRequired,
     retry: false,
   });
   const oidcProvidersQuery = useQuery({
@@ -76,15 +85,33 @@ export function LoginPage(): React.JSX.Element {
         setMfaChallengeId(response.data.mfa_challenge_id);
         return;
       }
-      try {
-        const setup = await api.getSetupState();
-        const destination = setup.data.completed_at === null
-          ? "/setup"
-          : `/w/${encodeURIComponent(setup.data.default_workspace_slug ?? "default")}/overview`;
-        await completeSignIn(destination);
-      } catch (cause) {
-        setError(extractAuthProblemSummary(cause, t("auth.genericAuthErrorTitle")));
+      const hasExplicitNext = new URLSearchParams(location.search).has("next");
+      if (hasExplicitNext) {
+        await completeSignIn(resolveSafePostLoginPath(location.search, "/account"));
+        return;
       }
+      let destination = "/";
+      try {
+        const me = await api.getMe();
+        const firstWorkspaceSlug = me.data.workspaces?.[0]?.slug;
+        if (firstWorkspaceSlug) {
+          destination = `/w/${encodeURIComponent(firstWorkspaceSlug)}/overview`;
+        } else if (me.data.is_instance_owner) {
+          try {
+            const setup = await api.getSetupState();
+            destination = setup.data.completed_at === null
+              ? "/setup"
+              : `/w/${encodeURIComponent(setup.data.default_workspace_slug ?? "default")}/overview`;
+          } catch {
+            destination = "/account";
+          }
+        } else {
+          destination = "/account";
+        }
+      } catch {
+        destination = "/";
+      }
+      await completeSignIn(destination);
     },
     onError: (cause) => {
       setError(extractAuthProblemSummary(cause, t("auth.genericAuthErrorTitle")));
@@ -112,9 +139,26 @@ export function LoginPage(): React.JSX.Element {
         <VStack gap={4} width="100%" maxWidth={440}>
           <Card width="100%" maxWidth={440}>
             <VStack gap={4}>
-              <VStack gap={1}>
+              <VStack gap={1.5}>
+                <BrandLogo style={{ height: 28, width: "auto" }} decorative />
                 <Heading level={1}>{t("auth.signInTitle")}</Heading>
+                <Text type="supporting" as="p">
+                  {mfaChallengeId === null ? t("auth.signInSubtitle") : t("auth.mfaSubtitle")}
+                </Text>
               </VStack>
+
+              {mfaChallengeId === null && bootstrapClaimRequired ? (
+                <VStack gap={2}>
+                  <Banner
+                    status="info"
+                    title={t("auth.setupRequiredTitle")}
+                    description={t("auth.setupRequiredDescription")}
+                    container="section"
+                    collapsible={false}
+                  />
+                  <Link href="/setup">{t("auth.setupLink")}</Link>
+                </VStack>
+              ) : null}
 
               {formError !== null ? (
                 <Card data-testid="auth-error-banner">

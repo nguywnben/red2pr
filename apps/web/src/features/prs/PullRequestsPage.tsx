@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { invalidateWorkspaceQueries, useRed2PrApi } from "../../shared/api";
-import { Button, StateView, StatusGlyph, Table, type TableColumn } from "../../shared/ui";
+import { Button, StateView, StatusGlyph, Table, proportional, type TableColumn } from "../../shared/ui";
 import { formatUtcTimestamp } from "../auth";
 import { generateClientUuidV7 } from "../queues";
 
@@ -39,6 +39,10 @@ export function PullRequestsPage({ workspace, me }: PullRequestsPageProps): Reac
     },
   });
   const rows = useMemo(() => query.data?.data.items ?? [], [query.data]);
+  const selectedRow = useMemo(
+    () => rows.find((item) => item.id === selected) ?? null,
+    [rows, selected],
+  );
   const requiredCheckResults = useMemo(() => {
     const remote = detail.data?.data.remote_check;
     if (!remote) return [];
@@ -69,32 +73,38 @@ export function PullRequestsPage({ workspace, me }: PullRequestsPageProps): Reac
     });
   }, [detail.data]);
   const columns: TableColumn<Publication>[] = [
-    { key: "state", header: "Publication", renderCell: (row) => <Button label={`${row.status} · ${row.id.slice(0, 8)}`} variant="secondary" onClick={() => setSelected(row.id)} /> },
-    { key: "branch", header: "Branch", renderCell: (row) => <code>{row.branch}</code> },
-    { key: "sha", header: "Published SHA", renderCell: (row) => row.expected_commit_sha ? <code>{row.expected_commit_sha.slice(0, 12)}</code> : "Pending" },
-    { key: "review", header: "Draft review", renderCell: (row) => row.url ? <a href={row.url} target="_blank" rel="noreferrer">Open draft</a> : "Not created" },
-    { key: "time", header: "Updated", renderCell: (row) => <time dateTime={row.updated_at}>{formatUtcTimestamp(row.updated_at)}</time> },
+    { key: "state", header: "Publication", width: proportional(1.3, { minWidth: 117 }), renderCell: (row) => <Button label={`${row.status} · ${row.id.slice(0, 8)}`} variant="secondary" size="sm" onClick={() => setSelected(row.id)} /> },
+    { key: "branch", header: "Branch", width: proportional(1.8, { minWidth: 162 }), renderCell: (row) => <code>{row.branch}</code> },
+    { key: "sha", header: "Published SHA", width: proportional(1, { minWidth: 90 }), renderCell: (row) => row.expected_commit_sha ? <code>{row.expected_commit_sha.slice(0, 12)}</code> : "Pending" },
+    { key: "review", header: "Draft review", width: proportional(0.9, { minWidth: 81 }), renderCell: (row) => row.url ? <a href={row.url} target="_blank" rel="noreferrer">Open draft</a> : "Not created" },
+    { key: "time", header: "Updated", width: proportional(1.15, { minWidth: 103 }), renderCell: (row) => <time dateTime={row.updated_at}>{formatUtcTimestamp(row.updated_at)}</time> },
   ];
+  const resolvedRepairId = detail.data?.data.publication.repair_id ?? selectedRow?.repair_id ?? null;
+  const remoteCheck = detail.data?.data.remote_check ?? null;
   return <div className="red2pr-page-stack" data-testid="pull-requests-page">
     <header className="red2pr-page-header"><div><h1>Pull requests</h1><p>Draft publications and remote CI proof tied to the exact published commit.</p></div></header>
-    {query.isPending ? <StateView state="loading" skeletonVariant="table" /> : query.isError ? <StateView state={query.error instanceof Red2PrApiError && query.error.status === 403 ? "forbidden" : "error"} title="Publications could not be loaded" description={query.error instanceof Error ? query.error.message : "The publication list is unavailable."} primaryAction={{ label: "Retry", onClick: () => void query.refetch() }} /> : rows.length === 0 ? <StateView state="empty" title="No draft publications" description="A draft appears after a locally verified repair receives approval and the publisher confirms the provider state." /> : <Table aria-label="Draft publications" columns={columns} data={rows} />}
+    {query.isPending ? <StateView state="loading" skeletonVariant="table" /> : query.isError ? <StateView state={query.error instanceof Red2PrApiError && query.error.status === 403 ? "forbidden" : "error"} title="Publications could not be loaded" description={query.error instanceof Error ? query.error.message : "The publication list is unavailable."} primaryAction={{ label: "Retry", onClick: () => void query.refetch() }} /> : rows.length === 0 ? <StateView state="empty" title="No draft publications" description="A draft appears after a locally verified repair receives approval and the publisher confirms the provider state." /> : <div className="red2pr-surface red2pr-table-scroll"><Table aria-label="Draft publications" columns={columns} data={rows} /></div>}
     {selected ? <section className="red2pr-surface red2pr-card-section" aria-labelledby="publication-detail-title" data-testid="publication-detail">
-      <header className="red2pr-card-header"><div><h2 id="publication-detail-title">Publication details</h2><p>Repair <Link to={`/w/${ws}/repairs/${detail.data?.data.publication.repair_id ?? ""}`}>{detail.data?.data.publication.repair_id.slice(0, 8) ?? selected.slice(0, 8)}</Link></p></div><Button label="Close" variant="secondary" onClick={() => setSelected(null)} /></header>
+      <header className="red2pr-card-header"><div><h2 id="publication-detail-title">Publication details</h2>{resolvedRepairId ? <p className="red2pr-field-hint">Repair <Link to={`/w/${ws}/repairs/${resolvedRepairId}`}>{resolvedRepairId.slice(0, 8)}</Link></p> : null}</div><Button label="Close" variant="secondary" size="sm" onClick={() => setSelected(null)} /></header>
       {detail.isPending ? <StateView state="loading" skeletonVariant="detail" /> : detail.isError ? <StateView state="error" title="Publication detail unavailable" description={String(detail.error)} primaryAction={{ label: "Retry", onClick: () => void detail.refetch() }} /> : <>
-        <dl className="red2pr-definition-grid">
-          <div><dt>State</dt><dd>{detail.data.data.publication.status}</dd></div>
-          <div><dt>Branch</dt><dd><code>{detail.data.data.publication.branch}</code></dd></div>
-          <div><dt>Exact head SHA</dt><dd><code>{detail.data.data.publication.expected_commit_sha ?? "Not confirmed"}</code></dd></div>
-          <div><dt>Remote V-08</dt><dd><span className={`red2pr-badge-pill ${detail.data.data.remote_check?.outcome === "passed" ? "red2pr-tone-success" : detail.data.data.remote_check?.outcome === "failed" ? "red2pr-tone-danger" : "red2pr-tone-warning"}`}><StatusGlyph kind="clock" />{detail.data.data.remote_check?.outcome ?? "pending"}</span></dd></div>
-          <div><dt>Required set digest</dt><dd><code>{detail.data.data.remote_check?.expected_check_set_digest ?? "Not observed"}</code></dd></div>
+        <dl className="red2pr-kv-grid">
+          <div className="red2pr-kv-item"><dt className="red2pr-kv-term">State</dt><dd className="red2pr-kv-detail">{detail.data.data.publication.status}</dd></div>
+          <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Branch</dt><dd className="red2pr-kv-detail"><code>{detail.data.data.publication.branch}</code></dd></div>
+          <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Exact head SHA</dt><dd className="red2pr-kv-detail"><code>{detail.data.data.publication.expected_commit_sha ?? "Not confirmed"}</code></dd></div>
+          <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Remote V-08</dt><dd className="red2pr-kv-detail"><span className={`red2pr-badge-pill ${remoteCheck?.outcome === "passed" ? "red2pr-tone-success" : remoteCheck?.outcome === "failed" ? "red2pr-tone-danger" : "red2pr-tone-warning"}`}><StatusGlyph kind={remoteCheck?.outcome === "passed" ? "check" : remoteCheck?.outcome === "failed" ? "error" : "clock"} />{remoteCheck?.outcome ?? "pending"}</span></dd></div>
+          <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Required set digest</dt><dd className="red2pr-kv-detail"><code>{remoteCheck?.expected_check_set_digest ?? "Not observed"}</code></dd></div>
         </dl>
         <h3>Observed checks</h3>
-        {requiredCheckResults.length ? <ul aria-label="Required remote checks">{requiredCheckResults.map((check) => <li key={check.name}><strong>{check.name}</strong>: {check.status}</li>)}</ul> : <p role="note">No required remote checks are configured; V-08 remains unknown.</p>}
+        {requiredCheckResults.length ? (
+          <ul aria-label="Required remote checks">{requiredCheckResults.map((check) => <li key={check.name}><strong>{check.name}</strong>: {check.status}</li>)}</ul>
+        ) : remoteCheck === null || remoteCheck.outcome === "unknown" ? (
+          <p role="note" className="red2pr-field-hint">No required remote checks are configured; V-08 remains unknown.</p>
+        ) : null}
         {detail.data.data.remote_check?.observations?.length ? <ul>{detail.data.data.remote_check.observations.map((check) => <li key={`${check.external_id}-${check.check_name}`}><strong>{check.check_name}</strong>: {check.status}{check.conclusion ? ` · ${check.conclusion}` : ""}</li>)}</ul> : <p>No remote check observations are available.</p>}
-        {canReconcile ? <div className="red2pr-button-row"><div className="red2pr-field"><span className="red2pr-field-label">Refresh reason</span><InputControl aria-label="Refresh reason" value={reason} maxLength={1000} onChange={(event) => setReason(event.target.value)} /></div><Button label="Reconcile remote CI" isLoading={reconcile.isPending} isDisabled={reason.trim().length === 0 || detail.data.data.publication.status !== "published"} onClick={() => reconcile.mutate()} /></div> : <p role="note">Your current workspace role cannot request a provider refresh.</p>}
+        {canReconcile ? <div className="red2pr-button-row" style={{ alignItems: "flex-end" }}><div className="red2pr-field" style={{ flex: "1 1 240px" }}><span className="red2pr-field-label">Refresh reason</span><InputControl aria-label="Refresh reason" value={reason} placeholder="Reason to reconcile provider CI checks..." maxLength={1000} onChange={(event) => setReason(event.target.value)} /></div><Button label="Reconcile remote CI" isLoading={reconcile.isPending} isDisabled={reason.trim().length === 0 || detail.data.data.publication.status !== "published"} onClick={() => reconcile.mutate()} /></div> : <p role="note">Your current workspace role cannot request a provider refresh.</p>}
         {reconcile.error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{String(reconcile.error)}</div> : null}
       </>}
     </section> : null}
-    <p role="note">Draft reviews are never merged automatically. Remote verification requires every configured required check to pass on the exact published SHA.</p>
+    <p role="note" className="red2pr-field-hint">Draft reviews are never merged automatically. Remote verification requires every configured required check to pass on the exact published SHA.</p>
   </div>;
 }

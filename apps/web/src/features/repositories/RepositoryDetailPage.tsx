@@ -353,7 +353,7 @@ export function RepositoryDetailPage({
 
   if (detailQuery.isLoading) {
     return (
-      <div className="red2pr-page-stack" data-testid="repository-detail-page">
+      <div className="red2pr-page-stack">
         <div>
           <Link to={`/w/${encodeURIComponent(workspaceSlug)}/repositories`}>
             ← {t("repoDetail.backToCatalog")}
@@ -559,7 +559,11 @@ export function RepositoryDetailPage({
                   <dd className="red2pr-kv-detail">
                     {detail.effective_policy.allow_sandbox_execution
                       ? "Yes (within policy)"
-                      : "No (Monitor / Paused)"}
+                      : detail.repository.paused
+                        ? "No (Repository paused)"
+                        : detail.repository.mode === "monitor"
+                          ? "No (Monitor mode)"
+                          : "No (Readiness gates pending)"}
                   </dd>
                 </div>
               </dl>

@@ -20,6 +20,7 @@ import React, {
 } from "react";
 import { useI18n, type MessageKey } from "../i18n";
 import { useRed2PrTheme, type ThemeMode } from "../theme";
+import { BrandLogo } from "./BrandLogo";
 
 export type SseConnectionStatus =
   | "connected"
@@ -69,6 +70,10 @@ const NAV_ICONS: Record<string, NavGlyph> = {
   security: makeNavGlyph("M12 3 20 6v5c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6zM9 12l2 2 4-4"),
   account: makeNavGlyph("M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"),
   system: makeNavGlyph("M4 4h16v16H4zM8 8h8M8 12h5M8 16h8"),
+  workGroup: makeNavGlyph("M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"),
+  reviewGroup: makeNavGlyph("M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM8.5 12.5l2.5 2.5 4.5-5"),
+  operationsGroup: makeNavGlyph("M4 7h16M4 12h16M4 17h16M8 5v4M16 10v4M11 15v4"),
+  accessGroup: makeNavGlyph("M12 3 19 6v5c0 4.5-3 7.5-7 9.5C8 18.5 5 15.5 5 11V6z"),
 };
 
 const LiveAnnouncerContext = createContext<(message: string) => void>(() => undefined);
@@ -211,6 +216,8 @@ export interface Red2PrAppShellProps {
   readonly children: React.ReactNode;
 }
 
+let inMemoryExpandedGroups: ReadonlySet<string> | null = null;
+
 export function AppShell({
   activePath,
   activeWorkspaceSlug,
@@ -223,7 +230,7 @@ export function AppShell({
   children,
 }: Red2PrAppShellProps): React.JSX.Element {
   const { t } = useI18n();
-  const { mode, resolvedTheme, setMode } = useRed2PrTheme();
+  const { mode, setMode } = useRed2PrTheme();
 
   const resolvedNavItems = useMemo(
     () => navItems ?? buildDefaultNavItems(activeWorkspaceSlug, isInstanceOwner),
@@ -244,13 +251,40 @@ export function AppShell({
             ? "access"
             : null
     : null;
-  const [expandedNavGroup, setExpandedNavGroup] = useState(activeExpandableGroup);
+  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(
+    () => {
+      const base = inMemoryExpandedGroups ?? new Set(["work", "review"]);
+      const initial = new Set([...base, ...(activeExpandableGroup ? [activeExpandableGroup] : [])]);
+      inMemoryExpandedGroups = initial;
+      return initial;
+    },
+  );
   const [prevActiveGroup, setPrevActiveGroup] = useState(activeExpandableGroup);
 
   if (prevActiveGroup !== activeExpandableGroup) {
     setPrevActiveGroup(activeExpandableGroup);
-    setExpandedNavGroup(activeExpandableGroup);
+    if (activeExpandableGroup !== null && !expandedGroups.has(activeExpandableGroup)) {
+      setExpandedGroups((prev) => {
+        const next = new Set(prev);
+        next.add(activeExpandableGroup);
+        inMemoryExpandedGroups = next;
+        return next;
+      });
+    }
   }
+
+  const setGroupExpanded = useCallback((groupId: string, isExpanded: boolean): void => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (isExpanded) {
+        next.add(groupId);
+      } else {
+        next.delete(groupId);
+      }
+      inMemoryExpandedGroups = next;
+      return next;
+    });
+  }, []);
 
   const workspaceOptions = workspaces.map((workspace) => ({
     value: workspace.slug,
@@ -272,13 +306,7 @@ export function AppShell({
               <SideNavHeading
                 className="red2pr-brand-heading"
                 heading={t("app.brand")}
-                icon={
-                  <img
-                    className="red2pr-sidebar-logo"
-                    src={resolvedTheme === "dark" ? "/brand/red2pr-logo-dark.svg" : "/brand/red2pr-logo.svg"}
-                    alt={t("app.brand")}
-                  />
-                }
+                icon={<BrandLogo className="red2pr-sidebar-logo" label={t("app.brand")} />}
                 headingHref="/"
               />
             }
@@ -311,24 +339,25 @@ export function AppShell({
           >
             <SideNavSection
               title={workspaces.find((workspace) => workspace.slug === activeWorkspaceSlug)?.name ?? workspaces[0]?.name ?? "No workspace"}
+              isHeaderHidden={workspaces.length > 1}
             >
               {resolvedNavItems.filter((item) => item.id === "overview").map((item) => (
                 <SideNavItem key={item.id} label={t(item.labelKey)} href={item.href}
                   isSelected={activePath === item.href || activePath.startsWith(`${item.href}/`)}
                   icon={NAV_ICONS[item.id]} />
               ))}
-              <SideNavItem label={t("app.nav.group.work")} icon={NAV_ICONS.repositories} collapsible={{
-                isCollapsed: expandedNavGroup !== "work",
-                onCollapsedChange: (isCollapsed) => setExpandedNavGroup(isCollapsed ? null : "work"),
+              <SideNavItem label={t("app.nav.group.work")} icon={NAV_ICONS.workGroup} collapsible={{
+                isCollapsed: !expandedGroups.has("work"),
+                onCollapsedChange: (isCollapsed) => setGroupExpanded("work", !isCollapsed),
               }}>
                 {resolvedNavItems.filter((item) => ["repositories", "pipelines", "repairs"].includes(item.id)).map((item) => (
                   <SideNavItem key={item.id} label={t(item.labelKey)} href={item.href}
                     isSelected={activePath === item.href || activePath.startsWith(`${item.href}/`)} icon={NAV_ICONS[item.id]} />
                 ))}
               </SideNavItem>
-              <SideNavItem label={t("app.nav.group.review")} icon={NAV_ICONS.approvals} collapsible={{
-                isCollapsed: expandedNavGroup !== "review",
-                onCollapsedChange: (isCollapsed) => setExpandedNavGroup(isCollapsed ? null : "review"),
+              <SideNavItem label={t("app.nav.group.review")} icon={NAV_ICONS.reviewGroup} collapsible={{
+                isCollapsed: !expandedGroups.has("review"),
+                onCollapsedChange: (isCollapsed) => setGroupExpanded("review", !isCollapsed),
               }}>
                 {resolvedNavItems.filter((item) => ["prs", "approvals", "notifications"].includes(item.id)).map((item) => (
                   <SideNavItem key={item.id} label={t(item.labelKey)} href={item.href}
@@ -337,10 +366,10 @@ export function AppShell({
               </SideNavItem>
               <SideNavItem
                 label={t("app.nav.group.operations")}
-                icon={NAV_ICONS.agents}
+                icon={NAV_ICONS.operationsGroup}
                 collapsible={{
-                  isCollapsed: expandedNavGroup !== "operations",
-                  onCollapsedChange: (isCollapsed) => setExpandedNavGroup(isCollapsed ? null : "operations"),
+                  isCollapsed: !expandedGroups.has("operations"),
+                  onCollapsedChange: (isCollapsed) => setGroupExpanded("operations", !isCollapsed),
                 }}
               >
                 {resolvedNavItems.filter((item) => ["agents", "models", "workers", "queues", "integrations"].includes(item.id)).map((item) => (
@@ -355,10 +384,10 @@ export function AppShell({
               ))}
               <SideNavItem
                 label={t("app.nav.group.access")}
-                icon={NAV_ICONS.members}
+                icon={NAV_ICONS.accessGroup}
                 collapsible={{
-                  isCollapsed: expandedNavGroup !== "access",
-                  onCollapsedChange: (isCollapsed) => setExpandedNavGroup(isCollapsed ? null : "access"),
+                  isCollapsed: !expandedGroups.has("access"),
+                  onCollapsedChange: (isCollapsed) => setGroupExpanded("access", !isCollapsed),
                 }}
               >
                 {resolvedNavItems.filter((item) => ["members", "security"].includes(item.id)).map((item) => (

@@ -701,6 +701,10 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
     );
   }
 
+  if (modelsQuery.isPending) {
+    return <StateView state="loading" skeletonVariant="form" />;
+  }
+
   const availableConsents = modelsState?.available_inference_consents ?? [];
   const wonderVerified =
     modelsState?.models.find((m) => m.model_id === "muse-wonder-1.0")?.status === "available";

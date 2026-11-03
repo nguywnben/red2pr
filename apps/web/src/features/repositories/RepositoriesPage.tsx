@@ -18,10 +18,11 @@ import { useI18n } from "../../shared/i18n";
 import {
   Button,
   Dialog,
-  Selector,
+  SelectorControl,
   StateView,
   StatusGlyph,
   Table,
+  pixel,
   sanitizeUntrustedText,
   useLiveAnnouncer,
   type TableColumn,
@@ -261,6 +262,7 @@ export function RepositoriesPage({ workspace, me }: RepositoriesPageProps): Reac
       baseCols.push({
         key: "id",
         header: "Select",
+        width: pixel(76),
         renderCell: (row) => {
           const cleanName = sanitizeUntrustedText(row.name).text;
           return (
@@ -447,35 +449,58 @@ export function RepositoriesPage({ workspace, me }: RepositoriesPageProps): Reac
             <label className="red2pr-field-label" htmlFor={providerSelectId}>
               {t("repositories.filterProviderLabel")}
             </label>
-            <Selector id={providerSelectId} label={t("repositories.filterProviderLabel")} isLabelHidden value={providerFilter} onChange={(value) => { setProviderFilter(value as ProviderKind | ""); resetPagination(); }} options={[{ value: "", label: "All providers" }, { value: "github", label: "GitHub" }, { value: "gitlab", label: "GitLab" }]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+            <SelectorControl id={providerSelectId} value={providerFilter} onChange={(ev) => { setProviderFilter(ev.target.value as ProviderKind | ""); resetPagination(); }}>
+              <option value="">All providers</option>
+              <option value="github">GitHub</option>
+              <option value="gitlab">GitLab</option>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={modeSelectId}>
               {t("repositories.filterModeLabel")}
             </label>
-            <Selector id={modeSelectId} label={t("repositories.filterModeLabel")} isLabelHidden value={modeFilter} onChange={(value) => { setModeFilter(value as RepositoryMode | ""); resetPagination(); }} options={[{ value: "", label: "All modes" }, { value: "monitor", label: "Monitor" }, { value: "approval", label: "Approval" }, { value: "auto_repair", label: "Auto-Repair" }]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+            <SelectorControl id={modeSelectId} value={modeFilter} onChange={(ev) => { setModeFilter(ev.target.value as RepositoryMode | ""); resetPagination(); }}>
+              <option value="">All modes</option>
+              <option value="monitor">Monitor</option>
+              <option value="approval">Approval</option>
+              <option value="auto_repair">Auto-Repair</option>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={hazardSelectId}>
               {t("repositories.filterHazardLabel")}
             </label>
-            <Selector id={hazardSelectId} label={t("repositories.filterHazardLabel")} isLabelHidden value={hazardFilter} onChange={(value) => { setHazardFilter(value as WorkflowHazardStatus | ""); resetPagination(); }} options={[{ value: "", label: "All workflow postures" }, { value: "clean", label: "Clean" }, { value: "flagged", label: "Flagged (SEC-031)" }, { value: "unscanned", label: "Unscanned" }]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+            <SelectorControl id={hazardSelectId} value={hazardFilter} onChange={(ev) => { setHazardFilter(ev.target.value as WorkflowHazardStatus | ""); resetPagination(); }}>
+              <option value="">All workflow postures</option>
+              <option value="clean">Clean</option>
+              <option value="flagged">Flagged (SEC-031)</option>
+              <option value="unscanned">Unscanned</option>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={pausedSelectId}>
               {t("repositories.filterPausedLabel")}
             </label>
-            <Selector id={pausedSelectId} label={t("repositories.filterPausedLabel")} isLabelHidden value={pausedFilter} onChange={(value) => { setPausedFilter(value as "" | "paused" | "active"); resetPagination(); }} options={[{ value: "", label: "All pause states" }, { value: "active", label: "Active (unpaused)" }, { value: "paused", label: "Paused" }]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+            <SelectorControl id={pausedSelectId} value={pausedFilter} onChange={(ev) => { setPausedFilter(ev.target.value as "" | "paused" | "active"); resetPagination(); }}>
+              <option value="">All pause states</option>
+              <option value="active">Active (unpaused)</option>
+              <option value="paused">Paused</option>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={tagSelectId}>
               {t("repositories.filterTagLabel")}
             </label>
-            <Selector id={tagSelectId} label={t("repositories.filterTagLabel")} isLabelHidden value={tagFilter} onChange={(value) => { setTagFilter(value); resetPagination(); }} options={[{ value: "", label: "All scoped tags" }, ...(facets?.tags ?? []).map((tg) => ({ value: tg, label: sanitizeUntrustedText(tg).text }))]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+            <SelectorControl id={tagSelectId} value={tagFilter} onChange={(ev) => { setTagFilter(ev.target.value); resetPagination(); }}>
+              <option value="">All scoped tags</option>
+              {(facets?.tags ?? []).map((tg) => (
+                <option key={tg} value={tg}>{sanitizeUntrustedText(tg).text}</option>
+              ))}
+            </SelectorControl>
           </div>
         </div>
 
@@ -681,14 +706,23 @@ export function RepositoriesPage({ workspace, me }: RepositoriesPageProps): Reac
             <label className="red2pr-field-label" htmlFor={bulkModeId}>
               Target Mode (optional)
             </label>
-            <Selector id={bulkModeId} label="Target Mode (optional)" isLabelHidden value={bulkMode} onChange={(value) => { setBulkMode(value as "" | RepositoryMode); setBulkPreview(null); }} options={[{ value: "", label: "Keep current mode" }, { value: "monitor", label: "Monitor" }, { value: "approval", label: "Approval" }, { value: "auto_repair", label: "Auto-Repair (5m step-up + readiness gates)" }]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+            <SelectorControl id={bulkModeId} value={bulkMode} onChange={(ev) => { setBulkMode(ev.target.value as "" | RepositoryMode); setBulkPreview(null); }}>
+              <option value="">Keep current mode</option>
+              <option value="monitor">Monitor</option>
+              <option value="approval">Approval</option>
+              <option value="auto_repair">Auto-Repair (5m step-up + readiness gates)</option>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field">
             <label className="red2pr-field-label" htmlFor={bulkPausedId}>
               Pause State (optional)
             </label>
-            <Selector id={bulkPausedId} label="Pause State (optional)" isLabelHidden value={bulkPaused} onChange={(value) => { setBulkPaused(value as "" | "pause" | "resume"); setBulkPreview(null); }} options={[{ value: "", label: "Keep current pause state" }, { value: "pause", label: "Pause selected repositories" }, { value: "resume", label: "Resume selected repositories" }]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+            <SelectorControl id={bulkPausedId} value={bulkPaused} onChange={(ev) => { setBulkPaused(ev.target.value as "" | "pause" | "resume"); setBulkPreview(null); }}>
+              <option value="">Keep current pause state</option>
+              <option value="pause">Pause selected repositories</option>
+              <option value="resume">Resume selected repositories</option>
+            </SelectorControl>
           </div>
 
           <div className="red2pr-field">

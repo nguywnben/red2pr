@@ -56,23 +56,31 @@ export function AnalyticsFunnel({ data }: { readonly data: WorkspaceAnalyticsRes
     denominator: stage.denominator ?? "—",
   }));
   const columns: TableColumn<FunnelRow>[] = [
-    { key: "stage", header: "Stage", width: proportional(2, { minWidth: 120 }) },
-    { key: "count", header: "Count", width: proportional(1, { minWidth: 76 }) },
-    { key: "numerator", header: "Numerator", width: proportional(1, { minWidth: 112 }) },
-    { key: "denominator", header: "Denominator", width: proportional(1, { minWidth: 112 }) },
+    { key: "stage", header: "Stage", width: proportional(2, { minWidth: 160 }) },
+    { key: "count", header: "Count", width: proportional(1, { minWidth: 80 }) },
+    { key: "numerator", header: "Numerator", width: proportional(1, { minWidth: 80 }) },
+    { key: "denominator", header: "Denominator", width: proportional(1, { minWidth: 80 }) },
   ];
 
   return (
-    <section className="red2pr-surface red2pr-card-section" aria-labelledby="repair-funnel-title">
+    <section className="red2pr-surface red2pr-card-section analytics-funnel-section" aria-labelledby="repair-funnel-title">
       <h2 id="repair-funnel-title">Repair funnel</h2>
       <ol aria-label="Repair funnel chart" className="analytics-funnel-bars">
         {data.funnel.map((stage) => (
           <li key={stage.key}>
-            <span>{stage.key.replaceAll("_", " ")}</span>
-            <span
-              className="analytics-funnel-bar"
-              style={{ width: `${data.funnel[0]?.value ? Math.max(2, (stage.value / data.funnel[0].value) * 100) : 0}%` }}
-            />
+            <span className="analytics-funnel-stage-label">{stage.key.replaceAll("_", " ")}</span>
+            <span className="analytics-funnel-track">
+              <span
+                className="analytics-funnel-bar"
+                style={{
+                  width: `${
+                    stage.value > 0 && data.funnel[0]?.value
+                      ? Math.min(100, Math.max(4, (stage.value / data.funnel[0].value) * 100))
+                      : 0
+                  }%`,
+                }}
+              />
+            </span>
             <strong>{stage.value}</strong>
           </li>
         ))}
@@ -103,12 +111,12 @@ export function AnalyticsSummary({ data }: { readonly data: WorkspaceAnalyticsRe
     usageRows: cost.usage_rows,
   }));
   const columns: TableColumn<CostRow>[] = [
-    { key: "currency", header: "Currency", width: proportional(1, { minWidth: 96 }) },
-    { key: "settled", header: "Settled", width: proportional(1, { minWidth: 100 }) },
-    { key: "estimated", header: "Estimated unsettled", width: proportional(2, { minWidth: 145 }) },
-    { key: "total", header: "Total", width: proportional(1, { minWidth: 90 }) },
-    { key: "unknownRows", header: "Unknown billing rows", width: proportional(2, { minWidth: 145 }) },
-    { key: "usageRows", header: "Usage rows", width: proportional(1, { minWidth: 90 }) },
+    { key: "currency", header: "Currency", width: proportional(1, { minWidth: 72 }) },
+    { key: "settled", header: "Settled", width: proportional(1, { minWidth: 72 }) },
+    { key: "estimated", header: "Estimated unsettled", width: proportional(1.8, { minWidth: 130 }) },
+    { key: "total", header: "Total", width: proportional(1, { minWidth: 72 }) },
+    { key: "unknownRows", header: "Unknown billing rows", width: proportional(1.8, { minWidth: 130 }) },
+    { key: "usageRows", header: "Usage rows", width: proportional(1, { minWidth: 72 }) },
   ];
 
   return (
@@ -137,7 +145,7 @@ export function AnalyticsSummary({ data }: { readonly data: WorkspaceAnalyticsRe
           </Text>
         </>
       )}
-      <p>Projection watermark: <time dateTime={data.watermark}>{data.watermark}</time></p>
+      <p className="red2pr-field-hint" style={{ margin: 0 }}>Projection watermark: <time dateTime={data.watermark}>{data.watermark}</time></p>
     </section>
   );
 }

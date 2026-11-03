@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { invalidateWorkspaceQueries, useRed2PrApi } from "../../shared/api";
-import { Button, StateView, StatusGlyph } from "../../shared/ui";
+import { Button, StateView, StatusGlyph, sanitizeUntrustedText } from "../../shared/ui";
 import { StepUpDialog, extractAuthProblemSummary, formatUtcTimestamp } from "../auth";
 import { generateClientUuidV7 } from "../queues";
 
@@ -59,6 +59,29 @@ export function ApprovalsInboxPage({ workspace, me }: ApprovalsInboxPageProps): 
     },
   });
   const entries = useMemo(() => approvalQuery.data?.data.items ?? [], [approvalQuery.data]);
+  const repositoriesQuery = useQuery({
+    queryKey: ["workspace", ws, "repositories", "approval-lookup"],
+    queryFn: () => api.listRepositories(ws, { limit: 100 }),
+    enabled: entries.length > 0,
+    retry: false,
+  });
+  const repoNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const repo of repositoriesQuery.data?.data.items ?? []) {
+      if (repo.id && repo.name) map.set(repo.id, sanitizeUntrustedText(repo.name).text);
+    }
+    const cached = queryClient.getQueriesData<{ data?: { items?: readonly { id: string; name: string }[] } }>({
+      queryKey: ["workspace", ws, "repositories"],
+    });
+    for (const [, payload] of cached) {
+      for (const repo of payload?.data?.items ?? []) {
+        if (repo.id && repo.name && !map.has(repo.id)) map.set(repo.id, sanitizeUntrustedText(repo.name).text);
+      }
+    }
+    return map;
+  }, [queryClient, repositoriesQuery.data, ws]);
+  const nextCursor = approvalQuery.data?.data.next_cursor ?? null;
+  const showPagination = entries.length > 0 && (cursorHistory.length > 0 || Boolean(nextCursor));
   const decide = useCallback((entry: ApprovalInboxEntry, decision: "approve" | "reject") => {
     if (!me.mfa_enabled) {
       setApprovalError("MFA must be enabled before deciding an approval.");
@@ -71,27 +94,27 @@ export function ApprovalsInboxPage({ workspace, me }: ApprovalsInboxPageProps): 
   return <div className="red2pr-page-stack" data-testid="approvals-inbox-page">
     <header className="red2pr-page-header"><div><h1>Approvals</h1><p>Each decision applies to one verified patch, base SHA, target, policy revision, and expiry.</p></div></header>
     {approvalError ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{approvalError}</div> : null}
-    {!me.mfa_enabled ? <div role="status" className="red2pr-inline-alert red2pr-tone-warning">Enable MFA in Account before you can decide approvals.</div> : null}
+    {!me.mfa_enabled ? <div role="status" className="red2pr-inline-alert red2pr-tone-warning">Enable MFA in <Link to="/account">Account</Link> before you can decide approvals.</div> : null}
     {approvalQuery.isPending ? <StateView state="loading" skeletonVariant="list" /> : approvalQuery.isError ? <StateView state={approvalQuery.error instanceof Red2PrApiError && approvalQuery.error.status === 403 ? "forbidden" : "error"} title="Approvals could not be loaded" description={approvalQuery.error instanceof Error ? approvalQuery.error.message : "The approval inbox is unavailable."} primaryAction={{ label: "Retry", onClick: () => void approvalQuery.refetch() }} /> : entries.length === 0 ? <StateView state="empty" title="No pending approvals" description="A request appears after a locally verified patch enters a repository with approval policy." /> : <div className="red2pr-page-stack">
       {entries.map((entry) => {
         const approval = entry.approval;
         const busy = decisionMutation.isPending && decisionMutation.variables?.entry.approval.id === approval.id;
         return <article key={approval.id} className="red2pr-surface red2pr-card-section" data-testid={`approval-${approval.id}`}>
-          <header className="red2pr-card-header"><div><h2>{entry.scope_description}</h2><p>Repair <Link to={`/w/${ws}/repairs/${approval.repair_id}`}>{approval.repair_id.slice(0, 8)}</Link> · {entry.risk_level} risk</p></div><span className="red2pr-badge-pill red2pr-tone-warning"><StatusGlyph kind="clock" />Pending</span></header>
-          <dl className="red2pr-definition-grid">
-            <div><dt>Repository</dt><dd><code>{approval.repository_id}</code></dd></div>
-            <div><dt>Base SHA</dt><dd><code>{approval.base_sha}</code></dd></div>
-            <div><dt>Patch digest</dt><dd><code>{approval.patch_digest}</code></dd></div>
-            <div><dt>Target</dt><dd><code>{approval.target_ref}</code></dd></div>
-            <div><dt>Policy revision</dt><dd>{approval.policy_revision}</dd></div>
-            <div><dt>Expires</dt><dd><time dateTime={approval.expires_at}>{formatUtcTimestamp(approval.expires_at)}</time></dd></div>
+          <header className="red2pr-card-header"><div><h2>{entry.scope_description}</h2><p className="red2pr-field-hint">Repair <Link to={`/w/${ws}/repairs/${approval.repair_id}`}>{approval.repair_id.slice(0, 8)}</Link> · {entry.risk_level} risk</p></div><span className="red2pr-badge-pill red2pr-tone-warning"><StatusGlyph kind="clock" />Pending</span></header>
+          <dl className="red2pr-kv-grid">
+            <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Repository</dt><dd className="red2pr-kv-detail"><code>{repoNameById.get(approval.repository_id) ?? approval.repository_id}</code></dd></div>
+            <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Base SHA</dt><dd className="red2pr-kv-detail"><code>{approval.base_sha}</code></dd></div>
+            <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Patch digest</dt><dd className="red2pr-kv-detail"><code>{approval.patch_digest}</code></dd></div>
+            <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Target</dt><dd className="red2pr-kv-detail"><code>{approval.target_ref}</code></dd></div>
+            <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Policy revision</dt><dd className="red2pr-kv-detail">{approval.policy_revision}</dd></div>
+            <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Expires</dt><dd className="red2pr-kv-detail"><time dateTime={approval.expires_at}>{formatUtcTimestamp(approval.expires_at)}</time></dd></div>
           </dl>
           {entry.sensitive_change ? <p role="note" className="red2pr-tone-warning">Sensitive test/configuration change: the requester cannot approve this request.</p> : null}
           {mayDecide ? <div className="red2pr-button-row"><Button label="Approve" variant="primary" isLoading={busy && decisionMutation.variables?.decision === "approve"} isDisabled={decisionMutation.isPending || !me.mfa_enabled} onClick={() => decide(entry, "approve")} /><Button label="Reject" variant="secondary" isLoading={busy && decisionMutation.variables?.decision === "reject"} isDisabled={decisionMutation.isPending || !me.mfa_enabled} onClick={() => decide(entry, "reject")} /></div> : <p role="note">Your current workspace role cannot decide this approval.</p>}
         </article>;
       })}
     </div>}
-    {entries.length > 0 ? <nav className="red2pr-button-row" aria-label="Approval pages"><Button label="Previous page" variant="secondary" isDisabled={cursorHistory.length === 0} onClick={() => { const previous = cursorHistory.at(-1) ?? null; setCursorHistory((items) => items.slice(0, -1)); setCursor(previous); }} /><span>Snapshot {formatUtcTimestamp(approvalQuery.data?.data.snapshot_at ?? new Date().toISOString())}</span><Button label="Next page" variant="secondary" isDisabled={!approvalQuery.data?.data.next_cursor} onClick={() => { const next = approvalQuery.data?.data.next_cursor; if (next) { setCursorHistory((items) => [...items, cursor]); setCursor(next); } }} /></nav> : null}
+    {showPagination ? <nav className="red2pr-button-row" aria-label="Approval pages"><Button label="Previous page" variant="secondary" isDisabled={cursorHistory.length === 0} onClick={() => { const previous = cursorHistory.at(-1) ?? null; setCursorHistory((items) => items.slice(0, -1)); setCursor(previous); }} /><span className="red2pr-field-hint">Snapshot {formatUtcTimestamp(approvalQuery.data?.data.snapshot_at ?? new Date().toISOString())}</span><Button label="Next page" variant="secondary" isDisabled={!nextCursor} onClick={() => { if (nextCursor) { setCursorHistory((items) => [...items, cursor]); setCursor(nextCursor); } }} /></nav> : null}
     <StepUpDialog isOpen={stepUpOpen} mfaEnabled={me.mfa_enabled} onOpenChange={(open) => { setStepUpOpen(open); if (!open) retryAfterStepUp.current = null; }} onVerified={() => {
       const attempt = retryAfterStepUp.current;
       retryAfterStepUp.current = null;

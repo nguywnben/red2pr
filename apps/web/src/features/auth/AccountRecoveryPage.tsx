@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useRed2PrApi } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
-import { Banner, Button, Card, Center, Heading, Link, Text, TextInput, VStack } from "../../shared/ui";
+import { Banner, BrandLogo, Button, Card, Center, Heading, Link, Text, TextInput, VStack } from "../../shared/ui";
 import { extractAuthProblemSummary, resolveSafePostLoginPath, type AuthProblemSummary } from "./authHelpers";
 
 export function AccountRecoveryPage(): React.JSX.Element {
@@ -52,7 +52,8 @@ export function AccountRecoveryPage(): React.JSX.Element {
         <VStack gap={4} width="100%" maxWidth={440}>
           <Card width="100%" maxWidth={440}>
             <VStack gap={4}>
-              <VStack gap={1}>
+              <VStack gap={1.5}>
+                <BrandLogo style={{ height: 28, width: "auto" }} decorative />
                 <Heading level={1}>Recover your account</Heading>
                 <Text type="supporting" as="p">Use a single-use recovery code issued for this account.</Text>
               </VStack>

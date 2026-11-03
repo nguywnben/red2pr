@@ -19,7 +19,7 @@ import { useI18n } from "../../shared/i18n";
 import {
   Button,
   SafeLogViewer,
-  Selector,
+  SelectorControl,
   StateView,
   StatusGlyph,
   Table,
@@ -458,34 +458,38 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
           <label htmlFor={repoSelectId} className="red2pr-field-label">
             {t("pipelines.filterRepoLabel")}
           </label>
-          <Selector
+          <SelectorControl
             id={repoSelectId}
-            label={t("pipelines.filterRepoLabel")}
-            isLabelHidden
-            options={[{ value: "all", label: "All authorized repositories" }, ...(reposQuery.data?.data.items ?? []).map((repo) => ({ value: repo.id, label: sanitizeUntrustedText(repo.name).text }))]}
             value={repoFilter}
-            onChange={(value) => { setRepoFilter(value); setCursor(null); }}
-            hasClear={false}
-            hasSearch={false}
-            placeholder="Select..."
-            size="md"
-            variant="input"
-            presentation="popover"
-          />
+            onChange={(ev) => { setRepoFilter(ev.target.value); setCursor(null); }}
+          >
+            <option value="all">All authorized repositories</option>
+            {(reposQuery.data?.data.items ?? []).map((repo) => (
+              <option key={repo.id} value={repo.id}>{sanitizeUntrustedText(repo.name).text}</option>
+            ))}
+          </SelectorControl>
         </div>
 
         <div className="red2pr-field">
           <label htmlFor={conclusionSelectId} className="red2pr-field-label">
             {t("pipelines.filterConclusionLabel")}
           </label>
-          <Selector id={conclusionSelectId} label={t("pipelines.filterConclusionLabel")} isLabelHidden options={CONCLUSION_OPTIONS.map((opt) => ({ value: opt, label: opt }))} value={conclusionFilter} onChange={(value) => { setConclusionFilter(value as "all" | CiConclusion); setCursor(null); }} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+          <SelectorControl id={conclusionSelectId} value={conclusionFilter} onChange={(ev) => { setConclusionFilter(ev.target.value as "all" | CiConclusion); setCursor(null); }}>
+            {CONCLUSION_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </SelectorControl>
         </div>
 
         <div className="red2pr-field">
           <label htmlFor={flakySelectId} className="red2pr-field-label">
             {t("pipelines.filterFlakyLabel")}
           </label>
-          <Selector id={flakySelectId} label={t("pipelines.filterFlakyLabel")} isLabelHidden options={FLAKY_OPTIONS.map((opt) => ({ value: opt, label: opt }))} value={flakyFilter} onChange={(value) => { setFlakyFilter(value as "all" | FlakyClassification); setCursor(null); }} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
+          <SelectorControl id={flakySelectId} value={flakyFilter} onChange={(ev) => { setFlakyFilter(ev.target.value as "all" | FlakyClassification); setCursor(null); }}>
+            {FLAKY_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </SelectorControl>
         </div>
 
         <div className="red2pr-field">

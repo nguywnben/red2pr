@@ -198,7 +198,7 @@ function AgentProfileCard({
           <label htmlFor={enabledId}>Enable {displayName} execution</label>
         </div>
 
-        <div className="red2pr-kv-grid">
+        <div className="red2pr-form-grid-3">
           <div className="red2pr-field-group">
             <label className="red2pr-field-label" htmlFor={modelId}>
               Primary Meta Muse model ({profile.role_key})
@@ -672,6 +672,10 @@ export function AgentsPage({ workspace, me }: AgentsPageProps): React.JSX.Elemen
         }}
       />
     );
+  }
+
+  if (profilesQuery.isPending) {
+    return <StateView state="loading" skeletonVariant="form" />;
   }
 
   return (

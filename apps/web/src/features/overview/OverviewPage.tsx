@@ -29,12 +29,18 @@ export function OverviewPage({ workspace }: OverviewPageProps): React.JSX.Elemen
   const hasValidAnalytics = isWorkspaceAnalyticsResponse(analytics);
   return (
     <section className="red2pr-page-stack" data-testid="overview-page">
-      <header><h1>Workspace overview</h1><p>Repair outcomes and spend across repositories currently visible to you.</p><Link to={`/w/${encodeURIComponent(ws)}/analytics`}>Open analytics and exports</Link></header>
+      <header className="red2pr-page-header">
+        <div>
+          <h1>Workspace overview</h1>
+          <p>Repair outcomes and spend across repositories currently visible to you.</p>
+        </div>
+        <Link className="red2pr-inline-link" to={`/w/${encodeURIComponent(ws)}/analytics`}>Open analytics and exports<span aria-hidden="true"> →</span></Link>
+      </header>
       {query.isPending ? <StateView state="loading" skeletonVariant="metrics" /> : null}
       {query.isError ? <StateView state="error" title="Overview unavailable" description="Analytics could not be loaded. Your workspace data remains protected." primaryAction={{ label: "Retry", onClick: () => { void query.refetch(); } }} /> : null}
       {query.data && !hasValidAnalytics ? <StateView state="error" title="Overview data unavailable" description="The analytics response was incomplete, so it could not be displayed safely." primaryAction={{ label: "Reload data", onClick: () => { void query.refetch(); } }} /> : null}
       {hasValidAnalytics ? <>
-        <p>
+        <p className="red2pr-field-hint" style={{ margin: 0 }}>
           Showing {analytics.repository_count} currently authorized repositories from{" "}
           <time dateTime={analytics.range_start}>{formatDisplayTimestamp(analytics.range_start).localText}</time>{" "}
           to <time dateTime={analytics.range_end}>{formatDisplayTimestamp(analytics.range_end).localText}</time> local time.

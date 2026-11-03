@@ -17,6 +17,7 @@ import { invalidateWorkspaceQueries, useRed2PrApi } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 import {
   Button,
+  CodeBlock,
   ConfirmActionButton,
   Dialog,
   StateView,
@@ -521,17 +522,12 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
         header: t("members.colActions"),
         renderCell: (row) =>
           row.active ? (
-            <ConfirmActionButton
+            <Button
               label={t("members.revokeBreakGlassAction")}
               variant="destructive"
               size="sm"
               isDisabled={revokeBreakGlassMutation.isPending}
-              confirmationTitle="Revoke temporary access?"
-              confirmationDescription="This ends the audited break-glass read-only grant immediately."
-              confirmationActionLabel="Revoke access"
-              onConfirm={async () => {
-                await revokeBreakGlassMutation.mutateAsync(row.id);
-              }}
+              onClick={() => revokeBreakGlassMutation.mutate(row.id)}
             />
           ) : (
             <span className="red2pr-field-hint">—</span>
@@ -811,18 +807,16 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
             </div>
             <div className="red2pr-field">
               <span className="red2pr-field-label">{t("members.inviteOnceTokenLabel")}</span>
-              <code
+              <CodeBlock
                 data-testid="invite-once-token-value"
-                style={{
-                  display: "block",
-                  padding: "10px 12px",
-                  borderRadius: 6,
-                  wordBreak: "break-all",
-                  border: "1px solid currentColor",
-                }}
-              >
-                {createdInviteOnce.invite_token}
-              </code>
+                code={createdInviteOnce.invite_token}
+                language="plaintext"
+                hasLanguageLabel={false}
+                hasCopyButton
+                isWrapped
+                size="sm"
+                width="100%"
+              />
             </div>
           </div>
         ) : (

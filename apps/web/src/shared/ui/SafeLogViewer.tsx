@@ -3,11 +3,13 @@ import { Pagination } from "@astryxdesign/core/Pagination";
 import { observeElementRect, useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useI18n } from "../i18n";
+import { CodeBlock } from "./AstryxComponents";
 import { Button } from "./Button";
 import { sanitizeUntrustedText } from "./sanitizeText";
 
 const FAST_SAFE_PRINTABLE_ASCII_RE = /^[\u0020-\u007e\t]*$/;
 const LOG_ROW_HEIGHT_PX = 22;
+const VIRTUALIZATION_ROW_THRESHOLD = 500;
 
 export interface SafeLogViewerProps {
   readonly lines?: readonly string[];
@@ -45,7 +47,8 @@ export function SafeLogViewer({
   const [page, setPage] = useState<number>(1);
 
   const { sanitizedLines, strippedCount } = useMemo(() => {
-    const rawLines = lines ?? (rawText !== undefined && rawText.length > 0 ? rawText.split(/\r?\n/) : []);
+    const trimmedRaw = rawText !== undefined ? rawText.replace(/\r?\n$/, "") : "";
+    const rawLines = lines ?? (trimmedRaw.length > 0 ? trimmedRaw.split(/\r?\n/) : []);
     let totalStripped = 0;
     const processed: SanitizedLogLine[] = new Array<SanitizedLogLine>(rawLines.length);
 
@@ -71,8 +74,19 @@ export function SafeLogViewer({
     return sanitizedLines.filter((item) => item.text.toLowerCase().includes(trimmed));
   }, [query, sanitizedLines]);
 
+  const useAstryxCodeBlock =
+    mode === "virtualized" &&
+    !isStreaming &&
+    filteredLines.length > 0 &&
+    filteredLines.length <= VIRTUALIZATION_ROW_THRESHOLD;
+
+  const codeBlockText = useMemo(
+    () => (useAstryxCodeBlock ? filteredLines.map((item) => item.text).join("\n") : ""),
+    [filteredLines, useAstryxCodeBlock],
+  );
+
   const virtualizer = useVirtualizer({
-    count: mode === "virtualized" ? filteredLines.length : 0,
+    count: mode === "virtualized" && !useAstryxCodeBlock ? filteredLines.length : 0,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => LOG_ROW_HEIGHT_PX,
     overscan: 8,
@@ -87,14 +101,22 @@ export function SafeLogViewer({
   });
 
   useEffect(() => {
-    if (mode !== "virtualized" || !isStreaming || isPaused || filteredLines.length === 0) {
+    if (
+      mode !== "virtualized" ||
+      useAstryxCodeBlock ||
+      !isStreaming ||
+      isPaused ||
+      filteredLines.length === 0
+    ) {
       return;
     }
     virtualizer.scrollToIndex(filteredLines.length - 1, { align: "end" });
-  }, [filteredLines.length, isPaused, isStreaming, mode, virtualizer]);
+  }, [filteredLines.length, isPaused, isStreaming, mode, useAstryxCodeBlock, virtualizer]);
 
   const resolvedTitle = title ?? t("logs.title");
-  const virtualItems = mode === "virtualized" ? virtualizer.getVirtualItems() : [];
+  const effectiveHeight = Math.min(height, Math.max(88, filteredLines.length * LOG_ROW_HEIGHT_PX + 12));
+  const virtualItems =
+    mode === "virtualized" && !useAstryxCodeBlock ? virtualizer.getVirtualItems() : [];
 
   const pagedSlice = useMemo(() => {
     if (mode !== "paged") {
@@ -107,13 +129,17 @@ export function SafeLogViewer({
   const rangeStart =
     filteredLines.length === 0
       ? 0
-      : mode === "virtualized"
+      : useAstryxCodeBlock
+        ? 1
+        : mode === "virtualized"
         ? (virtualItems[0]?.index ?? 0) + 1
         : (page - 1) * pageSize + 1;
   const rangeEnd =
     filteredLines.length === 0
       ? 0
-      : mode === "virtualized"
+      : useAstryxCodeBlock
+        ? filteredLines.length
+        : mode === "virtualized"
         ? (virtualItems[virtualItems.length - 1]?.index ?? 0) + 1
         : Math.min(filteredLines.length, page * pageSize);
 
@@ -140,49 +166,64 @@ export function SafeLogViewer({
             </span>
           ) : null}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-          <label htmlFor={searchInputId} style={{ fontSize: "0.75rem", fontWeight: 500 }}>
-            {t("logs.searchLabel")}
-          </label>
-          <InputControl
-            id={searchInputId}
-            type="search"
-            className="red2pr-control-input"
-            value={query}
-            placeholder={t("logs.searchPlaceholder")}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
-            }}
-          />
-          {isStreaming ? (
+        {sanitizedLines.length > 0 || query.length > 0 || isStreaming ? (
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+            <label htmlFor={searchInputId} style={{ fontSize: "0.75rem", fontWeight: 500 }}>
+              {t("logs.searchLabel")}
+            </label>
+            <InputControl
+              id={searchInputId}
+              type="search"
+              className="red2pr-control-input red2pr-toolbar-input"
+              value={query}
+              placeholder={t("logs.searchPlaceholder")}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
+            />
+            {isStreaming ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                label={isPaused ? t("logs.resumeTail") : t("logs.pauseTail")}
+                onClick={() => setIsPaused((prev) => !prev)}
+              />
+            ) : null}
             <Button
               size="sm"
               variant="secondary"
-              label={isPaused ? t("logs.resumeTail") : t("logs.pauseTail")}
-              onClick={() => setIsPaused((prev) => !prev)}
+              label={
+                mode === "virtualized" ? t("logs.switchToPaged") : t("logs.switchToVirtualized")
+              }
+              onClick={() => setMode((prev) => (prev === "virtualized" ? "paged" : "virtualized"))}
             />
-          ) : null}
-          <Button
-            size="sm"
-            variant="secondary"
-            label={
-              mode === "virtualized" ? t("logs.switchToPaged") : t("logs.switchToVirtualized")
-            }
-            onClick={() => setMode((prev) => (prev === "virtualized" ? "paged" : "virtualized"))}
-          />
-        </div>
+          </div>
+        ) : null}
       </div>
 
       {filteredLines.length === 0 ? (
         <div style={{ padding: 16 }}>{t("logs.empty")}</div>
+      ) : useAstryxCodeBlock ? (
+        <CodeBlock
+          code={codeBlockText}
+          language="plaintext"
+          hasLanguageLabel={false}
+          hasLineNumbers
+          hasCopyButton
+          isWrapped
+          maxHeight={height}
+          size="sm"
+          width="100%"
+          container="section"
+        />
       ) : mode === "virtualized" ? (
         <div
           ref={scrollContainerRef}
           role="region"
           aria-label={`${resolvedTitle} viewport`}
           style={{
-            height,
+            height: effectiveHeight,
             overflow: "auto",
             position: "relative",
           }}

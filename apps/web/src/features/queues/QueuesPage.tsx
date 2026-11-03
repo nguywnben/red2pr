@@ -544,6 +544,10 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
     );
   }
 
+  if (jobsQuery.isPending) {
+    return <StateView state="loading" skeletonVariant="table" />;
+  }
+
   const transportBadge = fairness ? transportAppearance(fairness.transport_status) : null;
   const inspectedDetail = jobDetailQuery.data?.data ?? null;
 
@@ -839,6 +843,7 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
         {jobsQuery.isPending ? (
           <StateView state="loading" skeletonVariant="table" />
         ) : (
+          <div className="red2pr-surface red2pr-table-scroll">
           <Table
             aria-label={t("queues.tableLabel")}
             data={tableRows}
@@ -846,6 +851,7 @@ export function QueuesPage({ workspace, me }: QueuesPageProps): React.JSX.Elemen
             emptyTitle="No task jobs in this view"
             emptyDescription="Adjust queue filters or wait for new CI failure triage and repair jobs."
           />
+          </div>
         )}
 
         {/* Signed S-04 Cursor Pagination Controls */}

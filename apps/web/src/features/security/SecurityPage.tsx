@@ -3,10 +3,16 @@ import { SelectorControl } from "../../shared/ui";
 import type { ApiTokenCreateRequest, Workspace } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useId, useRef, useState } from "react";
+import { Link, useInRouterContext } from "react-router";
 import { useRed2PrApi } from "../../shared/api";
-import { Button, ConfirmActionButton, StateView, sanitizeUntrustedText } from "../../shared/ui";
+import { Button, CodeBlock, ConfirmActionButton, StateView, sanitizeUntrustedText } from "../../shared/ui";
 import { isStepUpValid } from "../auth/authHelpers";
 import { StepUpDialog } from "../auth/StepUpDialog";
+
+function WorkspaceNavLink({ to, children }: { readonly to: string; readonly children: React.ReactNode }): React.JSX.Element {
+  const inRouter = useInRouterContext();
+  return inRouter ? <Link to={to}>{children}</Link> : <a href={to}>{children}</a>;
+}
 
 export interface SecurityPageProps {
   readonly workspace: Workspace;
@@ -170,8 +176,8 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
         </p> : null}
         <nav aria-label="Manage workspace grants and consent">
           <ul>
-            <li><a href={`/w/${encodeURIComponent(ws)}/members`}>Manage workspace roles and repository grants</a></li>
-            <li><a href={`/w/${encodeURIComponent(ws)}/models`}>Manage outbound inference consent</a></li>
+            <li><WorkspaceNavLink to={`/w/${encodeURIComponent(ws)}/members`}>Manage workspace roles and repository grants</WorkspaceNavLink></li>
+            <li><WorkspaceNavLink to={`/w/${encodeURIComponent(ws)}/models`}>Manage outbound inference consent</WorkspaceNavLink></li>
           </ul>
         </nav>
       </section>
@@ -219,7 +225,7 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
           <Button label="Issue scoped token" variant="primary" type="submit" isDisabled={createToken.isPending || !name.trim() || scopes.length === 0 || repositoryIds.length === 0 || repositories.isError} isLoading={createToken.isPending} />
           {createToken.isError ? <p role="alert">Token issuance failed. Check your role and selected scopes.</p> : null}
         </form>
-        {revealedToken ? <div role="status"><p>Copy this token now. It will not be shown again.</p><code>{revealedToken}</code><Button label="Hide token" variant="secondary" type="button" onClick={() => setRevealedToken(null)} /></div> : null}
+        {revealedToken ? <div role="status" className="red2pr-form-stack"><p>Copy this token now. It will not be shown again.</p><CodeBlock code={revealedToken} language="plaintext" hasLanguageLabel={false} hasCopyButton isWrapped size="sm" width="100%" /><Button label="Hide token" variant="secondary" type="button" onClick={() => setRevealedToken(null)} /></div> : null}
       </section>
 
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="security-exceptions-title">
@@ -276,10 +282,10 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
         {rotateSecretKeys.isError ? <p role="alert">Key rotation failed. Confirm the shared external key file contains the active key and all currently used key versions, and that the current web session has a fresh step-up.</p> : null}
         <nav aria-label="Related security controls">
           <ul>
-            <li><a href={`/w/${encodeURIComponent(ws)}/members`}>Review workspace members and repository grants</a></li>
-            <li><a href={`/w/${encodeURIComponent(ws)}/integrations`}>Review provider credentials and grants</a></li>
-            <li><a href={`/w/${encodeURIComponent(ws)}/notifications`}>Rotate notification signing keys</a></li>
-            <li><a href={`/w/${encodeURIComponent(ws)}/models`}>Review and revoke inference consent</a></li>
+            <li><WorkspaceNavLink to={`/w/${encodeURIComponent(ws)}/members`}>Review workspace members and repository grants</WorkspaceNavLink></li>
+            <li><WorkspaceNavLink to={`/w/${encodeURIComponent(ws)}/integrations`}>Review provider credentials and grants</WorkspaceNavLink></li>
+            <li><WorkspaceNavLink to={`/w/${encodeURIComponent(ws)}/notifications`}>Rotate notification signing keys</WorkspaceNavLink></li>
+            <li><WorkspaceNavLink to={`/w/${encodeURIComponent(ws)}/models`}>Review and revoke inference consent</WorkspaceNavLink></li>
           </ul>
         </nav>
       </section>

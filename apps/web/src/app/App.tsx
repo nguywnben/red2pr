@@ -1,6 +1,6 @@
 import { InputControl } from "../shared/ui";
 import { Red2PrApiError, type Workspace } from "@red2pr/ts-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import React, {
   lazy,
   Suspense,
@@ -67,6 +67,23 @@ import {
   type WorkspaceNavOption,
 } from "../shared/ui";
 import { AppErrorBoundary } from "./AppErrorBoundary";
+
+const lastWorkspaceByClient = new WeakMap<QueryClient, string>();
+
+function resolvePreferredWorkspaceSlug(
+  queryClient: QueryClient,
+  options: readonly WorkspaceNavOption[],
+  setupDefaultSlug?: string | null,
+): string {
+  const stored = lastWorkspaceByClient.get(queryClient) ?? null;
+  if (stored && options.some((opt) => opt.slug === stored)) {
+    return stored;
+  }
+  if (setupDefaultSlug && options.some((opt) => opt.slug === setupDefaultSlug)) {
+    return setupDefaultSlug;
+  }
+  return options[0]?.slug ?? setupDefaultSlug ?? "default";
+}
 
 function toWorkspaceNavOptions(workspaces: readonly Workspace[] | undefined): WorkspaceNavOption[] {
   return (workspaces ?? []).map((ws) => ({
@@ -173,6 +190,12 @@ export function WorkspaceRouteShell(): React.JSX.Element {
 
   const resolvedWorkspace = workspaceQuery.data?.data ?? null;
   const canonicalSlug = resolvedWorkspace ? (resolvedWorkspace.slug ?? resolvedWorkspace.id) : wsParam;
+
+  useEffect(() => {
+    if (resolvedWorkspace !== null) {
+      lastWorkspaceByClient.set(queryClient, canonicalSlug);
+    }
+  }, [canonicalSlug, queryClient, resolvedWorkspace]);
 
   const handleSnapshotRefresh = useCallback(async () => {
     await invalidateWorkspaceQueries(queryClient, canonicalSlug);
@@ -323,7 +346,9 @@ export function WorkspaceRouteShell(): React.JSX.Element {
         isInstanceOwner={me.is_instance_owner}
         sseState="connecting"
       >
-        <div className="red2pr-page-stack" />
+        <div className="red2pr-page-stack">
+          <StateView state="loading" skeletonVariant="detail" />
+        </div>
       </AppShell>
     );
   }
@@ -514,6 +539,7 @@ export function WorkspaceRouteShell(): React.JSX.Element {
 
 export function AccountRouteShell(): React.JSX.Element {
   const api = useRed2PrApi();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -528,14 +554,14 @@ export function AccountRouteShell(): React.JSX.Element {
   }
 
   const navOptions = toWorkspaceNavOptions(meQuery.data?.data.workspaces);
-  const defaultSlug = navOptions[0]?.slug ?? "default";
+  const defaultSlug = resolvePreferredWorkspaceSlug(queryClient, navOptions);
 
   return (
     <AppShell
       activePath={location.pathname}
       activeWorkspaceSlug={defaultSlug}
       workspaces={navOptions}
-      onSelectWorkspace={(nextSlug) => navigate(`/w/${encodeURIComponent(nextSlug)}/members`)}
+      onSelectWorkspace={(nextSlug) => navigate(`/w/${encodeURIComponent(nextSlug)}/overview`)}
       isInstanceOwner={meQuery.data?.data.is_instance_owner ?? false}
       sseState="offline"
     >
@@ -547,6 +573,7 @@ export function AccountRouteShell(): React.JSX.Element {
 export function SystemRouteShell(): React.JSX.Element {
   const { t } = useI18n();
   const api = useRed2PrApi();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
   const meQuery = useQuery({
@@ -561,12 +588,12 @@ export function SystemRouteShell(): React.JSX.Element {
 
   const me = meQuery.data?.data ?? null;
   const navOptions = toWorkspaceNavOptions(me?.workspaces);
-  const defaultSlug = navOptions[0]?.slug ?? "default";
+  const defaultSlug = resolvePreferredWorkspaceSlug(queryClient, navOptions);
   const shellProps = {
     activePath: location.pathname,
     activeWorkspaceSlug: defaultSlug,
     workspaces: navOptions,
-    onSelectWorkspace: (nextSlug: string) => navigate(`/w/${encodeURIComponent(nextSlug)}/members`),
+    onSelectWorkspace: (nextSlug: string) => navigate(`/w/${encodeURIComponent(nextSlug)}/overview`),
     isInstanceOwner: me?.is_instance_owner ?? false,
     sseState: "offline" as const,
   };
@@ -574,9 +601,9 @@ export function SystemRouteShell(): React.JSX.Element {
   if (meQuery.isPending) {
     return (
       <AppShell {...shellProps}>
-        {location.pathname === "/system/data-sharing"
-          ? <SetupWizardPage managementOnly />
-          : <SystemPage />}
+        <div className="red2pr-page-stack">
+          <StateView state="loading" skeletonVariant="detail" />
+        </div>
       </AppShell>
     );
   }
@@ -615,6 +642,7 @@ export function SystemRouteShell(): React.JSX.Element {
 export function AdminRouteShell(): React.JSX.Element {
   const { t } = useI18n();
   const api = useRed2PrApi();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -627,7 +655,9 @@ export function AdminRouteShell(): React.JSX.Element {
   if (meQuery.isPending) {
     return (
       <AppShell activePath={location.pathname} activeWorkspaceSlug="default" sseState="offline">
-        <div className="red2pr-page-stack" />
+        <div className="red2pr-page-stack">
+          <StateView state="loading" skeletonVariant="detail" />
+        </div>
       </AppShell>
     );
   }
@@ -650,7 +680,7 @@ export function AdminRouteShell(): React.JSX.Element {
 
   const me = meQuery.data.data;
   const navOptions = toWorkspaceNavOptions(me.workspaces);
-  const defaultSlug = navOptions[0]?.slug ?? "default";
+  const defaultSlug = resolvePreferredWorkspaceSlug(queryClient, navOptions);
 
   if (!me.is_instance_owner) {
     return (
@@ -658,7 +688,7 @@ export function AdminRouteShell(): React.JSX.Element {
         activePath={location.pathname}
         activeWorkspaceSlug={defaultSlug}
         workspaces={navOptions}
-        onSelectWorkspace={(nextSlug) => navigate(`/w/${encodeURIComponent(nextSlug)}/members`)}
+        onSelectWorkspace={(nextSlug) => navigate(`/w/${encodeURIComponent(nextSlug)}/overview`)}
         sseState="offline"
       >
         <StateView state="forbidden" />
@@ -671,6 +701,7 @@ export function AdminRouteShell(): React.JSX.Element {
 
 export function AppRoutes(): React.JSX.Element {
   const api = useRed2PrApi();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const meQuery = useQuery({
     queryKey: ["auth", "me"],
@@ -703,15 +734,29 @@ export function AppRoutes(): React.JSX.Element {
     if (setup.completed_at === null) {
       if (!isSetupPath) return <Navigate to="/setup" replace />;
     } else if (isSetupPath || path === "/login" || path === "/login/recovery") {
-      const workspaceSlug = setup.default_workspace_slug ?? me.workspaces?.[0]?.slug ?? "default";
+      const workspaceSlug = resolvePreferredWorkspaceSlug(
+        queryClient,
+        toWorkspaceNavOptions(me.workspaces),
+        setup.default_workspace_slug,
+      );
       return <Navigate to={`/w/${encodeURIComponent(workspaceSlug)}/overview`} replace />;
     }
   }
 
-  if (me !== null && !me.is_instance_owner && (path === "/login" || isSetupPath)) {
-    const workspaceSlug = me.workspaces?.[0]?.slug ?? "default";
+  if (me !== null && me.is_instance_owner === false && (path === "/login" || isSetupPath)) {
+    const workspaceSlug = resolvePreferredWorkspaceSlug(queryClient, toWorkspaceNavOptions(me.workspaces));
     return <Navigate to={`/w/${encodeURIComponent(workspaceSlug)}/overview`} replace />;
   }
+
+  if (path === "/" && (meQuery.isPending || (shouldReadSetup && setupQuery.isPending))) {
+    return <></>;
+  }
+
+  const fallbackWorkspaceSlug = resolvePreferredWorkspaceSlug(
+    queryClient,
+    toWorkspaceNavOptions(me?.workspaces),
+    setupQuery.data?.data.default_workspace_slug ?? null,
+  );
 
   return (
     <Suspense fallback={null}>
@@ -729,7 +774,10 @@ export function AppRoutes(): React.JSX.Element {
         <Route path="/system" element={<SystemRouteShell />} />
         <Route path="/w/:ws/*" element={<WorkspaceRouteShell />} />
         <Route path="/admin/*" element={<AdminRouteShell />} />
-        <Route path="*" element={<Navigate to="/w/default/overview" replace />} />
+        <Route
+          path="*"
+          element={<Navigate to={`/w/${encodeURIComponent(fallbackWorkspaceSlug)}/overview`} replace />}
+        />
       </Routes>
     </Suspense>
   );
@@ -737,16 +785,16 @@ export function AppRoutes(): React.JSX.Element {
 
 export function App(): React.JSX.Element {
   return (
-    <I18nProvider>
-      <ThemeProvider defaultMode="system">
-        <ApiClientProvider>
-          <BrowserRouter>
+    <BrowserRouter>
+      <I18nProvider>
+        <ThemeProvider defaultMode="system">
+          <ApiClientProvider>
             <AppErrorBoundary>
               <AppRoutes />
             </AppErrorBoundary>
-          </BrowserRouter>
-        </ApiClientProvider>
-      </ThemeProvider>
-    </I18nProvider>
+          </ApiClientProvider>
+        </ThemeProvider>
+      </I18nProvider>
+    </BrowserRouter>
   );
 }

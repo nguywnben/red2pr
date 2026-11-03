@@ -12,12 +12,33 @@
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 3fr) auto;
 }
 
+.analytics-funnel-stage-label {
+  text-transform: capitalize;
+  font-size: var(--text-body-size);
+  color: var(--red2pr-text-primary);
+}
+
+.analytics-funnel-track {
+  display: block;
+  width: 100%;
+  height: 0.625rem;
+  background: var(--red2pr-bg-subtle);
+  border: var(--border-width) solid var(--red2pr-border-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
 .analytics-funnel-bar {
   background: var(--red2pr-chart-bar-primary);
   border-radius: var(--radius-full);
   display: block;
-  height: var(--spacing-2);
-  min-width: var(--spacing-1);
+  height: 100%;
+  min-width: 0;
+  transition: width 160ms ease;
+}
+
+.analytics-funnel-section td:first-child {
+  text-transform: capitalize;
 }
 
 .analytics-summary-grid {

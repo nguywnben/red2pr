@@ -17,25 +17,23 @@ export function FleetTrustDomainPanel({
 
   return (
     <div
-      className="red2pr-page-stack"
+      className="red2pr-cell-stack"
       aria-label="Fleet trust domain and runtime attestation"
       data-testid="fleet-trust-domain-panel"
     >
-      <div>
-        <span className="red2pr-badge-pill red2pr-tone-info">{safeDomain}</span>
-      </div>
-      <div>
-        <span
-          className={`red2pr-badge-pill ${hardenedAttestationVerified ? "red2pr-tone-success" : "red2pr-tone-warning"}`}
-        >
-          <StatusGlyph kind={hardenedAttestationVerified ? "check" : "warn"} />
-          <span>
-            {hardenedAttestationVerified
-              ? "Hardened runtime attested"
-              : "Hardened runtime not verified"}
-          </span>
+      <span className="red2pr-badge-pill red2pr-tone-info" title={safeDomain}>
+        {safeDomain}
+      </span>
+      <span
+        className={`red2pr-badge-pill ${hardenedAttestationVerified ? "red2pr-tone-success" : "red2pr-tone-warning"}`}
+      >
+        <StatusGlyph kind={hardenedAttestationVerified ? "check" : "warn"} />
+        <span>
+          {hardenedAttestationVerified
+            ? "Hardened runtime attested"
+            : "Hardened runtime not verified"}
         </span>
-      </div>
+      </span>
       <small>
         {safeRuntime} ·{" "}
         {hardenedAttestationVerified

@@ -3,12 +3,69 @@ import { Pagination } from "@astryxdesign/core/Pagination";
 import { observeElementRect, useVirtualizer } from "@tanstack/react-virtual";
 import React, { useId, useMemo, useRef, useState } from "react";
 import { useI18n, type MessageKey } from "../i18n";
+import { CodeBlock } from "./AstryxComponents";
 import { Button } from "./Button";
 import { sanitizeUntrustedText } from "./sanitizeText";
 
 const FAST_SAFE_PRINTABLE_ASCII_RE = /^[\u0020-\u007e\t]*$/;
 const HUNK_HEADER_RE = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 const DIFF_ROW_HEIGHT_PX = 24;
+const VIRTUALIZATION_ROW_THRESHOLD = 500;
+
+function inferCodeBlockLanguage(filePath: string | undefined): string {
+  if (!filePath || filePath === "__all__") {
+    return "plaintext";
+  }
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith(".tsx")) return "tsx";
+  if (lower.endsWith(".ts")) return "typescript";
+  if (lower.endsWith(".jsx")) return "jsx";
+  if (lower.endsWith(".js") || lower.endsWith(".mjs") || lower.endsWith(".cjs")) return "javascript";
+  if (lower.endsWith(".py")) return "python";
+  if (lower.endsWith(".json")) return "json";
+  if (lower.endsWith(".yml") || lower.endsWith(".yaml")) return "yaml";
+  if (lower.endsWith(".sh") || lower.endsWith(".bash") || lower.endsWith(".zsh")) return "bash";
+  if (lower.endsWith(".css") || lower.endsWith(".scss") || lower.endsWith(".less")) return "css";
+  if (lower.endsWith(".html") || lower.endsWith(".xml") || lower.endsWith(".svg")) return "html";
+  if (lower.endsWith(".php")) return "php";
+  if (lower.endsWith(".hh") || lower.endsWith(".hack")) return "hack";
+  if (lower.endsWith(".md") || lower.endsWith(".mdx")) return "markdown";
+  return "plaintext";
+}
+
+function buildCleanUnifiedDiffForCodeBlock(rows: readonly ParsedDiffRow[]): string {
+  const lines: string[] = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    if (!row) {
+      continue;
+    }
+    if (row.kind === "meta") {
+      const isOldHeaderBeforeHunk =
+        row.text.startsWith("--- ") &&
+        (rows[i + 1]?.text.startsWith("+++ ") ?? false) &&
+        rows[i + 2]?.kind === "hunk";
+      const isNewHeaderBeforeHunk =
+        row.text.startsWith("+++ ") &&
+        (rows[i - 1]?.text.startsWith("--- ") ?? false) &&
+        rows[i + 1]?.kind === "hunk";
+      if (isOldHeaderBeforeHunk || isNewHeaderBeforeHunk) {
+        lines.push(row.text);
+      }
+      continue;
+    }
+    if (row.kind === "hunk") {
+      lines.push(row.text);
+    } else if (row.kind === "added") {
+      lines.push(`+${row.text}`);
+    } else if (row.kind === "removed") {
+      lines.push(`-${row.text}`);
+    } else {
+      lines.push(` ${row.text}`);
+    }
+  }
+  return lines.join("\n");
+}
 
 export type DiffRowKind = "meta" | "hunk" | "added" | "removed" | "context";
 
@@ -47,7 +104,8 @@ export function parseSanitizedUnifiedDiff(rawDiff: string): {
     return { rows: [], files: [], strippedCount: 0 };
   }
 
-  const rawLines = rawDiff.split(/\r?\n/);
+  const normalizedDiff = rawDiff.replace(/\r?\n$/, "");
+  const rawLines = normalizedDiff.split(/\r?\n/);
   const rows: ParsedDiffRow[] = new Array<ParsedDiffRow>(rawLines.length);
   const fileSet = new Set<string>();
   let currentFile = "(patch)";
@@ -227,8 +285,23 @@ export function SafeDiffViewer({
     return rows.filter((row) => row.filePath === selectedFile);
   }, [rows, selectedFile]);
 
+  const useAstryxCodeBlock =
+    mode === "virtualized" &&
+    filteredRows.length > 0 &&
+    filteredRows.length <= VIRTUALIZATION_ROW_THRESHOLD;
+
+  const codeBlockDiff = useMemo(
+    () => (useAstryxCodeBlock ? buildCleanUnifiedDiffForCodeBlock(filteredRows) : ""),
+    [filteredRows, useAstryxCodeBlock],
+  );
+
+  const inferredLanguage = useMemo(
+    () => inferCodeBlockLanguage(selectedFile !== "__all__" ? selectedFile : files[0]),
+    [files, selectedFile],
+  );
+
   const virtualizer = useVirtualizer({
-    count: mode === "virtualized" ? filteredRows.length : 0,
+    count: mode === "virtualized" && !useAstryxCodeBlock ? filteredRows.length : 0,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => DIFF_ROW_HEIGHT_PX,
     overscan: 8,
@@ -243,7 +316,9 @@ export function SafeDiffViewer({
   });
 
   const resolvedTitle = title ?? t("diff.title");
-  const virtualItems = mode === "virtualized" ? virtualizer.getVirtualItems() : [];
+  const effectiveHeight = Math.min(height, Math.max(88, filteredRows.length * DIFF_ROW_HEIGHT_PX + 12));
+  const virtualItems =
+    mode === "virtualized" && !useAstryxCodeBlock ? virtualizer.getVirtualItems() : [];
 
   const pagedRows = useMemo(() => {
     if (mode !== "paged") {
@@ -264,13 +339,17 @@ export function SafeDiffViewer({
   const rangeStart =
     filteredRows.length === 0
       ? 0
-      : mode === "virtualized"
+      : useAstryxCodeBlock
+        ? 1
+        : mode === "virtualized"
         ? (virtualItems[0]?.index ?? 0) + 1
         : (page - 1) * pageSize + 1;
   const rangeEnd =
     filteredRows.length === 0
       ? 0
-      : mode === "virtualized"
+      : useAstryxCodeBlock
+        ? filteredRows.length
+        : mode === "virtualized"
         ? (virtualItems[virtualItems.length - 1]?.index ?? 0) + 1
         : Math.min(filteredRows.length, page * pageSize);
 
@@ -300,7 +379,7 @@ export function SafeDiffViewer({
               </label>
               <SelectorControl
                 id={fileSelectId}
-                className="red2pr-control-select"
+                className="red2pr-control-select red2pr-toolbar-select"
                 value={selectedFile}
                 onChange={(e) => {
                   setSelectedFile(e.target.value);
@@ -316,26 +395,42 @@ export function SafeDiffViewer({
               </SelectorControl>
             </>
           ) : null}
-          <Button
-            size="sm"
-            variant="secondary"
-            label={
-              mode === "virtualized" ? t("diff.switchToPaged") : t("diff.switchToVirtualized")
-            }
-            onClick={() => setMode((prev) => (prev === "virtualized" ? "paged" : "virtualized"))}
-          />
+          {filteredRows.length > 0 ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              label={
+                mode === "virtualized" ? t("diff.switchToPaged") : t("diff.switchToVirtualized")
+              }
+              onClick={() => setMode((prev) => (prev === "virtualized" ? "paged" : "virtualized"))}
+            />
+          ) : null}
         </div>
       </div>
 
       {filteredRows.length === 0 ? (
         <div style={{ padding: 16 }}>{t("diff.empty")}</div>
+      ) : useAstryxCodeBlock ? (
+        <CodeBlock
+          code={codeBlockDiff}
+          language={inferredLanguage}
+          isDiff
+          hasLanguageLabel={false}
+          hasLineNumbers
+          hasCopyButton
+          isWrapped
+          maxHeight={height}
+          size="sm"
+          width="100%"
+          container="section"
+        />
       ) : mode === "virtualized" ? (
         <div
           ref={scrollContainerRef}
           role="region"
           aria-label={resolvedTitle}
           style={{
-            height,
+            height: effectiveHeight,
             overflow: "auto",
             position: "relative",
           }}

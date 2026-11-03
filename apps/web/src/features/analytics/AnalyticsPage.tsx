@@ -1,9 +1,8 @@
-import { InputControl } from "../../shared/ui";
 import type { MeResponse, ReportExportRequest, Workspace } from "@red2pr/ts-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import React, { useId, useMemo, useState } from "react";
 import { useRed2PrApi } from "../../shared/api";
-import { Button, Selector, StateView } from "../../shared/ui";
+import { Button, InputControl, SelectorControl, StateView } from "../../shared/ui";
 import { generateClientUuidV7 } from "../queues/QueuesPage";
 import { AnalyticsFunnel, AnalyticsSummary, isWorkspaceAnalyticsResponse } from "./analyticsShared";
 
@@ -35,11 +34,15 @@ export function AnalyticsPage({ workspace }: AnalyticsPageProps): React.JSX.Elem
   });
   return (
     <section className="red2pr-page-stack" data-testid="analytics-page">
-      <header><h1>Analytics and cost ledger</h1><p>Bounded repair funnel, explicit denominators, unknown outcomes and exact currency totals.</p></header>
-      <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); void query.refetch(); }}>
-        <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={ids.from}>From date (UTC)</label><InputControl id={ids.from} className="red2pr-control-input" type="date" value={rangeStart} onChange={(event) => setRangeStart(event.target.value)} /></div>
-        <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={ids.to}>To date (UTC)</label><InputControl id={ids.to} className="red2pr-control-input" type="date" value={rangeEnd} onChange={(event) => setRangeEnd(event.target.value)} /></div>
-        <Button label="Apply range (maximum 366 days)" variant="secondary" type="submit" isDisabled={rangeEnd < rangeStart} />
+      <header className="red2pr-page-header"><div><h1>Analytics and cost ledger</h1><p>Bounded repair funnel, explicit denominators, unknown outcomes and exact currency totals.</p></div></header>
+      <form className="red2pr-surface red2pr-card-section red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); void query.refetch(); }}>
+        <div className="red2pr-form-grid-2">
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={ids.from}>From date (UTC)</label><InputControl id={ids.from} className="red2pr-control-input" type="date" value={rangeStart} onChange={(event) => setRangeStart(event.target.value)} /></div>
+          <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={ids.to}>To date (UTC)</label><InputControl id={ids.to} className="red2pr-control-input" type="date" value={rangeEnd} onChange={(event) => setRangeEnd(event.target.value)} /></div>
+        </div>
+        <div className="red2pr-button-row">
+          <Button label="Apply range (maximum 366 days)" variant="secondary" type="submit" isDisabled={rangeEnd < rangeStart} />
+        </div>
       </form>
       {rangeEnd < rangeStart ? <p role="alert">The end date must be on or after the start date.</p> : null}
       {query.isPending ? <StateView state="loading" skeletonVariant="metrics" /> : null}
@@ -49,9 +52,26 @@ export function AnalyticsPage({ workspace }: AnalyticsPageProps): React.JSX.Elem
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="report-export-title">
         <h2 id="report-export-title">Safe report export</h2>
         <p>Exports expire after 24 hours, are encrypted at rest, and use the repository access you have now. Proof reports contain artifact digests, never raw CI logs.</p>
-        <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={ids.kind}>Report type</label><Selector id={ids.kind} label="Report type" isLabelHidden variant="input" size="md" presentation="popover" value={kind} onChange={(value) => setKind(value as ReportExportRequest["kind"])} options={[{ value: "funnel", label: "Repair funnel" }, { value: "usage", label: "Usage ledger" }, { value: "proof_summary", label: "Proof report" }]} /></div>
-        <div className="red2pr-field"><label className="red2pr-field-label" htmlFor={ids.format}>Format</label><Selector id={ids.format} label="Format" isLabelHidden variant="input" size="md" presentation="popover" value={format} onChange={(value) => setFormat(value as ReportExportRequest["format"])} options={[{ value: "csv", label: "CSV" }, { value: "json", label: "JSON" }]} /></div>
-        <Button label="Create and download export" variant="primary" type="button" isDisabled={exportMutation.isPending || rangeEnd < rangeStart} isLoading={exportMutation.isPending} onClick={() => exportMutation.mutate()} />
+        <div className="red2pr-form-grid-2">
+          <div className="red2pr-field">
+            <label className="red2pr-field-label" htmlFor={ids.kind}>Report type</label>
+            <SelectorControl id={ids.kind} value={kind} onChange={(event) => setKind(event.target.value as ReportExportRequest["kind"])}>
+              <option value="funnel">Repair funnel</option>
+              <option value="usage">Usage ledger</option>
+              <option value="proof_summary">Proof report</option>
+            </SelectorControl>
+          </div>
+          <div className="red2pr-field">
+            <label className="red2pr-field-label" htmlFor={ids.format}>Format</label>
+            <SelectorControl id={ids.format} value={format} onChange={(event) => setFormat(event.target.value as ReportExportRequest["format"])}>
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+            </SelectorControl>
+          </div>
+        </div>
+        <div className="red2pr-button-row">
+          <Button label="Create and download export" variant="primary" type="button" isDisabled={exportMutation.isPending || rangeEnd < rangeStart} isLoading={exportMutation.isPending} onClick={() => exportMutation.mutate()} />
+        </div>
         {exportMutation.isError ? <p role="alert">Export could not be created or downloaded with your current access.</p> : null}
         {exportLink ? <p role="status"><a href={exportLink.href} download={exportLink.filename}>Download {exportLink.filename}</a></p> : null}
       </section>

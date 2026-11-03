@@ -503,9 +503,6 @@ export function StateView({
         </HStack>
         <VStack gap={2} width="100%">
           <VStack gap={1}>
-            <Text type="supporting" weight="semibold">
-              {resolvedBadge}
-            </Text>
             {normalized === "empty" ? (
               <AstryxEmptyState
                 headingLevel={3}
@@ -516,6 +513,9 @@ export function StateView({
               />
             ) : (
               <>
+                <Text type="supporting" weight="semibold">
+                  {resolvedBadge}
+                </Text>
                 <Text as="h2" type="label" weight="semibold">
                   {resolvedTitle}
                 </Text>

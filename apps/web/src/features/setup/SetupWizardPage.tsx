@@ -524,18 +524,13 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
       const nextParam = encodeURIComponent(`${location.pathname}${location.search}`);
       return <Navigate to={`/login?next=${nextParam}`} replace />;
     }
-    const summary = extractAuthProblemSummary(meQuery.error, t("state.error.description"));
-    return (
-      <main id="red2pr-main-content" className="red2pr-page-stack red2pr-setup-page">
-        <StateView
-          state="error"
-          title="Setup access could not be verified"
-          description={summary.detail}
-          correlationId={summary.correlationId ?? undefined}
-          primaryAction={{ label: "Retry", onClick: () => void meQuery.refetch() }}
-        />
-      </main>
-    );
+    if (meQuery.error instanceof Red2PrApiError && meQuery.error.status === 403) {
+      return (
+        <main id="red2pr-main-content" className="red2pr-page-stack red2pr-setup-page">
+          <StateView state="forbidden" />
+        </main>
+      );
+    }
   }
 
   const resolvedSetup: SetupState = setupData ?? {
@@ -719,23 +714,26 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
   const wizardBody = (
     <div className={`red2pr-page-stack ${managementOnly ? "red2pr-setup-management" : "red2pr-setup-page"}`} data-testid="setup-wizard-page">
       {managementOnly ? (
-        <header className="red2pr-setup-management-header">
-          <h1>Outbound data access</h1>
-          <p className="red2pr-field-hint">Manage explicit data-sharing consent and private egress destinations.</p>
+        <header className="red2pr-page-header red2pr-setup-management-header">
+          <div>
+            <h1>Outbound data access</h1>
+            <p>Manage explicit data-sharing consent and private egress destinations.</p>
+          </div>
+          <Button label="← System operations" variant="secondary" href="/system" />
         </header>
-      ) : null}
-      <div
-        className="red2pr-setup-header"
-        style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16 }}
-      >
-        <div>
-          <h1>{t("setup.pageTitle")}</h1>
-          <p className="red2pr-field-hint" style={{ margin: 0 }}>
-            {t("setup.pageSubtitle")}
-          </p>
+      ) : (
+        <div
+          className="red2pr-setup-header"
+          style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16 }}
+        >
+          <div>
+            <h1>{t("setup.pageTitle")}</h1>
+            <p className="red2pr-field-hint" style={{ margin: 0 }}>
+              {t("setup.pageSubtitle")}
+            </p>
+          </div>
         </div>
-
-      </div>
+      )}
 
       {operationNotice !== null ? (
         <Banner
@@ -763,6 +761,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
         />
       ) : null}
 
+      {!managementOnly ? (
       <Stepper
         activeStep={activePhaseIdx}
         orientation="vertical"
@@ -829,6 +828,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
           );
         })}
       </Stepper>
+      ) : null}
 
       {activePhaseSlot !== null
         ? createPortal(
@@ -1481,9 +1481,9 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
             {activePhase === "readiness_review" ? (
               <>
                 <div data-testid="setup-prerequisites-checklist" style={{ marginBottom: 12 }}>
-                  <h3>
+                  <h2>
                     Verified Readiness Gates
-                  </h3>
+                  </h2>
                   <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
                     {(resolvedSetup.prerequisites ?? []).map((item) => (
                       <li
@@ -1602,7 +1602,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
       {resolvedSetup.owner_claimed ? (
         <>
           <section
-            className="red2pr-setup-block"
+            className="red2pr-surface red2pr-card-section red2pr-setup-block"
             aria-labelledby={`${idPrefix}-consents-heading`}
             data-testid="setup-consents-panel"
           >
@@ -1752,7 +1752,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
           </section>
 
           <section
-            className="red2pr-setup-block"
+            className="red2pr-surface red2pr-card-section red2pr-setup-block"
             aria-labelledby={`${idPrefix}-endpoints-heading`}
             data-testid="setup-endpoints-panel"
           >
@@ -1977,6 +1977,10 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
         {wizardBody}
       </main>
     );
+  }
+
+  if (managementOnly) {
+    return wizardBody;
   }
 
   return (
