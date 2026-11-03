@@ -539,33 +539,35 @@ export function RepositoriesPage({ workspace, me }: RepositoriesPageProps): Reac
       ) : null}
 
       {!catalogQuery.isLoading && !catalogQuery.isError && items.length === 0 ? (
-        <StateView
-          state="empty"
-          title={
-            hasActiveFilters
-              ? t("state.empty.title")
-              : isAdmin
-                ? t("repositories.emptyAdminTitle")
-                : t("repositories.emptyMemberTitle")
-          }
-          description={
-            hasActiveFilters
-              ? t("state.empty.description")
-              : isAdmin
-                ? t("repositories.emptyAdminDesc")
-                : t("repositories.emptyMemberDesc")
-          }
-          primaryAction={
-            !hasActiveFilters && isAdmin
-              ? {
-                  label: "Open Integrations",
-                  variant: "primary",
-                  onClick: () =>
-                    void navigate(`/w/${encodeURIComponent(workspaceSlug)}/integrations`),
-                }
-              : undefined
-          }
-        />
+        <div className="red2pr-repository-empty-state">
+          <StateView
+            state="empty"
+            title={
+              hasActiveFilters
+                ? t("state.empty.title")
+                : isAdmin
+                  ? t("repositories.emptyAdminTitle")
+                  : t("repositories.emptyMemberTitle")
+            }
+            description={
+              hasActiveFilters
+                ? t("state.empty.description")
+                : isAdmin
+                  ? t("repositories.emptyAdminDesc")
+                  : t("repositories.emptyMemberDesc")
+            }
+            primaryAction={
+              !hasActiveFilters && isAdmin
+                ? {
+                    label: "Open Integrations",
+                    variant: "primary",
+                    onClick: () =>
+                      void navigate(`/w/${encodeURIComponent(workspaceSlug)}/integrations`),
+                  }
+                : undefined
+            }
+          />
+        </div>
       ) : null}
 
       {!catalogQuery.isLoading && !catalogQuery.isError && items.length > 0 ? (

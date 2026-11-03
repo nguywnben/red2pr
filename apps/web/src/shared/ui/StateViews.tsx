@@ -409,7 +409,7 @@ export function StateView({
 
   const actionGroup =
     primaryAction || secondaryAction ? (
-      <HStack gap={2} wrap="wrap">
+      <HStack className="red2pr-state-actions" gap={2} wrap="wrap">
         {primaryAction ? (
           <Button
             label={primaryAction.label}
@@ -512,6 +512,7 @@ export function StateView({
                 isCompact
                 title={resolvedTitle}
                 description={resolvedDescription}
+                actions={actionGroup}
               />
             ) : (
               <>
@@ -525,7 +526,7 @@ export function StateView({
             )}
           </VStack>
           {correlationBadge}
-          {actionGroup}
+          {normalized === "empty" ? null : actionGroup}
           {children}
         </VStack>
       </HStack>

@@ -234,6 +234,40 @@ h3:not(.astryx-heading) {
   border-bottom: var(--border-width) solid var(--red2pr-border-subtle);
 }
 
+.red2pr-filter-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  align-items: end;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  background-color: var(--red2pr-bg-surface);
+  color: var(--red2pr-text-primary);
+  border: var(--border-width) solid var(--red2pr-border-subtle);
+  border-radius: var(--radius-container);
+}
+
+.red2pr-filter-panel .red2pr-field {
+  min-width: 0;
+}
+
+.red2pr-filter-checkbox {
+  display: inline-flex;
+  align-items: center;
+  align-self: end;
+  gap: var(--spacing-2);
+  min-height: var(--size-element-lg);
+  font-size: var(--text-supporting-size);
+}
+
+.red2pr-pipeline-filters > .astryx-button {
+  align-self: end;
+}
+
+.red2pr-repository-empty-state .red2pr-state-actions {
+  width: 100%;
+  justify-content: center;
+}
+
 .red2pr-control-select,
 .red2pr-control-input,
 .red2pr-select,
@@ -323,6 +357,10 @@ h3:not(.astryx-heading) {
   flex-direction: column;
   gap: var(--spacing-4);
   min-width: 0;
+}
+
+.red2pr-setup-actions {
+  margin-bottom: var(--spacing-2);
 }
 
 .red2pr-standalone-state {

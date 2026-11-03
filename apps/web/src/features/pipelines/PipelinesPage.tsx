@@ -453,18 +453,9 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
         </div>
       </header>
 
-      <div
-        className="red2pr-surface-card"
-        style={{
-          padding: 14,
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 12,
-          alignItems: "flex-end",
-        }}
-      >
-        <div>
-          <label htmlFor={repoSelectId} style={{ display: "block", fontSize: "0.75rem", fontWeight: 600 }}>
+      <div className="red2pr-filter-panel red2pr-pipeline-filters" aria-label="Pipeline filters">
+        <div className="red2pr-field">
+          <label htmlFor={repoSelectId} className="red2pr-field-label">
             {t("pipelines.filterRepoLabel")}
           </label>
           <Selector
@@ -483,25 +474,22 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
           />
         </div>
 
-        <div>
-          <label
-            htmlFor={conclusionSelectId}
-            style={{ display: "block", fontSize: "0.75rem", fontWeight: 600 }}
-          >
+        <div className="red2pr-field">
+          <label htmlFor={conclusionSelectId} className="red2pr-field-label">
             {t("pipelines.filterConclusionLabel")}
           </label>
           <Selector id={conclusionSelectId} label={t("pipelines.filterConclusionLabel")} isLabelHidden options={CONCLUSION_OPTIONS.map((opt) => ({ value: opt, label: opt }))} value={conclusionFilter} onChange={(value) => { setConclusionFilter(value as "all" | CiConclusion); setCursor(null); }} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
         </div>
 
-        <div>
-          <label htmlFor={flakySelectId} style={{ display: "block", fontSize: "0.75rem", fontWeight: 600 }}>
+        <div className="red2pr-field">
+          <label htmlFor={flakySelectId} className="red2pr-field-label">
             {t("pipelines.filterFlakyLabel")}
           </label>
           <Selector id={flakySelectId} label={t("pipelines.filterFlakyLabel")} isLabelHidden options={FLAKY_OPTIONS.map((opt) => ({ value: opt, label: opt }))} value={flakyFilter} onChange={(value) => { setFlakyFilter(value as "all" | FlakyClassification); setCursor(null); }} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" />
         </div>
 
-        <div>
-          <label htmlFor={shaInputId} style={{ display: "block", fontSize: "0.75rem", fontWeight: 600 }}>
+        <div className="red2pr-field">
+          <label htmlFor={shaInputId} className="red2pr-field-label">
             {t("pipelines.filterShaLabel")}
           </label>
           <InputControl
@@ -519,7 +507,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
 
         <label
           htmlFor={flakyOnlyCheckId}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.85rem" }}
+          className="red2pr-filter-checkbox"
         >
           <input
             id={flakyOnlyCheckId}

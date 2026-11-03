@@ -53,16 +53,16 @@ const ORDERED_PHASES: readonly SetupWizardPhase[] = [
 ];
 
 const PHASE_LABELS: Record<SetupWizardPhase, string> = {
-  owner_claim: "1. Owner Claim",
-  topology_tls: "2. Topology & TLS",
-  storage_keys: "3. Storage & Keys",
-  workspace_admin: "4. Initial Workspace",
-  provider_connect: "5. Git Provider",
-  model_consent: "6. Model & Consent",
-  worker_readiness: "7. Sandbox Worker",
-  repo_policy: "8. Repo Guardrails",
-  notifications: "9. Notifications",
-  readiness_review: "10. Readiness Review",
+  owner_claim: "Owner Claim",
+  topology_tls: "Topology & TLS",
+  storage_keys: "Storage & Keys",
+  workspace_admin: "Initial Workspace",
+  provider_connect: "Git Provider",
+  model_consent: "Model & Consent",
+  worker_readiness: "Sandbox Worker",
+  repo_policy: "Repo Guardrails",
+  notifications: "Notifications",
+  readiness_review: "Readiness Review",
 };
 
 const STEP_STATUS_LABELS: Record<SetupStepStatus, string> = {
@@ -119,7 +119,7 @@ type PendingStepUpOp =
   | null;
 
 type SetupOperationNotice = {
-  readonly status: "success" | "warning" | "error";
+  readonly status: "warning" | "error";
   readonly title: string;
   readonly description?: string;
   readonly action?: "reload-checkpoint";
@@ -273,7 +273,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
   );
 
   const showOperationSuccess = useCallback(
-    (title: string) => setOperationNotice({ status: "success", title }),
+    (_title: string) => setOperationNotice(null),
     [],
   );
 
@@ -362,11 +362,21 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
     }) => {
       return api.submitSetupStep(args.phase, args.body);
     },
-    onSuccess: async (envelope) => {
+    onSuccess: async (envelope, args) => {
       showOperationSuccess("Setup changes saved.");
       queryClient.setQueryData(["setup", "state"], envelope);
       announce(`Setup checkpoint updated. Active phase: ${PHASE_LABELS[envelope.data.phase]}.`);
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      if (
+        args.phase === "readiness_review" &&
+        envelope.data.completed_at !== null &&
+        envelope.data.default_workspace_slug
+      ) {
+        navigate(
+          `/w/${encodeURIComponent(envelope.data.default_workspace_slug)}/overview`,
+          { replace: true },
+        );
+      }
     },
     onError: (err) => {
       if (err instanceof Red2PrApiError && err.problem.code === "checkpoint_conflict") {
@@ -725,30 +735,6 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
           </p>
         </div>
 
-        <div
-          data-testid="setup-readiness-banner"
-          style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}
-        >
-          <span
-            data-testid="badge-ready-monitor"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600 }}
-          >
-            <StatusGlyph kind={resolvedSetup.ready_monitor ? "check" : "info"} />
-            <span>
-              {resolvedSetup.ready_monitor ? t("setup.monitorReady") : t("setup.monitorNotReady")}
-            </span>
-          </span>
-
-          <span
-            data-testid="badge-ready-repair"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600 }}
-          >
-            <StatusGlyph kind={resolvedSetup.ready_repair ? "check" : "warn"} />
-            <span>
-              {resolvedSetup.ready_repair ? t("setup.repairReady") : t("setup.repairNotReady")}
-            </span>
-          </span>
-        </div>
       </div>
 
       {operationNotice !== null ? (
@@ -772,7 +758,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
               />
             ) : undefined
           }
-          container="section"
+          container="card"
           collapsible={false}
         />
       ) : null}
@@ -1552,7 +1538,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
               </>
             ) : null}
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
+            <div className="red2pr-setup-actions" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {activePhaseIdx > 1 ? (
                 <Button
                   label={t("setup.backPrevious")}
@@ -1604,17 +1590,6 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
                 />
               ) : null}
 
-              {resolvedSetup.completed_at && resolvedSetup.default_workspace_slug ? (
-                <Button
-                  label={t("setup.openWorkspace")}
-                  variant="secondary"
-                  type="button"
-                  onClick={() => {
-                    const slug = resolvedSetup.default_workspace_slug ?? "default";
-                    navigate(`/w/${encodeURIComponent(slug)}/members`);
-                  }}
-                />
-              ) : null}
             </div>
           </form>
         </section>

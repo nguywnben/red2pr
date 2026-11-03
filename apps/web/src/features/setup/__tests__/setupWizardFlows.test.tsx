@@ -360,9 +360,8 @@ describe("U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SE
 
     // Phase 1 renders bootstrap claim form
     const phase1Section = await screen.findByTestId("setup-phase-owner_claim");
-    expect(screen.getAllByText("1. Owner Claim")).toHaveLength(1);
-    expect(screen.getByTestId("badge-ready-monitor")).toHaveTextContent(/Monitor Not Ready/i);
-    expect(screen.getByTestId("badge-ready-repair")).toHaveTextContent(/Repair Blocked/i);
+    expect(screen.getAllByText("Owner Claim")).toHaveLength(1);
+    expect(screen.queryByTestId("setup-readiness-banner")).not.toBeInTheDocument();
 
     // Accessibility check in light theme (`0` WCAG 2.2 AA violations)
     const axeLight = await axe.run(container);
@@ -380,10 +379,8 @@ describe("U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SE
       within(phase1Section).getByRole("button", { name: /Claim owner & sign in/i }),
     );
 
-    // Wizard resumes at Phase 6 (`model_consent`), showing Monitor Ready & Repair Blocked
+    // Wizard resumes at Phase 6 (`model_consent`); readiness summaries are not shown here.
     await screen.findByTestId("setup-phase-model_consent");
-    expect(screen.getByTestId("badge-ready-monitor")).toHaveTextContent(/Monitor Ready/i);
-    expect(screen.getByTestId("badge-ready-repair")).toHaveTextContent(/Repair Blocked/i);
 
     // Skip optional Phase 6 -> Step 6 shows honest "Not Configured" (never green/Completed!)
     await user.click(screen.getByRole("button", { name: /Skip for now/i }));
@@ -570,7 +567,7 @@ describe("U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SE
     const axeDark = await axe.run(container);
     expect(axeDark.violations).toEqual([]);
 
-    // 2) Grant explicit `inference` consent -> Repair Ready turns active; revoking drops it back!
+    // 2) Grant explicit `inference` consent; revoking drops it back.
     const consentsPanel = screen.getByTestId("setup-consents-panel");
     const grantBtn = within(consentsPanel).getByRole("button", {
       name: /Grant outbound consent/i,
@@ -584,25 +581,15 @@ describe("U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SE
     expect(grantBtn).toBeEnabled();
     await user.click(grantBtn);
 
-    await waitFor(() => {
-      expect(screen.getByTestId("badge-ready-repair")).toHaveTextContent(/Repair Ready/i);
-    });
+    await waitFor(() => expect(screen.getByTestId("consent-row-inference")).toBeInTheDocument());
     expect(screen.getByTestId("consent-row-inference")).toBeInTheDocument();
 
     await user.click(within(consentsPanel).getByRole("button", { name: /Revoke consent/i }));
     const revokeConsentDialog = await screen.findByRole("alertdialog", { name: "Revoke this setup consent?" });
     await user.click(within(revokeConsentDialog).getByRole("button", { name: "Revoke consent" }));
-    await waitFor(() => {
-      expect(screen.getByTestId("badge-ready-repair")).toHaveTextContent(/Repair Blocked/i);
-    });
+    expect(screen.queryByTestId("setup-readiness-banner")).not.toBeInTheDocument();
 
-    // 3) Trigger 409 checkpoint_conflict -> recovery toast reloads latest checkpoint & succeeds
-    await user.click(screen.getByRole("button", { name: /Complete setup review/i }));
-    await user.click(await screen.findByRole("button", { name: /Reload latest checkpoint/i }));
-    await user.click(screen.getByRole("button", { name: /Complete setup review/i }));
-    await screen.findByRole("button", { name: /Open initial workspace/i });
-
-    // 4) Registering private endpoint opens StepUpDialog when step-up is missing, then completes!
+    // 3) Registering private endpoint opens StepUpDialog when step-up is missing, then completes!
     const endpointsPanel = screen.getByTestId("setup-endpoints-panel");
     await user.type(within(endpointsPanel).getByLabelText(/Hostname/i), "gitlab.corp.internal");
     await user.clear(within(endpointsPanel).getByLabelText(/^Port$/i));
@@ -623,6 +610,15 @@ describe("U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SE
     const epRow = await screen.findByTestId("endpoint-row-gitlab.corp.internal");
     expect(epRow).toHaveTextContent("https://gitlab.corp.internal:8443");
     expect(epRow).toHaveTextContent("10.24.0.0/16");
+
+    // 4) Trigger 409 checkpoint_conflict, then complete setup and continue straight to the workspace.
+    await user.click(screen.getByRole("button", { name: /Complete setup review/i }));
+    await user.click(await screen.findByRole("button", { name: /Reload latest checkpoint/i }));
+    await user.click(screen.getByRole("button", { name: /Complete setup review/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("router-location")).toHaveTextContent("/w/core-eng/overview");
+    });
+    expect(screen.queryByRole("button", { name: /Open initial workspace/i })).not.toBeInTheDocument();
 
     assertZeroWebStorageSecrets();
     unmount();
