@@ -9,11 +9,13 @@
 <h3 align="center">Self-hosted CI repair with deterministic proof, policy gates, and human-reviewed Draft PRs.</h3>
 
 <p align="center">
+  <a href="https://nguywnben.github.io/red2pr/">Website</a> ·
   <a href="#quick-start">Quick Start</a> ·
   <a href="#how-it-works">How It Works</a> ·
   <a href="#product-tour">Product Tour</a> ·
   <a href="#architecture-overview">Architecture</a> ·
   <a href="docs/QUICKSTART_AND_USER_GUIDE.md">User Guide</a> ·
+  <a href="https://github.com/nguywnben/red2pr/releases/tag/v0.1.0-beta.1">Releases</a> ·
   <a href="SECURITY.md">Security</a> ·
   <a href="LICENSE">Apache-2.0 License</a>
 </p>

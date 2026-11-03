@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-astryx-theme="neutral">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Red2PR — Self-Hosted CI Repair with Deterministic Proof</title>
+    <meta
+      name="description"
+      content="Self-hosted CI failure investigation and evidence-backed repair platform. Pairs Meta Muse diagnosis with zero-credential sandbox reproduction, cryptographic evidence manifests, policy gates, and human-reviewed Draft PRs."
+    />
+    <link rel="canonical" href="https://nguywnben.github.io/red2pr/" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Red2PR" />
+    <meta property="og:title" content="Red2PR — Autonomous CI Repair, Proven Before Every Draft PR" />
+    <meta
+      property="og:description"
+      content="Self-hosted CI repair integrating Meta Muse and Meta Astryx. Reproduces failures in zero-credential sandboxes, verifies red-to-green patches (V-01–V-08), and opens human-reviewed Draft PRs only."
+    />
+    <meta property="og:url" content="https://nguywnben.github.io/red2pr/" />
+    <meta property="og:image" content="https://nguywnben.github.io/red2pr/og-preview.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Red2PR self-hosted CI repair platform showing the Workspace Overview funnel and USD Meta Muse cost ledger"
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Red2PR — Autonomous CI Repair, Proven Before Every Draft PR" />
+    <meta
+      name="twitter:description"
+      content="Deterministic sandbox reproduction, signed EvidenceManifestV1 proof, repository policy gates, and human-reviewed Draft PRs."
+    />
+    <meta name="twitter:image" content="https://nguywnben.github.io/red2pr/og-preview.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Red2PR Workspace Overview and deterministic repair funnel"
+    />
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem("red2pr-website-theme");
+          var mode = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+          var prefersDark =
+            typeof window.matchMedia === "function" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var resolved = mode === "system" ? (prefersDark ? "dark" : "light") : mode;
+          document.documentElement.setAttribute("data-theme", resolved);
+          document.documentElement.setAttribute("data-theme-preference", mode);
+          document.documentElement.style.colorScheme = resolved;
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

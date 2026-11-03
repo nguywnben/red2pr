@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-labelledby="title">
+  <title id="title">Red2PR mark</title>
+  <g fill="none" stroke="#141413" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="44" height="44" rx="13" stroke-width="2" />
+    <path d="M13 13v22M19 16h11M19 23h8M19 30h4" stroke-width="2.2" />
+    <path d="m27 30 3.2 3.2L37 25" stroke="#BC4D45" stroke-width="2.6" />
+  </g>
+</svg>
