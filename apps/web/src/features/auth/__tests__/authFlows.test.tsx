@@ -516,7 +516,12 @@ describe("U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (
     });
 
     expect(await screen.findByText("Alice Owner")).toBeInTheDocument();
-    expect(screen.getByText("Not Configured")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Profile & Authorization Summary" })).toBeInTheDocument();
+    expect(screen.queryByText("Instance Owner", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText("MFA Not Enrolled", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText("Not Configured", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("mfa-status-badge")).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".red2pr-account-summary-grid .red2pr-kv-item")).toHaveLength(5);
     expect(await screen.findByText("Chrome/131.0 macOS")).toBeInTheDocument();
 
     // WCAG 2.2 AA check on full /account inside AppShell
@@ -570,6 +575,8 @@ describe("U05 Auth Screens, CSRF/Step-Up/MFA Flows & WCAG 2.2 AA Accessibility (
       "R2PR-AAAA-BBBB-0000",
     );
     await user.click(screen.getByRole("button", { name: /^Disable MFA$/i }));
+    const disableMfaDialog = await screen.findByRole("alertdialog", { name: "Disable authenticator MFA?" });
+    await user.click(within(disableMfaDialog).getByRole("button", { name: "Disable MFA" }));
 
     const accountBanner = await screen.findByTestId("account-error-banner");
     expect(accountBanner).toHaveTextContent(/mandatory for privileged accounts/i);

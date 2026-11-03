@@ -40,7 +40,7 @@ export const EN_MESSAGES = {
 
   "state.correlationId": "Correlation ID: {correlationId}",
   "state.loading.badge": "Loading",
-  "state.loading.title": "Loading workspace data",
+  "state.loading.title": "Loading workspace",
   "state.loading.description": "Fetching authoritative state from the Red2PR control plane.",
   "state.empty.badge": "Empty",
   "state.empty.title": "No records match this view",
@@ -216,8 +216,6 @@ export const EN_MESSAGES = {
   "account.fieldEmailUnset": "Not set",
   "account.fieldStatus": "Account status",
   "account.fieldRole": "Instance role",
-  "account.roleOwner": "Instance Owner",
-  "account.roleMember": "Standard User",
   "account.fieldAuthStrength": "Session auth strength",
   "account.fieldStepUp": "Privileged step-up window",
   "account.stepUpActive": "Verified until {until}",
@@ -227,13 +225,10 @@ export const EN_MESSAGES = {
   "account.grantsEmpty":
     "No workspace memberships granted yet. Instance Owner access never implicitly grants repository read access.",
   "account.telegramTitle": "Personal Telegram Pairing",
-  "account.telegramNotConfiguredBadge": "Not Configured",
   "account.telegramNotConfiguredDesc":
     "Personal Telegram pairing becomes available after a workspace configures its Telegram bot integration.",
 
   "account.mfaTitle": "Two-Factor Authentication (TOTP MFA)",
-  "account.mfaEnabledBadge": "MFA Enabled",
-  "account.mfaDisabledBadge": "MFA Not Enrolled",
   "account.mfaMandatoryNotice":
     "Mandatory policy: Instance Owners and privileged roles must keep TOTP MFA enabled and cannot disable MFA to bypass step-up checks.",
   "account.mfaStartEnroll": "Set up authenticator MFA",

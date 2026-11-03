@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router";
 import { useRed2PrApi, useRed2PrTransportConfig } from "../../shared/api";
-import { Button, StateView } from "../../shared/ui";
+import { Button, Skeleton, StateView, VStack } from "../../shared/ui";
 import { StepUpDialog, extractAuthProblemSummary } from "../auth";
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{32,64}$/;
@@ -109,14 +109,20 @@ export function McpIntentConfirmPage(): React.JSX.Element {
         </section>
       ) : (
         <section className="red2pr-surface red2pr-card-section">
-          {previewQuery.isPending ? <p>Loading the requested action…</p> : null}
+          {previewQuery.isPending ? (
+            <VStack gap={2} width="100%" role="status" aria-label="Loading the requested action" aria-busy="true">
+              <Skeleton width="48%" height={14} index={0} />
+              <Skeleton width="76%" height={14} index={1} />
+              <Skeleton width="62%" height={14} index={2} />
+            </VStack>
+          ) : null}
           {previewQuery.isError ? <p role="alert">This approval link is invalid, expired, or outside your current access.</p> : null}
           {previewQuery.data ? <>
             <p><strong>Repair:</strong> {previewQuery.data.repair_id}</p>
             <p><strong>Reason:</strong> {previewQuery.data.reason}</p>
             <p>Expires: <time dateTime={previewQuery.data.expires_at}>{new Date(previewQuery.data.expires_at).toLocaleString()}</time></p>
           </> : null}
-          <Button label="Approve and create recheck" variant="primary" isLoading={confirmMutation.isPending} isDisabled={token === null || workspaceId === null || confirmMutation.isPending} onClick={() => confirmMutation.mutate()} />
+          <Button label="Approve and create recheck" variant="primary" isLoading={confirmMutation.isPending} isDisabled={token === null || workspaceId === null || previewQuery.isPending || !previewQuery.data || confirmMutation.isPending} onClick={() => confirmMutation.mutate()} />
         </section>
       )}
       <StepUpDialog

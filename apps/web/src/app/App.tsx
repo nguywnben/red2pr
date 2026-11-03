@@ -240,11 +240,9 @@ export function WorkspaceRouteShell(): React.JSX.Element {
   );
 
   if (meQuery.isPending) {
-    return (
-      <AppShell activePath={location.pathname} activeWorkspaceSlug={wsParam} sseState="offline">
-        <StateView state="loading" />
-      </AppShell>
-    );
+    // Check the session before loading any workspace UI. Keep anonymous visits
+    // out of the workspace loading state while the auth guard resolves.
+    return <></>;
   }
 
   if (meQuery.isError || me === null) {
@@ -529,6 +527,10 @@ export function AccountRouteShell(): React.JSX.Element {
     return <Navigate to={buildLoginRedirectHref(location.pathname, location.search)} replace />;
   }
 
+  if (meQuery.isPending) {
+    return <StateView state="loading" title="Loading account" />;
+  }
+
   const navOptions = toWorkspaceNavOptions(meQuery.data?.data.workspaces);
   const defaultSlug = navOptions[0]?.slug ?? "default";
 
@@ -669,7 +671,7 @@ export function AdminRouteShell(): React.JSX.Element {
 
 export function AppRoutes(): React.JSX.Element {
   return (
-    <Suspense fallback={<StateView state="loading" />}>
+    <Suspense fallback={null}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/login/recovery" element={<AccountRecoveryPage />} />

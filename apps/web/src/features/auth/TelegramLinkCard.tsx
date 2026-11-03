@@ -2,7 +2,7 @@ import type { TelegramLinkSummary } from "@red2pr/ts-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { useRed2PrApi } from "../../shared/api";
-import { Button } from "../../shared/ui";
+import { ConfirmActionButton, Button } from "../../shared/ui";
 import { extractAuthProblemSummary, type AuthProblemSummary } from "./authHelpers";
 
 export interface TelegramLinkCardProps {
@@ -44,9 +44,11 @@ export function TelegramLinkCard({
         <h2 id="account-telegram-heading" >
           Personal Telegram pairing
         </h2>
-        <span className="red2pr-badge-pill red2pr-tone-neutral" data-testid="telegram-link-status">
-          {link.status === "linked" ? "Linked" : link.status === "pending" ? "Pending" : "Not Configured"}
-        </span>
+        {link.status !== "not_configured" ? (
+          <span className="red2pr-badge-pill red2pr-tone-neutral" data-testid="telegram-link-status">
+            {link.status === "linked" ? "Linked" : "Pending"}
+          </span>
+        ) : null}
       </div>
       <p className="red2pr-field-hint">
         Link a private chat for scoped read commands. Telegram actions always require signed-in web confirmation.
@@ -63,11 +65,14 @@ export function TelegramLinkCard({
           onClick={() => createMutation.mutate()}
         />
       ) : (
-        <Button
+        <ConfirmActionButton
           label="Unlink Telegram"
           variant="destructive"
           isDisabled={busy}
-          onClick={() => requireStepUpThen(() => unlinkMutation.mutate())}
+          confirmationTitle="Unlink this Telegram account?"
+          confirmationDescription="Telegram will no longer be able to provide scoped read commands for this account."
+          confirmationActionLabel="Unlink Telegram"
+          onConfirm={() => requireStepUpThen(() => unlinkMutation.mutate())}
         />
       )}
       {deepLink ? (

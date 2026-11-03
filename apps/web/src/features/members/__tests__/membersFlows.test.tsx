@@ -224,6 +224,52 @@ describe("U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & L
     assertZeroWebStorageSecrets();
   });
 
+  it("does not show workspace loading or request workspace data while checking an anonymous session", async () => {
+    let resolveMe!: (response: Response) => void;
+    const pendingMe = new Promise<Response>((resolve) => {
+      resolveMe = resolve;
+    });
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const req = input instanceof Request ? input : new Request(input, init);
+      const url = new URL(req.url);
+
+      if (url.pathname === "/api/v1/me" && req.method === "GET") {
+        return pendingMe;
+      }
+      if (url.pathname === "/api/v1/auth/csrf" && req.method === "GET") {
+        return jsonResponse({
+          csrf_token: "anon.csrf.token.u06",
+          bootstrap_claim_required: false,
+        });
+      }
+      throw new Error(`Unexpected request before authentication: ${req.method} ${url.pathname}`);
+    });
+
+    renderAppRouter({ initialEntry: "/w/acme/members", fetchImpl: fetchMock });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    expect(screen.queryByText(/Loading workspace data/i)).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([input]) => {
+      const req = input instanceof Request ? input : new Request(input);
+      return new URL(req.url).pathname.startsWith("/api/v1/workspaces/");
+    })).toBe(false);
+
+    resolveMe(problemResponse({
+      status: 401,
+      code: "unauthenticated",
+      title: "Authentication required",
+      detail: "Sign in to access this workspace.",
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("router-location")).toHaveTextContent(
+        "/login?next=%2Fw%2Facme%2Fmembers",
+      );
+    });
+  });
+
   it("blocks non-member workspace navigation with zero metadata leakage and allows switching to an authorized workspace (FE-02, UX-ACCESS-001)", async () => {
     const user = userEvent.setup();
 
@@ -767,6 +813,8 @@ describe("U06 Multi-Workspace Route Guards, Members & Access UI, Break-Glass & L
 
     // 2. Revoke pending invitation
     await user.click(screen.getByRole("button", { name: /Revoke invitation/i }));
+    const revokeInviteDialog = await screen.findByRole("alertdialog", { name: "Revoke this invitation?" });
+    await user.click(within(revokeInviteDialog).getByRole("button", { name: "Revoke invitation" }));
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: /Revoke invitation/i })).not.toBeInTheDocument();
     });

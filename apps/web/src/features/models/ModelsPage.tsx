@@ -18,6 +18,7 @@ import { invalidateWorkspaceQueries, useRed2PrApi } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 import {
   Button,
+  ConfirmActionButton,
   Dialog,
   StateView,
   StatusGlyph,
@@ -883,11 +884,14 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
               }
             />
             {modelsState.api_key_presence.configured ? (
-              <Button
+              <ConfirmActionButton
                 label="Revoke API Key"
                 variant="destructive"
                 isDisabled={!isAdmin || actionMutation.isPending}
-                onClick={() => {
+                confirmationTitle="Revoke the Meta API key?"
+                confirmationDescription="Red2PR will stop using this credential for inference immediately. Repair actions that require the provider will be blocked until a new key is configured."
+                confirmationActionLabel="Revoke API key"
+                onConfirm={() => {
                   setApiKeyInput("");
                   runConfigPatch(
                     { expected_version: modelsState.version, revoke_api_key: true },
@@ -960,11 +964,14 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
             onClick={handleGrantConsent}
           />
           {modelsState.active_inference_consent_id != null ? (
-            <Button
+            <ConfirmActionButton
               label="Revoke active consent"
               variant="destructive"
               isDisabled={!isAdmin || actionMutation.isPending}
-              onClick={() => {
+              confirmationTitle="Revoke inference consent?"
+              confirmationDescription="Red2PR will stop using this consent for outbound model inference in the workspace."
+              confirmationActionLabel="Revoke consent"
+              onConfirm={() => {
                 const targetId = modelsState.active_inference_consent_id;
                 if (!targetId) {
                   return;

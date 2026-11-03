@@ -4,7 +4,7 @@
 
 :root {
   /* Domain-level aliases point at Astryx Neutral semantic tokens. */
-  --red2pr-bg-canvas: var(--color-background-body);
+  --red2pr-bg-canvas: var(--color-background-surface);
   --red2pr-bg-surface: var(--color-background-surface);
   --red2pr-bg-subtle: var(--color-background-muted);
   --red2pr-bg-code: var(--color-background-muted);
@@ -162,13 +162,14 @@ h3:not(.astryx-heading) {
 .red2pr-badge-pill {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-1-5);
-  padding: var(--spacing-0-5) var(--spacing-3);
-  border-radius: var(--radius-full);
-  font-size: var(--text-supporting-size);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--text-supporting-leading);
-  border: var(--border-width) solid transparent;
+  gap: var(--spacing-1);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
 }
 
 .red2pr-tone-success {
@@ -199,6 +200,16 @@ h3:not(.astryx-heading) {
   background-color: var(--red2pr-tone-neutral-bg);
   border-color: var(--red2pr-tone-neutral-border);
   color: var(--red2pr-tone-neutral-fg);
+}
+
+.red2pr-badge-pill.red2pr-tone-success,
+.red2pr-badge-pill.red2pr-tone-warning,
+.red2pr-badge-pill.red2pr-tone-danger,
+.red2pr-badge-pill.red2pr-tone-info,
+.red2pr-badge-pill.red2pr-tone-neutral {
+  background-color: transparent;
+  border-color: transparent;
+  color: inherit;
 }
 
 .red2pr-code-viewport {
@@ -279,6 +290,24 @@ h3:not(.astryx-heading) {
   margin-block: var(--spacing-4);
   margin-inline: auto;
   box-sizing: border-box;
+  min-width: 0;
+}
+
+.red2pr-setup-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+}
+
+.red2pr-setup-page {
+  max-width: 680px;
+}
+
+.red2pr-setup-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
   min-width: 0;
 }
 
@@ -381,8 +410,8 @@ h3:not(.astryx-heading) {
 }
 
 .red2pr-inline-alert {
-  padding: var(--spacing-3) var(--spacing-4);
-  border-radius: var(--radius-element);
+  padding: var(--spacing-4);
+  border-radius: var(--radius-container);
   border: var(--border-width) solid var(--red2pr-border-subtle);
   font-size: var(--text-supporting-size);
   line-height: var(--text-supporting-leading);
@@ -391,27 +420,6 @@ h3:not(.astryx-heading) {
   gap: var(--spacing-1-5);
   background-color: var(--red2pr-bg-surface);
   color: var(--red2pr-text-primary);
-  border-inline-start-width: calc(var(--border-width) * 3);
-}
-
-.red2pr-inline-alert.red2pr-tone-success {
-  border-inline-start-color: var(--red2pr-tone-success-border);
-}
-
-.red2pr-inline-alert.red2pr-tone-warning {
-  border-inline-start-color: var(--red2pr-tone-warning-border);
-}
-
-.red2pr-inline-alert.red2pr-tone-danger {
-  border-inline-start-color: var(--red2pr-tone-danger-border);
-}
-
-.red2pr-inline-alert.red2pr-tone-info {
-  border-inline-start-color: var(--red2pr-tone-info-border);
-}
-
-.red2pr-inline-alert.red2pr-tone-neutral {
-  border-inline-start-color: var(--red2pr-tone-neutral-border);
 }
 
 .red2pr-tab-strip {
@@ -470,6 +478,13 @@ h3:not(.astryx-heading) {
   border-radius: var(--radius-element);
   background-color: var(--red2pr-bg-subtle);
   border: var(--border-width) solid var(--red2pr-border-subtle);
+}
+
+.red2pr-account-summary-grid .red2pr-kv-item {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .red2pr-kv-term {
@@ -591,38 +606,13 @@ select.red2pr-control-input[multiple],
   border-color: var(--color-border-red);
 }
 
-.red2pr-state-view {
-  border-inline-start: calc(var(--border-width) * 3) solid var(--color-border-emphasized);
-}
-
-.red2pr-state-view[data-ux-state="error"],
-.red2pr-state-view[data-ux-state="offline"],
-.red2pr-state-view[data-ux-state="forbidden"] {
-  border-inline-start-color: var(--color-border-red);
-}
-
-.red2pr-state-view[data-ux-state="degraded"],
-.red2pr-state-view[data-ux-state="stale"],
-.red2pr-state-view[data-ux-state="partial_evidence"],
-.red2pr-state-view[data-ux-state="interrupted"],
-.red2pr-state-view[data-ux-state="rate_limited"] {
-  border-inline-start-color: var(--color-border-yellow);
-}
-
-.red2pr-state-view[data-ux-state="ready"] {
-  border-inline-start-color: var(--color-border-green);
-}
-
-.red2pr-state-view[data-ux-state="loading"],
-.red2pr-state-view[data-ux-state="reconciling"],
-.red2pr-state-view[data-ux-state="approval_required"] {
-  border-inline-start-color: var(--color-border-blue);
-}
-
 .red2pr-state-view[data-ux-state="error"] .red2pr-state-icon,
-.red2pr-state-view[data-ux-state="offline"] .red2pr-state-icon,
-.red2pr-state-view[data-ux-state="forbidden"] .red2pr-state-icon {
+.red2pr-state-view[data-ux-state="offline"] .red2pr-state-icon {
   color: var(--color-icon-red);
+}
+
+.red2pr-state-view[data-ux-state="forbidden"] .red2pr-state-icon--text {
+  color: var(--red2pr-text-primary);
 }
 
 .red2pr-state-view[data-ux-state="degraded"] .red2pr-state-icon,

@@ -6,7 +6,9 @@ import { Navigate, useNavigate } from "react-router";
 import { useRed2PrApi } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 import {
+  AlertDialog,
   Button,
+  ConfirmActionButton,
   StateView,
   StatusGlyph,
   Table,
@@ -60,6 +62,7 @@ export function AccountPage(): React.JSX.Element {
   const [confirmOtp, setConfirmOtp] = useState("");
   const [onceRecoveryCodes, setOnceRecoveryCodes] = useState<readonly string[] | null>(null);
   const [disableRecoveryCode, setDisableRecoveryCode] = useState("");
+  const [disableMfaConfirmOpen, setDisableMfaConfirmOpen] = useState(false);
   const [actionError, setActionError] = useState<AuthProblemSummary | null>(null);
 
   const meQuery = useQuery({
@@ -257,12 +260,21 @@ export function AccountPage(): React.JSX.Element {
         key: "id",
         header: t("account.colSessionAction"),
         renderCell: (row) => (
-          <Button
+          <ConfirmActionButton
             label={t("account.revokeSessionAction")}
             variant={row.is_current ? "secondary" : "destructive"}
             size="sm"
             isDisabled={revokeSessionMutation.isPending}
-            onClick={() => revokeSessionMutation.mutate(row)}
+            confirmationTitle="Revoke this session?"
+            confirmationDescription={
+              row.is_current
+                ? "This will end your current session and return you to sign in."
+                : "This session will immediately lose access to the account."
+            }
+            confirmationActionLabel="Revoke session"
+            onConfirm={async () => {
+              await revokeSessionMutation.mutateAsync(row);
+            }}
           />
         ),
       },
@@ -351,20 +363,12 @@ export function AccountPage(): React.JSX.Element {
         aria-labelledby="account-profile-heading"
       >
         <div className="red2pr-card-header">
-          <h2 id="account-profile-heading" >
+          <h2 id="account-profile-heading">
             {t("account.profileTitle")}
           </h2>
-          <span
-            className={`red2pr-badge-pill ${
-              me.is_instance_owner ? "red2pr-tone-info" : "red2pr-tone-neutral"
-            }`}
-          >
-            <StatusGlyph kind={me.is_instance_owner ? "lock" : "info"} />
-            <span>{me.is_instance_owner ? t("account.roleOwner") : t("account.roleMember")}</span>
-          </span>
         </div>
 
-        <dl className="red2pr-kv-grid">
+        <dl className="red2pr-kv-grid red2pr-account-summary-grid">
           <div className="red2pr-kv-item">
             <dt className="red2pr-kv-term">{t("account.fieldDisplayName")}</dt>
             <dd className="red2pr-kv-detail">
@@ -423,17 +427,6 @@ export function AccountPage(): React.JSX.Element {
           <h2 id="account-mfa-heading" >
             {t("account.mfaTitle")}
           </h2>
-          <span
-            data-testid="mfa-status-badge"
-            className={`red2pr-badge-pill ${
-              me.mfa_enabled ? "red2pr-tone-success" : "red2pr-tone-warning"
-            }`}
-          >
-            <StatusGlyph kind={me.mfa_enabled ? "check" : "warn"} />
-            <span>
-              {me.mfa_enabled ? t("account.mfaEnabledBadge") : t("account.mfaDisabledBadge")}
-            </span>
-          </span>
         </div>
 
         {me.mfa_required_for_privileged ? (
@@ -573,10 +566,7 @@ export function AccountPage(): React.JSX.Element {
             }}
             onSubmit={(event) => {
               event.preventDefault();
-              setActionError(null);
-              requireStepUpThen(me.step_up_valid_until, () => {
-                disableMfaMutation.mutate();
-              });
+              setDisableMfaConfirmOpen(true);
             }}
             noValidate
           >
@@ -607,7 +597,6 @@ export function AccountPage(): React.JSX.Element {
                 label={t("account.mfaDisableAction")}
                 variant="destructive"
                 type="submit"
-                isLoading={disableMfaMutation.isPending}
                 isDisabled={
                   disableRecoveryCode.trim().length < 10 || disableMfaMutation.isPending
                 }
@@ -615,6 +604,30 @@ export function AccountPage(): React.JSX.Element {
             </div>
           </form>
         ) : null}
+
+        <AlertDialog
+          isOpen={disableMfaConfirmOpen}
+          onOpenChange={setDisableMfaConfirmOpen}
+          title="Disable authenticator MFA?"
+          description="This reduces account protection. A recovery code and any required step-up verification are still required."
+          actionLabel="Disable MFA"
+          isActionLoading={disableMfaMutation.isPending}
+          onAction={async () => {
+            setActionError(null);
+            if (!isStepUpValid(me.step_up_valid_until)) {
+              setDisableMfaConfirmOpen(false);
+              pendingStepUpActionRef.current = () => disableMfaMutation.mutate();
+              setStepUpDialogOpen(true);
+              return;
+            }
+            try {
+              await disableMfaMutation.mutateAsync();
+            } catch {
+              // The mutation handler renders the canonical error and correlation ID.
+            }
+            setDisableMfaConfirmOpen(false);
+          }}
+        />
       </section>
 
       <TelegramLinkCard

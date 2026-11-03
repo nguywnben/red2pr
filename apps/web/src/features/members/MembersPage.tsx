@@ -17,6 +17,7 @@ import { invalidateWorkspaceQueries, useRed2PrApi } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 import {
   Button,
+  ConfirmActionButton,
   Dialog,
   StateView,
   StatusGlyph,
@@ -462,12 +463,17 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
         header: t("members.colActions"),
         renderCell: (row) =>
           row.status === "pending" ? (
-            <Button
+            <ConfirmActionButton
               label={t("members.revokeInviteAction")}
               variant="destructive"
               size="sm"
               isDisabled={revokeInviteMutation.isPending}
-              onClick={() => revokeInviteMutation.mutate(row.id)}
+              confirmationTitle="Revoke this invitation?"
+              confirmationDescription="The invitation link will stop working immediately."
+              confirmationActionLabel="Revoke invitation"
+              onConfirm={async () => {
+                await revokeInviteMutation.mutateAsync(row.id);
+              }}
             />
           ) : (
             <span className="red2pr-field-hint">—</span>
@@ -515,12 +521,17 @@ export function MembersPage({ workspace, me }: MembersPageProps): React.JSX.Elem
         header: t("members.colActions"),
         renderCell: (row) =>
           row.active ? (
-            <Button
+            <ConfirmActionButton
               label={t("members.revokeBreakGlassAction")}
               variant="destructive"
               size="sm"
               isDisabled={revokeBreakGlassMutation.isPending}
-              onClick={() => revokeBreakGlassMutation.mutate(row.id)}
+              confirmationTitle="Revoke temporary access?"
+              confirmationDescription="This ends the audited break-glass read-only grant immediately."
+              confirmationActionLabel="Revoke access"
+              onConfirm={async () => {
+                await revokeBreakGlassMutation.mutateAsync(row.id);
+              }}
             />
           ) : (
             <span className="red2pr-field-hint">—</span>

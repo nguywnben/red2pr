@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import React from "react";
@@ -135,6 +135,7 @@ describe("U21 notifications UI", () => {
     ));
     await screen.findByText("webhook · workspace");
     await user.click(screen.getByRole("button", { name: "Rotate signing key" }));
+    await user.click(within(screen.getByRole("alertdialog", { name: "Rotate this signing key?" })).getByRole("button", { name: "Rotate key" }));
     expect(await screen.findByLabelText("Signing secret")).toHaveValue("S".repeat(43));
     expect(api.rotateWebhookSigningKey).toHaveBeenCalledWith("acme", "destination-webhook");
     await user.click(screen.getByRole("button", { name: "I copied the key" }));

@@ -2,7 +2,7 @@ import { InputControl } from "../../shared/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
 import { useRed2PrApi } from "../../shared/api";
-import { Button, StateView } from "../../shared/ui";
+import { Button, ConfirmActionButton, StateView } from "../../shared/ui";
 import { StepUpDialog } from "../auth/StepUpDialog";
 
 const SUPPORT_FILES = ["health_summary", "doctor_report", "migration_status", "worker_status", "telemetry_snapshot", "recent_redacted_logs"] as const;
@@ -85,7 +85,7 @@ export function SystemPage(): React.JSX.Element {
           <InputControl className="red2pr-control-input" id="system-maintenance-reason" minLength={8} maxLength={500} value={maintenanceReason} onChange={(event) => setMaintenanceReason(event.target.value)} />
         </div>
         {current.maintenance_enabled && current.maintenance_reason?.startsWith("Restore completed;") ? <label><input type="checkbox" checked={reconciliationConfirmed} onChange={(event) => setReconciliationConfirmed(event.target.checked)} /> I have reconciled ambiguous task, publication, and notification effects before resuming writes.</label> : null}
-        <Button label={current.maintenance_enabled ? "Disable maintenance" : "Enable maintenance"} isDisabled={maintenance.isPending || (!current.maintenance_enabled && maintenanceReason.trim().length < 8) || (current.maintenance_enabled && current.maintenance_reason?.startsWith("Restore completed;") && !reconciliationConfirmed)} onClick={() => runAfterStepUp(() => maintenance.mutate(!current.maintenance_enabled))} />
+        <ConfirmActionButton label={current.maintenance_enabled ? "Disable maintenance" : "Enable maintenance"} isDisabled={maintenance.isPending || (!current.maintenance_enabled && maintenanceReason.trim().length < 8) || (current.maintenance_enabled && current.maintenance_reason?.startsWith("Restore completed;") && !reconciliationConfirmed)} confirmationTitle={current.maintenance_enabled ? "Disable maintenance mode?" : "Enable maintenance mode?"} confirmationDescription={current.maintenance_enabled ? "This reopens instance writes. Only continue after reconciling any required external effects." : `This pauses instance writes. Reason: ${maintenanceReason.trim()}`} confirmationActionLabel={current.maintenance_enabled ? "Disable maintenance" : "Enable maintenance"} confirmationActionVariant="primary" onConfirm={() => runAfterStepUp(() => maintenance.mutate(!current.maintenance_enabled))} />
         {maintenance.isError ? <p role="alert">Maintenance change failed; current server state was not assumed to change.</p> : null}
       </section>
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="system-backup-title">
@@ -102,7 +102,7 @@ export function SystemPage(): React.JSX.Element {
         {restoreDryRun.data ? <div role="status"><p>Preflight {restoreDryRun.data.data.compatible ? "passed" : "blocked"}; target schema {restoreDryRun.data.data.target_schema_revision}; plan digest <code>{restoreDryRun.data.data.plan_digest}</code>.</p>
           {restoreDryRun.data.data.blockers.length ? <ul aria-label="Restore blockers">{restoreDryRun.data.data.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul> : null}
           <p>Maintenance mode, recovery epoch rotation, tombstone reapplication and remote reconciliation are required for a restore.</p>
-          <Button label="Restore verified backup" isDisabled={!restoreDryRun.data.data.compatible || !current.maintenance_enabled || restore.isPending} onClick={() => runAfterStepUp(() => restore.mutate())} />
+          <ConfirmActionButton label="Restore verified backup" isDisabled={!restoreDryRun.data.data.compatible || !current.maintenance_enabled || restore.isPending} confirmationTitle="Restore this backup?" confirmationDescription="This will replace current instance data with the verified backup and advance the recovery epoch. Keep maintenance enabled and confirm only after reviewing the preflight plan and digest." confirmationActionLabel="Restore backup" onConfirm={() => runAfterStepUp(() => restore.mutate())} />
         </div> : null}
         {restoreDryRun.isError ? <p role="alert">Restore preflight failed integrity, key availability, or schema compatibility checks.</p> : null}
         {restore.isError ? <p role="alert">Restore did not complete. Keep maintenance enabled and inspect System Doctor before retrying.</p> : null}

@@ -13,19 +13,22 @@ import {
   type SetupWizardPhase,
 } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Step, Stepper } from "@astryxdesign/core/Stepper";
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import {
   StepUpDialog,
   extractAuthProblemSummary,
   isStepUpValid,
-  type AuthProblemSummary,
 } from "../auth";
 import { useRed2PrApi } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 import {
   AppShell,
+  Banner,
   Button,
+  ConfirmActionButton,
   StateView,
   StatusGlyph,
   sanitizeUntrustedText,
@@ -129,6 +132,13 @@ type PendingStepUpOp =
   | { readonly kind: "revokeEndpoint"; readonly endpointId: string }
   | null;
 
+type SetupOperationNotice = {
+  readonly status: "success" | "warning" | "error";
+  readonly title: string;
+  readonly description?: string;
+  readonly action?: "reload-checkpoint";
+};
+
 export function SetupWizardPage(): React.JSX.Element {
   const { t } = useI18n();
   const api = useRed2PrApi();
@@ -136,10 +146,13 @@ export function SetupWizardPage(): React.JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
   const announce = useLiveAnnouncer();
+  const [operationNotice, setOperationNotice] = useState<SetupOperationNotice | null>(null);
 
   const idPrefix = useId();
-  const [formError, setFormError] = useState<AuthProblemSummary | null>(null);
-  const [checkpointConflict, setCheckpointConflict] = useState(false);
+  const [activePhaseSlot, setActivePhaseSlot] = useState<HTMLDivElement | null>(null);
+  const setActivePhaseSlotRef = useCallback((node: HTMLDivElement | null) => {
+    setActivePhaseSlot(node);
+  }, []);
 
   // Phase 1 bootstrap claim state (held strictly in component memory)
   const [bootToken, setBootToken] = useState(() => {
@@ -215,7 +228,6 @@ export function SetupWizardPage(): React.JSX.Element {
     "workspace_internal",
   ]);
   const [consentAck, setConsentAck] = useState(false);
-  const [consentError, setConsentError] = useState<AuthProblemSummary | null>(null);
 
   // Private endpoint registration form state (ADR-037)
   const [epAdapter, setEpAdapter] = useState<EgressAdapterKind>("gitlab");
@@ -225,7 +237,6 @@ export function SetupWizardPage(): React.JSX.Element {
   const [epCidrs, setEpCidrs] = useState("10.24.0.0/16");
   const [epCaRef, setEpCaRef] = useState("");
   const [epDescription, setEpDescription] = useState("");
-  const [epError, setEpError] = useState<AuthProblemSummary | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const pendingStepUpRef = useRef<PendingStepUpOp>(null);
 
@@ -260,6 +271,25 @@ export function SetupWizardPage(): React.JSX.Element {
 
   const setupData: SetupState | null = setupQuery.data?.data ?? null;
   const [hydratedCheckpoint, setHydratedCheckpoint] = useState<string | null>(null);
+
+  const showOperationError = useCallback(
+    (error: unknown, fallback: string) => {
+      const summary = extractAuthProblemSummary(error, fallback);
+      setOperationNotice({
+        status: summary.status === 429 ? "warning" : "error",
+        title: summary.detail,
+        description: summary.correlationId
+          ? t("state.correlationId", { correlationId: summary.correlationId })
+          : undefined,
+      });
+    },
+    [t],
+  );
+
+  const showOperationSuccess = useCallback(
+    (title: string) => setOperationNotice({ status: "success", title }),
+    [],
+  );
 
   // Hydrate phase drafts from durable server checkpoint on load / resume (React 19 pattern)
   if (setupData !== null && setupData.checkpoint !== hydratedCheckpoint) {
@@ -329,13 +359,13 @@ export function SetupWizardPage(): React.JSX.Element {
     onSuccess: async () => {
       setBootToken("");
       setOwnerPassword("");
-      setFormError(null);
+      showOperationSuccess("Instance owner claimed.");
       announce("Instance owner claimed. Proceeding to Phase 2.");
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       await queryClient.invalidateQueries({ queryKey: ["setup"] });
     },
     onError: (err) => {
-      setFormError(extractAuthProblemSummary(err, t("auth.genericAuthErrorTitle")));
+      showOperationError(err, t("auth.genericAuthErrorTitle"));
     },
   });
 
@@ -347,17 +377,21 @@ export function SetupWizardPage(): React.JSX.Element {
       return api.submitSetupStep(args.phase, args.body);
     },
     onSuccess: async (envelope) => {
-      setFormError(null);
-      setCheckpointConflict(false);
+      showOperationSuccess("Setup changes saved.");
       queryClient.setQueryData(["setup", "state"], envelope);
       announce(`Setup checkpoint updated. Active phase: ${PHASE_LABELS[envelope.data.phase]}.`);
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
     },
     onError: (err) => {
       if (err instanceof Red2PrApiError && err.problem.code === "checkpoint_conflict") {
-        setCheckpointConflict(true);
+        setOperationNotice({
+          status: "error",
+          title: "Setup checkpoint changed elsewhere. Reload the latest checkpoint before submitting changes.",
+          action: "reload-checkpoint",
+        });
+        return;
       }
-      setFormError(extractAuthProblemSummary(err, t("state.error.description")));
+      showOperationError(err, t("state.error.description"));
     },
   });
 
@@ -372,17 +406,17 @@ export function SetupWizardPage(): React.JSX.Element {
       });
     },
     onSuccess: async (res) => {
-      setConsentError(null);
       setConsentAck(false);
       if (res.data.purpose === "inference") {
         setSelectedInferenceConsentId(res.data.id);
       }
+      showOperationSuccess("Outbound consent granted.");
       announce(`Granted ${res.data.purpose} outbound consent.`);
       await queryClient.invalidateQueries({ queryKey: ["setup", "consents"] });
       await queryClient.invalidateQueries({ queryKey: ["setup", "state"] });
     },
     onError: (err) => {
-      setConsentError(extractAuthProblemSummary(err, t("state.error.description")));
+      showOperationError(err, t("state.error.description"));
     },
   });
 
@@ -391,13 +425,13 @@ export function SetupWizardPage(): React.JSX.Element {
       return api.revokeSetupConsent(consentId, { reason: "Revoked in setup wizard" });
     },
     onSuccess: async () => {
-      setConsentError(null);
+      showOperationSuccess("Outbound consent revoked.");
       announce("Outbound consent revoked. Readiness recomputed.");
       await queryClient.invalidateQueries({ queryKey: ["setup", "consents"] });
       await queryClient.invalidateQueries({ queryKey: ["setup", "state"] });
     },
     onError: (err) => {
-      setConsentError(extractAuthProblemSummary(err, t("state.error.description")));
+      showOperationError(err, t("state.error.description"));
     },
   });
 
@@ -418,13 +452,13 @@ export function SetupWizardPage(): React.JSX.Element {
       });
     },
     onSuccess: async (res) => {
-      setEpError(null);
       setEpHost("");
       setEpCaRef("");
       setEpDescription("");
       if (res.data.adapter === providerKind) {
         setProviderEndpointId(res.data.id);
       }
+      showOperationSuccess("Private endpoint registered.");
       announce(`Registered private endpoint ${res.data.host}.`);
       await queryClient.invalidateQueries({ queryKey: ["setup", "endpoints"] });
     },
@@ -434,7 +468,7 @@ export function SetupWizardPage(): React.JSX.Element {
         setStepUpOpen(true);
         return;
       }
-      setEpError(extractAuthProblemSummary(err, t("state.error.description")));
+      showOperationError(err, t("state.error.description"));
     },
   });
 
@@ -443,7 +477,7 @@ export function SetupWizardPage(): React.JSX.Element {
       return api.revokePrivateEndpoint(endpointId);
     },
     onSuccess: async () => {
-      setEpError(null);
+      showOperationSuccess("Private endpoint revoked.");
       announce("Private endpoint revoked.");
       await queryClient.invalidateQueries({ queryKey: ["setup", "endpoints"] });
     },
@@ -453,7 +487,7 @@ export function SetupWizardPage(): React.JSX.Element {
         setStepUpOpen(true);
         return;
       }
-      setEpError(extractAuthProblemSummary(err, t("state.error.description")));
+      showOperationError(err, t("state.error.description"));
     },
   });
 
@@ -466,8 +500,12 @@ export function SetupWizardPage(): React.JSX.Element {
 
   if (setupQuery.isPending) {
     return (
-      <main id="red2pr-main-content" className="red2pr-page-stack red2pr-standalone-state">
-        <StateView state="loading" />
+      <main id="red2pr-main-content">
+        <StateView
+          state="loading"
+          title="Loading setup"
+          description="Fetching the instance setup status from the Red2PR control plane."
+        />
       </main>
     );
   }
@@ -502,6 +540,37 @@ export function SetupWizardPage(): React.JSX.Element {
     );
   }
 
+  if (ownerClaimed && meQuery.isPending) {
+    return (
+      <main id="red2pr-main-content">
+        <StateView
+          state="loading"
+          title="Loading setup"
+          description="Checking your access to instance setup."
+        />
+      </main>
+    );
+  }
+
+  if (ownerClaimed && meQuery.isError) {
+    if (meQuery.error instanceof Red2PrApiError && meQuery.error.status === 401) {
+      const nextParam = encodeURIComponent(`${location.pathname}${location.search}`);
+      return <Navigate to={`/login?next=${nextParam}`} replace />;
+    }
+    const summary = extractAuthProblemSummary(meQuery.error, t("state.error.description"));
+    return (
+      <main id="red2pr-main-content">
+        <StateView
+          state="error"
+          title="Setup access could not be verified"
+          description={summary.detail}
+          correlationId={summary.correlationId ?? undefined}
+          primaryAction={{ label: "Retry", onClick: () => void meQuery.refetch() }}
+        />
+      </main>
+    );
+  }
+
   const activePhase = setupData.phase;
   const activePhaseIdx = ORDERED_PHASES.indexOf(activePhase);
   const currentStepSummary =
@@ -515,7 +584,6 @@ export function SetupWizardPage(): React.JSX.Element {
   const me = meQuery.data?.data ?? null;
 
   const submitCurrentPhaseSave = (): void => {
-    setFormError(null);
     const ckpt = setupData.checkpoint;
 
     if (activePhase === "topology_tls") {
@@ -665,9 +733,9 @@ export function SetupWizardPage(): React.JSX.Element {
   };
 
   const wizardBody = (
-    <div className="red2pr-page-stack" data-testid="setup-wizard-page">
+    <div className="red2pr-page-stack red2pr-setup-page" data-testid="setup-wizard-page">
       <div
-        className="red2pr-surface red2pr-card-section"
+        className="red2pr-setup-header"
         style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16 }}
       >
         <div>
@@ -683,7 +751,6 @@ export function SetupWizardPage(): React.JSX.Element {
         >
           <span
             data-testid="badge-ready-monitor"
-            className={`red2pr-status-pill ${setupData.ready_monitor ? "red2pr-tone-success" : "red2pr-tone-neutral"}`}
             style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600 }}
           >
             <StatusGlyph kind={setupData.ready_monitor ? "check" : "info"} />
@@ -694,7 +761,6 @@ export function SetupWizardPage(): React.JSX.Element {
 
           <span
             data-testid="badge-ready-repair"
-            className={`red2pr-status-pill ${setupData.ready_repair ? "red2pr-tone-success" : "red2pr-tone-warning"}`}
             style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600 }}
           >
             <StatusGlyph kind={setupData.ready_repair ? "check" : "warn"} />
@@ -705,150 +771,112 @@ export function SetupWizardPage(): React.JSX.Element {
         </div>
       </div>
 
-      <nav
-        aria-label={t("setup.phasesNavLabel")}
-        className="red2pr-surface red2pr-card-section"
-        data-testid="setup-phase-stepper"
-      >
-        <ol
-          style={{
-            listStyle: "none",
-            margin: 0,
-            padding: 0,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(185px, 1fr))",
-            gap: 8,
-          }}
-        >
-          {ORDERED_PHASES.map((phaseKey, idx) => {
-            const summary = setupData.steps?.find((s) => s.phase === phaseKey);
-            const st: SetupStepStatus = summary?.status ?? "pending";
-            const isCurrent = phaseKey === activePhase;
-            const canRevisit =
-              setupData.owner_claimed &&
-              phaseKey !== "owner_claim" &&
-              !isCurrent &&
-              (st !== "pending" || idx < activePhaseIdx);
-
-            return (
-              <li
-                key={phaseKey}
-                aria-current={isCurrent ? "step" : undefined}
-                data-testid={`setup-step-item-${phaseKey}`}
-                style={{
-                  border: isCurrent
-                    ? "2px solid var(--red2pr-accent, #2563eb)"
-                    : "1px solid var(--red2pr-border, #cbd5e1)",
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 4,
+      {operationNotice !== null ? (
+        <Banner
+          status={operationNotice.status}
+          title={operationNotice.title}
+          description={operationNotice.description}
+          isDismissable
+          onDismiss={() => setOperationNotice(null)}
+          endContent={
+            operationNotice.action === "reload-checkpoint" ? (
+              <Button
+                label={t("setup.reloadCheckpoint")}
+                variant="secondary"
+                size="sm"
+                type="button"
+                onClick={() => {
+                  setOperationNotice(null);
+                  void setupQuery.refetch();
                 }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
-                  <strong style={{ fontSize: "0.875rem" }}>{PHASE_LABELS[phaseKey]}</strong>
-                  {summary?.optional ? (
-                    <span style={{ fontSize: "0.75rem" }}>({t("setup.optionalBadge")})</span>
-                  ) : null}
-                </div>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontSize: "0.8125rem",
-                  }}
-                >
-                  <StatusGlyph kind={stepStatusGlyph(st)} />
-                  <span>{STEP_STATUS_LABELS[st]}</span>
-                </div>
-                {canRevisit ? (
-                  <div>
-                    <Button
-                      label="Edit step"
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      isDisabled={stepMutation.isPending}
-                      onClick={() => {
-                        stepMutation.mutate({
-                          phase: phaseKey,
-                          body: {
-                            expected_checkpoint: setupData.checkpoint,
-                            action: "back",
-                          },
-                        });
-                      }}
-                    />
-                  </div>
-                ) : null}
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
-
-      {checkpointConflict ? (
-        <div
-          role="alert"
-          data-testid="setup-checkpoint-conflict-banner"
-          className="red2pr-inline-alert red2pr-tone-warning"
-          style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}
-        >
-          <StatusGlyph kind="warn" />
-          <span>
-            Setup checkpoint changed in another browser tab or operator session. Reload the latest
-            checkpoint before submitting changes.
-          </span>
-          <Button
-            label={t("setup.reloadCheckpoint")}
-            variant="secondary"
-            size="sm"
-            type="button"
-            onClick={() => {
-              setCheckpointConflict(false);
-              setFormError(null);
-              void setupQuery.refetch();
-            }}
-          />
-        </div>
+              />
+            ) : undefined
+          }
+          container="section"
+          collapsible={false}
+        />
       ) : null}
 
-      {formError !== null ? (
-        <div
-          role="alert"
-          data-testid="setup-step-error"
-          className="red2pr-inline-alert red2pr-tone-danger"
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
-            <StatusGlyph kind="error" />
-            <span>{formError.detail}</span>
-          </div>
-          {formError.correlationId ? (
-            <div style={{ fontSize: "0.8125rem", marginTop: 4 }}>
-              {t("state.correlationId", { correlationId: formError.correlationId })}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      <Stepper
+        activeStep={activePhaseIdx}
+        orientation="vertical"
+        density="compact"
+        label={t("setup.phasesNavLabel")}
+        data-testid="setup-phase-stepper"
+        onStepClick={(index) => {
+          const phaseKey = ORDERED_PHASES[index];
+          if (!phaseKey) return;
+          const summary = setupData.steps?.find((step) => step.phase === phaseKey);
+          const stepStatus = summary?.status ?? "pending";
+          const canRevisit =
+            setupData.owner_claimed &&
+            phaseKey !== "owner_claim" &&
+            phaseKey !== activePhase &&
+            (stepStatus !== "pending" || index < activePhaseIdx);
+          if (!canRevisit || stepMutation.isPending) return;
+          stepMutation.mutate({
+            phase: phaseKey,
+            body: {
+              expected_checkpoint: setupData.checkpoint,
+              action: "back",
+            },
+          });
+        }}
+      >
+        {ORDERED_PHASES.map((phaseKey, index) => {
+          const summary = setupData.steps?.find((step) => step.phase === phaseKey);
+          const status: SetupStepStatus = summary?.status ?? "pending";
+          const isCurrent = phaseKey === activePhase;
+          const canRevisit =
+            setupData.owner_claimed &&
+            phaseKey !== "owner_claim" &&
+            !isCurrent &&
+            (status !== "pending" || index < activePhaseIdx);
+          const astryxStatus =
+            status === "completed"
+              ? "success"
+              : status === "degraded"
+                ? "warning"
+                : status === "blocked"
+                  ? "error"
+                  : undefined;
 
+          return (
+            <Step
+              key={phaseKey}
+              step={index}
+              label={PHASE_LABELS[phaseKey]}
+              status={astryxStatus}
+              isOptional={summary?.optional}
+              isDisabled={(!isCurrent && !canRevisit) || stepMutation.isPending}
+              data-testid={`setup-step-item-${phaseKey}`}
+              endContent={status !== "pending" ? (
+                <span className="red2pr-field-hint">
+                  {STEP_STATUS_LABELS[status]}
+                </span>
+              ) : undefined}
+            >
+              {isCurrent ? <div ref={setActivePhaseSlotRef} /> : null}
+            </Step>
+          );
+        })}
+      </Stepper>
+
+      {activePhaseSlot !== null
+        ? createPortal(
+        <>
       {!setupData.owner_claimed ? (
         <section
-          className="red2pr-surface red2pr-card-section"
-          aria-labelledby={`${idPrefix}-claim-heading`}
+          className="red2pr-setup-block"
+          aria-label={PHASE_LABELS.owner_claim}
           data-testid="setup-phase-owner_claim"
         >
-          <h2 id={`${idPrefix}-claim-heading`}>
-            {PHASE_LABELS.owner_claim}
-          </h2>
           <p className="red2pr-field-hint">{t("auth.bootstrapSubtitle")}</p>
 
           <form
             className="red2pr-form-stack"
             onSubmit={(e) => {
               e.preventDefault();
-              setFormError(null);
               claimMutation.mutate();
             }}
             noValidate
@@ -929,15 +957,10 @@ export function SetupWizardPage(): React.JSX.Element {
         </section>
       ) : (
         <section
-          className="red2pr-surface red2pr-card-section"
-          aria-labelledby={`${idPrefix}-active-phase-heading`}
+          className="red2pr-setup-block"
+          aria-label={PHASE_LABELS[activePhase]}
           data-testid={`setup-phase-${activePhase}`}
         >
-          <h2
-            id={`${idPrefix}-active-phase-heading`}>
-            {PHASE_LABELS[activePhase]}
-          </h2>
-
           {currentStepSummary?.probe_detail ? (
             <p className="red2pr-field-hint" data-testid="setup-step-probe-detail">
               {currentStepSummary.probe_detail}
@@ -1595,11 +1618,15 @@ export function SetupWizardPage(): React.JSX.Element {
           </form>
         </section>
       )}
+        </>,
+        activePhaseSlot,
+      )
+        : null}
 
       {setupData.owner_claimed ? (
         <>
           <section
-            className="red2pr-surface red2pr-card-section"
+            className="red2pr-setup-block"
             aria-labelledby={`${idPrefix}-consents-heading`}
             data-testid="setup-consents-panel"
           >
@@ -1608,20 +1635,10 @@ export function SetupWizardPage(): React.JSX.Element {
             </h2>
             <p className="red2pr-field-hint">{t("setup.consentsSubtitle")}</p>
 
-            {consentError !== null ? (
-              <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <StatusGlyph kind="error" />
-                  <span>{consentError.detail}</span>
-                </div>
-              </div>
-            ) : null}
-
             <form
               className="red2pr-form-stack"
               onSubmit={(e) => {
                 e.preventDefault();
-                setConsentError(null);
                 grantConsentMutation.mutate();
               }}
               noValidate
@@ -1740,13 +1757,17 @@ export function SetupWizardPage(): React.JSX.Element {
                       <strong>{item.purpose}</strong> · {item.destination} (
                       {item.data_classes.join(", ")})
                     </div>
-                    <Button
+                    <ConfirmActionButton
                       label={t("setup.revokeConsentAction")}
                       variant="destructive"
                       size="sm"
-                      type="button"
                       isLoading={revokeConsentMutation.isPending}
-                      onClick={() => revokeConsentMutation.mutate(item.id)}
+                      confirmationTitle="Revoke this setup consent?"
+                      confirmationDescription="The related optional integration will no longer be authorized by this consent."
+                      confirmationActionLabel="Revoke consent"
+                      onConfirm={async () => {
+                        await revokeConsentMutation.mutateAsync(item.id);
+                      }}
                     />
                   </li>
                 ))}
@@ -1755,7 +1776,7 @@ export function SetupWizardPage(): React.JSX.Element {
           </section>
 
           <section
-            className="red2pr-surface red2pr-card-section"
+            className="red2pr-setup-block"
             aria-labelledby={`${idPrefix}-endpoints-heading`}
             data-testid="setup-endpoints-panel"
           >
@@ -1765,20 +1786,10 @@ export function SetupWizardPage(): React.JSX.Element {
             </h2>
             <p className="red2pr-field-hint">{t("setup.endpointsSubtitle")}</p>
 
-            {epError !== null ? (
-              <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <StatusGlyph kind="error" />
-                  <span>{epError.detail}</span>
-                </div>
-              </div>
-            ) : null}
-
             <form
               className="red2pr-form-stack"
               onSubmit={(e) => {
                 e.preventDefault();
-                setEpError(null);
                 if (me && !isStepUpValid(me.step_up_valid_until)) {
                   pendingStepUpRef.current = { kind: "registerEndpoint" };
                   setStepUpOpen(true);
@@ -1936,19 +1947,21 @@ export function SetupWizardPage(): React.JSX.Element {
                       · CIDRs: {ep.cidrs.join(", ")}
                       {ep.ca_ref ? ` · CA: ${ep.ca_ref}` : ""}
                     </div>
-                    <Button
+                    <ConfirmActionButton
                       label={t("setup.revokeEndpointAction")}
                       variant="destructive"
                       size="sm"
-                      type="button"
                       isLoading={revokeEndpointMutation.isPending}
-                      onClick={() => {
+                      confirmationTitle="Revoke this endpoint registration?"
+                      confirmationDescription="The registered private endpoint will no longer be available to its integration."
+                      confirmationActionLabel="Revoke endpoint"
+                      onConfirm={async () => {
                         if (me && !isStepUpValid(me.step_up_valid_until)) {
                           pendingStepUpRef.current = { kind: "revokeEndpoint", endpointId: ep.id };
                           setStepUpOpen(true);
                           return;
                         }
-                        revokeEndpointMutation.mutate(ep.id);
+                        await revokeEndpointMutation.mutateAsync(ep.id);
                       }}
                     />
                   </li>

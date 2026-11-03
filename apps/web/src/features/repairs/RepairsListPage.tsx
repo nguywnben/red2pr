@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useRed2PrApi } from "../../shared/api";
-import { Button, Selector, StateView, StatusGlyph, Table, type TableColumn } from "../../shared/ui";
+import { Button, ConfirmActionButton, Selector, StateView, StatusGlyph, Table, type TableColumn } from "../../shared/ui";
 import { formatUtcTimestamp } from "../auth";
 import { generateClientUuidV7 } from "../queues";
 
@@ -87,7 +87,7 @@ export function RepairsListPage({ workspace, me }: RepairsListPageProps): React.
         <div className="red2pr-field"><span className="red2pr-field-label">Repair mode</span><Selector label="Repair mode" isLabelHidden value={mode} onChange={(value) => setMode(value as "approval" | "auto_repair")} options={[{ value: "approval", label: "Approval required" }, { value: "auto_repair", label: "Automatic repair" }]} hasClear={false} hasSearch={false} placeholder="Select..." size="md" variant="input" presentation="popover" /></div>
         <div className="red2pr-field"><span className="red2pr-field-label">Reason</span><InputControl aria-label="Reason" value={reason} maxLength={1000} onChange={(event) => setReason(event.target.value)} /></div>
         {createMutation.error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{String(createMutation.error)}</div> : null}
-        <Button label="Start repair" isLoading={createMutation.isPending} isDisabled={!selectedRunId || reason.trim().length === 0} onClick={() => createMutation.mutate()} />
+        <ConfirmActionButton label="Start repair" isDisabled={createMutation.isPending || !selectedRunId || reason.trim().length === 0} confirmationTitle="Start this repair?" confirmationDescription="Red2PR will create a repair session for the selected failed run. The selected mode controls whether changes require approval or can be applied automatically, and configured model or worker budget may be used." confirmationActionLabel="Start repair" confirmationActionVariant="primary" onConfirm={async () => { await createMutation.mutateAsync(); }} />
       </>}</section> : null}
     {repairsQuery.isPending ? <StateView state="loading" /> : repairsQuery.isError ? <StateView state="error" title="Repairs could not be loaded" description={String(repairsQuery.error)} primaryAction={{ label: "Retry", onClick: () => void repairsQuery.refetch() }} /> : rows.length === 0 ? <StateView state="empty" title="No repair sessions" description="No repair session matches these filters." /> : <Table aria-label="Repair sessions" columns={columns} data={rows} />}
     {rows.length > 0 ? <nav className="red2pr-button-row" aria-label="Repair pages"><Button label="Previous page" variant="secondary" isDisabled={cursorHistory.length === 0} onClick={() => { const previous = cursorHistory.at(-1) ?? null; setCursorHistory((items) => items.slice(0, -1)); setCursor(previous); }} /><span>Snapshot {formatUtcTimestamp(repairsQuery.data?.data.snapshot_at ?? new Date().toISOString())}</span><Button label="Next page" variant="secondary" isDisabled={!repairsQuery.data?.data.next_cursor} onClick={() => { const next = repairsQuery.data?.data.next_cursor; if (next) { setCursorHistory((items) => [...items, cursor]); setCursor(next); } }} /></nav> : null}

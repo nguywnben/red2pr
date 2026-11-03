@@ -360,6 +360,7 @@ describe("U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SE
 
     // Phase 1 renders bootstrap claim form
     const phase1Section = await screen.findByTestId("setup-phase-owner_claim");
+    expect(screen.getAllByText("1. Owner Claim")).toHaveLength(1);
     expect(screen.getByTestId("badge-ready-monitor")).toHaveTextContent(/Monitor Not Ready/i);
     expect(screen.getByTestId("badge-ready-repair")).toHaveTextContent(/Repair Blocked/i);
 
@@ -589,19 +590,15 @@ describe("U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SE
     expect(screen.getByTestId("consent-row-inference")).toBeInTheDocument();
 
     await user.click(within(consentsPanel).getByRole("button", { name: /Revoke consent/i }));
+    const revokeConsentDialog = await screen.findByRole("alertdialog", { name: "Revoke this setup consent?" });
+    await user.click(within(revokeConsentDialog).getByRole("button", { name: "Revoke consent" }));
     await waitFor(() => {
       expect(screen.getByTestId("badge-ready-repair")).toHaveTextContent(/Repair Blocked/i);
     });
 
-    // 3) Trigger 409 checkpoint_conflict -> recovery banner reloads latest checkpoint & succeeds
+    // 3) Trigger 409 checkpoint_conflict -> recovery toast reloads latest checkpoint & succeeds
     await user.click(screen.getByRole("button", { name: /Complete setup review/i }));
-    const conflictBanner = await screen.findByTestId("setup-checkpoint-conflict-banner");
-    await user.click(
-      within(conflictBanner).getByRole("button", { name: /Reload latest checkpoint/i }),
-    );
-    await waitFor(() => {
-      expect(screen.queryByTestId("setup-checkpoint-conflict-banner")).not.toBeInTheDocument();
-    });
+    await user.click(await screen.findByRole("button", { name: /Reload latest checkpoint/i }));
     await user.click(screen.getByRole("button", { name: /Complete setup review/i }));
     await screen.findByRole("button", { name: /Open initial workspace/i });
 

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -15,6 +15,8 @@ function createFetch() {
     const pathname = new URL(rawUrl, "http://127.0.0.1:4280").pathname;
     const body = pathname.endsWith("/auth/csrf")
       ? { csrf_token: "c".repeat(32), bootstrap_claim_required: false }
+      : pathname.endsWith("/api/v1/setup")
+        ? { owner_claimed: true }
       : pathname.endsWith("/system/capabilities")
         ? { oidc_providers: [] }
         : { data: {} };
@@ -70,13 +72,15 @@ describe("clean sign-in entry", () => {
     expect(await screen.findByRole("heading", { name: /recover your account/i })).toBeVisible();
   });
 
-  it("keeps owner claim out of login even when the server allows initial setup", async () => {
+  it("routes directly to setup whenever the instance has no owner", async () => {
     const fetchImpl = createFetch();
     fetchImpl.mockImplementation(async (input: RequestInfo | URL): Promise<Response> => {
       const rawUrl = input instanceof Request ? input.url : input.toString();
       const pathname = new URL(rawUrl, "http://127.0.0.1:4280").pathname;
       const body = pathname.endsWith("/auth/csrf")
         ? { csrf_token: "c".repeat(32), bootstrap_claim_required: true }
+        : pathname.endsWith("/api/v1/setup")
+          ? { owner_claimed: false }
         : pathname.endsWith("/system/capabilities")
           ? { oidc_providers: [] }
           : { data: {} };
@@ -88,10 +92,47 @@ describe("clean sign-in entry", () => {
 
     renderLogin(fetchImpl);
 
-    expect(await screen.findByRole("heading", { name: /sign in to red2pr/i })).toBeVisible();
-    expect(screen.queryByLabelText(/bootstrap token|owner password/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    await userEvent.click(await screen.findByRole("link", { name: /set up this instance/i }));
     expect(await screen.findByText("Setup flow")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: /sign in to red2pr/i })).not.toBeInTheDocument();
+  });
+
+  it("does not flash the sign-in form while checking whether initial setup is required", async () => {
+    let resolveSetup!: (response: Response) => void;
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
+      const rawUrl = input instanceof Request ? input.url : input.toString();
+      const pathname = new URL(rawUrl, "http://127.0.0.1:4280").pathname;
+      if (pathname.endsWith("/api/v1/setup")) {
+        return new Promise<Response>((resolve) => {
+          resolveSetup = resolve;
+        });
+      }
+      const body = pathname.endsWith("/auth/csrf")
+        ? { csrf_token: "c".repeat(32), bootstrap_claim_required: true }
+        : pathname.endsWith("/system/capabilities")
+          ? { oidc_providers: [] }
+          : { data: {} };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    renderLogin(fetchImpl);
+
+    expect(screen.getByRole("heading", { name: "Loading setup" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: /sign in to red2pr/i })).not.toBeInTheDocument();
+
+    await waitFor(() => expect(resolveSetup).toBeTypeOf("function"));
+    await act(async () => {
+      resolveSetup(
+        new Response(JSON.stringify({ owner_claimed: false }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    });
+
+    expect(await screen.findByText("Setup flow")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: /sign in to red2pr/i })).not.toBeInTheDocument();
   });
 });

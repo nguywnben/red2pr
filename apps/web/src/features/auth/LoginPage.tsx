@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import { useRed2PrApi, useRed2PrTransportConfig } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
-import { Banner, Button, Card, Center, Heading, HStack, Link, Text, TextInput, VStack } from "../../shared/ui";
+import { Button, Card, Center, Heading, HStack, Link, StateView, Text, TextInput, VStack } from "../../shared/ui";
 import { extractAuthProblemSummary, resolveSafePostLoginPath, type AuthProblemSummary } from "./authHelpers";
 
 async function readOidcProviderIds(fetchImpl: typeof fetch, baseUrl: string): Promise<string[]> {
@@ -40,6 +40,11 @@ export function LoginPage(): React.JSX.Element {
   const csrfQuery = useQuery({
     queryKey: ["auth", "csrf"],
     queryFn: () => api.getAuthCsrf(),
+    retry: false,
+  });
+  const setupQuery = useQuery({
+    queryKey: ["setup", "state"],
+    queryFn: () => api.getSetupState(),
     retry: false,
   });
   const oidcProvidersQuery = useQuery({
@@ -88,7 +93,23 @@ export function LoginPage(): React.JSX.Element {
     : null;
   const formError = visibleError !== null && otpError === null ? visibleError : null;
   const submitting = signInMutation.isPending || csrfQuery.isPending;
-  const bootstrapClaimRequired = csrfQuery.data?.data.bootstrap_claim_required === true;
+  const ownerClaimed = setupQuery.data?.data.owner_claimed;
+
+  if (setupQuery.isPending) {
+    return (
+      <main id="red2pr-main-content">
+        <StateView
+          state="loading"
+          title="Loading setup"
+          description="Checking whether this instance needs initial setup."
+        />
+      </main>
+    );
+  }
+
+  if (ownerClaimed === false) {
+    return <Navigate to="/setup" replace />;
+  }
 
   return (
     <main>
@@ -99,17 +120,6 @@ export function LoginPage(): React.JSX.Element {
               <VStack gap={1}>
                 <Heading level={1}>{t("auth.signInTitle")}</Heading>
               </VStack>
-
-              {bootstrapClaimRequired ? (
-                <Banner
-                  status="info"
-                  title={t("auth.setupRequiredTitle")}
-                  description={t("auth.setupRequiredDescription")}
-                  container="section"
-                  collapsible={false}
-                  endContent={<Link href="/setup">{t("auth.setupLink")}</Link>}
-                />
-              ) : null}
 
               {formError !== null ? (
                 <Card data-testid="auth-error-banner">

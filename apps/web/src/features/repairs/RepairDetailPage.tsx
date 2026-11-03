@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { invalidateWorkspaceQueries, useRed2PrApi } from "../../shared/api";
-import { Button, SafeDiffViewer, SafeLogViewer, StateView, StatusGlyph } from "../../shared/ui";
+import { Button, ConfirmActionButton, SafeDiffViewer, SafeLogViewer, StateView, StatusGlyph } from "../../shared/ui";
 import { extractAuthProblemSummary, formatUtcTimestamp } from "../auth";
 import { generateClientUuidV7 } from "../queues";
 
@@ -127,8 +127,8 @@ export function RepairDetailPage({ workspace, me }: RepairDetailPageProps): Reac
     </section>
     {canManage ? <div className="red2pr-button-row" aria-label="Repair actions">
       {repair.suspension ? <Button label="Resume" variant="secondary" isLoading={actionMutation.isPending} onClick={() => actionMutation.mutate("resume")} /> : <Button label="Pause" variant="secondary" isDisabled={actionMutation.isPending || repair.state === "cancelled"} onClick={() => actionMutation.mutate("pause")} />}
-      <Button label="Cancel" variant="secondary" isDisabled={actionMutation.isPending || repair.state === "cancelled"} onClick={() => actionMutation.mutate("cancel")} />
-      { ["blocked", "rejected", "needs_human", "cancelled", "remote_failed", "remote_unknown", "diagnosed_only", "unsupported", "repro_unconfirmed"].includes(repair.state) ? <Button label="Retry" variant="primary" isLoading={actionMutation.isPending} onClick={() => actionMutation.mutate("retry")} /> : null }
+      <ConfirmActionButton label="Cancel" variant="secondary" isDisabled={actionMutation.isPending || repair.state === "cancelled"} confirmationTitle="Cancel this repair?" confirmationDescription="The repair session will stop and cannot be resumed. You can start a new repair from a failed CI run." confirmationActionLabel="Cancel repair" onConfirm={async () => { await actionMutation.mutateAsync("cancel"); }} />
+      { ["blocked", "rejected", "needs_human", "cancelled", "remote_failed", "remote_unknown", "diagnosed_only", "unsupported", "repro_unconfirmed"].includes(repair.state) ? <ConfirmActionButton label="Retry" variant="primary" isDisabled={actionMutation.isPending} confirmationTitle="Retry this repair?" confirmationDescription="Red2PR will enqueue another repair attempt using the current evidence and configured model or worker budget." confirmationActionLabel="Retry repair" confirmationActionVariant="primary" onConfirm={async () => { await actionMutation.mutateAsync("retry"); }} /> : null }
     </div> : null}
     {errorText ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{errorText}</div> : null}
     <div role="tablist" tabIndex={0} aria-label="Repair evidence" className="red2pr-button-row" onKeyDown={(event) => {

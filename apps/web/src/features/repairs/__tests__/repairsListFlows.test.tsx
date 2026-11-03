@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import React from "react";
@@ -52,6 +52,7 @@ describe("U19 repairs list UX", () => {
     await user.selectOptions(screen.getByLabelText("Repair mode"), "approval");
     await user.type(screen.getByLabelText("Reason"), "Investigate failing CI check");
     await user.click(screen.getByRole("button", { name: "Start repair" }));
+    await user.click(within(screen.getByRole("alertdialog", { name: "Start this repair?" })).getByRole("button", { name: "Start repair" }));
     await screen.findByText("Repair detail opened");
     expect(createdBody).toEqual({ run_id: RUN_ID, mode: "approval", reason: "Investigate failing CI check" });
     expect(idempotencyKey).toMatch(/^[0-9a-f-]{36}$/i);

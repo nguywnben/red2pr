@@ -4,7 +4,7 @@ import type { ApiTokenCreateRequest, Workspace } from "@red2pr/ts-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useId, useRef, useState } from "react";
 import { useRed2PrApi } from "../../shared/api";
-import { Button, StateView, sanitizeUntrustedText } from "../../shared/ui";
+import { Button, ConfirmActionButton, StateView, sanitizeUntrustedText } from "../../shared/ui";
 import { isStepUpValid } from "../auth/authHelpers";
 import { StepUpDialog } from "../auth/StepUpDialog";
 
@@ -41,7 +41,6 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
   const [reviewerUserId, setReviewerUserId] = useState("");
   const [mitigation, setMitigation] = useState("");
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
-  const [revokeTarget, setRevokeTarget] = useState<{ id: string; name: string } | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const pendingStepUpRetryRef = useRef<(() => void) | null>(null);
 
@@ -203,12 +202,13 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
         <p>Tokens are limited to selected repositories and scopes. Newly issued token material is shown once.</p>
         {tokens.isPending ? <StateView state="loading" title="Loading token metadata" /> : null}
         {tokens.isError ? <StateView state="error" title="Token metadata unavailable" description="Your current role cannot read this token list." primaryAction={{ label: "Retry", onClick: () => { void tokens.refetch(); } }} /> : null}
+        {revokeToken.isError ? <p role="alert">Token revocation failed. Confirm your role and retry; the token remains active until revocation succeeds.</p> : null}
         {tokens.data?.data.items.length === 0 ? <p role="status">No API tokens are visible in this workspace.</p> : null}
         {tokens.data?.data.items.map((token) => <article key={token.id}>
           <h3>{sanitizeUntrustedText(token.name).text}</h3>
           <p>Scopes: {token.scopes.join(", ")}; expires {new Date(token.expires_at).toLocaleDateString()}.</p>
           <p>{token.revoked_at ? "Revoked" : "Active"}{token.last_used_at ? ` · last used ${new Date(token.last_used_at).toLocaleString()}` : " · never used"}</p>
-          {!token.revoked_at ? <Button label={`Revoke ${token.name}`} variant="secondary" isDisabled={revokeToken.isPending} onClick={() => setRevokeTarget({ id: token.id, name: token.name })} /> : null}
+          {!token.revoked_at ? <ConfirmActionButton label={`Revoke ${token.name}`} variant="secondary" isDisabled={revokeToken.isPending} confirmationTitle={`Revoke ${sanitizeUntrustedText(token.name).text}?`} confirmationDescription="Requests using this token will be denied immediately. Services using it may lose access until you issue and configure a replacement." confirmationActionLabel="Revoke token" onConfirm={async () => { await revokeToken.mutateAsync(token.id); }} /> : null}
         </article>)}
         <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); createToken.mutate(); }}>
           <h3>Issue a 90-day token</h3>
@@ -220,12 +220,6 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
           {createToken.isError ? <p role="alert">Token issuance failed. Check your role and selected scopes.</p> : null}
         </form>
         {revealedToken ? <div role="status"><p>Copy this token now. It will not be shown again.</p><code>{revealedToken}</code><Button label="Hide token" variant="secondary" type="button" onClick={() => setRevealedToken(null)} /></div> : null}
-        {revokeTarget ? <div role="dialog" aria-modal="true" aria-labelledby="revoke-token-title">
-          <h3 id="revoke-token-title">Revoke {sanitizeUntrustedText(revokeTarget.name).text}?</h3>
-          <p>Requests using this token will be denied immediately.</p>
-          <Button label="Confirm revoke" variant="primary" isDisabled={revokeToken.isPending} onClick={() => revokeToken.mutate(revokeTarget.id, { onSuccess: () => setRevokeTarget(null) })} />
-          <Button label="Cancel" variant="secondary" onClick={() => setRevokeTarget(null)} />
-        </div> : null}
       </section>
 
       <section className="red2pr-surface red2pr-card-section" aria-labelledby="security-exceptions-title">
@@ -239,7 +233,7 @@ export function SecurityPage({ workspace }: SecurityPageProps): React.JSX.Elemen
           <p>Artifact digest: <code>{exception.artifact_digest}</code></p>
           <p>{sanitizeUntrustedText(exception.mitigation).text}</p>
           <p>Owner: {exception.owner_user_id}; reviewer: {exception.security_reviewer_user_id}; expires {new Date(exception.expires_at).toLocaleString()}.</p>
-          {exception.revoked_at ? <p>Revoked {new Date(exception.revoked_at).toLocaleString()}.</p> : <Button label={`Revoke exception ${exception.finding_ref}`} variant="secondary" isDisabled={revokeException.isPending} onClick={() => revokeException.mutate(exception.id)} />}
+          {exception.revoked_at ? <p>Revoked {new Date(exception.revoked_at).toLocaleString()}.</p> : <ConfirmActionButton label={`Revoke exception ${exception.finding_ref}`} variant="secondary" isDisabled={revokeException.isPending} confirmationTitle="Revoke this release exception?" confirmationDescription="The finding will no longer be covered by this temporary release exception." confirmationActionLabel="Revoke exception" onConfirm={async () => { await revokeException.mutateAsync(exception.id); }} />}
         </article>)}
         <form className="red2pr-form-stack" onSubmit={(event) => { event.preventDefault(); createException.mutate(); }}>
           <h3>Record a High finding exception</h3>

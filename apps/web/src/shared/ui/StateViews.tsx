@@ -1,9 +1,8 @@
 import { Card } from "@astryxdesign/core/Card";
 import { EmptyState as AstryxEmptyState } from "@astryxdesign/core/EmptyState";
-import { Spinner } from "@astryxdesign/core/Spinner";
 import React from "react";
 import { useI18n, type MessageKey } from "../i18n";
-import { HStack, Text, VStack } from "./AstryxComponents";
+import { HStack, Skeleton, Text, VStack } from "./AstryxComponents";
 import { Button, type Red2PrButtonProps } from "./Button";
 
 export const ALL_UX_STATE_KINDS = [
@@ -303,23 +302,59 @@ export function StateView({
   ) : null;
 
   const isAlert = normalized === "error" || normalized === "offline" || normalized === "forbidden";
+  if (normalized === "loading") {
+    return (
+      <Card
+        className="red2pr-state-view"
+        data-ux-state="loading"
+        role="status"
+        aria-label={resolvedTitle}
+        aria-live="polite"
+        aria-busy="true"
+        padding={4}
+      >
+        <VStack gap={3} width="100%" data-testid="red2pr-loading-skeleton">
+          <HStack gap={3} vAlign="center">
+            <Skeleton width={40} height={40} radius="rounded" index={0} />
+            <VStack gap={1} width="100%">
+              <Skeleton width={160} height={16} index={1} />
+              <Skeleton width="48%" height={12} index={2} />
+            </VStack>
+          </HStack>
+          <Skeleton width="72%" height={14} index={3} />
+          <VStack gap={2} width="100%">
+            {[0, 1, 2, 3].map((row) => (
+              <HStack key={row} gap={2} vAlign="center">
+                <Skeleton width="12%" height={14} index={row * 4 + 4} />
+                <Skeleton width="42%" height={14} index={row * 4 + 5} />
+                <Skeleton width="20%" height={14} index={row * 4 + 6} />
+                <Skeleton width="14%" height={14} index={row * 4 + 7} />
+              </HStack>
+            ))}
+          </VStack>
+        </VStack>
+      </Card>
+    );
+  }
+
   return (
     <Card
       className="red2pr-state-view"
       data-ux-state={normalized}
       role={isAlert ? "alert" : "status"}
       aria-live={isAlert ? "assertive" : "polite"}
-      aria-busy={normalized === "loading" ? true : undefined}
-      variant="transparent"
       padding={4}
     >
       <HStack gap={3} vAlign="start">
-        <HStack className="red2pr-state-icon" gap={0}>
-          {normalized === "loading" ? (
-            <Spinner size="md" aria-label={resolvedTitle} />
-          ) : (
-            <StatusGlyph kind={meta.iconKind} />
-          )}
+        <HStack
+          className={
+            normalized === "forbidden"
+              ? "red2pr-state-icon red2pr-state-icon--text"
+              : "red2pr-state-icon"
+          }
+          gap={0}
+        >
+          <StatusGlyph kind={meta.iconKind} />
         </HStack>
         <VStack gap={2} width="100%">
           <VStack gap={1}>

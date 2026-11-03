@@ -623,7 +623,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
 
           {runDetail.run.head_sha_verified === false ||
           runDetail.run.ingestion_state === "stale_sha" ? (
-            <div role="alert" className="red2pr-badge-pill red2pr-tone-danger" style={{ padding: 10 }}>
+            <div role="alert">
               <StatusGlyph kind="error" />
               <span>
                 SEC-016 Stale/mismatched SHA blocked:{" "}
@@ -636,7 +636,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
           ) : null}
 
           {runDetail.run.ingestion_state === "incomplete" ? (
-            <div role="status" className="red2pr-badge-pill red2pr-tone-warning" style={{ padding: 10 }}>
+            <div role="status">
               <StatusGlyph kind="warn" />
               <span>
                 Incomplete evidence (never assumed passing):{" "}
@@ -649,7 +649,7 @@ export function PipelinesPage({ workspace }: PipelinesPageProps): React.JSX.Elem
 
           {runDetail.run.flaky_classification === "single_pass_unproven" ||
           selectedJob?.flaky_classification === "single_pass_unproven" ? (
-            <div role="note" className="red2pr-badge-pill red2pr-tone-info" style={{ padding: 10 }}>
+            <div role="note">
               <StatusGlyph kind="info" />
               <span>{t("pipelines.singlePassNotice")}</span>
             </div>

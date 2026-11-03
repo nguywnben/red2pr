@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import React, { useState } from "react";
@@ -11,6 +11,7 @@ import {
   AppShell,
   Button,
   ChartWithTableFallback,
+  ConfirmActionButton,
   Dialog,
   ProofStatusBadge,
   StateView,
@@ -48,6 +49,34 @@ async function expectZeroAxeViolations(container: HTMLElement): Promise<void> {
 }
 
 describe("U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-UI-02-P)", () => {
+  it("requires an explicit AlertDialog confirmation before running a consequential action", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TestHarness>
+        <ConfirmActionButton
+          label="Revoke access"
+          confirmationTitle="Revoke access?"
+          confirmationDescription="The user will lose access immediately."
+          confirmationActionLabel="Revoke"
+          onConfirm={onConfirm}
+        />
+      </TestHarness>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Revoke access" }));
+    expect(screen.getByRole("alertdialog", { name: "Revoke access?" })).toBeInTheDocument();
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Revoke access" }));
+    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+  });
+
   it("renders Button with verified Astryx props, blocks unsafe href schemes, and passes axe in light & dark themes", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();
@@ -231,8 +260,21 @@ describe("U04 Astryx Wrappers, Unified UX States & Accessibility (T-UI-01-P, T-U
         expect(node?.getAttribute("role")).toBe(
           kind === "error" || kind === "offline" || kind === "forbidden" ? "alert" : "status",
         );
-        expect(node?.querySelector("svg")).not.toBeNull();
-        expect(node?.textContent).toContain(`corr-${kind}`);
+        if (kind === "loading") {
+          expect(node?.querySelector('[data-testid="red2pr-loading-skeleton"]')).not.toBeNull();
+          expect(node?.querySelector("svg")).toBeNull();
+          expect(node?.getAttribute("aria-busy")).toBe("true");
+        } else {
+          expect(node?.querySelector("svg")).not.toBeNull();
+        }
+        if (kind === "forbidden") {
+          expect(node?.querySelector(".red2pr-state-icon")?.classList).toContain(
+            "red2pr-state-icon--text",
+          );
+        }
+        if (kind !== "loading") {
+          expect(node?.textContent).toContain(`corr-${kind}`);
+        }
       }
 
       await expectZeroAxeViolations(container);
