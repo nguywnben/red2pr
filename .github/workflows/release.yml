@@ -34,6 +34,7 @@ jobs:
           set -euo pipefail
           RAW_TAG="${{ github.event.inputs.tag || github.ref_name }}"
           VERSION="${RAW_TAG#v}"
+          REVISION="$(git rev-parse HEAD)"
           OWNER_LC="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           if [[ "$RAW_TAG" == *-* ]]; then
             IS_PRERELEASE="true"
@@ -51,6 +52,7 @@ jobs:
           {
             echo "tag=${RAW_TAG}"
             echo "version=${VERSION}"
+            echo "revision=${REVISION}"
             echo "owner_lc=${OWNER_LC}"
             echo "is_prerelease=${IS_PRERELEASE}"
             echo "control_image=${CONTROL_IMAGE}"
@@ -72,7 +74,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run quickstart:web
           mkdir -p dist-artifacts
-          pnpm --filter @red2pr/ts-client pack --pack-destination "$(pwd)/dist-artifacts"
+          pnpm --dir packages/ts-client pack --pack-destination "$(pwd)/dist-artifacts"
           tar -czf "dist-artifacts/red2pr-web-dist-${{ steps.meta.outputs.tag }}.tar.gz" -C apps/web/dist .
           tar -czf "dist-artifacts/red2pr-contracts-${{ steps.meta.outputs.tag }}.tar.gz" \
             contracts/openapi \
@@ -158,7 +160,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
             org.opencontainers.image.licenses=Apache-2.0
           cache-from: type=gha,scope=control
 
@@ -173,7 +175,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
             org.opencontainers.image.licenses=Apache-2.0
           cache-from: type=gha,scope=worker
 
