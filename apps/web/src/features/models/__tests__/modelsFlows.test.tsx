@@ -758,4 +758,95 @@ describe("U16 Models & Budgets Screen (UI-S12, AGT-01, AGT-03, SEC-012, SEC-018,
     const darkAxe = await axe.run(darkRender.container);
     expect(darkAxe.violations).toEqual([]);
   });
+
+  it("does not overwrite ADR-051 litellm-* catalog pricing with manual pricing_updates when saving budget policy", async () => {
+    const user = userEvent.setup();
+    let capturedPatchBody: Record<string, unknown> | null = null;
+    const catalogState = buildModelsState({
+      version: 4,
+      keyConfigured: true,
+      consentActive: true,
+      pricingConfigured: true,
+      sparkStatus: "available",
+      wonderStatus: "available",
+    });
+    const models = catalogState.models as Record<string, unknown>[];
+    models[0] = {
+      ...models[0]!,
+      pricing: {
+        pricing_revision: "litellm-2026-10-30",
+        input_per_1m_tokens: { amount: "1.200000", currency: "USD" },
+        output_per_1m_tokens: { amount: "4.800000", currency: "USD" },
+        configured: true,
+      },
+    };
+    models[1] = {
+      ...models[1]!,
+      pricing: {
+        pricing_revision: "litellm-2026-10-30",
+        input_per_1m_tokens: { amount: "4.000000", currency: "USD" },
+        output_per_1m_tokens: { amount: "16.000000", currency: "USD" },
+        configured: true,
+      },
+    };
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = input instanceof Request ? input : new Request(input, init);
+      const url = new URL(req.url);
+      const method = (init?.method ?? req.method ?? "GET").toUpperCase();
+      if (url.pathname === "/api/v1/auth/csrf") {
+        return jsonResponse({ csrf_token: "csrf-u16-catalog" });
+      }
+      if (url.pathname === "/api/v1/auth/me" || url.pathname === "/api/v1/me") {
+        return jsonResponse(buildMePayload("admin"));
+      }
+      if (url.pathname === "/api/v1/workspaces") {
+        return jsonResponse({ items: [buildWorkspace()], next_cursor: null, snapshot_at: NOW_ISO });
+      }
+      if (url.pathname === "/api/v1/workspaces/acme") {
+        return jsonResponse(buildWorkspace());
+      }
+      if (url.pathname === "/api/v1/workspaces/acme/repositories") {
+        return jsonResponse({ items: [], next_cursor: null, snapshot_at: NOW_ISO });
+      }
+      if (url.pathname === "/api/v1/workspaces/acme/agent-profiles" && method === "GET") {
+        return jsonResponse({ profiles: [] });
+      }
+      if (url.pathname === "/api/v1/workspaces/acme/events") {
+        return sseIdleConnectedResponse();
+      }
+      if (url.pathname === "/api/v1/workspaces/acme/models" && method === "GET") {
+        return jsonResponse(catalogState, { extraHeaders: { ETag: '"v4"' } });
+      }
+      if (url.pathname === "/api/v1/workspaces/acme/models/config" && method === "PATCH") {
+        capturedPatchBody = JSON.parse(await req.text()) as Record<string, unknown>;
+        return jsonResponse(
+          {
+            receipt: {
+              operation_id: OP_ID,
+              idempotency_key: req.headers.get("Idempotency-Key") ?? "",
+              status: "completed",
+              replayed: false,
+            },
+            models_state: { ...catalogState, version: 5 },
+          },
+          { extraHeaders: { ETag: '"v5"' } },
+        );
+      }
+      return problemResponse({
+        status: 404,
+        code: "not_found",
+        title: "Not Found",
+        detail: `Unhandled ${method} ${url.pathname}`,
+      });
+    });
+
+    renderModelsApp({ fetchImpl: fetchMock as unknown as typeof fetch });
+    expect(await screen.findAllByText(/\(LiteLLM catalog\)/)).toHaveLength(2);
+
+    await user.click(screen.getByRole("button", { name: "Save pricing & budget policy" }));
+    await waitFor(() => expect(capturedPatchBody).not.toBeNull());
+    expect(capturedPatchBody).not.toHaveProperty("pricing_updates");
+    expect(capturedPatchBody).toHaveProperty("budget_policy");
+  });
 });

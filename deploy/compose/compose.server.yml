@@ -34,7 +34,7 @@ services:
       - "${RED2PR_CONFIG_FILE:?configure Red2PR first}:/etc/red2pr/config.yaml:ro"
       - "${RED2PR_DATABASE_URL_FILE:?configure database access}:/run/secrets/database_url:ro"
     ports: ["127.0.0.1:${RED2PR_BOOTSTRAP_PORT:-18080}:8080"]
-    expose: [8080]
+    expose: [8080, 8443]
     networks: [ingress, data]
     depends_on:
       database:
@@ -92,9 +92,16 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     tmpfs: [/tmp:rw,noexec,nosuid,size=32m]
-    command: [redis-server, --appendonly, "yes", --dir, /data]
+    environment:
+      REDIS_PASSWORD: "${RED2PR_REDIS_PASSWORD:?provision Redis secret}"
+    command: [redis-server, --appendonly, "yes", --dir, /data, --requirepass, "${RED2PR_REDIS_PASSWORD:?provision Redis secret}"]
     volumes: [redis_data:/data]
     networks: [data]
+    healthcheck:
+      test: [CMD-SHELL, "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     restart: unless-stopped
 networks:
   ingress: {}

@@ -537,11 +537,18 @@ class MetaMuseInferenceService:
         for raw_model_id, raw_entry in raw_pricing.items():
             if raw_model_id in ALLOWED_META_MODEL_IDS and isinstance(raw_entry, Mapping):
                 model_key = validate_supported_meta_model_id(raw_model_id)
-                parsed[model_key] = ModelPricingRate.model_validate(raw_entry)
+                candidate = ModelPricingRate.model_validate(raw_entry)
+                # Never treat persisted `litellm-*` catalog snapshots as workspace fallback
+                # overrides so expired (>48h) catalog entries fail closed under ADR-051.
+                if candidate.pricing_revision.strip().lower().startswith("litellm-"):
+                    continue
+                parsed[model_key] = candidate
         # The owner-selected LiteLLM feed is authoritative when its bounded cache is fresh.
         # Workspace rates remain a fallback for models absent from the feed or during the
         # initial fetch / bounded stale window.
-        parsed.update(self._pricing_catalog.current_rates())
+        for cat_model_id, cat_rate in self._pricing_catalog.current_rates().items():
+            if cat_model_id in ALLOWED_META_MODEL_IDS:
+                parsed[validate_supported_meta_model_id(cat_model_id)] = cat_rate
         return parsed
 
     def _effective_budget_policy(self, raw_json: Mapping[str, Any]) -> BudgetPolicyDefaults:
@@ -1434,6 +1441,9 @@ class MetaMuseInferenceService:
                     merged_pricing = dict(cfg_row.pricing_json)
                     for raw_key, rate in payload.pricing_updates.items():
                         canonical_model = validate_supported_meta_model_id(raw_key)
+                        if rate.pricing_revision.strip().lower().startswith("litellm-"):
+                            merged_pricing.pop(canonical_model, None)
+                            continue
                         merged_pricing[canonical_model] = rate.model_dump(mode="json")
                     cfg_row.pricing_json = merged_pricing
 
@@ -3054,7 +3064,11 @@ class MetaMuseInferenceService:
                 )
                 if request.session_budget_account_id is not None:
                     primary_acct_id = request.session_budget_account_id
-                    secondary_acct_id = daily_acct.id
+                    secondary_acct_id = (
+                        daily_acct.id
+                        if request.session_budget_account_id != daily_acct.id
+                        else None
+                    )
                 else:
                     primary_acct_id = daily_acct.id
                     secondary_acct_id = None
@@ -3538,6 +3552,15 @@ class MetaMuseInferenceService:
                     fallback_version=target_cfg.credential_secret_version,
                 )
                 if not presence.configured:
+                    if target_cfg.credential_secret_ref is None:
+                        return SetupStepProbeResult(
+                            probe_status="not_configured",
+                            detail=(
+                                "Model budget and consent saved; configure Meta API key and "
+                                "run a capability probe in Workspace Models to unlock repair."
+                            ),
+                            blocking_reasons=("meta_api_key_missing",),
+                        )
                     return SetupStepProbeResult(
                         probe_status="needs_admin",
                         detail="Meta Model API key is missing or revoked in Workspace Models.",

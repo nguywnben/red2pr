@@ -40,7 +40,12 @@ from py_contracts.integrations import (
     EndpointRegistrationPage,
     EndpointScheme,
 )
-from py_contracts.primitives import InternalId, Problem, new_uuid7
+from py_contracts.models import (
+    NFR06_DEFAULT_MAX_PATCH_ATTEMPTS,
+    NFR06_DEFAULT_MAX_WALL_SECONDS,
+    BudgetPolicyDefaults,
+)
+from py_contracts.primitives import InternalId, Money, Problem, new_uuid7
 from py_contracts.repairs import (
     OPTIONAL_SETUP_PHASES,
     SETUP_WIZARD_PHASES,
@@ -76,8 +81,10 @@ from red2pr_control.db.base import (
     SetupCheckpointModel,
     UserModel,
     WorkspaceModel,
+    WorkspaceModelConfigModel,
 )
-from red2pr_control.db.rls import instance_rls_session
+from red2pr_control.db.budget_accounts import ensure_workspace_daily_budget_account_in_tx
+from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
 from red2pr_control.iam.csrf import set_csrf_cookie
 from red2pr_control.iam.router import get_iam_service
 from red2pr_control.iam.sessions import (
@@ -1229,15 +1236,107 @@ class SetupWizardService:
                         )
 
                 budget_amount = payload.max_cost_per_session.amount
+                ws_step = by_phase.get("workspace_admin")
+                target_ws_id = (
+                    str(ws_step.draft_payload_json.get("workspace_id") or "").strip()
+                    if ws_step is not None
+                    else ""
+                )
+                if not target_ws_id:
+                    latest_ws = await db.scalar(
+                        select(WorkspaceModel)
+                        .where(WorkspaceModel.deleted_at.is_(None))
+                        .order_by(WorkspaceModel.created_at.desc())
+                        .limit(1)
+                    )
+                    if latest_ws is not None:
+                        target_ws_id = latest_ws.id
+
+                eff_max_tokens = max(256, min(2_000_000, payload.max_tokens_per_session or 64_000))
+                eff_max_calls = max(1, min(500, payload.max_calls_per_session or 12))
+                currency = payload.max_cost_per_session.currency
+
+                if target_ws_id:
+                    async with workspace_rls_session(
+                        self._iam.session_factory,
+                        workspace_id=target_ws_id,
+                    ) as ws_db:
+                        cfg_row = await ws_db.scalar(
+                            select(WorkspaceModelConfigModel)
+                            .where(WorkspaceModelConfigModel.workspace_id == target_ws_id)
+                            .with_for_update()
+                        )
+                        existing_daily = Decimal("25.000000")
+                        max_attempts = NFR06_DEFAULT_MAX_PATCH_ATTEMPTS
+                        max_wall = NFR06_DEFAULT_MAX_WALL_SECONDS
+                        alert_pct = 80
+                        if cfg_row is not None and cfg_row.budget_policy_json:
+                            try:
+                                prev_pol = BudgetPolicyDefaults.model_validate(
+                                    cfg_row.budget_policy_json
+                                )
+                                if prev_pol.daily_workspace_cap.currency == currency:
+                                    existing_daily = prev_pol.daily_workspace_cap.amount
+                                max_attempts = prev_pol.max_patch_attempts
+                                max_wall = prev_pol.max_wall_seconds
+                                alert_pct = prev_pol.alert_threshold_percent
+                            except ValueError:
+                                pass
+                        daily_cap_amount = max(
+                            existing_daily,
+                            budget_amount * Decimal("5"),
+                            Decimal("25.000000"),
+                        )
+                        synced_policy = BudgetPolicyDefaults(
+                            max_calls_per_session=eff_max_calls,
+                            max_tokens_per_session=eff_max_tokens,
+                            max_patch_attempts=max_attempts,
+                            max_wall_seconds=max_wall,
+                            max_cost_per_session=Money(amount=budget_amount, currency=currency),
+                            daily_workspace_cap=Money(amount=daily_cap_amount, currency=currency),
+                            alert_threshold_percent=alert_pct,
+                        )
+                        if cfg_row is None:
+                            cfg_row = WorkspaceModelConfigModel(
+                                id=new_uuid7(now=ref_now),
+                                workspace_id=target_ws_id,
+                                endpoint_base_url="https://api.meta.ai/v1",
+                                active_inference_consent_id=payload.inference_consent_id,
+                                pricing_json={},
+                                budget_policy_json=synced_policy.model_dump(mode="json"),
+                                escalation_policy_json={},
+                                updated_by_user_id=auth.user.id,
+                                version=1,
+                                created_at=ref_now,
+                                updated_at=ref_now,
+                            )
+                            ws_db.add(cfg_row)
+                        else:
+                            if payload.inference_consent_id is not None:
+                                cfg_row.active_inference_consent_id = payload.inference_consent_id
+                            cfg_row.budget_policy_json = synced_policy.model_dump(mode="json")
+                            cfg_row.updated_by_user_id = auth.user.id
+                            cfg_row.version += 1
+                            cfg_row.updated_at = ref_now
+                        await ws_db.flush()
+                        await ensure_workspace_daily_budget_account_in_tx(
+                            ws_db,
+                            workspace_id=target_ws_id,
+                            policy=synced_policy,
+                            sync_caps=True,
+                            now=ref_now,
+                        )
+
                 model_draft = _scrub_draft_dict(
                     {
+                        **({"workspace_id": target_ws_id} if target_ws_id else {}),
                         "primary_model": payload.primary_model,
                         "escalation_model": payload.escalation_model,
                         "inference_consent_id": payload.inference_consent_id,
                         "max_cost_per_session_currency": payload.max_cost_per_session.currency,
                         "max_cost_per_session_amount": format(budget_amount, "f"),
-                        "max_tokens_per_session": payload.max_tokens_per_session or 64_000,
-                        "max_calls_per_session": payload.max_calls_per_session or 12,
+                        "max_tokens_per_session": eff_max_tokens,
+                        "max_calls_per_session": eff_max_calls,
                         "secret_configured": payload.secret_ref is not None,
                         **(
                             {"draft_notes": dict(payload.draft_notes)}

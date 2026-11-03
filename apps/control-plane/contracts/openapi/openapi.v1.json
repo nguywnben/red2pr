@@ -837,7 +837,9 @@
                 "repairs:write",
                 "integrations:read",
                 "integrations:write",
-                "events:read"
+                "events:read",
+                "mcp:read",
+                "mcp:intent:create"
               ],
               "type": "string"
             },
@@ -907,7 +909,9 @@
                 "repairs:write",
                 "integrations:read",
                 "integrations:write",
-                "events:read"
+                "events:read",
+                "mcp:read",
+                "mcp:intent:create"
               ],
               "type": "string"
             },
@@ -5471,6 +5475,7 @@
               "github",
               "gitlab",
               "meta_inference",
+              "pricing_catalog",
               "oidc",
               "s3_artifacts",
               "telegram",
@@ -5548,7 +5553,8 @@
           "scheme": {
             "enum": [
               "https",
-              "http"
+              "http",
+              "wss"
             ],
             "title": "Scheme",
             "type": "string"
@@ -5596,6 +5602,7 @@
               "github",
               "gitlab",
               "meta_inference",
+              "pricing_catalog",
               "oidc",
               "s3_artifacts",
               "telegram",
@@ -5654,7 +5661,8 @@
             "default": "https",
             "enum": [
               "https",
-              "http"
+              "http",
+              "wss"
             ],
             "title": "Scheme",
             "type": "string"
@@ -7860,6 +7868,126 @@
           "probed_at"
         ],
         "title": "ModelCapabilitySnapshot",
+        "type": "object"
+      },
+      "ModelFallbackPolicyRequest": {
+        "additionalProperties": false,
+        "description": "Repository-scoped, owner-consented same-vendor model fallback policy.",
+        "properties": {
+          "consent_id": {
+            "title": "Consent Id",
+            "type": "string"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
+          "primary_model_profile_id": {
+            "title": "Primary Model Profile Id",
+            "type": "string"
+          },
+          "secondary_model_profile_id": {
+            "title": "Secondary Model Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "primary_model_profile_id",
+          "secondary_model_profile_id",
+          "consent_id"
+        ],
+        "title": "ModelFallbackPolicyRequest",
+        "type": "object"
+      },
+      "ModelFallbackPolicyResponse": {
+        "additionalProperties": false,
+        "description": "Model fallback state without secret or raw consent content.",
+        "properties": {
+          "consent_id": {
+            "title": "Consent Id",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_fallback_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fallback At"
+          },
+          "last_fallback_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "429",
+                  "503",
+                  "capability_unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fallback Reason"
+          },
+          "primary_model_profile_id": {
+            "title": "Primary Model Profile Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "secondary_model_profile_id": {
+            "title": "Secondary Model Profile Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "workspace_id",
+          "repository_id",
+          "primary_model_profile_id",
+          "secondary_model_profile_id",
+          "consent_id",
+          "enabled"
+        ],
+        "title": "ModelFallbackPolicyResponse",
         "type": "object"
       },
       "ModelPricingRate": {
@@ -11177,6 +11305,217 @@
           "result_job_id"
         ],
         "title": "RegressionSuiteSummary",
+        "type": "object"
+      },
+      "RelayPullResponse": {
+        "additionalProperties": false,
+        "description": "One bounded relay receive result, useful for worker scheduling and health probes.",
+        "properties": {
+          "polling_required": {
+            "default": false,
+            "title": "Polling Required",
+            "type": "boolean"
+          },
+          "relay_seq": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relay Seq"
+          },
+          "status": {
+            "enum": [
+              "received",
+              "idle",
+              "gap_detected",
+              "disabled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "subscription_id": {
+            "title": "Subscription Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id",
+          "status"
+        ],
+        "title": "RelayPullResponse",
+        "type": "object"
+      },
+      "RelaySubscriptionResponse": {
+        "additionalProperties": false,
+        "description": "Masked relay subscription status; credential material is never returned.",
+        "properties": {
+          "consent_id": {
+            "title": "Consent Id",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "endpoint_registration_id": {
+            "title": "Endpoint Registration Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_received_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Received At"
+          },
+          "last_relay_seq": {
+            "minimum": 0.0,
+            "title": "Last Relay Seq",
+            "type": "integer"
+          },
+          "provider_connection_id": {
+            "title": "Provider Connection Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "disabled",
+              "ready",
+              "degraded",
+              "gap_detected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_detail": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Detail"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "workspace_id",
+          "provider_connection_id",
+          "endpoint_registration_id",
+          "consent_id",
+          "enabled",
+          "status",
+          "last_relay_seq"
+        ],
+        "title": "RelaySubscriptionResponse",
+        "type": "object"
+      },
+      "RelaySubscriptionUpsertRequest": {
+        "additionalProperties": false,
+        "description": "Opt-in connection to a registered customer-operated relay and its frame key.",
+        "properties": {
+          "client_certificate_pem": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Certificate Pem"
+          },
+          "client_private_key_pem": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Private Key Pem"
+          },
+          "consent_id": {
+            "title": "Consent Id",
+            "type": "string"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "endpoint_registration_id": {
+            "title": "Endpoint Registration Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
+          "provider_connection_id": {
+            "title": "Provider Connection Id",
+            "type": "string"
+          },
+          "relay_hmac_secret": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relay Hmac Secret"
+          }
+        },
+        "required": [
+          "provider_connection_id",
+          "endpoint_registration_id",
+          "consent_id"
+        ],
+        "title": "RelaySubscriptionUpsertRequest",
         "type": "object"
       },
       "ReleaseExceptionCreateRequest": {
@@ -19753,6 +20092,60 @@
         ],
         "title": "WorkspaceWorkerReadinessResponse",
         "type": "object"
+      },
+      "_ApprovalConfirmBody": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Token",
+            "type": "string"
+          },
+          "workspace_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "workspace_id"
+        ],
+        "title": "_ApprovalConfirmBody",
+        "type": "object"
+      },
+      "_ApprovalPreviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "intent_id": {
+            "title": "Intent Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "repair_id": {
+            "title": "Repair Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id",
+          "repair_id",
+          "reason",
+          "expires_at"
+        ],
+        "title": "_ApprovalPreviewResponse",
+        "type": "object"
       }
     }
   },
@@ -20530,6 +20923,109 @@
         "summary": "Verify password (+ TOTP if enrolled) for 5-minute privileged step-up (A-02)",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/extensions/mcp": {
+      "post": {
+        "operationId": "postMcpMessage",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mcp Message",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/v1/extensions/mcp/approval/confirm": {
+      "post": {
+        "operationId": "confirmMcpApproval",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_ApprovalConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Confirmmcpapproval",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Mcp Approval",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/v1/extensions/mcp/approval/preview": {
+      "post": {
+        "operationId": "previewMcpApproval",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_ApprovalConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/_ApprovalPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Mcp Approval",
+        "tags": [
+          "extensions"
         ]
       }
     },
@@ -23372,6 +23868,7 @@
                     "github",
                     "gitlab",
                     "meta_inference",
+                    "pricing_catalog",
                     "oidc",
                     "s3_artifacts",
                     "telegram",
@@ -30165,6 +30662,220 @@
         ]
       }
     },
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/relay": {
+      "get": {
+        "operationId": "getRelaySubscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 36,
+              "title": "Connection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/RelaySubscriptionResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Getrelaysubscription"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Relay Subscription",
+        "tags": [
+          "integrations"
+        ]
+      },
+      "put": {
+        "operationId": "putRelaySubscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 36,
+              "title": "Connection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelaySubscriptionUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelaySubscriptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Relay Subscription",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/integrations/{connection_id}/relay/pull": {
+      "post": {
+        "operationId": "pullRelaySubscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 36,
+              "title": "Connection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayPullResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pull Relay Subscription",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
     "/api/v1/workspaces/{ws}/integrations/{connection_id}/sync": {
       "post": {
         "operationId": "syncConnection",
@@ -35022,6 +35733,366 @@
         "summary": "Update repository mode, pause state, tags, or W-02 grant review (A-07)",
         "tags": [
           "repositories"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{ws}/repositories/{repository_id}/model-fallback": {
+      "get": {
+        "operationId": "getRepositoryModelFallbackPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 36,
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ModelFallbackPolicyResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Getrepositorymodelfallbackpolicy"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Repository Model Fallback Policy",
+        "tags": [
+          "models"
+        ]
+      },
+      "put": {
+        "operationId": "putRepositoryModelFallbackPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "minLength": 36,
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ws",
+            "required": true,
+            "schema": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Ws",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelFallbackPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelFallbackPolicyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Gone"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Precondition Failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Put Repository Model Fallback Policy",
+        "tags": [
+          "models"
         ]
       }
     },

@@ -17,6 +17,20 @@ type TabName = "Cause" | "Repro" | "Diff" | "Verification" | "PR" | "Logs" | "Au
 type EvidenceRow = Record<string, unknown> & { readonly id?: string; readonly summary?: string; readonly changed_paths?: readonly string[] };
 const TABS: readonly TabName[] = ["Cause", "Repro", "Diff", "Verification", "PR", "Logs", "Audit"];
 
+const TERMINAL_REPAIR_STATES = [
+  "remote_verified",
+  "remote_failed",
+  "remote_unknown",
+  "diagnosed_only",
+  "unsupported",
+  "repro_unconfirmed",
+  "blocked",
+  "needs_human",
+  "rejected",
+  "expired",
+  "cancelled",
+] as const;
+
 export function RepairDetailPage({ workspace, me }: RepairDetailPageProps): React.JSX.Element {
   const api = useRed2PrApi();
   const queryClient = useQueryClient();
@@ -133,7 +147,8 @@ export function RepairDetailPage({ workspace, me }: RepairDetailPageProps): Reac
 
   if (repairQuery.isError) return <div className="red2pr-page-stack"><StateView state={repairQuery.error instanceof Red2PrApiError && repairQuery.error.status === 403 ? "forbidden" : "error"} title="Repair detail unavailable" description={repairQuery.error instanceof Error ? repairQuery.error.message : "The repair could not be loaded."} primaryAction={{ label: "Back to repairs", onClick: () => navigate(`/w/${ws}/repairs`) }} /></div>;
 
-  const isTerminalState = repair !== null && ["remote_verified", "cancelled", "failed", "repro_unconfirmed", "rejected", "expired", "diagnosed_only", "unsupported"].includes(repair.state);
+  const isTerminalState = repair !== null && (TERMINAL_REPAIR_STATES as readonly string[]).includes(repair.state);
+  const isCancellingOrTerminal = isTerminalState || repair?.state === "cancel_requested";
   const proofTone = repair?.proof_grade === "locally_verified" || repair?.proof_grade === "remotely_verified"
     ? "red2pr-tone-success"
     : repair?.proof_grade === "baseline_confirmed"
@@ -164,8 +179,8 @@ export function RepairDetailPage({ workspace, me }: RepairDetailPageProps): Reac
       <span className="red2pr-badge-pill red2pr-tone-neutral">Phase: {repair.state.replaceAll("_", " ")}</span>
     </section>
     {canManage ? <div className="red2pr-button-row" aria-label="Repair actions">
-      {repair.suspension ? <Button label="Resume" variant="secondary" isLoading={actionMutation.isPending} onClick={() => actionMutation.mutate("resume")} /> : <Button label="Pause" variant="secondary" isDisabled={actionMutation.isPending || isTerminalState} onClick={() => actionMutation.mutate("pause")} />}
-      <ConfirmActionButton label="Cancel" variant="secondary" isDisabled={actionMutation.isPending || isTerminalState} confirmationTitle="Cancel this repair?" confirmationDescription="The repair session will stop and cannot be resumed. You can start a new repair from a failed CI run." confirmationActionLabel="Cancel repair" onConfirm={async () => { await actionMutation.mutateAsync("cancel"); }} />
+      {repair.suspension ? <Button label="Resume" variant="secondary" isLoading={actionMutation.isPending} onClick={() => actionMutation.mutate("resume")} /> : <Button label="Pause" variant="secondary" isDisabled={actionMutation.isPending || isCancellingOrTerminal} onClick={() => actionMutation.mutate("pause")} />}
+      <ConfirmActionButton label="Cancel" variant="secondary" isDisabled={actionMutation.isPending || isCancellingOrTerminal} confirmationTitle="Cancel this repair?" confirmationDescription="The repair session will stop and cannot be resumed. You can start a new repair from a failed CI run." confirmationActionLabel="Cancel repair" onConfirm={async () => { await actionMutation.mutateAsync("cancel"); }} />
       { ["blocked", "rejected", "needs_human", "cancelled", "remote_failed", "remote_unknown", "diagnosed_only", "unsupported", "repro_unconfirmed"].includes(repair.state) ? <ConfirmActionButton label="Retry" variant="primary" isDisabled={actionMutation.isPending} confirmationTitle="Retry this repair?" confirmationDescription="Red2PR will enqueue another repair attempt using the current evidence and configured model or worker budget." confirmationActionLabel="Retry repair" confirmationActionVariant="primary" onConfirm={async () => { await actionMutation.mutateAsync("retry"); }} /> : null }
     </div> : null}
     {errorText ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{errorText}</div> : null}

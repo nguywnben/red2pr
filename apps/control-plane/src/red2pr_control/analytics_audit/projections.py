@@ -102,7 +102,9 @@ def build_analytics_projection(source: AnalyticsSource) -> AnalyticsProjection:
     )
     for stage in stages:
         if stage.value < 0 or (
-            stage.denominator is not None and stage.denominator < stage.numerator
+            stage.denominator is not None
+            and stage.numerator is not None
+            and stage.denominator < stage.numerator
         ):
             raise ValueError(f"Invalid authoritative funnel count for {stage.key}.")
     costs: list[CurrencyCost] = []

@@ -27,6 +27,12 @@ from red2pr_control.db.base import (
     RepositoryPolicyModel,
     ReproductionRunModel,
     VerificationRunModel,
+    WorkspaceModelConfigModel,
+)
+from red2pr_control.db.budget_accounts import (
+    ensure_repair_session_budget_account_in_tx,
+    ensure_workspace_daily_budget_account_in_tx,
+    resolve_workspace_budget_policy_in_tx,
 )
 from red2pr_control.db.idempotency import (
     claim_idempotent_operation,
@@ -222,6 +228,23 @@ def build_repairs_router() -> APIRouter:
                 .limit(1)
             )
             if budget is None:
+                cfg_row = await db.scalar(
+                    select(WorkspaceModelConfigModel).where(
+                        WorkspaceModelConfigModel.workspace_id == ctx.workspace_id
+                    )
+                )
+                if cfg_row is not None and cfg_row.budget_policy_json:
+                    cfg_pol = await resolve_workspace_budget_policy_in_tx(
+                        db, workspace_id=ctx.workspace_id
+                    )
+                    if cfg_pol.max_cost_per_session.amount > 0:
+                        budget = await ensure_workspace_daily_budget_account_in_tx(
+                            db,
+                            workspace_id=ctx.workspace_id,
+                            policy=cfg_pol,
+                            now=iam.now(),
+                        )
+            if budget is None:
                 raise ConflictError(
                     code="repair_budget_unavailable",
                     detail="No active workspace repair budget is configured.",
@@ -258,8 +281,22 @@ def build_repairs_router() -> APIRouter:
                     if claim.receipt.result_id is not None
                     else claim.receipt
                 )
+            budget_policy = await resolve_workspace_budget_policy_in_tx(
+                db,
+                workspace_id=ctx.workspace_id,
+                fallback_account=budget,
+            )
+            session_budget = await ensure_repair_session_budget_account_in_tx(
+                db,
+                workspace_id=ctx.workspace_id,
+                scope_key=f"manual:{run.id}:{idempotency_key}",
+                policy=budget_policy,
+                repository_id=run.repository_id,
+                now=iam.now(),
+            )
             service = RepairSessionStateMachine(session_factory=iam.session_factory)
-            repair, _created = await service.create_or_get_session(
+            repair_row, created = await service.create_or_get_session_in_tx(
+                db,
                 workspace_id=ctx.workspace_id,
                 repository_id=run.repository_id,
                 ci_run_id=run.id,
@@ -267,10 +304,14 @@ def build_repairs_router() -> APIRouter:
                 base_sha=run.head_sha,
                 target_ref=run.ref,
                 policy_revision=policy.revision,
-                budget_account_id=budget.id,
+                budget_account_id=session_budget.id,
                 correlation_id=corr,
                 actor=f"user:{ctx.auth.user.id}",
             )
+            if created and session_budget.repair_id is None:
+                session_budget.repair_id = repair_row.id
+                await db.flush()
+            repair = to_repair_dto(repair_row)
             receipt = ActionReceipt(
                 operation_id=claim.receipt.operation_id,
                 resource_id=repair.id,
@@ -336,6 +377,7 @@ def build_repairs_router() -> APIRouter:
         machine = RepairSessionStateMachine(session_factory=iam.session_factory)
         async with workspace_rls_session(iam.session_factory, workspace_id=ctx.workspace_id) as db:
             row = await _get_repair(db, ctx.workspace_id, repair_id)
+            initial_state = row.state
             if not ctx.can_act_on_repository(
                 row.repository_id, allowed_roles=frozenset({"admin", "maintainer"})
             ):
@@ -396,11 +438,19 @@ def build_repairs_router() -> APIRouter:
                 correlation_id=corr,
             )
         elif body.action == "cancel":
+            resting_cancellable = initial_state in {
+                "received",
+                "authorized",
+                "repro_confirmed",
+                "policy_gate",
+                "awaiting_approval",
+            }
             repaired = await machine.request_cancel(
                 workspace_id=ctx.workspace_id,
                 repair_id=repair_id,
                 requested_by=f"user:{ctx.auth.user.id}",
                 reason_code="operator_cancelled",
+                immediate=resting_cancellable,
                 expected_version=body.expected_version,
                 correlation_id=corr,
             )
@@ -446,7 +496,21 @@ def build_repairs_router() -> APIRouter:
                         code="retry_dependencies_missing",
                         detail="Repair retry dependencies are unavailable.",
                     )
-                repaired, _created = await machine.create_or_get_session(
+                retry_policy = await resolve_workspace_budget_policy_in_tx(
+                    db,
+                    workspace_id=ctx.workspace_id,
+                    fallback_account=budget,
+                )
+                retry_budget = await ensure_repair_session_budget_account_in_tx(
+                    db,
+                    workspace_id=ctx.workspace_id,
+                    scope_key=f"retry:{repair_id}:{idempotency_key}",
+                    policy=retry_policy,
+                    repository_id=parent.repository_id,
+                    now=iam.now(),
+                )
+                repaired_row, created = await machine.create_or_get_session_in_tx(
+                    db,
                     workspace_id=ctx.workspace_id,
                     repository_id=parent.repository_id,
                     ci_run_id=parent.ci_run_id,
@@ -454,12 +518,16 @@ def build_repairs_router() -> APIRouter:
                     base_sha=parent.base_sha,
                     target_ref=parent.target_ref,
                     policy_revision=parent.policy_revision,
-                    budget_account_id=budget.id,
+                    budget_account_id=retry_budget.id,
                     correlation_id=corr,
                     parent_id=repair_id,
                     supersedes_id=repair_id,
                     actor=f"user:{ctx.auth.user.id}",
                 )
+                if created and retry_budget.repair_id is None:
+                    retry_budget.repair_id = repaired_row.id
+                    await db.flush()
+                repaired = to_repair_dto(repaired_row)
         receipt = ActionReceipt(
             operation_id=claim.receipt.operation_id,
             resource_id=repaired.id,

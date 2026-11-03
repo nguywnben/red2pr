@@ -34,6 +34,10 @@ from red2pr_control.db.base import (
     McpApprovalIntentModel,
     RepairSessionModel,
 )
+from red2pr_control.db.budget_accounts import (
+    ensure_repair_session_budget_account_in_tx,
+    resolve_workspace_budget_policy_in_tx,
+)
 from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
 from red2pr_control.iam.csrf import validate_request_origin
 from red2pr_control.iam.rbac import (
@@ -700,6 +704,19 @@ def build_mcp_router() -> APIRouter:
                     code="retry_dependencies_missing",
                     detail="Repair retry dependencies are unavailable.",
                 )
+            recheck_policy = await resolve_workspace_budget_policy_in_tx(
+                db,
+                workspace_id=ctx.workspace_id,
+                fallback_account=budget,
+            )
+            recheck_budget = await ensure_repair_session_budget_account_in_tx(
+                db,
+                workspace_id=ctx.workspace_id,
+                scope_key=f"mcp-recheck:{intent_row.id}",
+                policy=recheck_policy,
+                repository_id=repair.repository_id,
+                now=iam.now(),
+            )
             intent_row.state = "approved"
             result_repair, _created = await RepairSessionStateMachine(
                 session_factory=iam.session_factory
@@ -712,12 +729,15 @@ def build_mcp_router() -> APIRouter:
                 base_sha=repair.base_sha,
                 target_ref=repair.target_ref,
                 policy_revision=repair.policy_revision,
-                budget_account_id=budget.id,
+                budget_account_id=recheck_budget.id,
                 correlation_id=intent_row.correlation_id,
                 parent_id=repair.id,
                 supersedes_id=repair.id,
                 actor=f"user:{auth.user.id}",
             )
+            if _created and recheck_budget.repair_id is None:
+                recheck_budget.repair_id = result_repair.id
+                await db.flush()
             intent_row.state = "consumed"
             intent_row.consumed_at = iam.now()
             intent_row.result_repair_id = result_repair.id

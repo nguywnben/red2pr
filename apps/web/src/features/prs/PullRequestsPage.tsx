@@ -5,8 +5,16 @@ import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { invalidateWorkspaceQueries, useRed2PrApi } from "../../shared/api";
 import { Button, StateView, StatusGlyph, Table, proportional, type TableColumn } from "../../shared/ui";
-import { formatUtcTimestamp } from "../auth";
+import { extractAuthProblemSummary, formatUtcTimestamp } from "../auth";
 import { generateClientUuidV7 } from "../queues";
+
+const RECONCILABLE_PUBLICATION_STATUSES = [
+  "published",
+  "reconciling",
+  "pushing",
+  "creating",
+  "intent",
+] as const;
 
 export interface PullRequestsPageProps {
   readonly workspace: Workspace;
@@ -86,7 +94,7 @@ export function PullRequestsPage({ workspace, me }: PullRequestsPageProps): Reac
     {query.isPending ? <StateView state="loading" skeletonVariant="table" /> : query.isError ? <StateView state={query.error instanceof Red2PrApiError && query.error.status === 403 ? "forbidden" : "error"} title="Publications could not be loaded" description={query.error instanceof Error ? query.error.message : "The publication list is unavailable."} primaryAction={{ label: "Retry", onClick: () => void query.refetch() }} /> : rows.length === 0 ? <StateView state="empty" title="No draft publications" description="A draft appears after a locally verified repair receives approval and the publisher confirms the provider state." /> : <div className="red2pr-surface red2pr-table-scroll"><Table aria-label="Draft publications" columns={columns} data={rows} /></div>}
     {selected ? <section className="red2pr-surface red2pr-card-section" aria-labelledby="publication-detail-title" data-testid="publication-detail">
       <header className="red2pr-card-header"><div><h2 id="publication-detail-title">Publication details</h2>{resolvedRepairId ? <p className="red2pr-field-hint">Repair <Link to={`/w/${ws}/repairs/${resolvedRepairId}`}>{resolvedRepairId.slice(0, 8)}</Link></p> : null}</div><Button label="Close" variant="secondary" size="sm" onClick={() => setSelected(null)} /></header>
-      {detail.isPending ? <StateView state="loading" skeletonVariant="detail" /> : detail.isError ? <StateView state="error" title="Publication detail unavailable" description={String(detail.error)} primaryAction={{ label: "Retry", onClick: () => void detail.refetch() }} /> : <>
+      {detail.isPending ? <StateView state="loading" skeletonVariant="detail" /> : detail.isError ? <StateView state="error" title="Publication detail unavailable" description={extractAuthProblemSummary(detail.error, "Publication detail unavailable.").detail} primaryAction={{ label: "Retry", onClick: () => void detail.refetch() }} /> : <>
         <dl className="red2pr-kv-grid">
           <div className="red2pr-kv-item"><dt className="red2pr-kv-term">State</dt><dd className="red2pr-kv-detail">{detail.data.data.publication.status}</dd></div>
           <div className="red2pr-kv-item"><dt className="red2pr-kv-term">Branch</dt><dd className="red2pr-kv-detail"><code>{detail.data.data.publication.branch}</code></dd></div>
@@ -101,8 +109,8 @@ export function PullRequestsPage({ workspace, me }: PullRequestsPageProps): Reac
           <p role="note" className="red2pr-field-hint">No required remote checks are configured; V-08 remains unknown.</p>
         ) : null}
         {detail.data.data.remote_check?.observations?.length ? <ul>{detail.data.data.remote_check.observations.map((check) => <li key={`${check.external_id}-${check.check_name}`}><strong>{check.check_name}</strong>: {check.status}{check.conclusion ? ` · ${check.conclusion}` : ""}</li>)}</ul> : <p>No remote check observations are available.</p>}
-        {canReconcile ? <div className="red2pr-button-row" style={{ alignItems: "flex-end" }}><div className="red2pr-field" style={{ flex: "1 1 240px" }}><span className="red2pr-field-label">Refresh reason</span><InputControl aria-label="Refresh reason" value={reason} placeholder="Reason to reconcile provider CI checks..." maxLength={1000} onChange={(event) => setReason(event.target.value)} /></div><Button label="Reconcile remote CI" isLoading={reconcile.isPending} isDisabled={reason.trim().length === 0 || detail.data.data.publication.status !== "published"} onClick={() => reconcile.mutate()} /></div> : <p role="note">Your current workspace role cannot request a provider refresh.</p>}
-        {reconcile.error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{String(reconcile.error)}</div> : null}
+        {canReconcile ? <div className="red2pr-button-row" style={{ alignItems: "flex-end" }}><div className="red2pr-field" style={{ flex: "1 1 240px" }}><span className="red2pr-field-label">Refresh reason</span><InputControl aria-label="Refresh reason" value={reason} placeholder="Reason to reconcile provider CI checks..." maxLength={1000} onChange={(event) => setReason(event.target.value)} /></div><Button label="Reconcile remote CI" isLoading={reconcile.isPending} isDisabled={reason.trim().length === 0 || !(RECONCILABLE_PUBLICATION_STATUSES as readonly string[]).includes(detail.data.data.publication.status)} onClick={() => reconcile.mutate()} /></div> : <p role="note">Your current workspace role cannot request a provider refresh.</p>}
+        {reconcile.error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{extractAuthProblemSummary(reconcile.error, "Provider reconciliation failed.").detail}</div> : null}
       </>}
     </section> : null}
     <p role="note" className="red2pr-field-hint">Draft reviews are never merged automatically. Remote verification requires every configured required check to pass on the exact published SHA.</p>

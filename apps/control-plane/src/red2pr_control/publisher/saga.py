@@ -265,7 +265,7 @@ class PublisherSaga:
                             "reconciliation."
                         ),
                     )
-            if repair.state == "awaiting_approval":
+            if repair.state in {"policy_gate", "awaiting_approval"}:
                 await self._state_machine.transition_in_tx(
                     db,
                     workspace_id=repair.workspace_id,
@@ -423,6 +423,7 @@ class PublisherSaga:
                 ),
             )
         if repair.proof_grade != "locally_verified" or repair.state not in {
+            "policy_gate",
             "awaiting_approval",
             "publishing",
             "publish_reconcile",

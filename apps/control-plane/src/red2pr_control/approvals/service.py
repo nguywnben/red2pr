@@ -24,6 +24,7 @@ from red2pr_control.db.base import (
 )
 from red2pr_control.db.outbox import enqueue_outbox_event
 from red2pr_control.db.rls import workspace_rls_session
+from red2pr_control.orchestrator.state_machine import RepairSessionStateMachine
 
 APPROVAL_TTL = timedelta(hours=24)
 _TEST_CONFIG_PATHS = (
@@ -340,6 +341,30 @@ class ApprovalService:
                 row.decided_at = now
                 row.reason = reason
                 await db.flush()
+                if decision == "reject" and repair is not None and repair.suspension_json is None:
+                    machine = RepairSessionStateMachine(session_factory=self._session_factory)
+                    if repair.state == "policy_gate":
+                        repair = await machine.transition_in_tx(
+                            db,
+                            workspace_id=workspace_id,
+                            repair_id=repair.id,
+                            target_state="awaiting_approval",
+                            reason_code="approval_review_opened",
+                            actor=f"user:{actor_id}",
+                            correlation_id=correlation_id,
+                            emit_phase_event=False,
+                        )
+                    if repair.state == "awaiting_approval":
+                        await machine.transition_in_tx(
+                            db,
+                            workspace_id=workspace_id,
+                            repair_id=repair.id,
+                            target_state="rejected",
+                            reason_code="approval_rejected",
+                            status_detail=reason or "Approval rejected by workspace reviewer.",
+                            actor=f"user:{actor_id}",
+                            correlation_id=correlation_id,
+                        )
                 await enqueue_outbox_event(
                     db,
                     EventEnvelope(

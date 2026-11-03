@@ -4,8 +4,36 @@ import React, { useId, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useRed2PrApi } from "../../shared/api";
 import { Button, ConfirmActionButton, InputControl, SelectorControl, StateView, StatusGlyph, Table, proportional, type TableColumn } from "../../shared/ui";
-import { formatUtcTimestamp } from "../auth";
+import { extractAuthProblemSummary, formatUtcTimestamp } from "../auth";
 import { generateClientUuidV7 } from "../queues";
+
+const CANONICAL_REPAIR_STATES = [
+  "received",
+  "authorized",
+  "collecting",
+  "triaging",
+  "diagnosed_only",
+  "unsupported",
+  "reproducing",
+  "repro_confirmed",
+  "repro_unconfirmed",
+  "blocked",
+  "patching",
+  "verifying",
+  "rejected",
+  "policy_gate",
+  "awaiting_approval",
+  "expired",
+  "publishing",
+  "publish_reconcile",
+  "needs_human",
+  "remote_validating",
+  "remote_verified",
+  "remote_failed",
+  "remote_unknown",
+  "cancel_requested",
+  "cancelled",
+] as const;
 
 export interface RepairsListPageProps {
   readonly workspace: Workspace;
@@ -48,7 +76,7 @@ export function RepairsListPage({ workspace, me }: RepairsListPageProps): React.
   const canManage = membership?.role === "admin" || membership?.role === "maintainer";
   const runsQuery = useQuery({
     queryKey: ["workspace", ws, "runs", "repairable"],
-    queryFn: () => api.listRuns(ws, { limit: 100, conclusion: "failure" }),
+    queryFn: () => api.listRuns(ws, { limit: 100 }),
     enabled: canManage,
   });
   const repairsQuery = useQuery({
@@ -88,7 +116,7 @@ export function RepairsListPage({ workspace, me }: RepairsListPageProps): React.
         <label htmlFor={phaseFilterId} className="red2pr-field-label">Phase</label>
         <SelectorControl id={phaseFilterId} value={stateFilter} onChange={(event) => { setCursor(null); setCursorHistory([]); setStateFilter(event.target.value); }}>
           <option value="all">All phases</option>
-          {["received", "collecting", "triaging", "repro_unconfirmed", "verifying", "policy_gate", "awaiting_approval", "needs_human", "blocked", "cancelled", "remote_verified", "remote_failed"].map((item) => (
+          {CANONICAL_REPAIR_STATES.map((item) => (
             <option key={item} value={item}>{item.replaceAll("_", " ")}</option>
           ))}
         </SelectorControl>
@@ -136,12 +164,12 @@ export function RepairsListPage({ workspace, me }: RepairsListPageProps): React.
             <InputControl id={reasonInputId} value={reason} placeholder="Describe why this run needs repair..." maxLength={1000} onChange={(event) => setReason(event.target.value)} />
           </div>
         </div>
-        {createMutation.error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{String(createMutation.error)}</div> : null}
+        {createMutation.error ? <div role="alert" className="red2pr-inline-alert red2pr-tone-danger">{extractAuthProblemSummary(createMutation.error, "The repair request failed.").detail}</div> : null}
         <div className="red2pr-button-row">
           <ConfirmActionButton label="Start repair" isDisabled={createMutation.isPending || !selectedRunId || reason.trim().length === 0} confirmationTitle="Start this repair?" confirmationDescription="Red2PR will create a repair session for the selected failed run. The selected mode controls whether changes require approval or can be applied automatically, and configured model or worker budget may be used." confirmationActionLabel="Start repair" confirmationActionVariant="primary" onConfirm={async () => { await createMutation.mutateAsync(); }} />
         </div>
       </>}</section> : null}
-    {repairsQuery.isPending ? <StateView state="loading" skeletonVariant="table" /> : repairsQuery.isError ? <StateView state="error" title="Repairs could not be loaded" description={String(repairsQuery.error)} primaryAction={{ label: "Retry", onClick: () => void repairsQuery.refetch() }} /> : rows.length === 0 ? <StateView state="empty" title="No repair sessions" description="No repair session matches these filters." /> : <div className="red2pr-surface red2pr-table-scroll"><Table aria-label="Repair sessions" columns={columns} data={rows} /></div>}
+    {repairsQuery.isPending ? <StateView state="loading" skeletonVariant="table" /> : repairsQuery.isError ? <StateView state="error" title="Repairs could not be loaded" description={extractAuthProblemSummary(repairsQuery.error, "Repairs could not be loaded.").detail} primaryAction={{ label: "Retry", onClick: () => void repairsQuery.refetch() }} /> : rows.length === 0 ? <StateView state="empty" title="No repair sessions" description="No repair session matches these filters." /> : <div className="red2pr-surface red2pr-table-scroll"><Table aria-label="Repair sessions" columns={columns} data={rows} /></div>}
     {showPagination ? <nav className="red2pr-button-row" aria-label="Repair pages"><Button label="Previous page" variant="secondary" isDisabled={cursorHistory.length === 0} onClick={() => { const previous = cursorHistory.at(-1) ?? null; setCursorHistory((items) => items.slice(0, -1)); setCursor(previous); }} /><span className="red2pr-field-hint">Snapshot {formatUtcTimestamp(repairsQuery.data?.data.snapshot_at ?? new Date().toISOString())}</span><Button label="Next page" variant="secondary" isDisabled={!nextCursor} onClick={() => { if (nextCursor) { setCursorHistory((items) => [...items, cursor]); setCursor(nextCursor); } }} /></nav> : null}
   </div>;
 }

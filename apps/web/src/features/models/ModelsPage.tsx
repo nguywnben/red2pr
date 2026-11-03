@@ -159,6 +159,10 @@ function isStaleConflictError(err: unknown): boolean {
   );
 }
 
+function isCatalogPricingRevision(rev: string): boolean {
+  return rev.trim().toLowerCase().startsWith("litellm-");
+}
+
 function buildPolicyDraft(state: WorkspaceModelsResponse): PolicyDraft {
   const spark = state.models.find((m) => m.model_id === "muse-spark-1.3")?.pricing;
   const wonder = state.models.find((m) => m.model_id === "muse-wonder-1.0")?.pricing;
@@ -167,11 +171,11 @@ function buildPolicyDraft(state: WorkspaceModelsResponse): PolicyDraft {
     sparkRevision: spark?.pricing_revision ?? "rev-1",
     sparkInput: String(spark?.input_per_1m_tokens.amount ?? "0.000000"),
     sparkOutput: String(spark?.output_per_1m_tokens.amount ?? "0.000000"),
-    sparkConfigured: Boolean(spark?.configured),
+    sparkConfigured: Boolean(spark?.configured && !isCatalogPricingRevision(spark.pricing_revision)),
     wonderRevision: wonder?.pricing_revision ?? "rev-1",
     wonderInput: String(wonder?.input_per_1m_tokens.amount ?? "0.000000"),
     wonderOutput: String(wonder?.output_per_1m_tokens.amount ?? "0.000000"),
-    wonderConfigured: Boolean(wonder?.configured),
+    wonderConfigured: Boolean(wonder?.configured && !isCatalogPricingRevision(wonder.pricing_revision)),
     maxCalls: String(bp.max_calls_per_session ?? 30),
     maxTokens: String(bp.max_tokens_per_session ?? 120000),
     maxAttempts: String(bp.max_patch_attempts ?? 2),
@@ -423,23 +427,25 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
       }
       const currency = policyDraft.currency;
       const pricingUpdates: Record<string, ModelPricingRate> = {};
+      const sparkTrimmedRevision = policyDraft.sparkRevision.trim();
       if (
-        policyDraft.sparkConfigured ||
-        policyDraft.sparkRevision.trim().toLowerCase() !== "unconfigured"
+        !isCatalogPricingRevision(sparkTrimmedRevision) &&
+        (policyDraft.sparkConfigured || sparkTrimmedRevision.toLowerCase() !== "unconfigured")
       ) {
         pricingUpdates["muse-spark-1.3"] = {
-          pricing_revision: policyDraft.sparkRevision.trim(),
+          pricing_revision: sparkTrimmedRevision,
           input_per_1m_tokens: { amount: policyDraft.sparkInput.trim(), currency },
           output_per_1m_tokens: { amount: policyDraft.sparkOutput.trim(), currency },
           configured: true,
         };
       }
+      const wonderTrimmedRevision = policyDraft.wonderRevision.trim();
       if (
-        policyDraft.wonderConfigured ||
-        policyDraft.wonderRevision.trim().toLowerCase() !== "unconfigured"
+        !isCatalogPricingRevision(wonderTrimmedRevision) &&
+        (policyDraft.wonderConfigured || wonderTrimmedRevision.toLowerCase() !== "unconfigured")
       ) {
         pricingUpdates["muse-wonder-1.0"] = {
-          pricing_revision: policyDraft.wonderRevision.trim(),
+          pricing_revision: wonderTrimmedRevision,
           input_per_1m_tokens: { amount: policyDraft.wonderInput.trim(), currency },
           output_per_1m_tokens: { amount: policyDraft.wonderOutput.trim(), currency },
           configured: true,
@@ -607,6 +613,7 @@ export function ModelsPage({ workspace, me }: ModelsPageProps): React.JSX.Elemen
               {row.pricing.pricing_revision}: {row.pricing.input_per_1m_tokens.currency}{" "}
               {String(row.pricing.input_per_1m_tokens.amount)} in /{" "}
               {String(row.pricing.output_per_1m_tokens.amount)} out
+              {isCatalogPricingRevision(row.pricing.pricing_revision) ? " (LiteLLM catalog)" : ""}
             </span>
           ) : (
             <span className="red2pr-badge-pill red2pr-tone-warning">

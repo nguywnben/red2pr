@@ -36,6 +36,7 @@ from red2pr_control.core.errors import (
     PreconditionFailedError,
     UnprocessableEntityError,
 )
+from red2pr_control.core.keyring import load_master_key_ring_from_file
 from red2pr_control.core.logging import current_correlation_id
 from red2pr_control.db.base import (
     ModelCapabilitySnapshotModel,
@@ -61,7 +62,6 @@ from red2pr_control.iam.rbac import (
 from red2pr_control.iam.sessions import IamService, extract_client_ip, is_step_up_fresh
 from red2pr_control.inference.agent_profiles import AgentProfileService
 from red2pr_control.inference.meta_client import MetaMuseInferenceService
-from red2pr_control.core.keyring import load_master_key_ring_from_file
 from red2pr_control.secrets.broker import SecretBroker
 
 _COMMON_PROBLEM_RESPONSES: dict[int | str, dict[str, object]] = {
@@ -364,9 +364,7 @@ def build_inference_router() -> APIRouter:
                     "payload": payload.model_dump(mode="json"),
                     "if_match": if_match,
                 },
-                logical_effect_key=(
-                    f"model-fallback:{repository_id}:version:{current_version}"
-                ),
+                logical_effect_key=(f"model-fallback:{repository_id}:version:{current_version}"),
                 resource_id=resource_id,
                 correlation_id=_req_corr_id(request),
                 now=iam.now(),

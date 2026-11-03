@@ -1,5 +1,6 @@
 """Z2 secret broker boundary (sole resolver of raw secret material)."""
 
+from red2pr_control.core.keyring import load_master_key_ring_from_file
 from red2pr_control.secrets.broker import (
     ALL_SECRET_PURPOSES,
     IAM_SECRET_CAPABILITY,
@@ -14,7 +15,6 @@ from red2pr_control.secrets.broker import (
     SecretCallerCapability,
     SecretMetadata,
     SecretPurpose,
-    load_master_key_ring_from_file,
 )
 
 __all__ = [

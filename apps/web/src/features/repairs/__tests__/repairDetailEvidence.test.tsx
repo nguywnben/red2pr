@@ -61,4 +61,92 @@ describe("U19 repair evidence viewer", () => {
     const accessibility = await axe.run(view.container);
     expect(accessibility.violations).toEqual([]);
   });
+
+  it("disables Pause and Cancel for cancel_requested and canonical terminal states while keeping Retry on terminal failures", async () => {
+    const maintainerMe = {
+      mfa_enabled: true,
+      memberships: [{ workspace_id: WS_ID, role: "maintainer" }],
+    } as unknown as MeResponse;
+    let currentState = "cancel_requested";
+    const fetchImpl: typeof fetch = async (input) => {
+      const request = input instanceof Request ? input : null;
+      const url = new URL(request?.url ?? String(input));
+      if (url.pathname === `/api/v1/workspaces/acme/repairs/${REPAIR_ID}`) {
+        return json({
+          id: REPAIR_ID,
+          workspace_id: WS_ID,
+          repository_id: "0196f000-0000-7000-8000-000000000601",
+          run_id: RUN_ID,
+          state: currentState,
+          proof_grade: "none",
+          remote_status: "not_published",
+          policy_revision: 3,
+          base_sha: "b".repeat(40),
+          target_ref: "refs/heads/main",
+          parent_id: null,
+          suspension: null,
+          budget_id: "0196f000-0000-7000-8000-000000000801",
+          version: 2,
+          created_at: NOW,
+          updated_at: NOW,
+        });
+      }
+      if (url.pathname.endsWith("/verification")) {
+        return json({ items: [], reproductions: [], next_cursor: null, snapshot_at: NOW });
+      }
+      return json({ items: [], next_cursor: null, snapshot_at: NOW });
+    };
+
+    const firstClient = createWorkspaceQueryClient();
+    const firstRender = render(
+      <I18nProvider>
+        <ThemeProvider defaultMode="light">
+          <ApiClientProvider
+            queryClient={firstClient}
+            clientOptions={{ baseUrl: "http://127.0.0.1:4280", fetch: fetchImpl }}
+          >
+            <MemoryRouter initialEntries={[`/w/acme/repairs/${REPAIR_ID}`]}>
+              <Routes>
+                <Route
+                  path="/w/:ws/repairs/:repairId"
+                  element={<RepairDetailPage workspace={workspace} me={maintainerMe} />}
+                />
+              </Routes>
+            </MemoryRouter>
+          </ApiClientProvider>
+        </ThemeProvider>
+      </I18nProvider>,
+    );
+    expect(await screen.findByText(/Phase: cancel requested/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    firstRender.unmount();
+
+    currentState = "remote_failed";
+    const secondClient = createWorkspaceQueryClient();
+    render(
+      <I18nProvider>
+        <ThemeProvider defaultMode="light">
+          <ApiClientProvider
+            queryClient={secondClient}
+            clientOptions={{ baseUrl: "http://127.0.0.1:4280", fetch: fetchImpl }}
+          >
+            <MemoryRouter initialEntries={[`/w/acme/repairs/${REPAIR_ID}`]}>
+              <Routes>
+                <Route
+                  path="/w/:ws/repairs/:repairId"
+                  element={<RepairDetailPage workspace={workspace} me={maintainerMe} />}
+                />
+              </Routes>
+            </MemoryRouter>
+          </ApiClientProvider>
+        </ThemeProvider>
+      </I18nProvider>,
+    );
+    expect(await screen.findByText(/Phase: remote failed/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
+  });
 });

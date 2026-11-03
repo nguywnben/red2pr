@@ -196,7 +196,9 @@ export function WorkersPage({ workspace, me }: WorkersPageProps): React.JSX.Elem
   // Enrollment modal state
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [trustDomain, setTrustDomain] = useState("red2pr.internal");
-  const [profileCsv, setProfileCsv] = useState("python-3.12-node-22");
+  const [profileCsv, setProfileCsv] = useState(
+    "python-pytest-linux,node-vitest-linux,node-jest-linux,python-3.12-node-22",
+  );
   const [enrollMode, setEnrollMode] = useState<WorkerIsolationMode>("vm_isolated");
   const [ttlMinutes, setTtlMinutes] = useState(15);
   const [riskAck, setRiskAck] = useState(false);

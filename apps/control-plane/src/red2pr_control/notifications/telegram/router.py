@@ -33,11 +33,16 @@ from red2pr_control.core.errors import (
 )
 from red2pr_control.core.logging import current_correlation_id
 from red2pr_control.db.base import (
+    BudgetAccountModel,
     RepairSessionModel,
     RepositoryModel,
     TelegramLinkChallengeModel,
     TelegramLinkModel,
     UserModel,
+)
+from red2pr_control.db.budget_accounts import (
+    ensure_repair_session_budget_account_in_tx,
+    resolve_workspace_budget_policy_in_tx,
 )
 from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
 from red2pr_control.iam.rbac import authorize_workspace_access
@@ -454,32 +459,50 @@ def build_telegram_router() -> APIRouter:
                         code="retry_requires_terminal_parent",
                         detail="Repair must be terminal before retry.",
                     )
-                machine_data = (
-                    parent.repository_id,
-                    parent.ci_run_id,
-                    parent.base_sha,
-                    parent.target_ref,
-                    parent.policy_revision,
-                    parent.budget_account_id,
+                from red2pr_control.orchestrator.state_machine import (
+                    RepairSessionStateMachine,
+                    to_repair_dto,
                 )
-            from red2pr_control.orchestrator.state_machine import RepairSessionStateMachine
 
-            repo_id, run_id, base_sha, target_ref, policy_revision, budget_id = machine_data
-            machine = RepairSessionStateMachine(session_factory=iam.session_factory)
-            repaired, _created = await machine.create_or_get_session(
-                workspace_id=challenge.workspace_id,
-                repository_id=repo_id,
-                ci_run_id=run_id,
-                semantic_trigger_key=f"telegram-intent:{challenge.id}",
-                base_sha=base_sha,
-                target_ref=target_ref,
-                policy_revision=policy_revision,
-                budget_account_id=budget_id,
-                correlation_id=_correlation(request),
-                parent_id=challenge.target_id,
-                supersedes_id=challenge.target_id,
-                actor=f"user:{auth.user.id}",
-            )
+                parent_budget = await db.scalar(
+                    select(BudgetAccountModel).where(
+                        BudgetAccountModel.workspace_id == ctx.workspace_id,
+                        BudgetAccountModel.id == parent.budget_account_id,
+                    )
+                )
+                retry_policy = await resolve_workspace_budget_policy_in_tx(
+                    db,
+                    workspace_id=ctx.workspace_id,
+                    fallback_account=parent_budget,
+                )
+                retry_budget = await ensure_repair_session_budget_account_in_tx(
+                    db,
+                    workspace_id=ctx.workspace_id,
+                    scope_key=f"telegram-intent:{challenge.id}",
+                    policy=retry_policy,
+                    repository_id=parent.repository_id,
+                    now=now,
+                )
+                machine = RepairSessionStateMachine(session_factory=iam.session_factory)
+                repaired_row, created = await machine.create_or_get_session_in_tx(
+                    db,
+                    workspace_id=challenge.workspace_id,
+                    repository_id=parent.repository_id,
+                    ci_run_id=parent.ci_run_id,
+                    semantic_trigger_key=f"telegram-intent:{challenge.id}",
+                    base_sha=parent.base_sha,
+                    target_ref=parent.target_ref,
+                    policy_revision=parent.policy_revision,
+                    budget_account_id=retry_budget.id,
+                    correlation_id=_correlation(request),
+                    parent_id=challenge.target_id,
+                    supersedes_id=challenge.target_id,
+                    actor=f"user:{auth.user.id}",
+                )
+                if created and retry_budget.repair_id is None:
+                    retry_budget.repair_id = repaired_row.id
+                    await db.flush()
+                repaired = to_repair_dto(repaired_row)
             operation_id = repaired.id
             status_url = f"/w/{challenge.workspace_id}/repairs/{repaired.id}"
         else:

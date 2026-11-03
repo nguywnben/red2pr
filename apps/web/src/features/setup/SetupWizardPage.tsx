@@ -176,8 +176,8 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
   const [providerEndpointId, setProviderEndpointId] = useState("");
   const [providerSecretRef, setProviderSecretRef] = useState("");
 
-  const [primaryModel, setPrimaryModel] = useState("llama-4-maverick-17b-128e");
-  const [escalationModel, setEscalationModel] = useState("llama-4-scout-17b-16e");
+  const [primaryModel, setPrimaryModel] = useState("muse-spark-1.3");
+  const [escalationModel, setEscalationModel] = useState("muse-wonder-1.0");
   const [maxCostAmount, setMaxCostAmount] = useState("2.50");
   const [maxTokens, setMaxTokens] = useState(64000);
   const [maxCalls, setMaxCalls] = useState(12);
@@ -186,7 +186,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
   const [sandboxBackend, setSandboxBackend] = useState<
     "docker_isolated" | "podman_rootless" | "remote_vm_worker"
   >("docker_isolated");
-  const [runtimeProfileId, setRuntimeProfileId] = useState("python-3.12-linux-x86_64");
+  const [runtimeProfileId, setRuntimeProfileId] = useState("python-pytest-linux");
   const [workerAck, setWorkerAck] = useState(true);
   const [workerRunSelfTest, setWorkerRunSelfTest] = useState(true);
 
@@ -208,7 +208,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
 
   // Outbound consent form state
   const [consentPurpose, setConsentPurpose] = useState<ConsentPurpose>("inference");
-  const [consentDestination, setConsentDestination] = useState("https://api.llama.com/v1");
+  const [consentDestination, setConsentDestination] = useState("https://api.meta.ai/v1");
   const [consentClasses, setConsentClasses] = useState<ConsentDataClass[]>([
     "public",
     "workspace_internal",
@@ -326,8 +326,66 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
 
     const mdl = byPhase.get("model_consent");
     if (mdl) {
-      setPrimaryModel(readDraftString(mdl, "primary_model", "llama-4-maverick-17b-128e"));
+      setPrimaryModel(readDraftString(mdl, "primary_model", "muse-spark-1.3"));
+      if ("escalation_model" in mdl) {
+        setEscalationModel(
+          typeof mdl.escalation_model === "string" ? mdl.escalation_model : "",
+        );
+      } else {
+        setEscalationModel("muse-wonder-1.0");
+      }
       setMaxCostAmount(readDraftString(mdl, "max_cost_per_session_amount", "2.50"));
+      setMaxTokens(readDraftNumber(mdl, "max_tokens_per_session", 64000));
+      setMaxCalls(readDraftNumber(mdl, "max_calls_per_session", 12));
+      if ("inference_consent_id" in mdl) {
+        setSelectedInferenceConsentId(
+          typeof mdl.inference_consent_id === "string" ? mdl.inference_consent_id : "",
+        );
+      }
+    }
+
+    const wrk = byPhase.get("worker_readiness");
+    if (wrk) {
+      const sb = readDraftString(wrk, "sandbox_backend", "docker_isolated");
+      if (
+        sb === "docker_isolated" ||
+        sb === "podman_rootless" ||
+        sb === "remote_vm_worker"
+      ) {
+        setSandboxBackend(sb);
+      }
+      setRuntimeProfileId(readDraftString(wrk, "runtime_profile_id", "python-pytest-linux"));
+      setWorkerAck(readDraftBool(wrk, "host_escape_risk_acknowledged", true));
+      setWorkerRunSelfTest(readDraftBool(wrk, "run_self_test", true));
+    }
+
+    const pol = byPhase.get("repo_policy");
+    if (pol) {
+      const rm = readDraftString(pol, "default_repo_mode", "monitor");
+      if (rm === "monitor" || rm === "approval" || rm === "auto_repair") {
+        setDefaultRepoMode(rm);
+      }
+      setMaxAttempts(readDraftNumber(pol, "max_attempts", 2));
+      setMaxDiffLines(readDraftNumber(pol, "max_diff_lines", 500));
+    }
+
+    const notif = byPhase.get("notifications");
+    if (notif) {
+      const ch = readDraftString(notif, "channel", "in_app");
+      if (
+        ch === "in_app" ||
+        ch === "webhook" ||
+        ch === "slack" ||
+        ch === "discord" ||
+        ch === "telegram" ||
+        ch === "email"
+      ) {
+        setNotifChannel(ch);
+      }
+      const tm = readDraftString(notif, "telemetry_mode", "local_only");
+      if (tm === "local_only" || tm === "consented_export") {
+        setTelemetryMode(tm);
+      }
     }
 
     setTargetReadiness(setupData.readiness);
@@ -1321,10 +1379,17 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
                     id={`${idPrefix}-runtime-prof`}
                     className="red2pr-control-input"
                     type="text"
+                    list={`${idPrefix}-runtime-prof-options`}
                     required
                     value={runtimeProfileId}
                     onChange={(e) => setRuntimeProfileId(e.target.value)}
                   />
+                  <datalist id={`${idPrefix}-runtime-prof-options`}>
+                    <option value="python-pytest-linux" />
+                    <option value="node-vitest-linux" />
+                    <option value="node-jest-linux" />
+                    <option value="custom-linux-declared" />
+                  </datalist>
                 </div>
 
                 <div className="red2pr-field">
@@ -1788,6 +1853,7 @@ export function SetupWizardPage({ managementOnly = false }: { readonly managemen
                   <option value="gitlab">gitlab</option>
                   <option value="github">github</option>
                   <option value="meta_inference">meta_inference</option>
+                  <option value="pricing_catalog">pricing_catalog</option>
                   <option value="oidc">oidc</option>
                   <option value="s3_artifacts">s3_artifacts</option>
                   <option value="webhook">webhook</option>

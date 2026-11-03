@@ -1388,9 +1388,20 @@ class WorkerBrokerService:
             for w in workers:
                 if profile_id and profile_id not in w.profile_ids_json:
                     continue
-                if backend in ("vm", "vm_isolated", "firecracker") and (
-                    w.isolation_mode != "vm_isolated"
-                ):
+                if backend in (
+                    "vm",
+                    "vm_isolated",
+                    "firecracker",
+                    "remote_vm_worker",
+                    "microvm",
+                ) and (w.isolation_mode != "vm_isolated"):
+                    continue
+                if backend in (
+                    "podman",
+                    "podman_rootless",
+                    "oci_rootless",
+                    "gvisor",
+                ) and w.isolation_mode not in ("oci_rootless", "vm_isolated"):
                     continue
                 if w.isolation_mode == "oci_trusted_local":
                     if not (ack_risk and w.host_escape_risk_acknowledged):

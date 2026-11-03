@@ -275,7 +275,7 @@ function PolicyEditorForm({
   const candidatePolicy = useMemo((): RepositoryPolicyUpdateRequest["policy"] => {
     const baseConsentId = envelope.data.policy.inference_consent_id ?? null;
     const fallbackProfileId =
-      envelope.data.policy.runtime_profile_id ?? "python-3.12-isolated";
+      envelope.data.policy.runtime_profile_id ?? "default-isolated";
     const parsedCalls = maxCalls.trim() !== "" ? Number.parseInt(maxCalls.trim(), 10) : null;
     const parsedTokens = maxTokens.trim() !== "" ? Number.parseInt(maxTokens.trim(), 10) : null;
     const parsedWall =

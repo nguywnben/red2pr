@@ -56,4 +56,62 @@ describe("U20 draft publications screen", () => {
     expect(request?.body).toEqual({ reason: "Check exact pushed SHA" });
     expect(await axe.run(view.container)).toMatchObject({ violations: [] });
   });
+
+  it("allows reconciliation when publication is in reconciling state to recover interrupted provider publishing", async () => {
+    const user = userEvent.setup();
+    let reconciled = false;
+    const publication = {
+      id: PUBLICATION_ID,
+      version: 1,
+      workspace_id: WS_ID,
+      repository_id: REPO_ID,
+      repair_id: REPAIR_ID,
+      intent_id: "0196f000-0000-7000-8000-000000000901",
+      branch: "red2pr/repair/abcd",
+      expected_commit_sha: null,
+      provider_object_id: null,
+      url: null,
+      status: "reconciling",
+      created_at: NOW,
+      updated_at: NOW,
+    };
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const request = input instanceof Request ? input : null;
+      const url = new URL(request?.url ?? String(input));
+      const method = init?.method ?? request?.method ?? "GET";
+      if (url.pathname.endsWith("/publications") && method === "GET") {
+        return json({ items: [publication], next_cursor: null, snapshot_at: NOW });
+      }
+      if (url.pathname.endsWith(`/publications/${PUBLICATION_ID}`) && method === "GET") {
+        return json({ publication, remote_check: null });
+      }
+      if (url.pathname.endsWith(`/publications/${PUBLICATION_ID}/reconciliations`) && method === "POST") {
+        reconciled = true;
+        return json({ publication: { ...publication, status: "published" }, remote_check: null });
+      }
+      return json({ detail: `Unexpected request ${url.pathname}` }, 404);
+    };
+
+    render(
+      <I18nProvider>
+        <ThemeProvider defaultMode="light">
+          <ApiClientProvider
+            queryClient={createWorkspaceQueryClient()}
+            clientOptions={{ baseUrl: "http://127.0.0.1:4280", fetch: fetchImpl }}
+          >
+            <MemoryRouter>
+              <PullRequestsPage workspace={workspace} me={me} />
+            </MemoryRouter>
+          </ApiClientProvider>
+        </ThemeProvider>
+      </I18nProvider>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /reconciling/ }));
+    await user.type(screen.getByLabelText("Refresh reason"), "Recover interrupted push/PR saga");
+    const btn = screen.getByRole("button", { name: "Reconcile remote CI" });
+    expect(btn).toBeEnabled();
+    await user.click(btn);
+    await waitFor(() => expect(reconciled).toBe(true));
+  });
 });

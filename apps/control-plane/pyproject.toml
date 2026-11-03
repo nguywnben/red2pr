@@ -22,6 +22,9 @@ dependencies = [
     "websockets>=15.0.1,<16.0",
 ]
 
+[project.scripts]
+red2pr-control = "red2pr_control.runtime:main"
+
 [tool.uv.sources]
 py-contracts = { workspace = true }
 

@@ -59,4 +59,75 @@ describe("U19 repairs list UX", () => {
     const accessibility = await axe.run(view.container);
     expect(accessibility.violations).toEqual([]);
   });
+
+  it("includes timed_out and action_required CI runs and exposes all 25 canonical repair states", async () => {
+    const TIMED_OUT_RUN_ID = "0196f000-0000-7000-8000-000000000102";
+    const ACTION_REQ_RUN_ID = "0196f000-0000-7000-8000-000000000103";
+    let runsQuerySearch = "";
+    const fetchImpl: typeof fetch = async (input) => {
+      const request = input instanceof Request ? input : null;
+      const url = new URL(request?.url ?? String(input));
+      if (url.pathname === "/api/v1/workspaces/acme/runs") {
+        runsQuerySearch = url.search;
+        return json({
+          items: [
+            { id: RUN_ID, head_sha: "a".repeat(40), conclusion: "success" },
+            { id: TIMED_OUT_RUN_ID, head_sha: "b".repeat(40), conclusion: "timed_out" },
+            { id: ACTION_REQ_RUN_ID, head_sha: "c".repeat(40), conclusion: "action_required" },
+          ],
+          next_cursor: null,
+          snapshot_at: NOW,
+        });
+      }
+      if (url.pathname === "/api/v1/workspaces/acme/repairs") {
+        return json({ items: [], next_cursor: null, snapshot_at: NOW });
+      }
+      return json({ detail: `Unexpected request ${url.pathname}` }, 404);
+    };
+    const queryClient = createWorkspaceQueryClient();
+    render(
+      <I18nProvider>
+        <ThemeProvider defaultMode="light">
+          <ApiClientProvider
+            queryClient={queryClient}
+            clientOptions={{ baseUrl: "http://127.0.0.1:4280", fetch: fetchImpl }}
+          >
+            <MemoryRouter initialEntries={["/w/acme/repairs"]}>
+              <Routes>
+                <Route
+                  path="/w/acme/repairs"
+                  element={<RepairsListPage workspace={workspace} me={me} />}
+                />
+              </Routes>
+            </MemoryRouter>
+          </ApiClientProvider>
+        </ThemeProvider>
+      </I18nProvider>,
+    );
+
+    await screen.findByRole("option", { name: /timed_out/ });
+    expect(runsQuerySearch).not.toContain("conclusion=failure");
+    expect(screen.getByRole("option", { name: /action_required/ })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /success/ })).not.toBeInTheDocument();
+
+    const phaseSelect = screen.getByLabelText("Phase") as HTMLSelectElement;
+    // "all" + 25 canonical states = 26 options
+    expect(phaseSelect.options).toHaveLength(26);
+    expect(Array.from(phaseSelect.options).map((o) => o.value)).toEqual(
+      expect.arrayContaining([
+        "authorized",
+        "diagnosed_only",
+        "reproducing",
+        "repro_confirmed",
+        "patching",
+        "rejected",
+        "expired",
+        "publishing",
+        "publish_reconcile",
+        "remote_validating",
+        "remote_unknown",
+        "cancel_requested",
+      ]),
+    );
+  });
 });

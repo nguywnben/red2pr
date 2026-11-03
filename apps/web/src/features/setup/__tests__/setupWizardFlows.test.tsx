@@ -623,4 +623,51 @@ describe("U07 Setup Wizard, Consent Ledger & Private Endpoint Registry UI (UX-SE
     assertZeroWebStorageSecrets();
     unmount();
   });
+
+  it("defaults to muse-spark-1.3, https://api.meta.ai/v1, python-pytest-linux, and exposes pricing_catalog adapter", async () => {
+    let currentPhase: (typeof ORDERED_PHASES)[number] = "model_consent";
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/v1/auth/csrf")) {
+        return jsonResponse({ csrf_token: "csrf-defaults-test" });
+      }
+      if (url.endsWith("/api/v1/auth/me") || url.endsWith("/api/v1/me")) {
+        return jsonResponse(buildMePayload());
+      }
+      if (url.endsWith("/api/v1/setup")) {
+        return jsonResponse(
+          buildSetupState({
+            phase: currentPhase,
+            checkpoint: `cp-${currentPhase}`,
+            ownerClaimed: true,
+            readyMonitor: true,
+          }),
+        );
+      }
+      return jsonResponse({ items: [], next_cursor: null, has_more: false, snapshot_at: NOW_ISO });
+    });
+
+    const first = renderSetupApp({ fetchImpl: fetchMock as typeof fetch });
+    expect(await screen.findByLabelText(/Primary Meta model identifier/i)).toHaveValue(
+      "muse-spark-1.3",
+    );
+    expect(screen.getByLabelText(/Escalation model identifier/i)).toHaveValue("muse-wonder-1.0");
+    const consentsPanel = screen.getByTestId("setup-consents-panel");
+    expect(within(consentsPanel).getByLabelText(/Authorized destination URL/i)).toHaveValue(
+      "https://api.meta.ai/v1",
+    );
+    const endpointsPanel = screen.getByTestId("setup-endpoints-panel");
+    const adapterSelect = within(endpointsPanel).getByLabelText(
+      /Bound outbound adapter/i,
+    ) as HTMLSelectElement;
+    expect(Array.from(adapterSelect.options).map((o) => o.value)).toContain("pricing_catalog");
+    first.unmount();
+
+    currentPhase = "worker_readiness";
+    const second = renderSetupApp({ fetchImpl: fetchMock as typeof fetch });
+    expect(await screen.findByLabelText(/Certified runtime profile ID/i)).toHaveValue(
+      "python-pytest-linux",
+    );
+    second.unmount();
+  });
 });

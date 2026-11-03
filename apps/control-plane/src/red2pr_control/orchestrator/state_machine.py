@@ -37,7 +37,7 @@ from py_contracts.repairs import (
 )
 from red2pr_control.analytics_audit.audit_chain import AuditActorType, append_audit_entry
 from red2pr_control.core.errors import ConflictError, NotFoundError, UnprocessableEntityError
-from red2pr_control.db.base import RepairSessionModel
+from red2pr_control.db.base import BudgetAccountModel, RepairSessionModel
 from red2pr_control.db.outbox import enqueue_outbox_event
 from red2pr_control.db.rls import workspace_rls_session
 
@@ -870,6 +870,25 @@ class RepairSessionStateMachine:
                     code="terminal_state_immutable",
                     detail=f"Cannot cancel terminal repair session in state {row.state!r}.",
                 )
+
+            session_budget = await db.scalar(
+                select(BudgetAccountModel)
+                .where(
+                    BudgetAccountModel.workspace_id == workspace_id,
+                    BudgetAccountModel.id == row.budget_account_id,
+                )
+                .with_for_update()
+            )
+            if (
+                session_budget is not None
+                and session_budget.scope_kind == "repair_session"
+                and session_budget.cancelled_at is None
+            ):
+                now_ts = datetime.now(tz=UTC)
+                session_budget.cancelled_at = now_ts
+                session_budget.version += 1
+                session_budget.updated_at = now_ts
+                await db.flush()
 
             if row.state == "cancel_requested":
                 row = await self.transition_in_tx(

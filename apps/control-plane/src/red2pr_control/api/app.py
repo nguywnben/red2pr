@@ -11,6 +11,7 @@ Provides:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 import pathlib
@@ -255,7 +256,7 @@ from py_contracts import (
     WorkspaceWorkerReadinessResponse,
     new_uuid7,
 )
-from py_contracts.crypto import KeyRing
+from py_contracts.crypto import KeyRing, MasterKeyRing
 from py_contracts.extensions import (
     ModelFallbackPolicyRequest,
     ModelFallbackPolicyResponse,
@@ -274,6 +275,7 @@ from red2pr_control.core.errors import (
     build_problem,
     problem_from_exception,
 )
+from red2pr_control.core.keyring import load_master_key_ring_from_file
 from red2pr_control.core.logging import (
     bind_telemetry_context,
     current_correlation_id,
@@ -293,7 +295,9 @@ from red2pr_control.inference import (
     build_inference_router,
 )
 from red2pr_control.integrations import (
+    GitHubAppAdapter,
     GitHubIntegrationService,
+    GitLabAdapter,
     LocalPollingService,
     MissedEventReconciler,
     WebhookIngestService,
@@ -334,7 +338,11 @@ from red2pr_control.repositories import (
     RepositoryCatalogService,
     build_repositories_router,
 )
-from red2pr_control.secrets.broker import SecretBroker, SecretBrokerOidcAdapter
+from red2pr_control.secrets.broker import (
+    SecretBroker,
+    SecretBrokerOidcAdapter,
+    SecretBrokerProviderVault,
+)
 from red2pr_control.triage_evidence import (
     ArtifactStoreProtocol,
     TriageEvidenceService,
@@ -810,6 +818,47 @@ def _request_correlation_id(request: Request) -> str:
     return current_correlation_id()
 
 
+def _ensure_runtime_services(app: FastAPI) -> None:
+    """Lazily wire Z2 provider adapters onto `app.state` without Z1->Z2 import cycles."""
+    iam = getattr(app.state, "iam_service", None)
+    if not isinstance(iam, IamService):
+        return
+    broker = getattr(app.state, "notification_secret_broker", None)
+    if not isinstance(broker, SecretBroker):
+        if os.environ.get("RED2PR_MASTER_KEY_FILE", "").strip():
+            key_ring = load_master_key_ring_from_file()
+        else:
+            derived_kek = hashlib.sha256(
+                b"red2pr:default_secret_kek:v1:" + iam.csrf_signing_key
+            ).digest()
+            key_ring = MasterKeyRing(active_version=1, keys={1: derived_kek})
+        broker = SecretBroker(key_ring=key_ring)
+        app.state.notification_secret_broker = broker
+
+    existing_gh = getattr(app.state, "github_integration_service", None)
+    if not isinstance(existing_gh, GitHubIntegrationService):
+        vault = SecretBrokerProviderVault(broker)
+        egress = EgressPolicyEngine(
+            allowlist_provider=DbEndpointAllowlistProvider(iam.session_factory)
+        )
+        gh_adapter = GitHubAppAdapter(vault=vault, egress_policy=egress)
+        gl_adapter = GitLabAdapter(vault=vault, egress_policy=egress)
+        created = GitHubIntegrationService(
+            session_factory=iam.session_factory,
+            signing_key=iam.csrf_signing_key,
+            vault=vault,
+            github_adapter=gh_adapter,
+            gitlab_adapter=gl_adapter,
+        )
+        registry = getattr(app.state, "setup_step_registry", None)
+        if (
+            isinstance(registry, SetupStepRegistry)
+            and registry.get_probe("provider_connect") is None
+        ):
+            created.register_setup_probe(registry)
+        app.state.github_integration_service = created
+
+
 def create_app(
     *,
     iam_service: IamService | None = None,
@@ -901,6 +950,7 @@ def create_app(
         alarms_task = None
         relay_task = None
         pricing_catalog_task = None
+        pipeline_task = None
         admin_database_url = os.environ.get("RED2PR_ADMIN_DATABASE_URL", "").strip()
         backup_directory = os.environ.get("RED2PR_BACKUP_DIRECTORY", "").strip()
         if admin_database_url and backup_directory:
@@ -930,14 +980,27 @@ def create_app(
             relay_task = asyncio.create_task(
                 relay_runner.run_forever(), name="customer-webhook-relay-worker"
             )
-        if meta_inference_service is not None and pricing_catalog_refresh_enabled:
+        effective_meta_service = (
+            getattr(app.state, "meta_inference_service", None) or meta_inference_service
+        )
+        if effective_meta_service is not None and pricing_catalog_refresh_enabled:
             pricing_catalog_task = asyncio.create_task(
-                meta_inference_service.refresh_pricing_catalog_forever(),
+                effective_meta_service.refresh_pricing_catalog_forever(),
                 name="litellm-pricing-catalog-refresh",
+            )
+        pipeline_coordinator = getattr(app.state, "pipeline_coordinator", None)
+        if pipeline_coordinator is not None:
+            pipeline_task = asyncio.create_task(
+                pipeline_coordinator.run_forever(),
+                name="repair-pipeline-coordinator",
             )
         try:
             yield
         finally:
+            if pipeline_task is not None:
+                pipeline_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await pipeline_task
             if worker is not None:
                 worker.cancel()
                 with suppress(asyncio.CancelledError):
@@ -1050,6 +1113,7 @@ def create_app(
     app.state.telegram_bot_service = telegram_bot_service
     app.state.audit_checkpoint_store = audit_checkpoint_store
     app.state.audit_checkpoint_keyring = audit_checkpoint_keyring
+    app.state.ensure_runtime_services = _ensure_runtime_services
 
     system_router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
