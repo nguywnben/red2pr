@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Body, Depends, Header, Path, Request, Response
 from sqlalchemy import select
 
+from py_contracts.crypto import MasterKeyRing
 from py_contracts.extensions import ModelFallbackPolicyRequest, ModelFallbackPolicyResponse
 from py_contracts.integrations import ConsentRecord, ConsentRevokeRequest
 from py_contracts.models import (
@@ -58,6 +61,8 @@ from red2pr_control.iam.rbac import (
 from red2pr_control.iam.sessions import IamService, extract_client_ip, is_step_up_fresh
 from red2pr_control.inference.agent_profiles import AgentProfileService
 from red2pr_control.inference.meta_client import MetaMuseInferenceService
+from red2pr_control.core.keyring import load_master_key_ring_from_file
+from red2pr_control.secrets.broker import SecretBroker
 
 _COMMON_PROBLEM_RESPONSES: dict[int | str, dict[str, object]] = {
     400: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
@@ -94,12 +99,29 @@ def _resolve_iam(request: Request) -> IamService:
 
 def _resolve_meta_inference_service(request: Request) -> MetaMuseInferenceService:
     svc = getattr(request.app.state, "meta_inference_service", None)
-    if not isinstance(svc, MetaMuseInferenceService):
-        raise DependencyUnavailableError(
-            code="inference_unconfigured",
-            detail="Meta Muse inference broker is not configured on this control-plane instance.",
-        )
-    return svc
+    if isinstance(svc, MetaMuseInferenceService):
+        return svc
+    iam = _resolve_iam(request)
+    broker = getattr(request.app.state, "notification_secret_broker", None)
+    if not isinstance(broker, SecretBroker):
+        if os.environ.get("RED2PR_MASTER_KEY_FILE", "").strip():
+            key_ring = load_master_key_ring_from_file()
+        else:
+            derived_kek = hashlib.sha256(
+                b"red2pr:default_secret_kek:v1:" + iam.csrf_signing_key
+            ).digest()
+            key_ring = MasterKeyRing(active_version=1, keys={1: derived_kek})
+        broker = SecretBroker(key_ring=key_ring)
+        request.app.state.notification_secret_broker = broker
+    created = MetaMuseInferenceService(
+        iam_service=iam,
+        secret_broker=broker,
+    )
+    registry = getattr(request.app.state, "setup_step_registry", None)
+    if registry is not None:
+        created.register_setup_probe(registry)
+    request.app.state.meta_inference_service = created
+    return created
 
 
 def _resolve_agent_profile_service(request: Request) -> AgentProfileService:

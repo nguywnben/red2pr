@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Header, Path, Query, Request, Response
 
+from py_contracts.crypto import MasterKeyRing
 from py_contracts.integrations import (
     Connection,
     ConnectionDetailResponse,
@@ -24,11 +27,13 @@ from py_contracts.integrations import (
     ProviderKind,
 )
 from py_contracts.primitives import ActionReceipt, Problem
+from red2pr_control.core.egress import EgressPolicyEngine
 from red2pr_control.core.errors import (
     PROBLEM_JSON_MEDIA_TYPE,
     BadRequestError,
     DependencyUnavailableError,
 )
+from red2pr_control.core.keyring import load_master_key_ring_from_file
 from red2pr_control.core.logging import current_correlation_id
 from red2pr_control.iam.rbac import (
     ADMIN_ONLY_ROLES,
@@ -38,8 +43,11 @@ from red2pr_control.iam.rbac import (
     make_workspace_rbac_dependency,
 )
 from red2pr_control.iam.sessions import IamService, extract_client_ip
-from red2pr_control.integrations.github_app import GitHubIntegrationService
+from red2pr_control.integrations.github_app import GitHubAppAdapter, GitHubIntegrationService
+from red2pr_control.integrations.gitlab_client import GitLabAdapter
+from red2pr_control.integrations.poller import LocalPollingService
 from red2pr_control.integrations.reconciler import MissedEventReconciler
+from red2pr_control.secrets.broker import SecretBroker, SecretBrokerProviderVault
 
 _COMMON_PROBLEM_RESPONSES: dict[int | str, dict[str, object]] = {
     400: {"model": Problem, "content": {PROBLEM_JSON_MEDIA_TYPE: {}}},
@@ -72,24 +80,76 @@ def _resolve_iam(request: Request) -> IamService:
     return svc
 
 
+def _resolve_secret_broker(request: Request, iam: IamService) -> SecretBroker:
+    broker = getattr(request.app.state, "notification_secret_broker", None)
+    if isinstance(broker, SecretBroker):
+        return broker
+    if os.environ.get("RED2PR_MASTER_KEY_FILE", "").strip():
+        key_ring = load_master_key_ring_from_file()
+    else:
+        derived_kek = hashlib.sha256(
+            b"red2pr:default_secret_kek:v1:" + iam.csrf_signing_key
+        ).digest()
+        key_ring = MasterKeyRing(active_version=1, keys={1: derived_kek})
+    broker = SecretBroker(key_ring=key_ring)
+    request.app.state.notification_secret_broker = broker
+    return broker
+
+
 def _resolve_github_integration_service(request: Request) -> GitHubIntegrationService:
     svc = getattr(request.app.state, "github_integration_service", None)
-    if not isinstance(svc, GitHubIntegrationService):
-        raise DependencyUnavailableError(
-            code="integrations_unconfigured",
-            detail="Provider integration service is not configured on this control-plane instance.",
-        )
-    return svc
+    if isinstance(svc, GitHubIntegrationService):
+        return svc
+    from red2pr_control.operations.setup_wizard import DbEndpointAllowlistProvider
+
+    iam = _resolve_iam(request)
+    broker = _resolve_secret_broker(request, iam)
+    vault = SecretBrokerProviderVault(broker)
+    egress = EgressPolicyEngine(
+        allowlist_provider=DbEndpointAllowlistProvider(iam.session_factory)
+    )
+    gh_adapter = GitHubAppAdapter(vault=vault, egress_policy=egress)
+    gl_adapter = GitLabAdapter(vault=vault, egress_policy=egress)
+    created = GitHubIntegrationService(
+        session_factory=iam.session_factory,
+        signing_key=iam.csrf_signing_key,
+        vault=vault,
+        github_adapter=gh_adapter,
+        gitlab_adapter=gl_adapter,
+    )
+    registry = getattr(request.app.state, "setup_step_registry", None)
+    if registry is not None:
+        created.register_setup_probe(registry)
+    request.app.state.github_integration_service = created
+    return created
 
 
 def _resolve_reconciler_service(request: Request) -> MissedEventReconciler:
     svc = getattr(request.app.state, "reconciler_service", None)
-    if not isinstance(svc, MissedEventReconciler):
-        raise DependencyUnavailableError(
-            code="reconciler_unconfigured",
-            detail="Missed-event reconciler service is not configured on this instance.",
+    if isinstance(svc, MissedEventReconciler):
+        return svc
+    iam = _resolve_iam(request)
+    integration_svc = _resolve_github_integration_service(request)
+    poller = getattr(request.app.state, "polling_service", None)
+    if not isinstance(poller, LocalPollingService):
+        poller = LocalPollingService(
+            session_factory=iam.session_factory,
+            github_adapter=integration_svc._github,
+            gitlab_adapter=integration_svc._gitlab,
+            integration_service=integration_svc,
+            clock=iam.now,
         )
-    return svc
+        request.app.state.polling_service = poller
+    created = MissedEventReconciler(
+        session_factory=iam.session_factory,
+        github_adapter=integration_svc._github,
+        gitlab_adapter=integration_svc._gitlab,
+        poller=poller,
+        integration_service=integration_svc,
+        clock=iam.now,
+    )
+    request.app.state.reconciler_service = created
+    return created
 
 
 def _require_idempotency_key(raw_key: str | None, *, endpoint_label: str) -> str:
