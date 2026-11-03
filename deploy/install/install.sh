@@ -226,6 +226,8 @@ PY
 export RED2PR_CONFIG_FILE="${RED2PR_CONFIG_FILE:-$CANONICAL_DATA_DIR/config/config.yaml}"
 export RED2PR_DATABASE_URL_FILE="${RED2PR_DATABASE_URL_FILE:-$CANONICAL_DATA_DIR/secrets/database_url}"
 export RED2PR_POSTGRES_PASSWORD_FILE="${RED2PR_POSTGRES_PASSWORD_FILE:-$CANONICAL_DATA_DIR/secrets/postgres_password}"
+export RED2PR_MASTER_KEY_FILE="${RED2PR_MASTER_KEY_FILE:-$CANONICAL_DATA_DIR/secrets/master.key}"
+_CALLER_REDIS_PASSWORD="${RED2PR_REDIS_PASSWORD:-}"
 export RED2PR_REDIS_PASSWORD="${RED2PR_REDIS_PASSWORD:-dry-run-only}"
 export RED2PR_CADDYFILE="$DEPLOY_DIR/Caddyfile"
 if [[ "$MODE" == server && "$DRY_RUN" != 1 ]]; then
@@ -250,10 +252,54 @@ if ((DRY_RUN)); then
   exit 0
 fi
 
-for required in RED2PR_CONFIG_FILE RED2PR_DATABASE_URL_FILE RED2PR_POSTGRES_PASSWORD_FILE RED2PR_REDIS_PASSWORD; do
+mkdir -p -- "$CANONICAL_DATA_DIR/secrets" "$CANONICAL_DATA_DIR/config"
+chmod 700 "$CANONICAL_DATA_DIR/secrets" "$CANONICAL_DATA_DIR/config"
+
+if [[ ! -e "$RED2PR_MASTER_KEY_FILE" ]]; then
+  mkdir -p -- "$(dirname -- "$RED2PR_MASTER_KEY_FILE")"
+  openssl rand -hex 32 > "$RED2PR_MASTER_KEY_FILE"
+  chmod 600 "$RED2PR_MASTER_KEY_FILE"
+fi
+if [[ ! -e "$RED2PR_POSTGRES_PASSWORD_FILE" ]]; then
+  mkdir -p -- "$(dirname -- "$RED2PR_POSTGRES_PASSWORD_FILE")"
+  openssl rand -hex 32 > "$RED2PR_POSTGRES_PASSWORD_FILE"
+  chmod 600 "$RED2PR_POSTGRES_PASSWORD_FILE"
+fi
+if [[ ! -e "$RED2PR_DATABASE_URL_FILE" ]]; then
+  mkdir -p -- "$(dirname -- "$RED2PR_DATABASE_URL_FILE")"
+  _PG_PW="$(tr -d '\r\n' < "$RED2PR_POSTGRES_PASSWORD_FILE")"
+  printf 'postgresql+psycopg://red2pr:%s@database:5432/red2pr\n' "$_PG_PW" > "$RED2PR_DATABASE_URL_FILE"
+  unset _PG_PW
+  chmod 600 "$RED2PR_DATABASE_URL_FILE"
+fi
+if [[ -z "$_CALLER_REDIS_PASSWORD" ]]; then
+  _REDIS_PW_FILE="$CANONICAL_DATA_DIR/secrets/redis_password"
+  if [[ ! -e "$_REDIS_PW_FILE" ]]; then
+    openssl rand -hex 32 > "$_REDIS_PW_FILE"
+    chmod 600 "$_REDIS_PW_FILE"
+  fi
+  RED2PR_REDIS_PASSWORD="$(tr -d '\r\n' < "$_REDIS_PW_FILE")"
+  export RED2PR_REDIS_PASSWORD
+fi
+if [[ ! -e "$RED2PR_CONFIG_FILE" ]]; then
+  mkdir -p -- "$(dirname -- "$RED2PR_CONFIG_FILE")"
+  if [[ "$MODE" == server ]]; then
+    _PUBLIC_URL="https://${RED2PR_FQDN}"
+  else
+    _PUBLIC_URL="http://127.0.0.1:${RED2PR_HTTP_PORT:-8080}"
+  fi
+  cat > "$RED2PR_CONFIG_FILE" <<EOF
+instance:
+  deployment_mode: ${MODE}
+  public_base_url: ${_PUBLIC_URL}
+EOF
+  chmod 600 "$RED2PR_CONFIG_FILE"
+fi
+
+for required in RED2PR_CONFIG_FILE RED2PR_DATABASE_URL_FILE RED2PR_POSTGRES_PASSWORD_FILE RED2PR_MASTER_KEY_FILE RED2PR_REDIS_PASSWORD; do
   [[ -n "${!required:-}" ]] || fail "required deployment setting is missing: $required"
 done
-[[ -f "$RED2PR_CONFIG_FILE" && -f "$RED2PR_DATABASE_URL_FILE" && -f "$RED2PR_POSTGRES_PASSWORD_FILE" ]] || fail 'configuration and secret files must be provisioned before installation'
+[[ -f "$RED2PR_CONFIG_FILE" && -f "$RED2PR_DATABASE_URL_FILE" && -f "$RED2PR_POSTGRES_PASSWORD_FILE" && -f "$RED2PR_MASTER_KEY_FILE" ]] || fail 'configuration and secret files must be regular files'
 VERSION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])' "$MANIFEST")"
 mkdir -p -- "$CANONICAL_DATA_DIR/releases"
 RELEASE_DIR="$CANONICAL_DATA_DIR/releases/$VERSION"

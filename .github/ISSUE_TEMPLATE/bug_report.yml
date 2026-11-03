@@ -1,0 +1,50 @@
+name: Bug Report
+description: Report a reproducible defect in Red2PR control plane, worker, CLI, or web UI
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security reminder:** Never include real API keys, GitHub App private keys, GitLab tokens, bootstrap tokens, or unredacted private repository logs. For security vulnerabilities, use [Private Vulnerability Reporting](https://github.com/nguywnben/red2pr/security/advisories/new) instead.
+  - type: input
+    id: version
+    attributes:
+      label: Red2PR Version / Commit SHA
+      placeholder: "v0.1.0-beta.1 (or git rev-parse HEAD)"
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Control Plane / API (apps/control-plane)
+        - Web Console / Astryx UI (apps/web)
+        - Sandbox Worker Supervisor (apps/worker-supervisor)
+        - Operator CLI / Quickstart / Installer (apps/cli, scripts, deploy)
+        - Contracts / Generated Client (packages/py-contracts, packages/ts-client)
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Host OS & Runtime Versions
+      placeholder: "e.g., Windows 11 PowerShell / Ubuntu 24.04, Python 3.12.10, Node 22.12"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal commands or UI actions to reproduce the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs. Actual Behavior
+      description: Include HTTP status / correlation ID (`X-Correlation-Id`) or CLI exit code if applicable.
+    validations:
+      required: true

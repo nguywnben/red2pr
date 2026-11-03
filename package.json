@@ -11,7 +11,8 @@
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint",
-    "test": "pnpm -r --if-present test"
+    "test": "pnpm -r --if-present test",
+    "quickstart:web": "pnpm --filter @red2pr/ts-client build && pnpm --filter @red2pr/web build"
   },
   "devDependencies": {
     "@astryxdesign/cli": "0.7.4"

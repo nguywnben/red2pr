@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import hashlib
 import os
 from datetime import UTC, datetime, timedelta
@@ -11,6 +12,8 @@ from pathlib import Path
 import uvicorn
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from py_contracts.crypto import KeyRing, MasterKeyRing, export_ed25519_public_key_record
 from red2pr_control.api.app import create_app
@@ -22,6 +25,7 @@ from red2pr_control.db.engine import (
     create_app_engine,
     create_session_factory,
     ensure_compatible_event_loop,
+    run_alembic_upgrade,
 )
 from red2pr_control.iam.sessions import IamService
 from red2pr_control.inference import AgentProfileService, MetaMuseInferenceService
@@ -57,6 +61,86 @@ from red2pr_control.secrets.broker import (
 from red2pr_control.triage_evidence import TriageEvidenceService
 from red2pr_control.triage_evidence.artifact_store import LocalEncryptedArtifactStore
 from red2pr_control.triage_evidence.collector import CiRunCollectorService
+
+_DEFAULT_REPO_WEB_DIST = Path(__file__).resolve().parents[4] / "apps" / "web" / "dist"
+
+
+class _SpaStaticFallbackApp:
+    """Serve built SPA assets on non-API GET/HEAD paths while keeping `/api` & `/internal` pure."""
+
+    def __init__(self, app: ASGIApp, dist_dir: Path) -> None:
+        self._app = app
+        self._dist_root = dist_dir.resolve(strict=True)
+        self._index_file = self._dist_root / "index.html"
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
+        method = str(scope.get("method", "GET")).upper()
+        path = str(scope.get("path", "/"))
+        if (
+            method not in {"GET", "HEAD"}
+            or path in {"/api", "/internal"}
+            or path.startswith(("/api/", "/internal/"))
+        ):
+            await self._app(scope, receive, send)
+            return
+
+        rel = path.lstrip("/")
+        if rel:
+            candidate = (self._dist_root / rel).resolve(strict=False)
+            if (
+                candidate != self._dist_root
+                and candidate.is_relative_to(self._dist_root)
+                and not candidate.is_symlink()
+                and candidate.is_file()
+            ):
+                cache_hdr = (
+                    "public, max-age=31536000, immutable"
+                    if rel.startswith("assets/")
+                    else "no-cache"
+                )
+                resp = FileResponse(candidate, headers={"Cache-Control": cache_hdr})
+                await resp(scope, receive, send)
+                return
+            if "." in Path(rel).name:
+                await self._app(scope, receive, send)
+                return
+
+        resp = FileResponse(self._index_file, headers={"Cache-Control": "no-store"})
+        await resp(scope, receive, send)
+
+
+def resolve_web_dist_dir(explicit: Path | None = None) -> Path | None:
+    """Resolve built `apps/web/dist` directory if available and containing `index.html`."""
+    raw_env = os.environ.get("RED2PR_WEB_DIST_DIR", "").strip()
+    target = explicit or (Path(raw_env).expanduser() if raw_env else _DEFAULT_REPO_WEB_DIST)
+    try:
+        resolved = target.resolve(strict=True)
+    except OSError:
+        return None
+    index_path = resolved / "index.html"
+    if index_path.is_file() and not index_path.is_symlink():
+        return resolved
+    return None
+
+
+def wrap_with_spa_static_files(app: ASGIApp, *, web_dist_dir: Path | None = None) -> ASGIApp:
+    """Wrap `app` with SPA static asset serving when a built frontend bundle exists."""
+    resolved_dist = resolve_web_dist_dir(web_dist_dir)
+    if resolved_dist is None:
+        return app
+    return _SpaStaticFallbackApp(app, resolved_dist)
+
+
+def serve_uvicorn_app(config: uvicorn.Config, *, server: uvicorn.Server | None = None) -> None:
+    """Run `uvicorn.Server` using `SelectorEventLoop` on Windows for `psycopg` async support."""
+    srv = server or uvicorn.Server(config)
+    if os.name == "nt":
+        asyncio.run(srv.serve(), loop_factory=asyncio.SelectorEventLoop)
+    else:
+        srv.run()
 
 
 def _resolve_database_url() -> str:
@@ -291,11 +375,29 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Verify configuration and build the ASGI application without opening a listener.",
     )
+    parser.add_argument(
+        "--migrate",
+        action="store_true",
+        help="Run Alembic upgrade to head using RED2PR_ADMIN_DATABASE_URL before starting.",
+    )
     args = parser.parse_args(argv)
+    if args.migrate:
+        admin_url = os.environ.get("RED2PR_ADMIN_DATABASE_URL", "").strip()
+        if not admin_url:
+            raise RuntimeError("Set RED2PR_ADMIN_DATABASE_URL when passing --migrate.")
+        run_alembic_upgrade(admin_url, "head")
     app = build_runtime_app(pricing_catalog_refresh_enabled=not args.check_wiring)
     if args.check_wiring:
         return 0
-    uvicorn.run(app, host=args.host, port=args.port, server_header=False, date_header=False)
+    asgi_app = wrap_with_spa_static_files(app)
+    uv_cfg = uvicorn.Config(
+        asgi_app,
+        host=args.host,
+        port=args.port,
+        server_header=False,
+        date_header=False,
+    )
+    serve_uvicorn_app(uv_cfg)
     return 0
 
 

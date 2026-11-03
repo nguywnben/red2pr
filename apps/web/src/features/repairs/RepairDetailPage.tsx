@@ -162,7 +162,7 @@ export function RepairDetailPage({ workspace, me }: RepairDetailPageProps): Reac
         ? "red2pr-tone-warning"
         : "red2pr-tone-neutral";
 
-  return <div className="red2pr-page-stack" data-testid="repair-detail-page" data-run-id={repair?.run_id}>
+  return <section className="red2pr-page-stack" data-testid="repair-detail-page" data-run-id={repair?.run_id}>
     <header className="red2pr-page-header">
       <div>
         <div style={{ marginBottom: 8 }}>
@@ -212,5 +212,5 @@ export function RepairDetailPage({ workspace, me }: RepairDetailPageProps): Reac
     </section>
     <footer className="red2pr-field-hint"><small>Version {repair.version} · Policy revision {repair.policy_revision} · session <code>{repair.id}</code></small></footer>
     </>}
-  </div>;
+  </section>;
 }

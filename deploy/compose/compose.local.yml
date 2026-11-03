@@ -11,10 +11,12 @@ services:
     environment:
       RED2PR_CONFIG: /etc/red2pr/config.yaml
       RED2PR_DATABASE_URL_FILE: /run/secrets/database_url
+      RED2PR_MASTER_KEY_FILE: /run/secrets/master_key
       RED2PR_BOOTSTRAP_ISSUER_SECRET: "${RED2PR_BOOTSTRAP_ISSUER_SECRET:?installer bootstrap issuer secret required}"
     volumes:
       - "${RED2PR_CONFIG_FILE:?configure Red2PR first}:/etc/red2pr/config.yaml:ro"
       - "${RED2PR_DATABASE_URL_FILE:?configure database access}:/run/secrets/database_url:ro"
+      - "${RED2PR_MASTER_KEY_FILE:?provision master key}:/run/secrets/master_key:ro"
     ports: ["127.0.0.1:${RED2PR_HTTP_PORT:-8080}:8080"]
     expose: [8080, 8443]
     networks: [ingress, data]

@@ -89,7 +89,7 @@ export function PullRequestsPage({ workspace, me }: PullRequestsPageProps): Reac
   ];
   const resolvedRepairId = detail.data?.data.publication.repair_id ?? selectedRow?.repair_id ?? null;
   const remoteCheck = detail.data?.data.remote_check ?? null;
-  return <div className="red2pr-page-stack" data-testid="pull-requests-page">
+  return <section className="red2pr-page-stack" data-testid="pull-requests-page">
     <header className="red2pr-page-header"><div><h1>Pull requests</h1><p>Draft publications and remote CI proof tied to the exact published commit.</p></div></header>
     {query.isPending ? <StateView state="loading" skeletonVariant="table" /> : query.isError ? <StateView state={query.error instanceof Red2PrApiError && query.error.status === 403 ? "forbidden" : "error"} title="Publications could not be loaded" description={query.error instanceof Error ? query.error.message : "The publication list is unavailable."} primaryAction={{ label: "Retry", onClick: () => void query.refetch() }} /> : rows.length === 0 ? <StateView state="empty" title="No draft publications" description="A draft appears after a locally verified repair receives approval and the publisher confirms the provider state." /> : <div className="red2pr-surface red2pr-table-scroll"><Table aria-label="Draft publications" columns={columns} data={rows} /></div>}
     {selected ? <section className="red2pr-surface red2pr-card-section" aria-labelledby="publication-detail-title" data-testid="publication-detail">
@@ -114,5 +114,5 @@ export function PullRequestsPage({ workspace, me }: PullRequestsPageProps): Reac
       </>}
     </section> : null}
     <p role="note" className="red2pr-field-hint">Draft reviews are never merged automatically. Remote verification requires every configured required check to pass on the exact published SHA.</p>
-  </div>;
+  </section>;
 }

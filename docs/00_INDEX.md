@@ -1,6 +1,16 @@
 # Red2PR specification index
 
-**Specification version:** SPEC-2026-10-27-v5 (P2 review) + PLAN-2026-10-27-v1 (P3 execution master plan approved under ADR-039; P4 active) · **Status:** approved design and execution baseline · **Language:** English.
+**Specification version:** SPEC-2026-10-27-v5 (P2 review) + PLAN-2026-10-27-v1 (P3 execution master plan approved under ADR-039) · **Implementation status (`v0.1.0-beta.1`):** Units `U01`–`U30` and 21-screen Astryx UX rebuild implemented and locally verified; Wave 6 (`U31`–`U36`) and `v1.0.0` production certification deferred · **Language:** English.
+
+## Operator & repository entrypoints
+| File | Contents |
+|---|---|
+| [../README.md](../README.md) | Product overview, capabilities, workflow, quick start, screenshots and architecture |
+| [QUICKSTART_AND_USER_GUIDE.md](QUICKSTART_AND_USER_GUIDE.md) | Practical local installation, 10-phase setup wizard, GitHub/GitLab, Meta Model API, repair evidence, CLI and troubleshooting |
+| [../SECURITY.md](../SECURITY.md) | Supported versions, trust-boundary invariants and private vulnerability reporting |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Monorepo layout, local setup, quality gates and architectural guardrails |
+| [../CHANGELOG.md](../CHANGELOG.md) | SemVer release roadmap and `0.1.0-beta.1` pre-release changelog |
+| [releases/v0.1.0-beta.1-draft.md](releases/v0.1.0-beta.1-draft.md) | Conditional `v0.1.0-beta.1` readiness gate check, draft pre-release notes and owner publication checklist |
 
 ## Recommended reading order
 | File | Contents |
