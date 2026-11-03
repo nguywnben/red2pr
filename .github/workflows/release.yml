@@ -27,6 +27,14 @@ jobs:
           ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-depth: 0
 
+      - name: Sync latest container build definitions on manual dispatch
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "${{ github.sha }}"
+          git checkout "${{ github.sha }}" -- deploy/docker .dockerignore
+
       - name: Derive release metadata
         id: meta
         shell: bash

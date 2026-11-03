@@ -16,7 +16,7 @@ COPY packages/py-contracts ./packages/py-contracts
 COPY apps/worker-supervisor ./apps/worker-supervisor
 
 RUN python -m venv /app/.venv \
-    && /app/.venv/bin/pip install --no-cache-dir --upgrade pip "hatchling>=1.25.0" \
+    && /app/.venv/bin/pip install --no-cache-dir --upgrade pip "hatchling>=1.25.0" "editables>=0.5" \
     && /app/.venv/bin/pip install --no-cache-dir --no-build-isolation \
         -e ./packages/py-contracts \
         -e ./apps/worker-supervisor \

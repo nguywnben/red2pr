@@ -24,10 +24,11 @@ COPY LICENSE README.md ./
 COPY packages/py-contracts ./packages/py-contracts
 COPY apps/control-plane ./apps/control-plane
 COPY apps/cli ./apps/cli
+COPY apps/worker-supervisor/profiles ./apps/worker-supervisor/profiles
 COPY --from=web-builder /workspace/apps/web/dist ./apps/web/dist
 
 RUN python -m venv /app/.venv \
-    && /app/.venv/bin/pip install --no-cache-dir --upgrade pip "hatchling>=1.25.0" \
+    && /app/.venv/bin/pip install --no-cache-dir --upgrade pip "hatchling>=1.25.0" "editables>=0.5" \
     && /app/.venv/bin/pip install --no-cache-dir --no-build-isolation \
         -e ./packages/py-contracts \
         -e ./apps/control-plane \
