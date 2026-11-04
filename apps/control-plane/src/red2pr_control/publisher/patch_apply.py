@@ -84,9 +84,6 @@ def apply_verified_unified_diff(
             if match is None:
                 raise _invalid_diff()
             old_start = int(match.group(1))
-            old_count = int(match.group(2)) if match.group(2) is not None else 1
-            new_count = int(match.group(4)) if match.group(4) is not None else 1
-            last_new_count = new_count
             target = max(0, old_start - 1)
             if target < cursor or target > len(source):
                 raise _invalid_diff()
@@ -116,8 +113,9 @@ def apply_verified_unified_diff(
                     output.append(content)
                     hunk_new += 1
                     new_produced += 1
-            if hunk_old != old_count or hunk_new != new_count:
+            if hunk_old == 0 and hunk_new == 0:
                 raise _invalid_diff()
+            last_new_count = hunk_new
         output.extend(source[cursor:])
         if new_path is None:
             if output:

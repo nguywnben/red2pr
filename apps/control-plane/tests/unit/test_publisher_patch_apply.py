@@ -48,6 +48,59 @@ deleted file mode 100644
         )
 
 
+def test_apply_verified_patch_recounts_hunk_lengths_when_base_lines_match_exact() -> None:
+    base = (
+        "from decimal import Decimal, ROUND_HALF_UP\n"
+        "\n"
+        'ZERO_DECIMAL_CURRENCIES = frozenset({"JPY", "KRW", "VND"})\n'
+        'THREE_DECIMAL_CURRENCIES = frozenset({"KWD", "BHD", "OMR"})\n'
+        "def quantize_minor_units(amount: Decimal, currency: str) -> Decimal:\n"
+        "    code = currency.upper().strip()\n"
+        "    if code in THREE_DECIMAL_CURRENCIES:\n"
+        '        exponent = Decimal("0.001")\n'
+        "    else:\n"
+        '        exponent = Decimal("0.01")\n'
+        "    return amount.quantize(exponent, rounding=ROUND_HALF_UP)\n"
+    )
+    # Model declared -3,7 +3,9 even though body contains 8 old and 10 new lines.
+    diff = (
+        "--- a/src/payments/rounding.py\n"
+        "+++ b/src/payments/rounding.py\n"
+        "@@ -3,7 +3,9 @@\n"
+        ' ZERO_DECIMAL_CURRENCIES = frozenset({"JPY", "KRW", "VND"})\n'
+        ' THREE_DECIMAL_CURRENCIES = frozenset({"KWD", "BHD", "OMR"})\n'
+        " def quantize_minor_units(amount: Decimal, currency: str) -> Decimal:\n"
+        "     code = currency.upper().strip()\n"
+        "-    if code in THREE_DECIMAL_CURRENCIES:\n"
+        "+    if code in ZERO_DECIMAL_CURRENCIES:\n"
+        '+        exponent = Decimal("1")\n'
+        "+    elif code in THREE_DECIMAL_CURRENCIES:\n"
+        '         exponent = Decimal("0.001")\n'
+        "     else:\n"
+        '         exponent = Decimal("0.01")\n'
+    )
+    updated = apply_verified_unified_diff(diff, base_contents={"src/payments/rounding.py": base})
+    assert updated["src/payments/rounding.py"] == (
+        "from decimal import Decimal, ROUND_HALF_UP\n"
+        "\n"
+        'ZERO_DECIMAL_CURRENCIES = frozenset({"JPY", "KRW", "VND"})\n'
+        'THREE_DECIMAL_CURRENCIES = frozenset({"KWD", "BHD", "OMR"})\n'
+        "def quantize_minor_units(amount: Decimal, currency: str) -> Decimal:\n"
+        "    code = currency.upper().strip()\n"
+        "    if code in ZERO_DECIMAL_CURRENCIES:\n"
+        '        exponent = Decimal("1")\n'
+        "    elif code in THREE_DECIMAL_CURRENCIES:\n"
+        '        exponent = Decimal("0.001")\n'
+        "    else:\n"
+        '        exponent = Decimal("0.01")\n'
+        "    return amount.quantize(exponent, rounding=ROUND_HALF_UP)\n"
+    )
+
+    empty_hunk = "--- a/src/payments/rounding.py\n+++ b/src/payments/rounding.py\n@@ -1,1 +1,1 @@\n"
+    with pytest.raises(ConflictError):
+        apply_verified_unified_diff(empty_hunk, base_contents={"src/payments/rounding.py": base})
+
+
 @pytest.mark.parametrize(
     "diff",
     [

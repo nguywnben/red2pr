@@ -21,7 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -58,7 +58,6 @@ from red2pr_control.integrations.base import (
     ProviderError,
     ProviderJobRecord,
 )
-from red2pr_control.integrations.github_app import GitHubAppAdapter
 from red2pr_control.integrations.gitlab_client import GitLabAdapter
 from red2pr_control.orchestrator.queue import DurableTaskQueueService
 from red2pr_control.triage_evidence.archive_guard import (
@@ -77,6 +76,9 @@ from red2pr_control.triage_evidence.flaky import (
     record_and_classify_job_observation,
     summarize_run_flaky_classification,
 )
+
+if TYPE_CHECKING:
+    from red2pr_control.integrations.github_app import GitHubAppAdapter
 
 MAX_CI_LOG_BYTES = 20 * 1024 * 1024  # 20 MiB (`NFR-14`)
 TRUNCATION_BANNER = "[RED2PR TRUNCATED: upstream CI log exceeded max_bytes cap; tail preserved]\n"

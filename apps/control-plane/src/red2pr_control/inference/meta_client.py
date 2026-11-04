@@ -435,7 +435,7 @@ class MetaMuseInferenceService:
         egress_policy: EgressPolicyEngine | None = None,
         ca_bundle_resolver: CaBundleResolverProtocol | None = None,
         network_backend: httpcore.AsyncNetworkBackend | None = None,
-        timeout_seconds: float = 15.0,
+        timeout_seconds: float = 90.0,
         redactor: Redactor | None = None,
         pricing_catalog: LiteLlmPricingCatalog | None = None,
     ) -> None:

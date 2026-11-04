@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
@@ -451,6 +452,10 @@ class ParsedUnifiedDiff:
     lines_removed: int
 
 
+
+_HUNK_HEADER_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@( .*)?$")
+
+
 def parse_and_validate_unified_diff(
     diff_text: str,
     *,
@@ -559,22 +564,28 @@ def parse_and_validate_unified_diff(
         saw_hunk = False
         while idx < len(lines) and lines[idx].startswith("@@ "):
             saw_hunk = True
+            hunk_header_idx = idx
             hunk_header = lines[idx]
             idx += 1
-            try:
-                header_body = hunk_header.split("@@")[1].strip()
-                old_spec = header_body.split(" ")[0]
-                if not old_spec.startswith("-"):
-                    raise ValueError("Missing '-' range")
-                old_parts = old_spec[1:].split(",")
-                old_start = int(old_parts[0])
-            except (IndexError, ValueError) as exc:
+            hunk_match = _HUNK_HEADER_RE.fullmatch(hunk_header)
+            if hunk_match is None:
                 raise RepoSnapshotError(
                     code="malformed_hunk_header",
                     detail=f"Invalid unified diff hunk header: {hunk_header!r}",
-                ) from exc
+                )
+            old_start = int(hunk_match.group(1))
+            declared_old_count = (
+                int(hunk_match.group(2)) if hunk_match.group(2) is not None else 1
+            )
+            new_start = int(hunk_match.group(3))
+            declared_new_count = (
+                int(hunk_match.group(4)) if hunk_match.group(4) is not None else 1
+            )
+            hunk_suffix = hunk_match.group(5) or ""
 
             src_cursor = max(0, old_start - 1)
+            hunk_old = 0
+            hunk_new = 0
             while idx < len(lines):
                 hline = lines[idx]
                 if hline == "" and idx == len(lines) - 1:
@@ -610,11 +621,24 @@ def parse_and_validate_unified_diff(
                             ),
                         )
                     src_cursor += 1
+                    hunk_old += 1
                     if prefix == "-":
                         lines_removed += 1
+                    else:
+                        hunk_new += 1
                 elif prefix == "+":
+                    hunk_new += 1
                     lines_added += 1
                 idx += 1
+            if hunk_old == 0 and hunk_new == 0:
+                raise RepoSnapshotError(
+                    code="malformed_hunk_header",
+                    detail=f"Unified diff hunk in '{effective_path}' contains no body lines.",
+                )
+            if (hunk_old, hunk_new) != (declared_old_count, declared_new_count):
+                lines[hunk_header_idx] = (
+                    f"@@ -{old_start},{hunk_old} +{new_start},{hunk_new} @@{hunk_suffix}"
+                )
 
         if not saw_hunk:
             raise RepoSnapshotError(
@@ -628,7 +652,7 @@ def parse_and_validate_unified_diff(
             detail="Unified diff did not modify any repository files.",
         )
 
-    canonical_diff = normalized.rstrip("\n") + "\n"
+    canonical_diff = "\n".join(lines).rstrip("\n") + "\n"
     patch_digest = hashlib.sha256(canonical_diff.encode("utf-8")).hexdigest()
     return ParsedUnifiedDiff(
         normalized_diff=canonical_diff,
