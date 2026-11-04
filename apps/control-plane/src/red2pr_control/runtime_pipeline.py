@@ -414,6 +414,14 @@ class RuntimePipelineCoordinator:
                 correlation_id=job.correlation_id,
                 now=ref_now,
             )
+            if ci_run.ingestion_state == "incomplete":
+                await asyncio.sleep(3.0)
+                ci_run = await self._collector.collect_from_trigger(
+                    workspace_id=job.workspace_id,
+                    trigger_id=job.resource_id,
+                    correlation_id=job.correlation_id,
+                    now=self._clock().astimezone(UTC),
+                )
             payload = leased.payload or {}
             if bool(payload.get("allow_sandbox_execution")) and ci_run.head_sha_verified:
                 await self._maybe_enqueue_auto_repair_session(
@@ -992,6 +1000,45 @@ class RuntimePipelineCoordinator:
     ) -> bool:
         assert self._catalog is not None
         assert self._diagnosis_agent is not None
+        if self._collector is not None:
+            refresh_args: tuple[str, str, str, str, str, bool, bool, str | None] | None = None
+            async with workspace_rls_session(
+                self._session_factory, workspace_id=workspace_id
+            ) as db:
+                run_row = await db.scalar(
+                    select(CiRunModel).where(
+                        CiRunModel.workspace_id == workspace_id,
+                        CiRunModel.id == ci_run_id,
+                    )
+                )
+                if run_row is not None and (
+                    run_row.ingestion_state != "ingested" or run_row.artifact_count == 0
+                ):
+                    refresh_args = (
+                        run_row.external_id,
+                        run_row.attempt_key,
+                        run_row.head_sha,
+                        run_row.ref,
+                        run_row.event_type,
+                        run_row.is_rerun,
+                        run_row.untrusted_fork,
+                        run_row.trigger_id,
+                    )
+            if refresh_args is not None:
+                await self._collector.collect_run_attempt(
+                    workspace_id=workspace_id,
+                    repository_id=repository_id,
+                    external_run_id=refresh_args[0],
+                    attempt_key=refresh_args[1],
+                    expected_head_sha=refresh_args[2],
+                    fallback_ref=refresh_args[3],
+                    fallback_event_type=refresh_args[4],
+                    is_rerun=refresh_args[5],
+                    untrusted_fork=refresh_args[6],
+                    trigger_id=refresh_args[7],
+                    correlation_id=correlation_id,
+                    now=ref_now,
+                )
         await self._ensure_session_budget_if_missing(
             workspace_id=workspace_id,
             repair_id=repair_id,
