@@ -1,7 +1,8 @@
 {$RED2PR_FQDN} {
 	@bootstrap_issue path /api/v1/setup/bootstrap-token
 	respond @bootstrap_issue 404
-	encode zstd gzip
+	@compressible not path /api/* /internal/*
+	encode @compressible zstd gzip
 	reverse_proxy control:8080
 	request_body {
 		max_size 5MB

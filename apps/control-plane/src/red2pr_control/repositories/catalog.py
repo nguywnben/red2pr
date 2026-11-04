@@ -37,6 +37,7 @@ from py_contracts.integrations import (
     CiConclusion,
     CiRunStatus,
     ConnectionStatus,
+    EffectiveRepositoryPolicy,
     ProviderKind,
     ProviderSyncCursor,
     Repository,
@@ -84,6 +85,7 @@ from red2pr_control.db.base import (
     SetupCheckpointModel,
     TaskJobModel,
     UserModel,
+    WorkerModel,
     WorkspaceModel,
 )
 from red2pr_control.db.outbox import enqueue_outbox_event
@@ -447,6 +449,16 @@ class RepositoryCatalogService:
                 and worker_ckpt.status == "completed"
                 and worker_ckpt.probe_status == "passed"
             )
+            if not worker_ready:
+                online_isolated_worker = await inst_db.scalar(
+                    select(WorkerModel.id)
+                    .where(
+                        WorkerModel.status == "online",
+                        WorkerModel.isolation_mode.in_(("oci_rootless", "vm_isolated")),
+                    )
+                    .limit(1)
+                )
+                worker_ready = online_isolated_worker is not None
 
             data_policy = self._instance_config.security.inference_data_policy
             if data_policy == "disabled":
@@ -527,6 +539,72 @@ class RepositoryCatalogService:
             workflow_hazard_blocked=repo_row.auto_repair_blocked,
             grant_review_required=grant_review,
         )
+
+    async def resolve_repository_policy_bundle(
+        self,
+        *,
+        workspace_id: str,
+        repository_id: str,
+        policy_revision: int | None = None,
+        now: datetime | None = None,
+    ) -> tuple[RepositoryPolicy, EffectiveRepositoryPolicy, PolicyHierarchyContext, int]:
+        """Resolve `(repo_policy, effective_policy, policy_ctx, revision)` for internal pipeline."""
+        ref_now = now.astimezone(UTC) if now is not None else self._clock().astimezone(UTC)
+        async with workspace_rls_session(self._session_factory, workspace_id=workspace_id) as db:
+            ws_row = await db.scalar(
+                select(WorkspaceModel).where(WorkspaceModel.id == workspace_id)
+            )
+            repo_row = await db.scalar(
+                select(RepositoryModel).where(
+                    RepositoryModel.workspace_id == workspace_id,
+                    RepositoryModel.id == repository_id,
+                )
+            )
+            if ws_row is None or repo_row is None:
+                raise NotFoundError(
+                    code="repository_not_found",
+                    detail="Repository or workspace was not found for policy resolution.",
+                )
+            conn_row = await db.scalar(
+                select(ProviderConnectionModel).where(
+                    ProviderConnectionModel.workspace_id == workspace_id,
+                    ProviderConnectionModel.id == repo_row.provider_connection_id,
+                )
+            )
+            target_rev = (
+                policy_revision if policy_revision is not None else repo_row.policy_revision
+            )
+            pol_row = await db.scalar(
+                select(RepositoryPolicyModel).where(
+                    RepositoryPolicyModel.workspace_id == workspace_id,
+                    RepositoryPolicyModel.repository_id == repository_id,
+                    RepositoryPolicyModel.revision == target_rev,
+                )
+            )
+            if pol_row is None:
+                pol_row = await self._ensure_current_policy_snapshot_in_tx(
+                    db,
+                    repo_row=repo_row,
+                    now=ref_now,
+                )
+            repo_policy = _policy_model_to_contract(pol_row)
+            repo_mode = cast(RepositoryMode, pol_row.mode)
+            repo_paused = pol_row.paused or repo_row.paused
+            resolved_rev = pol_row.revision
+
+        policy_ctx = await self._build_hierarchy_context(
+            ws_row=ws_row,
+            conn_row=conn_row,
+            repo_row=repo_row,
+            explicit_consent_id=repo_policy.inference_consent_id,
+        )
+        effective_policy = resolve_effective_policy(
+            repo_mode=repo_mode,
+            repo_paused=repo_paused,
+            repo_policy=repo_policy,
+            ctx=policy_ctx,
+        )
+        return repo_policy, effective_policy, policy_ctx, resolved_rev
 
     async def _reverify_live_mutation_grant_in_tx(
         self,

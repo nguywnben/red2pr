@@ -12,7 +12,7 @@ Implements `docs/09_AI_AGENT_ORCHESTRATION.md`, `docs/34_SCREEN_AND_INTERACTION_
 from __future__ import annotations
 
 from datetime import datetime
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -66,8 +66,10 @@ from red2pr_control.iam.rbac import (
     enforce_optimistic_version,
 )
 from red2pr_control.iam.sessions import IamService
-from red2pr_control.inference.meta_client import MetaMuseInferenceService
 from red2pr_control.inference.tool_broker import to_agent_step_dto
+
+if TYPE_CHECKING:
+    from red2pr_control.inference.meta_client import MetaMuseInferenceService
 
 _PROHIBITED_DESCRIPTIONS: dict[str, tuple[str, str]] = {
     "publish": (

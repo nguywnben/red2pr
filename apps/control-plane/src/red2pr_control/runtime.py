@@ -28,7 +28,12 @@ from red2pr_control.db.engine import (
     run_alembic_upgrade,
 )
 from red2pr_control.iam.sessions import IamService
-from red2pr_control.inference import AgentProfileService, MetaMuseInferenceService
+from red2pr_control.inference import (
+    AgentProfileService,
+    BoundedPatchAgentService,
+    DiagnosisAgentService,
+    MetaMuseInferenceService,
+)
 from red2pr_control.inference.budgets import AtomicBudgetLedger
 from red2pr_control.integrations import (
     GitHubAppAdapter,
@@ -46,6 +51,8 @@ from red2pr_control.operations.setup_wizard import (
 from red2pr_control.orchestrator import (
     DurableTaskQueueService,
     OperationReceiptService,
+    ReproductionOrchestrator,
+    RunnerProfileRegistry,
     WorkerBrokerService,
 )
 from red2pr_control.orchestrator.state_machine import RepairSessionStateMachine
@@ -61,6 +68,8 @@ from red2pr_control.secrets.broker import (
 from red2pr_control.triage_evidence import TriageEvidenceService
 from red2pr_control.triage_evidence.artifact_store import LocalEncryptedArtifactStore
 from red2pr_control.triage_evidence.collector import CiRunCollectorService
+from red2pr_control.verification.service import VerificationService
+from red2pr_control.verification.verifier import DeterministicVerifier
 
 _DEFAULT_REPO_WEB_DIST = Path(__file__).resolve().parents[4] / "apps" / "web" / "dist"
 
@@ -200,13 +209,15 @@ def build_runtime_app(
     intent_signing_key = hashlib.sha256(b"red2pr:publisher:intent:v1:" + active_kek).digest()
     manifest_seed = hashlib.sha256(b"red2pr:evidence:manifest:v1:" + active_kek).digest()
     manifest_signer = Ed25519PrivateKey.from_private_bytes(manifest_seed)
+    trust_domain = os.environ.get("RED2PR_EVIDENCE_TRUST_DOMAIN", "worker.red2pr.internal").strip()
+    manifest_key_id = "runtime-manifest-key-v1"
     manifest_pub = export_ed25519_public_key_record(
         private_key=manifest_signer,
-        key_id="runtime-manifest-key-v1",
+        key_id=manifest_key_id,
         not_before=datetime.now(tz=UTC) - timedelta(days=1),
+        trust_domain=trust_domain,
     )
     manifest_keyring = KeyRing([manifest_pub])
-    trust_domain = os.environ.get("RED2PR_EVIDENCE_TRUST_DOMAIN", "worker.red2pr.internal").strip()
 
     iam = IamService(
         session_factory=session_factory,
@@ -307,6 +318,41 @@ def build_runtime_app(
         meta_inference_service=meta_service,
     )
     state_machine = RepairSessionStateMachine(session_factory=session_factory)
+    profile_registry = RunnerProfileRegistry()
+    reproducer = ReproductionOrchestrator(
+        session_factory=session_factory,
+        worker_broker=worker_broker,
+        profile_registry=profile_registry,
+        redactor=redactor,
+    )
+    diagnosis_agent = DiagnosisAgentService(
+        session_factory=session_factory,
+        state_machine=state_machine,
+        meta_inference_service=meta_service,
+        agent_profile_service=agent_profiles,
+        artifact_store=artifact_store,
+        profile_registry=profile_registry,
+        redactor=redactor,
+    )
+    patch_agent = BoundedPatchAgentService(
+        session_factory=session_factory,
+        state_machine=state_machine,
+        reproduction_orchestrator=reproducer,
+        meta_inference_service=meta_service,
+        agent_profile_service=agent_profiles,
+        budget_ledger=budget_ledger,
+        artifact_store=artifact_store,
+        profile_registry=profile_registry,
+        redactor=redactor,
+    )
+    verifier = DeterministicVerifier(keyring=manifest_keyring)
+    verification_service = VerificationService(
+        session_factory=session_factory,
+        verifier=verifier,
+        state_machine=state_machine,
+        manifest_keyring=manifest_keyring,
+        evidence_trust_domain=trust_domain,
+    )
     publisher_saga = PublisherSaga(
         session_factory=session_factory,
         integrations=integration_service,
@@ -326,6 +372,23 @@ def build_runtime_app(
         queue_service=queue_service,
         collector_service=collector_service,
         state_machine=state_machine,
+        diagnosis_agent=diagnosis_agent,
+        patch_agent=patch_agent,
+        reproducer=reproducer,
+        worker_broker=worker_broker,
+        verification_service=verification_service,
+        verifier=verifier,
+        publisher_saga=publisher_saga,
+        integration_service=integration_service,
+        catalog_service=catalog_service,
+        artifact_store=artifact_store,
+        profile_registry=profile_registry,
+        manifest_signer=manifest_signer,
+        manifest_key_id=manifest_key_id,
+        manifest_keyring=manifest_keyring,
+        evidence_trust_domain=trust_domain,
+        polling_service=poller,
+        remote_observer=remote_observer,
     )
 
     app = create_app(

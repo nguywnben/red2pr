@@ -17,8 +17,12 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
+import json
 import sys
-from collections.abc import AsyncIterator, Iterator
+import tarfile
+from collections import deque
+from collections.abc import AsyncIterator, Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -50,10 +54,13 @@ from red2pr_control.db.base import (
     BudgetAccountModel,
     CiRunModel,
     PatchAttemptModel,
+    PublicationRecordModel,
     RepairSessionModel,
     RepositoryModel,
     RepositoryPolicyModel,
+    ReproductionRunModel,
     SandboxLeaseModel,
+    SigningKeyModel,
     TaskJobModel,
     WorkerModel,
     WorkspaceModelConfigModel,
@@ -63,6 +70,7 @@ from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
 from red2pr_control.iam.sessions import IamService
 from red2pr_control.inference.budgets import AtomicBudgetLedger
 from red2pr_control.inference.meta_client import MetaMuseInferenceService
+from red2pr_control.inference.patch_agent import BoundedPatchAgentService
 from red2pr_control.integrations import GitHubIntegrationService
 from red2pr_control.integrations.base import (
     ProviderConnectionContext,
@@ -72,9 +80,11 @@ from red2pr_control.integrations.base import (
 from red2pr_control.operations.setup_wizard import DbEndpointAllowlistProvider, SetupStepRegistry
 from red2pr_control.orchestrator import (
     DurableTaskQueueService,
+    ReproductionOrchestrator,
     WorkerBrokerService,
 )
 from red2pr_control.publisher.saga import PublisherSaga
+from red2pr_control.repositories import RepositoryCatalogService
 from red2pr_control.runtime_pipeline import RuntimePipelineCoordinator
 from red2pr_control.secrets.broker import SecretBroker, SecretBrokerTotpVault
 from red2pr_control.triage_evidence import (
@@ -1284,3 +1294,615 @@ async def test_runtime_pipeline_coordinator_drains_triage_job_and_creates_auto_r
             assert sess_budget.repair_id == auto_repair.id
     finally:
         await harness.app_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_runtime_pipeline_coordinator_end_to_end_auto_repair_publication(
+    migrated_db: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify `RuntimePipelineCoordinator` drives a repair from `received` to Draft PR."""
+    pki = _U17._generate_pki_material(["api.meta.ai"])
+    ca_file = tmp_path / "meta_e2e_pipeline_ca.pem"
+    ca_file.write_text(pki.ca_pem, encoding="utf-8")
+    monkeypatch.setenv("SSL_CERT_FILE", str(ca_file))
+
+    scripted_responses: deque[Callable[[Any], tuple[int, dict[str, str], bytes]]] = deque()
+
+    async def _meta_handler(req: Any) -> tuple[int, dict[str, str], bytes]:
+        body_json = json.loads(req.body_bytes.decode("utf-8"))
+        resp_schema_name = (
+            (body_json.get("response_format") or {}).get("json_schema", {}).get("name")
+        )
+        if resp_schema_name == "red2pr_capability_probe":
+            return (
+                200,
+                {"Content-Type": "application/json", "x-request-id": "req_e2e_probe"},
+                _U17._load_meta_fixture_bytes("probe_spark_available.json"),
+            )
+        assert scripted_responses, f"Unexpected unscripted Meta call: {body_json}"
+        responder = scripted_responses.popleft()
+        return responder(req)
+
+    clock = ManualClock(datetime.now(tz=UTC))
+    async with _U17.LocalAsyncTlsMetaServer(pki=pki, handler=_meta_handler) as tls_srv:
+        harness = _build_u17_harness(
+            migrated_db.app_url,
+            clock=clock,
+            store_dir=tmp_path / "artifacts-e2e-pipeline",
+            local_tls_port=tls_srv.port,
+            ca_pem=pki.ca_pem,
+        )
+        client, _csrf, owner_id, workspace_id, repository_id = await _bootstrap_workspace_and_repo(
+            harness,
+            clock=clock,
+            ws_slug="audit-e2e-auto",
+            configure_meta_inference=True,
+        )
+        await client.aclose()
+        try:
+            base_sha = "e" * 40
+            calc_buggy = "def add(a: int, b: int) -> int:\n    return a - b\n"
+            valid_diff = (
+                "--- a/src/calc.py\n"
+                "+++ b/src/calc.py\n"
+                "@@ -1,2 +1,2 @@\n"
+                " def add(a: int, b: int) -> int:\n"
+                "-    return a - b\n"
+                "+    return a + b\n"
+            )
+            ci_log = (
+                "=== test session starts ===\n"
+                "FAILED tests/test_calc.py::test_add - AssertionError: assert -1 == 5\n"
+                "=== 1 failed, 3 passed ===\n"
+            )
+            run_id, _job_id, art_id, _fp_hash = await _seed_ci_run_job_and_log_artifact(
+                harness,
+                workspace_id=workspace_id,
+                repository_id=repository_id,
+                head_sha=base_sha,
+                job_name="pytest (ubuntu-latest)",
+                ci_failure_log=ci_log,
+                now=clock(),
+            )
+
+            # Build GitHub-style tarball with wrapper directory + PAX header
+            tar_buf = io.BytesIO()
+            with tarfile.open(fileobj=tar_buf, mode="w:gz", format=tarfile.PAX_FORMAT) as tf:
+                for rel, raw_txt in {
+                    "pyproject.toml": "[project]\nname = 'calc'\n",
+                    "uv.lock": "version = 1\n",
+                    "src/calc.py": calc_buggy,
+                    "tests/test_calc.py": (
+                        "from src.calc import add\n\n"
+                        "def test_add() -> None:\n"
+                        "    assert add(2, 3) == 5\n"
+                    ),
+                }.items():
+                    b_data = raw_txt.encode("utf-8")
+                    ti = tarfile.TarInfo(name=f"acme-calc-{base_sha[:7]}/{rel}")
+                    ti.size = len(b_data)
+                    tf.addfile(ti, io.BytesIO(b_data))
+            github_tar_bytes = tar_buf.getvalue()
+
+            worker_priv = Ed25519PrivateKey.generate()
+            worker_pub_rec = export_ed25519_public_key_record(
+                private_key=worker_priv,
+                key_id="worker-e2e-key",
+                not_before=clock() - timedelta(days=1),
+                trust_domain="worker-trust-zone",
+            )
+            worker_id = new_uuid7(now=clock())
+            await harness.profile_registry.sync_profiles_to_db(harness.app_factory, now=clock())
+            async with instance_rls_session(harness.app_factory, mode="instance_only") as inst_db:
+                inst_db.add(
+                    WorkerModel(
+                        id=worker_id,
+                        host_id="e2e-worker-01",
+                        trust_domain="worker-trust-zone",
+                        isolation_mode="vm_isolated",
+                        runtime_name="firecracker",
+                        profile_ids_json=["python-pytest-linux"],
+                        capabilities_json={"network_none": True, "rootless": True},
+                        cpu_limit=2,
+                        memory_limit_bytes=2_147_483_648,
+                        disk_limit_bytes=10_737_418_240,
+                        pids_limit=256,
+                        status="online",
+                        heartbeat_at=clock(),
+                        mtls_cert_serial="e2e-serial-01",
+                        mtls_cert_fingerprint_sha256=hashlib.sha256(
+                            worker_id.encode()
+                        ).hexdigest(),
+                        mtls_cert_pem=(
+                            "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
+                        ),
+                        mtls_cert_expires_at=clock() + timedelta(days=1),
+                        active_signer_key_id="worker-e2e-key",
+                        last_workspace_id=workspace_id,
+                        host_escape_risk_acknowledged=True,
+                        created_at=clock(),
+                        updated_at=clock(),
+                    )
+                )
+                await inst_db.flush()
+                inst_db.add(
+                    SigningKeyModel(
+                        id=new_uuid7(now=clock()),
+                        key_id="worker-e2e-key",
+                        algorithm="ed25519",
+                        purpose="worker_result",
+                        public_key_b64=worker_pub_rec.public_key_b64,
+                        worker_id=worker_id,
+                        trust_domain="worker-trust-zone",
+                        not_before=worker_pub_rec.not_before,
+                        revoked_at=None,
+                        revoke_reason=None,
+                        version=1,
+                        created_at=clock(),
+                        updated_at=clock(),
+                    )
+                )
+
+            async with workspace_rls_session(harness.app_factory, workspace_id=workspace_id) as db:
+                repo = await db.get(RepositoryModel, repository_id)
+                assert repo is not None
+                repo.mode = "auto_repair"
+                repo.policy_revision = 1
+                db.add(
+                    RepositoryPolicyModel(
+                        id=new_uuid7(now=clock()),
+                        workspace_id=workspace_id,
+                        repository_id=repository_id,
+                        revision=1,
+                        mode="auto_repair",
+                        paused=False,
+                        branch_allowlist_json=["refs/heads/main"],
+                        branch_denylist_json=[],
+                        file_allowlist_json=[],
+                        file_denylist_json=[],
+                        sensitive_rules_json=[],
+                        required_check_names_json=[],
+                        allow_test_edits=False,
+                        allow_config_edits=False,
+                        max_attempts=2,
+                        max_diff_lines=500,
+                        require_baseline=True,
+                        runtime_profile_id="python-pytest-linux",
+                        created_by_user_id=owner_id,
+                        created_at=clock(),
+                        updated_at=clock(),
+                    )
+                )
+
+            class _AutoProvider:
+                def __init__(self) -> None:
+                    self.branches: dict[str, str] = {"refs/heads/main": base_sha}
+                    self.files: dict[str, str | None] = {"src/calc.py": calc_buggy}
+                    self.review: ProviderDraftReviewRecord | None = None
+                    self.commit_sha = "f" * 40
+
+                async def get_branch_head(
+                    self, _db: Any, _ctx: Any, *, branch_name: str, **_kw: Any
+                ) -> str | None:
+                    return self.branches.get(branch_name)
+
+                async def get_file_contents_at_ref(
+                    self, _db: Any, _ctx: Any, *, path: str, ref: str, **_kw: Any
+                ) -> str | None:
+                    if ref == base_sha and path == "src/calc.py":
+                        return calc_buggy
+                    return self.files.get(path)
+
+                async def create_branch(
+                    self, _db: Any, _ctx: Any, *, branch_name: str, from_sha: str, **_kw: Any
+                ) -> None:
+                    self.branches[branch_name] = from_sha
+
+                async def push_commit(
+                    self,
+                    _db: Any,
+                    _ctx: Any,
+                    *,
+                    branch_name: str,
+                    file_changes: dict[str, str | None],
+                    **_kw: Any,
+                ) -> str:
+                    self.branches[branch_name] = self.commit_sha
+                    self.files.update(file_changes)
+                    return self.commit_sha
+
+                async def find_review_by_marker(
+                    self, _db: Any, _ctx: Any, **_kw: Any
+                ) -> ProviderDraftReviewRecord | None:
+                    return self.review
+
+                async def create_draft_review(
+                    self,
+                    _db: Any,
+                    _ctx: Any,
+                    *,
+                    head_branch: str,
+                    base_branch: str,
+                    **_kw: Any,
+                ) -> ProviderDraftReviewRecord:
+                    self.review = ProviderDraftReviewRecord(
+                        external_review_id="e2e-pr-99",
+                        number="99",
+                        html_url="https://github.com/acme/calc/pull/99",
+                        head_branch=head_branch,
+                        base_branch=base_branch,
+                        head_sha=self.commit_sha,
+                        draft=True,
+                        state="open",
+                    )
+                    return self.review
+
+            auto_provider = _AutoProvider()
+
+            class _AutoIntegrations:
+                async def resolve_publisher_target(
+                    self,
+                    *,
+                    workspace_id: str,
+                    repository_id: str,
+                ) -> tuple[Any, ProviderConnectionContext, str]:
+                    _ = repository_id
+                    return (
+                        auto_provider,
+                        ProviderConnectionContext(
+                            workspace_id=workspace_id,
+                            connection_id="conn-e2e",
+                            provider="github",
+                            base_url="https://api.github.com",
+                            app_id=None,
+                            client_id=None,
+                            installation_id="inst-e2e",
+                            credential_secret_ref="sec-e2e",
+                            webhook_secret_ref=None,
+                        ),
+                        "acme/calc",
+                    )
+
+            class _E2eCollector(CiRunCollectorService):
+                async def collect_from_trigger(
+                    self,
+                    *,
+                    workspace_id: str,
+                    trigger_id: str,
+                    correlation_id: str | None = None,
+                    now: datetime | None = None,
+                ) -> CiRun:
+                    _ = (trigger_id, correlation_id, now)
+                    async with workspace_rls_session(
+                        self._session_factory, workspace_id=workspace_id
+                    ) as db:
+                        row = await db.get(CiRunModel, run_id)
+                        assert row is not None
+                        return ci_run_model_to_dto(row)
+
+            queue_svc = DurableTaskQueueService(
+                session_factory=harness.app_factory,
+                signing_key=harness.iam.csrf_signing_key,
+                redactor=harness.redactor,
+            )
+            worker_broker = WorkerBrokerService(
+                session_factory=harness.app_factory,
+                signing_key=harness.iam.csrf_signing_key,
+                queue_service=queue_svc,
+                artifact_store=harness.artifact_store,
+                master_key_ring=MasterKeyRing(active_version=1, keys={1: b"\x77" * 32}),
+                redactor=harness.redactor,
+                clock=clock,
+            )
+            reproducer = ReproductionOrchestrator(
+                session_factory=harness.app_factory,
+                worker_broker=worker_broker,
+                profile_registry=harness.profile_registry,
+                redactor=harness.redactor,
+            )
+            patch_agent = BoundedPatchAgentService(
+                session_factory=harness.app_factory,
+                state_machine=harness.state_machine,
+                reproduction_orchestrator=reproducer,
+                meta_inference_service=harness.meta_service,
+                budget_ledger=harness.budget_ledger,
+                agent_profile_service=harness.agent_profiles,
+                artifact_store=harness.artifact_store,
+                profile_registry=harness.profile_registry,
+                redactor=harness.redactor,
+            )
+            catalog_svc = RepositoryCatalogService(
+                session_factory=harness.app_factory,
+                signing_key=harness.iam.csrf_signing_key,
+                redactor=harness.redactor,
+                clock=clock,
+            )
+            evidence_priv = Ed25519PrivateKey.generate()
+            evidence_key_id = "e2e-manifest-key"
+            evidence_trust_domain = "control-plane-verifier"
+            manifest_keyring = KeyRing(
+                [
+                    export_ed25519_public_key_record(
+                        private_key=evidence_priv,
+                        key_id=evidence_key_id,
+                        not_before=clock() - timedelta(days=1),
+                        trust_domain=evidence_trust_domain,
+                    )
+                ]
+            )
+            verifier = DeterministicVerifier(keyring=manifest_keyring)
+            verification_svc = VerificationService(
+                session_factory=harness.app_factory,
+                verifier=verifier,
+                state_machine=harness.state_machine,
+                manifest_keyring=manifest_keyring,
+                evidence_trust_domain=evidence_trust_domain,
+            )
+            publisher_saga = PublisherSaga(
+                session_factory=harness.app_factory,
+                integrations=cast(GitHubIntegrationService, _AutoIntegrations()),
+                artifact_store=harness.artifact_store,
+                manifest_keyring=manifest_keyring,
+                evidence_trust_domain=evidence_trust_domain,
+                intent_signing_key=b"e2e-publisher-intent-key-32bytes",
+                state_machine=harness.state_machine,
+            )
+
+            async def _fetch_archive(_ws_id: str, _repo_id: str, _sha: str) -> bytes:
+                return github_tar_bytes
+
+            coordinator = RuntimePipelineCoordinator(
+                session_factory=harness.app_factory,
+                queue_service=queue_svc,
+                collector_service=_E2eCollector(
+                    session_factory=harness.app_factory,
+                    artifact_store=harness.artifact_store,
+                    redactor=harness.redactor,
+                    clock=clock,
+                ),
+                state_machine=harness.state_machine,
+                catalog_service=catalog_svc,
+                diagnosis_agent=harness.diagnosis_agent,
+                patch_agent=patch_agent,
+                reproducer=reproducer,
+                worker_broker=worker_broker,
+                profile_registry=harness.profile_registry,
+                verifier=verifier,
+                verification_service=verification_svc,
+                publisher_saga=publisher_saga,
+                artifact_store=harness.artifact_store,
+                manifest_signer=evidence_priv,
+                manifest_key_id=evidence_key_id,
+                manifest_keyring=manifest_keyring,
+                evidence_trust_domain=evidence_trust_domain,
+                archive_fetcher=_fetch_archive,
+                clock=clock,
+            )
+
+            # Script Diagnosis (1 turn) + Patch Agent (1 turn)
+            scripted_responses.append(
+                lambda _r: _U17._meta_chat_response_bytes(
+                    model=_U17.PRIMARY_META_MODEL_ID,
+                    req_id="req_e2e_diag",
+                    content=json.dumps(
+                        {
+                            "failure_class": "code_regression",
+                            "decision": "continue",
+                            "summary": "src/calc.py subtracts instead of adding.",
+                            "evidence_artifact_ids": [art_id],
+                            "hypothesis_statement": "Operator '-' in add(a, b) causes -1 != 5.",
+                            "hypothesis_confidence": "high",
+                            "suspected_paths": ["src/calc.py"],
+                            "uncertainties": [],
+                            "proposed_profile": "python-pytest-linux",
+                            "proposed_command_ids": ["pytest"],
+                        }
+                    ),
+                )
+            )
+            scripted_responses.append(
+                lambda _r: _U17._meta_chat_response_bytes(
+                    model=_U17.PRIMARY_META_MODEL_ID,
+                    req_id="req_e2e_patch",
+                    content=json.dumps(
+                        {
+                            "unified_diff": valid_diff,
+                            "claimed_root_cause": "Use '+' in add(a, b).",
+                            "changed_paths": ["src/calc.py"],
+                            "target_test_selection_id": "pytest",
+                            "uncertainties": [],
+                        }
+                    ),
+                )
+            )
+
+            _, _, template_blobs, _, _, _ = _U18._make_signed_manifest_case(
+                workspace_id=workspace_id,
+                repository_id=repository_id,
+                repair_id=new_uuid7(now=clock()),
+                base_sha=base_sha,
+                now=clock(),
+            )
+            template_res = ResultV1.model_validate_json(next(iter(template_blobs.values())))
+
+            async def _complete_latest_sandbox_run(
+                *, phase: str, exit_code: int, stdout_text: str, junit_xml: str
+            ) -> None:
+                async with workspace_rls_session(
+                    harness.app_factory, workspace_id=workspace_id
+                ) as db:
+                    repro = await db.scalar(
+                        select(ReproductionRunModel)
+                        .where(
+                            ReproductionRunModel.workspace_id == workspace_id,
+                            ReproductionRunModel.phase == phase,
+                        )
+                        .order_by(ReproductionRunModel.created_at.desc())
+                        .limit(1)
+                    )
+                    assert repro is not None and repro.sandbox_job_id is not None
+                    assert repro.image_digest is not None
+                    assert repro.source_archive_digest is not None
+                    out_bytes = stdout_text.encode("utf-8")
+                    xml_bytes = junit_xml.encode("utf-8")
+                    out_art = await persist_encrypted_artifact(
+                        db,
+                        store=harness.artifact_store,
+                        workspace_id=workspace_id,
+                        repository_id=repository_id,
+                        name=f"{phase}-stdout.log",
+                        kind="sandbox_stdout",
+                        mime="text/plain",
+                        plaintext=out_bytes,
+                        expected_digest=hashlib.sha256(out_bytes).hexdigest(),
+                        now=clock(),
+                    )
+                    xml_art = await persist_encrypted_artifact(
+                        db,
+                        store=harness.artifact_store,
+                        workspace_id=workspace_id,
+                        repository_id=repository_id,
+                        name=f"{phase}-junit.xml",
+                        kind="junit_xml",
+                        mime="application/xml",
+                        plaintext=xml_bytes,
+                        expected_digest=hashlib.sha256(xml_bytes).hexdigest(),
+                        now=clock(),
+                    )
+                    signed_res = sign_model_ed25519(
+                        template_res.model_copy(
+                            update={
+                                "job_id": repro.sandbox_job_id,
+                                "lease_epoch": 1,
+                                "capability_nonce": f"nonce-{phase}-{repro.sandbox_job_id[:16]}",
+                                "worker_id": worker_id,
+                                "started_at": clock(),
+                                "ended_at": clock(),
+                                "exit_code": exit_code,
+                                "termination": "exited",
+                                "command_digest": (
+                                    repro.command_digest or template_res.command_digest
+                                ),
+                                "image_digest": repro.image_digest,
+                                "environment_digest": (
+                                    repro.environment_digest or template_res.environment_digest
+                                ),
+                                "source_digest": repro.source_archive_digest,
+                                "patch_digest": repro.patch_digest,
+                                "signature": "ed25519:pending",
+                            }
+                        ),
+                        private_key=worker_priv,
+                        key_id="worker-e2e-key",
+                        domain=DOMAIN_RESULT_V1,
+                    )
+                    res_json = signed_res.model_dump(mode="json")
+                    job_row = await db.get(TaskJobModel, repro.sandbox_job_id)
+                    assert job_row is not None
+                    job_row.state = "succeeded"
+                    db.add(
+                        SandboxLeaseModel(
+                            id=new_uuid7(now=clock()),
+                            workspace_id=workspace_id,
+                            repository_id=repository_id,
+                            repair_id=repro.repair_id,
+                            job_id=repro.sandbox_job_id,
+                            worker_id=worker_id,
+                            lease_epoch=1,
+                            capability_nonce=signed_res.capability_nonce,
+                            expected_worker_trust_domain="worker-trust-zone",
+                            profile_id=repro.profile_id,
+                            profile_revision=repro.profile_revision,
+                            image_digest=repro.image_digest,
+                            base_sha=base_sha,
+                            source_archive_digest=repro.source_archive_digest,
+                            patch_digest=repro.patch_digest,
+                            network_policy_digest="d" * 64,
+                            supervisor_policy_digest="e" * 64,
+                            sandbox_job_json={"job_id": repro.sandbox_job_id},
+                            upload_slots_json=[],
+                            uploaded_artifacts_json=[
+                                {"slot_name": "stdout", "id": out_art.id},
+                                {"slot_name": "junit_xml", "id": xml_art.id},
+                            ],
+                            output_bytes_uploaded=len(out_bytes) + len(xml_bytes),
+                            status="completed",
+                            issued_at=clock(),
+                            heartbeat_at=clock(),
+                            lease_expires_at=clock() + timedelta(minutes=5),
+                            ended_at=clock(),
+                            result_digest=sha256_canonical_json(res_json),
+                            result_json=res_json,
+                            cleanup_verified=True,
+                            version=1,
+                            created_at=clock(),
+                            updated_at=clock(),
+                        )
+                    )
+
+            # 1) Enqueue ci_run.triage -> creates RepairSessionModel ("received")
+            await queue_svc.enqueue_job(
+                workspace_id=workspace_id,
+                repository_id=repository_id,
+                kind="ci_run.triage",
+                resource_id=new_uuid7(now=clock()),
+                correlation_id="corr-e2e-auto-01",
+                payload={"allow_sandbox_execution": True},
+                now=clock(),
+            )
+            assert await coordinator.run_once(now=clock()) is True
+
+            # 2) "received" -> DiagnosisAgent + dispatches Sandbox A ("reproducing")
+            assert await coordinator.run_once(now=clock()) is True
+            await _complete_latest_sandbox_run(
+                phase="baseline_a",
+                exit_code=1,
+                stdout_text=ci_log,
+                junit_xml='<testsuite tests="4" failures="1" skipped="0"/>',
+            )
+
+            # 3) "reproducing" -> finalizes Sandbox A -> "repro_confirmed"
+            assert await coordinator.run_once(now=clock()) is True
+
+            # 4) "repro_confirmed" -> BoundedPatchAgent + dispatches Sandbox B ("verifying")
+            assert await coordinator.run_once(now=clock()) is True
+            await _complete_latest_sandbox_run(
+                phase="patched_b",
+                exit_code=0,
+                stdout_text="=== 4 passed in 0.04s ===\n",
+                junit_xml='<testsuite tests="4" failures="0" skipped="0"/>',
+            )
+
+            # 5) "verifying" -> V-01..V-07 + signed EvidenceManifestV1 -> "policy_gate"
+            assert await coordinator.run_once(now=clock()) is True
+
+            # 6) "policy_gate" (auto_repair) -> auto-approval + PublisherSaga -> Draft PR!
+            assert await coordinator.run_once(now=clock()) is True
+
+            async with workspace_rls_session(harness.app_factory, workspace_id=workspace_id) as db:
+                rep = await db.scalar(
+                    select(RepairSessionModel).where(
+                        RepairSessionModel.workspace_id == workspace_id,
+                        RepairSessionModel.ci_run_id == run_id,
+                    )
+                )
+                assert rep is not None
+                assert rep.state == "remote_validating"
+                assert rep.proof_grade == "locally_verified"
+                pub_rec = await db.scalar(
+                    select(PublicationRecordModel).where(
+                        PublicationRecordModel.workspace_id == workspace_id,
+                        PublicationRecordModel.repair_id == rep.id,
+                    )
+                )
+                assert pub_rec is not None
+                assert pub_rec.status == "published"
+                assert pub_rec.url == "https://github.com/acme/calc/pull/99"
+            assert auto_provider.review is not None and auto_provider.review.draft is True
+            assert auto_provider.files["src/calc.py"] == (
+                "def add(a: int, b: int) -> int:\n    return a + b\n"
+            )
+        finally:
+            await harness.app_engine.dispose()

@@ -24,7 +24,7 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature, InvalidTag
@@ -46,6 +46,7 @@ from cryptography.hazmat.primitives.serialization import (
     load_pem_public_key,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+from pydantic import Field, StrictStr
 
 from py_contracts.primitives import (
     BoundedName,
@@ -157,6 +158,10 @@ class KeyRing:
 
     def get(self, key_id: str) -> PublicKeyRecord | None:
         return self._records.get(key_id)
+
+    def upsert(self, record: PublicKeyRecord) -> None:
+        """Insert or refresh an enrolled verification key record (including revocation status)."""
+        self._records[record.key_id] = record
 
 
 def _domain_separated_message(domain: str, payload: Mapping[str, Any]) -> bytes:
@@ -288,7 +293,7 @@ class EnvelopeCiphertext(StrictContractModel):
     wrapped_dek_nonce_b64: BoundedText
     wrapped_dek_b64: BoundedText
     payload_nonce_b64: BoundedText
-    ciphertext_b64: BoundedText
+    ciphertext_b64: Annotated[StrictStr, Field(min_length=1, max_length=150_000_000)]
     aad_digest: Sha256Digest
 
 

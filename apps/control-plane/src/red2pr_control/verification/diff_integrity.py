@@ -79,14 +79,25 @@ def _parse_changed_lines(
     diff_text: str,
 ) -> tuple[list[tuple[str, str]], list[tuple[str, str]], set[str]]:
     current_path = ""
+    old_header_path = ""
     added: list[tuple[str, str]] = []
     removed: list[tuple[str, str]] = []
     diff_paths: set[str] = set()
     for line in diff_text.splitlines():
-        if line.startswith("+++ b/"):
-            current_path = line[6:]
+        if line.startswith("--- "):
+            raw_old = line[4:].split("\t", 1)[0].strip()
+            if raw_old and raw_old != "/dev/null":
+                old_header_path = raw_old[2:] if raw_old.startswith("a/") else raw_old
+            else:
+                old_header_path = ""
         elif line.startswith("+++ "):
-            current_path = line[4:]
+            raw_new = line[4:].split("\t", 1)[0].strip()
+            if raw_new and raw_new != "/dev/null":
+                current_path = raw_new[2:] if raw_new.startswith("b/") else raw_new
+                diff_paths.add(current_path)
+            elif raw_new == "/dev/null" and old_header_path:
+                current_path = old_header_path
+                diff_paths.add(current_path)
         elif line.startswith("diff --git "):
             match = re.match(r"diff --git a/(.+?) b/(.+)$", line)
             if match:
@@ -153,12 +164,24 @@ class DiffIntegrityGuard:
             )
         deleted_paths: set[str] = set()
         current_path = ""
+        header_old_path = ""
         for line in diff_text.splitlines():
             if line.startswith("diff --git "):
                 match = re.match(r"diff --git a/(.+?) b/(.+)$", line)
                 current_path = match.group(1) if match else ""
             elif line.startswith("deleted file mode ") and current_path:
                 deleted_paths.add(current_path)
+            elif line.startswith("--- "):
+                raw_old = line[4:].split("\t", 1)[0].strip()
+                header_old_path = (
+                    (raw_old[2:] if raw_old.startswith("a/") else raw_old)
+                    if raw_old and raw_old != "/dev/null"
+                    else ""
+                )
+            elif line.startswith("+++ "):
+                raw_new = line[4:].split("\t", 1)[0].strip()
+                if raw_new == "/dev/null" and header_old_path:
+                    deleted_paths.add(header_old_path)
         for path in paths:
             if path in deleted_paths and _TEST_PATH_RE.search(path):
                 findings.append(

@@ -1424,6 +1424,44 @@ class GitHubAppAdapter:
         cap = max(1, max_bytes)
         return bytes(resp.content[:cap])
 
+    async def download_repository_archive(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        ref: str,
+        max_bytes: int = 104_857_600,
+        now: datetime | None = None,
+    ) -> bytes:
+        ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
+        owner, repo = _split_repo_full_name(repo_full_name)
+        token = await self._get_jit_installation_token(
+            session,
+            ctx,
+            permissions={"metadata": "read", "contents": "read"},
+            repositories=[repo],
+            now=ref_now,
+        )
+        resp = await self._send_request(
+            "GET",
+            self._build_url(
+                ctx.base_url,
+                f"/repos/{quote(owner, safe='')}/{quote(repo, safe='')}"
+                f"/tarball/{quote(ref.strip(), safe='')}",
+            ),
+            headers=self._default_headers(bearer_token=token),
+        )
+        self._raise_for_github_status(resp)
+        cap = max(1, max_bytes)
+        if len(resp.content) > cap:
+            raise ProviderError(
+                code="UNSUPPORTED",
+                detail=f"Repository tarball exceeds bounded {cap}-byte limit.",
+                provider="github",
+            )
+        return bytes(resp.content)
+
     async def get_commit_diff(
         self,
         session: AsyncSession,
@@ -2492,6 +2530,58 @@ class GitHubIntegrationService:
                 self._github if provider == "github" else self._gitlab,
             )
             return adapter, _to_connection_context(connection), repo.name
+
+    async def download_repository_archive(
+        self,
+        *,
+        workspace_id: str,
+        repository_id: str,
+        ref: str,
+        max_bytes: int = 104_857_600,
+        now: datetime | None = None,
+    ) -> bytes:
+        """Download pinned repository `.tar.gz` archive for Sandbox A/B staging under RLS."""
+        async with workspace_rls_session(self._session_factory, workspace_id=workspace_id) as db:
+            repo = await db.scalar(
+                select(RepositoryModel).where(
+                    RepositoryModel.workspace_id == workspace_id,
+                    RepositoryModel.id == repository_id,
+                )
+            )
+            if repo is None or not repo.active or repo.paused or repo.archived:
+                raise ForbiddenError(
+                    code="repository_archive_unavailable",
+                    detail="Repository is missing, inactive, paused, or archived.",
+                )
+            connection = await db.scalar(
+                select(ProviderConnectionModel).where(
+                    ProviderConnectionModel.workspace_id == workspace_id,
+                    ProviderConnectionModel.id == repo.provider_connection_id,
+                )
+            )
+            if connection is None or connection.status not in {"ready", "degraded"}:
+                raise ForbiddenError(
+                    code="provider_connection_revoked",
+                    detail="Provider connection is not ready to fetch repository source archive.",
+                )
+            conn_ctx = _to_connection_context(connection)
+            if connection.provider == "github":
+                return await self._github.download_repository_archive(
+                    db,
+                    conn_ctx,
+                    repo_full_name=repo.name,
+                    ref=ref,
+                    max_bytes=max_bytes,
+                    now=now,
+                )
+            return await self._gitlab.download_repository_archive(
+                db,
+                conn_ctx,
+                repo_full_name=repo.name,
+                ref=ref,
+                max_bytes=max_bytes,
+                now=now,
+            )
 
     async def _suspend_connection_work_and_mark_revoked(
         self,

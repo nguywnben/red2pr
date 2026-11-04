@@ -1894,12 +1894,20 @@ class MetaMuseInferenceService:
                     policy=budget_policy,
                     now=ref_now,
                 )
+                eff_probe_max_out = (
+                    512
+                    if (
+                        payload.max_output_tokens < 512
+                        and payload.max_cost.amount >= Decimal("0.020000")
+                    )
+                    else payload.max_output_tokens
+                )
                 probe_acct = await self._budgets.create_probe_account_in_tx(
                     db,
                     workspace_id=ws_id,
                     probe_key=claim_op_id,
                     max_cost=payload.max_cost,
-                    max_tokens=max(4096, payload.max_output_tokens * 8),
+                    max_tokens=max(4096, eff_probe_max_out * 8),
                     now=ref_now,
                 )
                 daily_acct_id = daily_acct.id
@@ -1916,10 +1924,11 @@ class MetaMuseInferenceService:
                 {"role": "system", "content": scrubbed_prompt},
                 {"role": "user", "content": "Return probe_ok=true."},
             ],
-            "max_completion_tokens": payload.max_output_tokens,
+            "max_completion_tokens": eff_probe_max_out,
+            "reasoning_effort": "low",
             "temperature": 0.0,
             "tools": [_PROBE_TOOL_SPEC],
-            "tool_choice": "none",
+            "tool_choice": "auto",
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {
@@ -1944,7 +1953,7 @@ class MetaMuseInferenceService:
                 model_id=target_model,
                 pricing=pricing_rate,
                 estimated_input_tokens=est_in,
-                max_output_tokens=payload.max_output_tokens,
+                max_output_tokens=eff_probe_max_out,
                 prompt_redacted_digest=prompt_digest,
                 correlation_id=correlation_id,
                 actor_type="user",

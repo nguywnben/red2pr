@@ -1939,3 +1939,38 @@ class GitLabAdapter:
                 connection_id=ctx.connection_id,
                 now=ref_now,
             )
+
+    async def download_repository_archive(
+        self,
+        session: AsyncSession,
+        ctx: ProviderConnectionContext,
+        *,
+        repo_full_name: str,
+        ref: str,
+        max_bytes: int = 104_857_600,
+        now: datetime | None = None,
+    ) -> bytes:
+        del now
+        token = await self._resolve_token(session, ctx)
+        encoded_proj = self._encode_project_ref(repo_full_name)
+        encoded_sha = quote(ref.strip(), safe="")
+        resp = await self._send_request(
+            "GET",
+            self._build_api_url(
+                ctx.base_url,
+                f"/projects/{encoded_proj}/repository/archive.tar.gz?sha={encoded_sha}",
+            ),
+            headers=self._default_headers(
+                access_token=token,
+                extra={"Accept": "application/octet-stream"},
+            ),
+        )
+        self._raise_for_gitlab_status(resp)
+        cap = max(1, max_bytes)
+        if len(resp.content) > cap:
+            raise ProviderError(
+                code="UNSUPPORTED",
+                detail=f"GitLab repository archive exceeds bounded {cap}-byte limit.",
+                provider="gitlab",
+            )
+        return bytes(resp.content)

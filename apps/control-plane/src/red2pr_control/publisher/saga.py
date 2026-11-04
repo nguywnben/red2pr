@@ -14,7 +14,12 @@ from urllib.parse import urlsplit, urlunsplit
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from py_contracts.crypto import KeyRing, canonical_json_bytes, sha256_canonical_json
+from py_contracts.crypto import (
+    KeyRing,
+    PublicKeyRecord,
+    canonical_json_bytes,
+    sha256_canonical_json,
+)
 from py_contracts.events import EventEnvelope, PublicationEventPayload
 from py_contracts.evidence import EvidenceManifestV1
 from py_contracts.primitives import new_uuid7
@@ -31,10 +36,11 @@ from red2pr_control.db.base import (
     RepositoryPolicyModel,
     RequiredCheckSetModel,
     SandboxLeaseModel,
+    SigningKeyModel,
     VerificationRunModel,
 )
 from red2pr_control.db.outbox import enqueue_outbox_event
-from red2pr_control.db.rls import workspace_rls_session
+from red2pr_control.db.rls import instance_rls_session, workspace_rls_session
 from red2pr_control.integrations.base import (
     ProviderConnectionContext,
     ProviderDraftReviewRecord,
@@ -158,9 +164,14 @@ class PublisherSaga:
         self._intent_signing_key = intent_signing_key
         self._state_machine = state_machine
 
-    async def publish(self, intent: SealedPublishIntent) -> PublicationRecordModel:
+    async def publish(
+        self,
+        intent: SealedPublishIntent,
+        *,
+        now: datetime | None = None,
+    ) -> PublicationRecordModel:
         self._verify_seal(intent)
-        now = datetime.now(tz=UTC)
+        ref_now = now.astimezone(UTC) if now is not None else datetime.now(tz=UTC)
         # Commit the local intent and repair transition before any provider network I/O.
         async with workspace_rls_session(
             self._session_factory, workspace_id=intent.workspace_id
@@ -173,7 +184,7 @@ class PublisherSaga:
                 manifest,
                 diff_bytes,
                 required_set,
-            ) = await self._load_and_validate_intent(db, intent, now=now)
+            ) = await self._load_and_validate_intent(db, intent, now=ref_now)
             required_digest = (
                 required_set.digest
                 if required_set is not None
@@ -217,7 +228,7 @@ class PublisherSaga:
             )
             marker = deterministic_marker(repair.id, provider, patch.patch_digest)
             branch = deterministic_branch(repair.ci_run_id, repair.id, patch.patch_digest)
-            intent_id = str(new_uuid7(now=now))
+            intent_id = str(new_uuid7(now=ref_now))
             if publication is None:
                 if repair.state == "cancel_requested":
                     raise ConflictError(
@@ -225,7 +236,7 @@ class PublisherSaga:
                         detail="A cancelled repair cannot start a new publication intent.",
                     )
                 publication = PublicationRecordModel(
-                    id=str(new_uuid7(now=now)),
+                    id=str(new_uuid7(now=ref_now)),
                     workspace_id=repair.workspace_id,
                     repository_id=repair.repository_id,
                     repair_id=repair.id,
@@ -242,8 +253,8 @@ class PublisherSaga:
                     target_ref=repair.target_ref,
                     policy_revision=repair.policy_revision,
                     status="intent",
-                    created_at=now,
-                    updated_at=now,
+                    created_at=ref_now,
+                    updated_at=ref_now,
                 )
                 db.add(publication)
                 await db.flush()
@@ -276,7 +287,7 @@ class PublisherSaga:
                     correlation_id=intent.correlation_id,
                 )
             publication.status = "pushing"
-            publication.updated_at = now
+            publication.updated_at = ref_now
             await db.flush()
             db_data = {
                 "workspace_id": repair.workspace_id,
@@ -297,10 +308,15 @@ class PublisherSaga:
                 "correlation_id": intent.correlation_id,
             }
 
-        return await self._publish_or_reconcile(adapter, provider_ctx, db_data, now=now)
+        return await self._publish_or_reconcile(adapter, provider_ctx, db_data, now=ref_now)
 
     async def publish_approved(
-        self, *, workspace_id: str, approval_id: str, correlation_id: str
+        self,
+        *,
+        workspace_id: str,
+        approval_id: str,
+        correlation_id: str,
+        now: datetime | None = None,
     ) -> PublicationRecordModel:
         """Create the sealed publisher handoff from a persisted human decision.
 
@@ -339,7 +355,7 @@ class PublisherSaga:
                 correlation_id=correlation_id or approval.correlation_id,
                 signing_key=self._intent_signing_key,
             )
-        return await self.publish(intent)
+        return await self.publish(intent, now=now)
 
     async def reconcile(self, *, workspace_id: str, publication_id: str) -> PublicationRecordModel:
         """Rebuild the sealed internal intent for an already-persisted effect and reconcile it."""
@@ -589,6 +605,25 @@ class PublisherSaga:
                 )
             blob_by_id[job_id] = result_blob
         from red2pr_control.verification.verifier import verify_evidence_manifest
+
+        async with instance_rls_session(self._session_factory, mode="instance_only") as key_db:
+            worker_keys = (
+                await key_db.scalars(
+                    select(SigningKeyModel).where(SigningKeyModel.purpose == "worker_result")
+                )
+            ).all()
+            for sk in worker_keys:
+                if sk.algorithm == "ed25519":
+                    self._manifest_keyring.upsert(
+                        PublicKeyRecord(
+                            key_id=sk.key_id,
+                            algorithm="ed25519",
+                            public_key_b64=sk.public_key_b64,
+                            not_before=sk.not_before,
+                            revoked_at=sk.revoked_at,
+                            trust_domain=sk.trust_domain,
+                        )
+                    )
 
         verify_evidence_manifest(
             manifest,

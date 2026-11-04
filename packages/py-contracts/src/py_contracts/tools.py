@@ -311,10 +311,13 @@ def _inline_json_schema_defs(node: Any, defs: dict[str, Any]) -> Any:
         inlined = {
             key: _inline_json_schema_defs(value, defs)
             for key, value in node.items()
-            if key != "$defs"
+            if key not in ("$defs", "default")
         }
-        if inlined.get("type") == "object" and "additionalProperties" not in inlined:
+        if inlined.get("type") == "object":
             inlined["additionalProperties"] = False
+            props = inlined.get("properties")
+            if isinstance(props, dict):
+                inlined["required"] = list(props.keys())
         return inlined
     if isinstance(node, list):
         return [_inline_json_schema_defs(item, defs) for item in node]

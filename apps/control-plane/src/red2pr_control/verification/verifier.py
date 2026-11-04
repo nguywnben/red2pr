@@ -123,6 +123,9 @@ def scan_diff_secrets(diff_text: str, *, redactor: Redactor = DEFAULT_REDACTOR) 
         if line.startswith("diff --git "):
             parts = line.split(" b/", maxsplit=1)
             path = parts[1] if len(parts) == 2 else "unknown"
+        elif line.startswith("+++ ") and not line.startswith("+++ /dev/null"):
+            raw_p = line[4:].split("\t", 1)[0].strip()
+            path = raw_p[2:] if raw_p.startswith("b/") else raw_p
         elif line.startswith("+") and not line.startswith("+++"):
             if redactor.redact_text(line[1:]) != line[1:]:
                 findings.append(f"credential_pattern:{path}")

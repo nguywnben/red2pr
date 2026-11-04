@@ -27,7 +27,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from pydantic import Field, StrictStr, ValidationError
 from sqlalchemy import func, select
@@ -77,7 +77,6 @@ from red2pr_control.db.outbox import enqueue_outbox_event
 from red2pr_control.db.rls import workspace_rls_session
 from red2pr_control.inference.agent_profiles import AgentProfileService
 from red2pr_control.inference.budgets import AtomicBudgetLedger, BudgetExceededError
-from red2pr_control.inference.meta_client import MetaMuseInferenceService
 from red2pr_control.inference.tool_broker import (
     UNTRUSTED_SYSTEM_PREAMBLE,
     AgentToolBroker,
@@ -114,6 +113,9 @@ from red2pr_control.triage_evidence.artifact_store import (
     persist_encrypted_artifact,
     read_artifact_for_authorized_caller,
 )
+
+if TYPE_CHECKING:
+    from red2pr_control.inference.meta_client import MetaMuseInferenceService
 
 
 class _ModelPatchProposalPayload(StrictContractModel):
@@ -629,7 +631,7 @@ class BoundedPatchAgentService:
                         messages=messages,
                         tools=meta_tools if meta_tools else None,
                         response_format=response_format,
-                        max_completion_tokens=2048,
+                        max_completion_tokens=4096,
                         reasoning_effort=profile.reasoning_effort,
                         correlation_id=correlation_id,
                     ),
